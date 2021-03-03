@@ -27,6 +27,9 @@ import pymel.core as pm
 import tb_timeline as tl
 import maya.mel as mel
 import maya.cmds as cmds
+import maya.api.OpenMaya as om2
+import pymel.core.datatypes as dt
+import math
 from Abstract import *
 
 qtVersion = pm.about(qtVersion=True)
@@ -70,6 +73,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
                                      annotation='Toggle the collapsed state of the graph editor - if docked',
                                      category=self.category, command=['keyModifers.toggleDockedGraphEd()']))
+        self.addCommand(self.tb_hkey(name='flattenControl',
+                                     annotation='Flatten a controls rotation so the y axis points straight up',
+                                     category=self.category, command=['keyModifers.level()']))
 
         return self.commandList
 
@@ -217,8 +223,106 @@ class keyModifers(toolAbstractFactory):
                             outTangentType=input,
                             time=timeRange)
             self.funcs.infoMessage(prefix="Tangent :: ", message=input)
-            #mel.eval("timeSliderSetTangent %s" % input)
 
     def toggleDockedGraphEd(self):
         self.funcs.toggleDockedGraphEd()
 
+    @staticmethod
+    def getMatrix(node):
+        '''
+        Gets the world matrix of an object based on name.
+        '''
+        # TODO - have this use a shared function from self.funcs
+        # Selection list object and MObject for our matrix
+        selection = om2.MSelectionList()
+        matrixObject = om2.MObject()
+
+        # Adding object
+        selection.add(node)
+
+        # New api is nice since it will just return an MObject instead of taking two arguments.
+        MObjectA = selection.getDependNode(0)
+
+        # Dependency node so we can get the worldMatrix attribute
+        fnThisNode = om2.MFnDependencyNode(MObjectA)
+
+        # Get it's world matrix plug
+        worldMatrixAttr = fnThisNode.attribute("worldMatrix")
+
+        # Getting mPlug by plugging in our MObject and attribute
+        matrixPlug = om2.MPlug(MObjectA, worldMatrixAttr)
+        matrixPlug = matrixPlug.elementByLogicalIndex(0)
+
+        # Get matrix plug as MObject so we can get it's data.
+        matrixObject = matrixPlug.asMObject()
+
+        # Finally get the data
+        worldMatrixData = om2.MFnMatrixData(matrixObject)
+        worldMatrix = worldMatrixData.matrix()
+
+        return worldMatrix
+
+    def level(self):
+        sel = cmds.ls(selection=True)
+        if sel:
+            for se in sel:
+                _node = pm.PyNode(se)
+                self.do_level(se)
+
+    def do_level(self, node, upAxis='y', worldAxis=[1.0, 0.0, 1.0]):
+        def multiply(input1, input2):
+            mult = dt.Vector([input1[0] * input2[0], input1[1] * input2[1], input1[2] * input2[2]])
+            _out = mult
+            return _out
+
+        def constructMatrix(_matrix, x_vector, y_vector, z_vector):
+            _matrix[0] = x_vector[0]
+            _matrix[1] = x_vector[1]
+            _matrix[2] = x_vector[2]
+            _matrix[4] = y_vector[0]
+            _matrix[5] = y_vector[1]
+            _matrix[6] = y_vector[2]
+            _matrix[8] = z_vector[0]
+            _matrix[9] = z_vector[1]
+            _matrix[10] = z_vector[2]
+
+            return _matrix
+        _matrix = self.getMatrix(node)
+        _original_matrix = om2.MTransformationMatrix(_matrix)
+        # cache the rotate pivots
+
+        _rp = pm.xform(node, query=True, rotatePivot=True)
+        _lsp = pm.xform(node, query=True, scalePivot=True)
+
+        rotOrder = cmds.getAttr('%s.rotateOrder' % node)
+        _flat = dt.Vector(worldAxis)
+        x_vector = dt.Vector([_matrix[0], _matrix[1], _matrix[2]])
+        y_vector = dt.Vector([_matrix[4], _matrix[5], _matrix[6]])
+        z_vector = dt.Vector([_matrix[8], _matrix[9], _matrix[10]])
+
+        _flatX = multiply(x_vector, _flat)
+        _flatY = multiply(y_vector, _flat)
+        _flatZ = multiply(z_vector, _flat)
+
+        if upAxis == 'x':
+            _crossX = _flatY.cross(_flatZ)
+            _crossZ = _crossX.cross(_flatY)
+            _crossY = _crossZ.cross(_crossX)
+
+        elif upAxis == 'y':
+            _crossY = _flatZ.cross(_flatX)
+            _crossX = _crossY.cross(_flatZ)
+            _crossZ = _crossX.cross(_crossY)
+
+        elif upAxis == 'z':
+            _crossZ = _flatY.cross(_flatX)
+            _crossX = _crossZ.cross(_flatY)
+            _crossY = _crossX.cross(_crossZ)
+
+        _matrix = constructMatrix(_matrix, _crossX, _crossY, _crossZ)
+        mTransformMtx = om2.MTransformationMatrix(_matrix)
+        eulerRot = mTransformMtx.rotation()
+        eulerRot.reorderIt(rotOrder)
+        angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
+        _node = pm.PyNode(node)
+        pm.setAttr(_node.rotate, angles)
