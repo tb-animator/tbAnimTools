@@ -41,6 +41,8 @@ else:
     from PySide2.QtCore import *
     from pyside2uic import *
     from shiboken2 import wrapInstance
+from contextlib import contextmanager
+import maya.OpenMaya as om
 
 class functions(object):
     """
@@ -398,6 +400,7 @@ class functions(object):
                          fade=fade)
         self.disable_messages()
 
+    @staticmethod
     def getMainWindow():
         return wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget)
 
@@ -442,3 +445,14 @@ class functions(object):
         else:
             mel.eval('GraphEditor;')
         cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
+
+    @contextmanager
+    def keepSelection(self):
+        # setup
+        sel = om.MSelectionList()
+        om.MGlobal.getActiveSelectionList(sel)
+
+        yield
+
+        # cleanup
+        om.MGlobal.setActiveSelectionList(sel)

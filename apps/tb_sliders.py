@@ -108,7 +108,7 @@ class slideTools(toolAbstractFactory):
         except:
             pass
 
-        self.slideUI = sliderWidget(self.funcs.getWidgetAtCursor(), tweemClass=self.pickInbetweenClass())
+        self.slideUI = sliderWidget(self.funcs.getWidgetAtCursor(), tweemClass=self.pickInbetweenClass(), funcs=self.funcs)
         self.slideUI.showUI()
 
     def inbetweenSlideRelease(self):
@@ -138,6 +138,7 @@ def lerpFloat(a, b, alpha):
 class tweenBase(object):
     ## Get the current UI Unit
     uiUnit = OpenMaya.MTime.uiUnit()
+    keyboardModifier = None
 
     def __init__(self):
         self.keyState = pm.autoKeyframe(query=True, state=True)
@@ -170,6 +171,9 @@ class tweenBase(object):
         :return:
         """
 
+    def get_modifier(self):
+        self.keyboardModifier = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
+
     def updateAlpha(self, alpha, disableAutoKey=True):
         """
         perform the update calculation here that affects the objects/keys
@@ -177,7 +181,7 @@ class tweenBase(object):
         :param disableAutoKey:
         :return:
         """
-        pass
+        self.get_modifier()
 
     def om_plug_at_time(self, dep_node, plug, mdg):
         '''
@@ -298,8 +302,8 @@ class worldSpaceTween(tweenBase):
                 self.currentAttrData[obj] = attrData(validAttrs)
                 self.prevAttrData[obj] = attrData(validAttrs)
                 self.nextAttrData[obj] = attrData(validAttrs)
-        print 'start times', self.startkeyTimes
-        print 'end times', self.endKeyTimes
+        #print 'start times', self.startkeyTimes
+        #print 'end times', self.endKeyTimes
         for eachMob in self.iterSelection():
             obj_dag_path = om2.MDagPath.getAPathTo(eachMob)
             objMfn = OpenMaya.MFnDependencyNode(eachMob)
@@ -322,6 +326,7 @@ class worldSpaceTween(tweenBase):
             self.nextMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(nextTransform)
 
     def updateAlpha(self, alpha, disableAutoKey=True):
+        super(worldSpaceTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
         pm.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
 
@@ -364,10 +369,13 @@ class worldSpaceTween(tweenBase):
             rotateNames = ['rotateX', 'rotateY', 'rotateZ']
             rotatePlugs = [self.mfnDepNodes[obj].findPlug(eachName, False) for eachName in rotateNames]
 
-            for index, plug in enumerate(translatePlugs):
-                plug.setFloat(resultTranslate[index])
-            for index, plug in enumerate(rotatePlugs):
-                plug.setFloat(resultRotate[index])
+            if not self.keyboardModifier == 'shift':
+                for index, plug in enumerate(translatePlugs):
+                    plug.setFloat(resultTranslate[index])
+            if not self.keyboardModifier == 'ctrl':
+                for index, plug in enumerate(rotatePlugs):
+                    plug.setFloat(resultRotate[index])
+
 
 
 class keyframeTween(tweenBase):
@@ -395,10 +403,8 @@ class keyframeTween(tweenBase):
         self.affectedObjects = self.funcs.get_selected_curves()
 
     def cacheValues(self):
-        print 'affectedObjects', self.affectedObjects
         # just get one objects next and previous transforms
         thisTime = cmds.currentTime(query=True)
-        # TODO - look at this again, it's grabbing the wrong values to cache
         for curve in self.affectedObjects:
             self.selectedKeyTimes[curve] = self.funcs.get_key_times(curve)
             self.selectedKeyIndexes[curve] = self.funcs.get_selected_key_indexes(curve)
@@ -406,19 +412,19 @@ class keyframeTween(tweenBase):
             curvePreviousValues = list()
             curveNextValues = list()
             for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
-                previousValue = self.funcs.get_prev_key_values_from_index(curve, index)
-                nextValue = self.funcs.get_next_key_values_from_index(curve, index)
+                previousValue = self.funcs.get_prev_key_values_from_index(curve, indexVal)
+                nextValue = self.funcs.get_next_key_values_from_index(curve, indexVal)
                 curvePreviousValues.append(previousValue[0])
                 curveNextValues.append(nextValue[0])
             self.curvePreviousValues[curve] = curvePreviousValues
             self.curveNextValues[curve] = curveNextValues
 
     def updateAlpha(self, alpha, disableAutoKey=True):
+        super(keyframeTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
         pm.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
         for curve in self.affectedObjects:
             for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
-                print index
                 if self.alpha >= 0:
                     # lerp to next
                     targetValue = self.curveNextValues[curve][index]
@@ -579,7 +585,6 @@ class DragButton(QLabel):
                     # dragging one of those dot controls
                     self.setIconStateInactive()
                     self.uiParent.hideAllAnchors()
-                    print 'dragging a dot control'
                     self.masterDragger.setPositionFromSlider(self.pos() + QPoint(self.halfWidth, 0))
             # adjust offset from clicked point to origin of widget
             else:
@@ -701,10 +706,14 @@ class sliderBar(QLabel):
 
 
 class sliderWidget(QWidget):
-    def __init__(self, parent, tweemClass=None, largeAnchors=[0, 50, 100.0],
+    def __init__(self, parent, tweemClass=None,
+                 funcs=None,
+                 largeAnchors=[0, 50, 100.0],
                  smallAnchors=[12.5, 25.0, 37.5, 62.5, 75.0, 87.5]
                  ):
         QWidget.__init__(self, parent)
+        self.funcs = funcs
+        self.setFocus()
         self.lastEvent = None
         self.dragButton = None
         self.anchorButtons = list()
@@ -724,6 +733,10 @@ class sliderWidget(QWidget):
                                      xMax=horizontalBar.width(),
                                      parent=horizontalBar,
                                      uiParent=self)
+
+        self.setFocusPolicy(Qt.StrongFocus)
+
+        self.dragButton.setFocusPolicy(Qt.StrongFocus)
 
         for p in self.largeAnchorPositions:
             anchorBtn = DragButton("BD",
@@ -851,6 +864,14 @@ class sliderWidget(QWidget):
     def updateAlpha(self, alpha):
         self.tweenClass.updateAlpha(alpha)
 
+    def show(self):
+        super(sliderWidget, self).show()
+        self.setEnabled(True)
+        self.setFocus()
+
+    def close(self):
+        super(sliderWidget, self).close()
+
     def showUI(self):
         self.move_UI()
         self.show()
@@ -866,6 +887,9 @@ class sliderWidget(QWidget):
     def updateTweenClass(self):
         self.tweenClass.setAffectedObjects()
         self.tweenClass.cacheValues()
+
+    def get_modifier(self):
+        self.keyboardModifier = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
 
 
 

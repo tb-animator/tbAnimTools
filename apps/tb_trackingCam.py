@@ -38,20 +38,7 @@ else:
 import maya.OpenMaya as OpenMaya
 import maya.OpenMayaUI as OpenMayaUI
 from Abstract import *
-from contextlib import contextmanager
-import maya.OpenMaya as om
 
-
-@contextmanager
-def keepSelection():
-    # setup
-    sel = om.MSelectionList()
-    om.MGlobal.getActiveSelectionList(sel)
-
-    yield
-
-    # cleanup
-    om.MGlobal.setActiveSelectionList(sel)
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -138,7 +125,7 @@ class trackingCamera(toolAbstractFactory):
             cmds.lookThru(perspCameras[0])
 
     def createTrackingCamera(self):
-        with keepSelection():
+        with self.funcs.keepSelection():
             cam, camShape = self.getCurrentCamera()
             print 'current camera', cam
             self.getCameraTransform(cam)
@@ -152,7 +139,7 @@ class trackingCamera(toolAbstractFactory):
             self.setCameraTransform(self.trackerCam)
 
     def updateTrackTarget(self):
-        with keepSelection():
+        with self.funcs.keepSelection():
             self.camera_target = cmds.ls(sl=True)
             if not self.camera_target:
                 return cmds.warning('no new target to update')

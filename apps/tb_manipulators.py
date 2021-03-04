@@ -165,9 +165,9 @@ class manips(toolAbstractFactory):
         pm.manipRotateContext('Rotate', edit=True, mode=new_mode)
         if pm.optionVar.get(self.rotate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='rotate',
-                                    message=' : %s' % new_name,
-                                    position=pm.optionVar.get(self.rotate_messageVar, 'topLeft')
-                                    )
+                                   message=' : %s' % new_name,
+                                   position=pm.optionVar.get(self.rotate_messageVar, 'topLeft')
+                                   )
 
     def cycleTranslation(self):
         """
@@ -191,10 +191,10 @@ class manips(toolAbstractFactory):
 
         pm.manipMoveContext('Move', edit=True, mode=new_mode)
         if pm.optionVar.get(self.translate_optionVar + "_msg", 0):
-            self.funcs.message.info(prefix='translate',
-                                    message=' : %s' % new_name,
-                                    position=pm.optionVar.get(self.translate_messageVar, 'topLeft')
-                                    )
+            self.funcs.infoMessage(prefix='translate',
+                                   message=' : %s' % new_name,
+                                   position=pm.optionVar.get(self.translate_messageVar, 'topLeft')
+                                   )
 
     # this cycle tool doesn't bother with options yet, just toggles between 2 states
     def cycle_selection_mask(self):
@@ -206,10 +206,10 @@ class manips(toolAbstractFactory):
             cmds.selectType(joint=_mode, nurbsCurve=_mode)
         pm.selectMode(object=True)
 
-        self.funcs.message.info(prefix='masking',
-                                message=' : %s' % self.selection_modes[_mode],
-                                position=pm.optionVar.get(self.translate_messageVar, 'midCenter')
-                                )
+        self.funcs.infoMessage(prefix='masking',
+                               message=' : %s' % self.selection_modes[_mode],
+                               position=pm.optionVar.get(self.translate_messageVar, 'midCenter')
+                               )
 
     def cycle_key_type(self):
         _current_key_type = pm.keyTangent(g=True, query=True, outTangentType=True)[0]
@@ -227,17 +227,17 @@ class manips(toolAbstractFactory):
 
         display_message = 'default spline tangents'
         cmds.keyTangent(g=True, edit=True, inTangentType=_in, outTangentType=_out)
-        self.funcs.message.info(prefix='key type',
-                                message=' : %s' % _out,
-                                position=pm.optionVar.get(self.key_messageVar, 'topLeft')
-                                )
+        self.funcs.infoMessage(prefix='key type',
+                               message=' : %s' % _out,
+                               position=pm.optionVar.get(self.key_messageVar, 'topLeft')
+                               )
 
     def zero_channel(self, channels, value):
         sel = pm.ls(sl=True)
 
         for channel in channels:
             for each in sel:
-                plug = each+'.'+channel
+                plug = each + '.' + channel
                 try:
                     locked = pm.getAttr(plug, lock=True)
                     if locked:
