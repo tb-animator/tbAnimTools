@@ -27,8 +27,20 @@ import pymel.core as pm
 import maya.cmds as cmds
 import maya.OpenMayaAnim as oma
 import maya.mel as mel
-import maya.OpenMaya as om
-
+import maya.api.OpenMaya as om2
+import maya.OpenMayaUI as omUI
+qtVersion = pm.about(qtVersion=True)
+if int(qtVersion.split('.')[0]) < 5:
+    from PySide.QtGui import *
+    from PySide.QtCore import *
+    from pysideuic import *
+    from shiboken import wrapInstance
+else:
+    from PySide2.QtWidgets import *
+    from PySide2.QtGui import *
+    from PySide2.QtCore import *
+    from pyside2uic import *
+    from shiboken2 import wrapInstance
 
 class functions(object):
     """
@@ -82,6 +94,64 @@ class functions(object):
         return filter(self.filter_modelEditors, editors)
 
     @staticmethod
+    def get_all_curves(node=pm.ls(selection=True)):
+        if node:
+            return pm.keyframe(node, query=True, name=True)
+        else:
+            return None
+
+    def get_smart_key_selection(self, node):
+        if self.get_selected_keys():
+            return self.get_key_indexes_in_selection(node=node)
+        else:
+            return self.get_keys_indexes_at_frame(node=node)
+
+    def get_keys_indexes_at_frame(self, node=None, time=None):
+        if not time:
+            time = pm.getCurrentTime()
+        curves = pm.keyframe(node, query=True, name=True)
+        return_data = {}
+        for curve in curves:
+            if time in self.get_key_times(curve, selected=False):
+                return_data[curve] = pm.keyframe(curve, query=True, time=time, indexValue=True)
+        return return_data
+
+    @staticmethod
+    def get_key_indexes_in_selection(node=None):
+        if not node:
+            node = pm.ls(selection=True)
+
+        return_data = {}
+        curves = pm.keyframe(node, query=True, name=True)
+        for curve in curves:
+            return_data[curve] = pm.keyframe(curve, query=True, selected=True, indexValue=True)
+        if return_data.keys():
+            return return_data
+        else:
+            return None
+
+
+    @staticmethod
+    def get_keys_from_selection(node=cmds.ls(selection=True)):
+        return cmds.keyframe(node, query=True, selected=True, name=True)
+
+    @staticmethod
+    def get_max_index(curve):
+        return cmds.keyframe(curve, query=True, keyframeCount=True)
+
+    @staticmethod
+    def get_key_times(curve, selected=True):
+        return cmds.keyframe(curve, query=True, selected=selected, timeChange=True)
+
+    @staticmethod
+    def get_selected_key_indexes(curve):
+        return cmds.keyframe(curve, query=True, selected=True, indexValue=True)
+
+    @staticmethod
+    def get_all_key_times(curve, selected=True):
+        return cmds.keyframe(curve, query=True, selected=selected, timeChange=True)
+
+    @staticmethod
     def get_selected_curves():
         """ returns the currently selected curve names
         """
@@ -98,16 +168,18 @@ class functions(object):
         return cmds.keyframe(selected=True, query=True, keyframeCount=True)
 
     @staticmethod
-    def get_key_times(curve):
-        return cmds.keyframe(curve, query=True, selected=True, timeChange=True)
-
-    @staticmethod
     def get_key_values(curve):
         return cmds.keyframe(curve, query=True, selected=True, valueChange=True)
 
     @staticmethod
     def get_key_values_from_range(curve, time_range):
         return cmds.keyframe(curve, query=True, time=time_range, valueChange=True)
+
+    def get_prev_key_values_from_index(self, curve, index):
+        return cmds.keyframe(curve, query=True, index=((max(0, index-1)),), valueChange=True)
+
+    def get_next_key_values_from_index(self, curve, index):
+        return cmds.keyframe(curve, query=True, index=((min(index+1, self.get_max_index(curve))),), valueChange=True)
 
     def match(self, data):
         ## match tangents for looping animations
@@ -325,6 +397,35 @@ class functions(object):
                          dragKill=True,
                          fade=fade)
         self.disable_messages()
+
+    def getMainWindow():
+        return wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget)
+
+    @staticmethod
+    def getWidgetAtCursor():
+        view = omUI.M3dView()
+        omUI.M3dView.getM3dViewFromModelPanel('modelPanel4', view)
+        viewWidget = wrapInstance(long(view.widget()), QWidget)
+        return viewWidget
+
+    def getGraphEditorState(self):
+        """
+        use this to determine if we should act on selected keys based on graph editor visibility
+        :return:
+        """
+        GraphEdWindow = None
+        state = False
+        if cmds.animCurveEditor('graphEditor1GraphEd', query=True, exists=True):
+            graphEdParent = cmds.animCurveEditor('graphEditor1GraphEd', query=True, panel=True)
+            if not cmds.panel(graphEdParent, query=True, exists=True):
+                return False
+            if cmds.panel(graphEdParent, query=True, exists=True):
+                GraphEdWindow = cmds.panel(graphEdParent, query=True, control=True).split('|')[0]
+
+        if GraphEdWindow:
+            state = cmds.workspaceControl(GraphEdWindow, query=True, collapse=True)
+            return not state
+        return False
 
     def toggleDockedGraphEd(self):
         GraphEdWindow = None

@@ -49,32 +49,54 @@ else:
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory('tbtools_baking')
-        self.addCommand(self.tb_hkey(name='simpleBakeToOverride', annotation='constrain to objects with NO offset - post baked, constraint reversed',
+        self.setCategory('tbtools_layers')
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
+                                     annotation='constrain to objects with NO offset - post baked, constraint reversed',
                                      category=self.category, command=['bakeTools.bake_to_override()']))
+        self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
+                                     annotation='create additive layer for selection',
+                                     category=self.category, command=['bakeTools.addAdditiveLayer()']))
+        self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
+                                     annotation='create override layer for selection',
+                                     category=self.category, command=['bakeTools.addOverrideLayer()']))
+
         self.setCategory('tbtools_constraints')
         self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='constrain to object to locator',
-                                     category=self.category, command=['bakeTools.bake_to_locator(constrain=True, orientOnly=False)']))
-        self.addCommand(self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
-                                     category=self.category, command=['bakeTools.bake_to_locator(constrain=True, orientOnly=True)']))
+                                     category=self.category,
+                                     command=['bakeTools.bake_to_locator(constrain=True, orientOnly=False)']))
+        self.addCommand(
+            self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
+                         category=self.category,
+                         command=['bakeTools.bake_to_locator(constrain=True, orientOnly=True)']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)']))
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset', annotation='constrain to objects with NO offset',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)']))
-        self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake', annotation='constrain to objects with offset - post baked',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)']))
-        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake', annotation='constrain to objects with NO offset - post baked',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)']))
-        self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse', annotation='constrain to objects with offset - post baked, constraint reversed',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)']))
-        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse', annotation='constrain to objects with NO offset - post baked, constraint reversed',
-                                     category=self.category, command=['bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)']))
+        self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake',
+                                     annotation='constrain to objects with offset - post baked',
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)']))
+        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake',
+                                     annotation='constrain to objects with NO offset - post baked',
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)']))
+        self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse',
+                                     annotation='constrain to objects with offset - post baked, constraint reversed',
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)']))
+        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse',
+                                     annotation='constrain to objects with NO offset - post baked, constraint reversed',
+                                     category=self.category, command=[
+                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
 
         return self.commandList
 
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+
 
 class bakeTools(toolAbstractFactory):
     """
@@ -161,8 +183,8 @@ class bakeTools(toolAbstractFactory):
             if constrain:
                 pm.delete(constraints)
                 for cnt, loc in zip(sel, locs):
-                    skipT =self.funcs.getAvailableTranslates(cnt)
-                    skipR=self.funcs.getAvailableRotates(cnt)
+                    skipT = self.funcs.getAvailableTranslates(cnt)
+                    skipR = self.funcs.getAvailableRotates(cnt)
                     pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'), False: skipT}[orientOnly],
                                         skipRotate=skipR)
 
@@ -213,7 +235,6 @@ class bakeTools(toolAbstractFactory):
             if 'blendParent' in str(attr):
                 pm.deleteAttr(node, at=attr)
 
-
     def quickBake(self, node):
         pm.bakeResults(node,
                        simulation=False,
@@ -224,6 +245,49 @@ class bakeTools(toolAbstractFactory):
 
         pm.delete(node.listRelatives(type='constraint'))
         self.clearBlendAttrs(node)
+
+    def addOverrideLayer(self):
+        self.add_layer(mode=True)
+
+    def addAdditiveLayer(self):
+        self.add_layer(mode=False)
+
+    def add_layer(self, mode=False):
+        sel = pm.ls(selection=True)[0].stripNamespace()
+        suffix = {True: ['_OVR', 16], False: ['_ADD', 15]}
+        if not sel:
+            return
+        newAnimLayer = pm.animLayer('%s%s' % (sel, suffix[mode][0]),
+                                    override=mode,
+                                    excludeScale=True,
+                                    # excludeEnum=True,
+                                    addSelectedObjects=True,
+                                    passthrough=False,
+                                    lock=False)
+        newAnimLayer.ghostColor.set(suffix[mode][1])
+        self.deselect_layers()
+        newAnimLayer.selected.set(True)
+        newAnimLayer.scaleAccumulationMode.set(0)
+        if not self.funcs.isTimelineHighlighted():
+            return
+        if not mode:
+            return
+
+        timeRange = self.funcs.getTimelineHighlightedRange()
+        cmds.setKeyframe(animLayer=newAnimLayer,
+                         time=((timeRange[0]), timeRange[1]),
+                         respectKeyable=True,
+                         hierarchy=False,
+                         breakdown=False,
+                         dirtyDG=True,
+                         controlPoints=False,
+                         shape=False,
+                         identity=True)
+
+    def deselect_layers(self):
+        for layers in pm.ls(type='animLayer'):
+            layers.selected.set(False)
+
 
 '''    
 class bakeToLayer():
@@ -265,7 +329,6 @@ class bakeToLayer():
 '''
 
 
-
 def space_list_intersection(selection_dict):
     '''
     Returns only the spaces that are shared between all input nodes
@@ -283,18 +346,22 @@ def space_list_intersection(selection_dict):
 
     return list(sorted(set(ordered_spaces[0]).intersection(*ordered_spaces), key=ordered_spaces[0].index))
 
+
 def get_space_string(node):
     node = pm.PyNode(node)
     return node.SpaceSwitch.getEnums().keys()
 
+
 def get_space_name(node, attr, spaceName):
     # print node.SpaceSwitch.getEnums().keys()
-    matching_space = [space for space in pm.Attribute(attr, node=node).getEnums().keys() if spaceName.lower() in str(space).lower()]
+    matching_space = [space for space in pm.Attribute(attr, node=node).getEnums().keys() if
+                      spaceName.lower() in str(space).lower()]
     print node, spaceName, matching_space
     return matching_space[0]
 
+
 def spaceMenu(_node, selection, cAttributes):
-    #_spaces = _node.space.get()
+    # _spaces = _node.space.get()
     # print _spaces
 
     # we use this dict to store the space attribute and the object ( in case we have multiple names in use )
@@ -315,10 +382,12 @@ def spaceMenu(_node, selection, cAttributes):
     for space in _space_list:
         pm.menuItem(label='   %s' % space, boldFont=True, command=pm.Callback(temp_space, obj_spaces_dict, space))
 
+
 def get_modifier():
     mod = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
     return mod
 
+
 def temp_space(obj_spaces_dict, space):
     print obj_spaces_dict.items()
-    print 'swap to %s'  % space
+    print 'swap to %s' % space
