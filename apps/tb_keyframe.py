@@ -51,12 +51,12 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_keyframing')
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='match_tangent_start_to_end', annotation='',
-                                     category=self.category, command=['key_mod.match(\"start\")']))
+                                     category=self.category, command=['keyModifers.matchStartTangentsToEndTangents()']))
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
-                                     category=self.category, command=['key_mod.match(\"end\")']))
+                                     category=self.category, command=['keyModifers.matchEndTangentsToStartTangents()']))
         self.addCommand(self.tb_hkey(name='filter_channelBox',
-                                     annotation='filters the current channelBox seletion in the graph editor',
-                                     category=self.category, command=['channels.filterChannels()']))
+                                     annotation='filters the current channelBox selection in the graph editor',
+                                     category=self.category, command=['keyModifiers.filterChannels()']))
 
         self.addCommand(self.tb_hkey(name='setTangentsLinear',
                                      annotation='Sets your current key selection or timeline key to linear',
@@ -76,47 +76,14 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
                                      category=self.category, command=['keyModifers.level()']))
+        self.addCommand(self.tb_hkey(name='eulerFilterSelection',
+                                     annotation='euler filter your current keyframe selection',
+                                     category=self.category, command=['keyModifers.eulerFilterSelectedKeys()']))
 
         return self.commandList
 
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
-
-
-class keys(object):
-    def __init__(self):
-        pass
-
-    def get(self):
-        pass
-
-    @staticmethod
-    def get_selected_curves():
-        """ returns the currently selected curve names
-        """
-        return pm.keyframe(query=True, selected=True, name=True)
-
-    @staticmethod
-    def get_selected_keys():
-        """ returns the currently selected curve names
-        """
-        return pm.keyframe(query=True, selected=True)
-
-    @staticmethod
-    def get_selected_keycount():
-        return pm.keyframe(selected=True, query=True, keyframeCount=True)
-
-    @staticmethod
-    def get_key_times(curve):
-        return pm.keyframe(curve, query=True, selected=True, timeChange=True)
-
-    @staticmethod
-    def get_key_values(curve):
-        return pm.keyframe(curve, query=True, selected=True, valueChange=True)
-
-    @staticmethod
-    def get_key_values_from_range(curve, time_range):
-        return pm.keyframe(curve, query=True, time=time_range, valueChange=True)
 
 
 class keyModifers(toolAbstractFactory):
@@ -154,34 +121,52 @@ class keyModifers(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
-    @staticmethod
-    def match(data):
-        ## match tangents for looping animations
-        #
-        # from tb_keyframe import key_mod
-        # key_mod().match("start")
-        # or
-        # key_mod().match("end")
-        #
-        __dict = {'start': True, 'end': False
-                  }
-        state = __dict[data]
-        print "state", state
-        print "mode", data
-        range = tl.timeline().get_range()
-        s = range[state]
-        e = range[not state]
-        print "start", s, "end", e
-        animcurves = pm.keyframe(query=True, name=True)
-        tangent = []
-        if animcurves and len(animcurves):
-            for curve in animcurves:
-                tangent = pm.keyTangent(curve, query=True, time=(s, s), outAngle=True, inAngle=True)
-                print "tangent", tangent
-                pm.keyTangent(curve, edit=True, lock=False, time=(e, e),
-                              outAngle=tangent[state], inAngle=tangent[not state])
-        else:
-            print "no anim curves found"
+    def filterChannels(self):
+        self.funcs.filterChannels()
+
+    def matchStartTangentsToEndTangents(self):
+        self.matchTangents(True)
+
+    def matchEndTangentsToStartTangents(self):
+        self.matchTangents(False)
+
+    def matchTangents(self, data):
+        keyTimeIndex = {True: -1, False: 0}[data]
+        range = self.funcs.getTimelineRange()
+        referenceTime = range[data]
+        editTime = range[not data]
+        animcurves = cmds.keyframe(query=True, name=True)
+        if not animcurves:
+            return pm.warning('no anim curves found to match tangents with')
+
+        for curve in animcurves:
+            inTangent = None
+            outTangent = None
+            keyTimes = cmds.keyframe(curve, query=True, selected=False, timeChange=True)
+            if not len(keyTimes) > 1:
+                continue
+            if editTime not in keyTimes:
+                editTime = keyTimes[{True: -1, False: 0}[not data]]
+            if referenceTime not in keyTimes:
+                inTangent, outTangent = cmds.keyTangent(curve, query=True, time=((keyTimes[keyTimeIndex]),),
+                                                        outAngle=True, inAngle=True)
+            else:
+                inTangent, outTangent = cmds.keyTangent(curve, query=True, time=((referenceTime),), outAngle=True,
+                                                        inAngle=True)
+            if data:
+                cmds.keyTangent(curve,
+                                edit=True,
+                                lock=True,
+                                time=((editTime),),
+                                inAngle=inTangent,
+                                outAngle=inTangent)
+            else:
+                cmds.keyTangent(curve,
+                                edit=True,
+                                lock=True,
+                                time=((editTime),),
+                                inAngle=outTangent,
+                                outAngle=outTangent)
 
     def setTangentsLinear(self):
         self.setTangentType('linear')
@@ -215,7 +200,7 @@ class keyModifers(toolAbstractFactory):
                 minTime, maxTime = self.funcs.getTimelineHighlightedRange()
                 timeRange = (minTime, (maxTime))
             else:
-                timeRange = (cmds.currentTime(query=True), )
+                timeRange = (cmds.currentTime(query=True),)
             cmds.keyTangent(sel,
                             attribute=attributes,
                             edit=True,
@@ -226,6 +211,32 @@ class keyModifers(toolAbstractFactory):
 
     def toggleDockedGraphEd(self):
         self.funcs.toggleDockedGraphEd()
+
+    def eulerFilterSelectedKeys(self):
+        self.objects = cmds.ls(selection=True)
+        self.selected = False
+        # get the min and max times from our keyframe selection
+        if cmds.keyframe(query=True, selected=True):
+            self.firstTime = min(min(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
+            self.lastTime = min(max(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
+            self.selected = True
+        if self.selected:
+            # copy keys to buffer
+            cmds.selectKey(self.objects, replace=True, time=(self.firstTime, self.lastTime))
+            cmds.bufferCurve(animation='keys', overwrite=True)
+            # delete surrounding keys
+            cmds.cutKey(self.objects, time=(-9999999, self.firstTime - 0.01))
+            cmds.cutKey(self.objects, time=(self.lastTime + 0.01, 999999))
+            # euler filter
+            cmds.filterCurve()
+            # copy keys
+            cmds.copyKey(self.objects, time=(self.firstTime, self.lastTime))
+            # swap buffer to original
+            cmds.bufferCurve(animation='keys', swap=True)
+            # paste keys back
+            cmds.pasteKey(option='merge')
+        else:
+            cmds.filterCurve()
 
     @staticmethod
     def getMatrix(node):
@@ -287,6 +298,7 @@ class keyModifers(toolAbstractFactory):
             _matrix[10] = z_vector[2]
 
             return _matrix
+
         _matrix = self.getMatrix(node)
         _original_matrix = om2.MTransformationMatrix(_matrix)
         # cache the rotate pivots

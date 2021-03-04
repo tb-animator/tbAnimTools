@@ -55,11 +55,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_keyframing')
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='zero_translates', annotation='zero translation values',
-                                     category=self.category, command=['zeroes.zero_translates()']))
+                                     category=self.category, command=['manips.zero_translates()']))
         self.addCommand(self.tb_hkey(name='zero_rotates', annotation='zero rotation values',
-                                     category=self.category, command=['zeroes.zero_rotates()']))
+                                     category=self.category, command=['manips.zero_rotates()']))
         self.addCommand(self.tb_hkey(name='zero_scales', annotation='zero scale values',
-                                     category=self.category, command=['zeroes.zero_scales()']))
+                                     category=self.category, command=['manips.zero_scales()']))
 
         # manipulator tools
         cat = 'tbtools_manipulators'
@@ -164,7 +164,7 @@ class manips(toolAbstractFactory):
 
         pm.manipRotateContext('Rotate', edit=True, mode=new_mode)
         if pm.optionVar.get(self.rotate_optionVar + "_msg", 0):
-            self.funcs.message.info(prefix='rotate',
+            self.funcs.infoMessage(prefix='rotate',
                                     message=' : %s' % new_name,
                                     position=pm.optionVar.get(self.rotate_messageVar, 'topLeft')
                                     )
@@ -231,3 +231,32 @@ class manips(toolAbstractFactory):
                                 message=' : %s' % _out,
                                 position=pm.optionVar.get(self.key_messageVar, 'topLeft')
                                 )
+
+    def zero_channel(self, channels, value):
+        sel = pm.ls(sl=True)
+
+        for channel in channels:
+            for each in sel:
+                plug = each+'.'+channel
+                try:
+                    locked = pm.getAttr(plug, lock=True)
+                    if locked:
+                        pm.setAttr(plug, lock=False)
+
+                    if pm.getAttr(plug):
+                        print plug
+                        pm.setAttr(plug, value)
+
+                    if locked:
+                        pm.setAttr(plug, lock=True)
+                except:
+                    pass
+
+    def zero_translates(self):
+        self.zero_channel(["translateX", "translateY", "translateZ"], 0.0)
+
+    def zero_rotates(self):
+        self.zero_channel(["rotateX", "rotateY", "rotateZ"], 0.0)
+
+    def zero_scales(self):
+        self.zero_channel(["scaleX", "scaleY", "scaleZ"], 1.0)

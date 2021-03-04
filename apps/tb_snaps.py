@@ -97,34 +97,55 @@ class SnapTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    @staticmethod
+    def minus(vector1, vector2):
+        # TODO use actual vectors
+        return [vector1[0] - vector2[0], vector1[1] - vector2[1], vector1[2] - vector2[2]]
+
+    @staticmethod
+    def plus(vector1, vector2):
+        # TODO use actual vectors
+        return [vector1[0] + vector2[0], vector1[1] + vector2[1], vector1[2] + vector2[2]]
+
     def snap_selection(self):
-        sel = pm.ls(selection=True)
+        sel = cmds.ls(selection=True)
+        if not sel:
+            return
         if len(sel) >= 2:
             original = sel[0]
             target = sel[1]
 
-            original_rotation = self.get_world_rotation(original)
-            original_pivot_position = self.get_world_pivot(original)
-            original_world_position = self.get_world_space(original)
+        if self.funcs.isTimelineHighlighted():
+            startTime, endTime = self.funcs.getTimelineHighlightedRange()
+            for x in xrange(int(startTime), int(endTime)):
+                cmds.currentTime(x)
+                self.snap_object(original, target)
+        else:
+            self.snap_object(original, target)
 
-            target_rotation = self.get_world_rotation(target)
-            target_pivot_position = self.get_world_pivot(target)
-            target_world_position = self.get_world_space(target)
+    def snap_object(self, original, target):
+        original_rotation = self.get_world_rotation(original)
+        original_pivot_position = self.get_world_pivot(original)
+        original_world_position = self.get_world_space(original)
 
-            _pivot_difference = vector_tools().minus(target_pivot_position, original_pivot_position)
-            _out_position = vector_tools().plus(original_world_position, _pivot_difference)
+        target_rotation = self.get_world_rotation(target)
+        target_pivot_position = self.get_world_pivot(target)
+        target_world_position = self.get_world_space(target)
 
-            xforms.set_world_space(original, _out_position)
-            xforms.set_world_rotation(original, target_rotation)
-            xforms.set_world_rotation(original, target_rotation)
+        _pivot_difference = self.minus(target_pivot_position, original_pivot_position)
+        _out_position = self.plus(original_world_position, _pivot_difference)
 
-            # orient_snap(original, target)
+        self.set_world_translation(original, _out_position)
+        self.set_world_rotation(original, target_rotation)
+        self.set_world_rotation(original, target_rotation)
 
-            rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
-            node_ro = pm.xform(original, query=True, rotateOrder=True)
-            ro = pm.xform(target, query=True, rotateOrder=True)
-            pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
-            pm.xform(original, rotateOrder=node_ro, preserve=True)
+        # orient_snap(original, target)
+
+        rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
+        node_ro = pm.xform(original, query=True, rotateOrder=True)
+        ro = pm.xform(target, query=True, rotateOrder=True)
+        pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
+        pm.xform(original, rotateOrder=node_ro, preserve=True)
 
     def store_transform(self):
         sel = cmds.ls(selection=True)

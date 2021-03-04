@@ -146,13 +146,6 @@ class functions(object):
         return chList
 
     def filterChannels(self):
-
-        '''
-        import filterChannels as ft
-        reload (ft)
-        ft.filterChannels()
-        '''
-
         channels = self.getChannels()
         selection = cmds.ls(selection=True)
 
@@ -164,11 +157,6 @@ class functions(object):
                     cmds.selectionConnection('graphEditor1FromOutliner', edit=True, object=curve)
 
     def toggleMuteChannels(self):
-        '''
-        import filterChannels as ft
-        reload (ft)
-        ft.toggleMuteChannels()
-        '''
         channels = self.getChannels()
         selection = cmds.ls(selection=True)
 
@@ -284,13 +272,26 @@ class functions(object):
     def getValidAttributes(self, nodes):
         returnAttributes = list()
         for node in nodes:
-            attrs = cmds.listAttr(node, unUse=True, keyable=True)
+            attrs = cmds.listAttr(node, inUse=True, keyable=True)
             ignoredAttrs = cmds.attributeInfo(node, bool=True, enumerated=True)
             finalAttrs = [x for x in attrs if x not in ignoredAttrs]
             for at in finalAttrs:
                 if at not in returnAttributes:
                     returnAttributes.append(at)
         return returnAttributes
+
+    @staticmethod
+    def getAvailableTranslates(node):
+        return [attr.lower() for attr in ['translateX', 'translateY', 'translateZ'] if not cmds.getAttr(node + '.' + attr, settable=True)]
+
+    @staticmethod
+    def getAvailableRotates(node):
+        return [attr.lower() for attr in ['rotateX', 'rotateY', 'rotateZ'] if
+                not cmds.getAttr(node + '.' + attr, settable=True)]
+    @staticmethod
+    def getAvailableScales(node):
+        return [attr.lower() for attr in ['scaleX', 'scaleY', 'scaleZ'] if
+                not cmds.getAttr(node + '.' + attr, settable=True)]
 
     # this disables the default maya inview messages (which are pointless after a while)
     def disable_messages(self):

@@ -25,7 +25,7 @@
 '''
 import pymel.core as pm
 import maya.mel as mel
-from Abstract import hotKeyAbstractFactory
+from Abstract import *
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -49,49 +49,67 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='shift_time_range_start',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'timeline.shift_start()',
-                                              ]))
+                                     command=['timeline.shift_start()']))
         self.addCommand(self.tb_hkey(name='shift_time_range_end',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'timeline.shift_end()',
-                                              ]))
+                                     command=['timeline.shift_end()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_start',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'timeline.crop()',
-                                              ]))
+                                     command=['timeline.crop_start()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_end',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'timeline.crop(start=False)',
-                                              ]))
+                                     command=['timeline.crop_end()']))
         self.addCommand(self.tb_hkey(name='skip_forward',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'tbt.skip(mode=1)'
-                                              ]))
+                                     command=['timeline.skip(mode=1)']))
         self.addCommand(self.tb_hkey(name='skip_backward',
                                      annotation='',
                                      category=self.category,
-                                     command=[
-                                              'tbt.skip(mode=-1)'
-                                              ]))
+                                     command=['timeline.skip(mode=-1)']))
         return self.commandList
 
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
-class timeline(object):
-    def __init__(self):
-        # get the name of the playback control
-        self.time_slider = mel.eval('$tmpVar=$gPlayBackSlider')
-        # current animation range
+class timeline(toolAbstractFactory):
+    """
+    Use this as a base for toolAbstractFactory classes
+    """
+    __metaclass__ = abc.ABCMeta
+    __instance = None
+    toolName = 'timeline'
+    hotkeyClass = hotkeys()
+    funcs = functions()
+
+    def __new__(cls):
+        if timeline.__instance is None:
+            timeline.__instance = object.__new__(cls)
+
+        timeline.__instance.val = cls.toolName
+        return timeline.__instance
+
+    def __init__(self, **kwargs):
+        self.hotkeyClass = hotkeys()
+        self.funcs = functions()
+
+    """
+    Declare an interface for operations that create abstract product
+    objects.
+    """
+
+    def optionUI(self):
+        super(timeline, self).optionUI()
+        testButton = QPushButton('some test button')
+        self.layout.addWidget(testButton)
+        return self.layout
+
+    def showUI(self):
+        return cmds.warning(self, 'optionUI', ' function not implemented')
+
         self.range = [self.get_min(), self.get_max()]
         #
         self.cached_range = []
@@ -100,90 +118,35 @@ class timeline(object):
         # cached range
         self.cached_range = self.recall_range()
 
-    @staticmethod
-    def get_range():
-        return [pm.playbackOptions(query=True, minTime=True), pm.playbackOptions(query=True, maxTime=True)]
+    def skip(self, mode=-1):
+        amount = pm.optionVar.get('tb_skip', 5)
+        pm.currentTime(int(amount * mode + pm.getCurrentTime()))
 
-    @staticmethod
-    def get_min():
-        return pm.playbackOptions(query=True, minTime=True)
+        pm.optionVar(intValue=('tb_skip', amount))
 
-    @staticmethod
-    def get_max():
-        return pm.playbackOptions(query=True, maxTime=True)
-
-    def get_highlighted_range(self, min=False, max=False):
-        if min:
-            return pm.timeControl(self.time_slider, query=True, rangeArray=True)[0]
-        elif max:
-            return pm.timeControl(self.time_slider, query=True, rangeArray=True)[1]
+    def crop_start(self):
+        if self.funcs.isTimelineHighlighted():
+            self.funcs.cropTimelineToSelection()
         else:
-            return pm.timeControl(self.time_slider, query=True, rangeArray=True)
+            self.funcs.cropTimeline(start=True)
 
-    def isHighlighted(self):
-        return self.get_highlighted_range()[1] - self.get_highlighted_range()[0] > 1
+    def crop_end(self):
+        if self.funcs.isTimelineHighlighted():
+            self.funcs.cropTimelineToSelection()
+        else:
+            self.funcs.cropTimeline(start=False)
 
-    # sets the start frame of playback
-    @staticmethod
-    def set_min(time=None):
-        if time == None:
-            print "no time specified? setting to c"
-            time = pm.getCurrentTime()
-        pm.playbackOptions(minTime=time)
-
-    # sets the end frame of playback
-    @staticmethod
-    def set_max(time=None):
-        if time == None:
-            time = pm.getCurrentTime()
-        pm.playbackOptions(maxTime=time)
-
-    # crops to highlighted range on timeline
     def crop_to_selection(self):
-        self.set_min(time=self.highlight[0])
-        self.set_max(time=self.highlight[1])
+        self.funcs.cropTimelineToSelection()
 
-    def range_in_frames(self):
-        range = self.get_range()
-        return range[1] - range[0]
-
-    # shift active time range so current frame is start frame
     def shift_start(self):
-        self.set_max(time=(pm.getCurrentTime() + self.range_in_frames()))
-        self.set_min()
+        self.funcs.shiftTimelineRangeStartToCurrentFrame()
 
-    # shift active time range so current frame is start frame
     def shift_end(self):
-        print self.range_in_frames()
-        self.set_min(time=(pm.getCurrentTime() - self.range_in_frames()))
-        self.set_max()
-
-    def cache_range(self):
-        return [self.get_min(), self.get_max()]
-
-    # this gets used int he temp playback of highlighted range
-    def recall_range(self):
-        _min = pm.optionVar.get('tb_tl_min', self.get_min())
-        _max = pm.optionVar.get('tb_tl_max', self.get_max())
-        return _min, _max
-
-    def crop(self, start=True):
-        if not self.isHighlighted():
-            if start:
-                self.set_min()
-            else:
-                self.set_max()
-        else:
-            self.crop_to_selection()
-
-    def info(self):
-        print "\ntime control : ", self.time_slider
-        print "anim range   : ", self.range
-        print "highlight    : ", self.highlight
+        self.funcs.shiftTimelineRangeEndToCurrentFrame()
 
 
-def skip(mode=-1):
-    amount = pm.optionVar.get('tb_skip', 5)
-    pm.currentTime(amount * mode + pm.getCurrentTime())
 
-    pm.optionVar(intValue=('tb_skip', amount))
+
+
+

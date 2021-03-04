@@ -132,7 +132,7 @@ class playback(toolAbstractFactory):
         return pm.play(query=True, state=True)
 
     def playPause(self, flip=False):
-        if not self.cached_start:
+        if self.cached_start is None:
             self.cached_start, self.cached_end = self.funcs.getTimelineRange()
         # currently playing, so reset any time range
         highlight = self.funcs.isTimelineHighlighted()
