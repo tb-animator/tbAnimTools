@@ -51,14 +51,8 @@ class initialise(object):
         mutils.executeDeferred('import tb_menu as tb_menu;tb_menu.make_ui()')
         mutils.executeDeferred('from pluginLookup import ClassFinder')
         mutils.executeDeferred('import apps.tb_keyCommands as tb_hotKeys;keyLoader = tb_hotKeys.tbToolLoader();keyLoader.assignHotkeysFromLoadedClasses()')
-        #mutils.executeDeferred('import updater as upd;upd.updater().check_version()')
-        #mutils.executeDeferred('import tb_graphEditor as ge;ge.graphEditor().add_graph_editor_callback()')
 
-        # load dag menu edit
-        #mutils.executeDeferred('import apps.mayaMod.mayaModLoader as mml;mml.customloadRMBer().load()')
-        #mutils.executeDeferred('import maya.mel as mel')
-        #mutils.executeDeferred('mel.eval(\'scriptJob -conditionTrue \"SomethingSelected\" updateTumble\')')
-        #mutils.executeDeferred('mel.eval(\'scriptJob -event \"DragRelease\" updateTumble\')')
-        #mutils.executeDeferred('mel.eval(\'scriptJob -event \"ModelPanelSetFocus\" updateTumble\')')
-        #mutils.executeDeferred('mel.eval(\'scriptJob -event \"playbackModeChanged\" updateTumble\')')
-        #Om.MSceneMessage.addCallback(6, self.loadRMB)
+        # camera pivot update
+        mutils.executeDeferred('import maya.mel as mel')
+        mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')
+

@@ -199,6 +199,7 @@ class installer():
             sys.path.remove(self.appPath)
 
     def result_window(self):
+        # TODO - combine this with the hotkey check window?
         if pm.window("installWin", exists=True):
             pm.deleteUI("installWin")
         window = pm.window(title="success!")
