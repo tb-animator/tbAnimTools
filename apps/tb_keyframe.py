@@ -51,34 +51,34 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_keyframing')
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='match_tangent_start_to_end', annotation='',
-                                     category=self.category, command=['keyModifers.matchStartTangentsToEndTangents()']))
+                                     category=self.category, command=['keyModifiers.matchStartTangentsToEndTangents()']))
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
-                                     category=self.category, command=['keyModifers.matchEndTangentsToStartTangents()']))
+                                     category=self.category, command=['keyModifiers.matchEndTangentsToStartTangents()']))
         self.addCommand(self.tb_hkey(name='filter_channelBox',
                                      annotation='filters the current channelBox selection in the graph editor',
                                      category=self.category, command=['keyModifiers.filterChannels()']))
 
         self.addCommand(self.tb_hkey(name='setTangentsLinear',
                                      annotation='Sets your current key selection or timeline key to linear',
-                                     category=self.category, command=['keyModifers.setTangentsLinear()']))
+                                     category=self.category, command=['keyModifiers.setTangentsLinear()']))
         self.addCommand(self.tb_hkey(name='setTangentsAuto',
                                      annotation='Sets your current key selection or timeline key to auto',
-                                     category=self.category, command=['keyModifers.setTangentsAuto()']))
+                                     category=self.category, command=['keyModifiers.setTangentsAuto()']))
         self.addCommand(self.tb_hkey(name='setTangentsSpline',
                                      annotation='Sets your current key selection or timeline key to spline',
-                                     category=self.category, command=['keyModifers.setTangentsSpline()']))
+                                     category=self.category, command=['keyModifiers.setTangentsSpline()']))
         self.addCommand(self.tb_hkey(name='setTangentsFlat',
                                      annotation='Sets your current key selection or timeline key to flat',
-                                     category=self.category, command=['keyModifers.setTangentsFlat()']))
+                                     category=self.category, command=['keyModifiers.setTangentsFlat()']))
         self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
                                      annotation='Toggle the collapsed state of the graph editor - if docked',
-                                     category=self.category, command=['keyModifers.toggleDockedGraphEd()']))
+                                     category=self.category, command=['keyModifiers.toggleDockedGraphEd()']))
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
-                                     category=self.category, command=['keyModifers.level()']))
+                                     category=self.category, command=['keyModifiers.level()']))
         self.addCommand(self.tb_hkey(name='eulerFilterSelection',
                                      annotation='euler filter your current keyframe selection',
-                                     category=self.category, command=['keyModifers.eulerFilterSelectedKeys()']))
+                                     category=self.category, command=['keyModifiers.eulerFilterSelectedKeys()']))
 
         return self.commandList
 
@@ -86,7 +86,7 @@ class hotkeys(hotKeyAbstractFactory):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class keyModifers(toolAbstractFactory):
+class keyModifiers(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
@@ -97,11 +97,11 @@ class keyModifers(toolAbstractFactory):
     funcs = functions()
 
     def __new__(cls):
-        if keyModifers.__instance is None:
-            keyModifers.__instance = object.__new__(cls)
+        if keyModifiers.__instance is None:
+            keyModifiers.__instance = object.__new__(cls)
 
-        keyModifers.__instance.val = cls.toolName
-        return keyModifers.__instance
+        keyModifiers.__instance.val = cls.toolName
+        return keyModifiers.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -113,7 +113,7 @@ class keyModifers(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(keyModifers, self).optionUI()
+        super(keyModifiers, self).optionUI()
         testButton = QPushButton('Flip frame count')
         self.layout.addWidget(testButton)
         return self.layout

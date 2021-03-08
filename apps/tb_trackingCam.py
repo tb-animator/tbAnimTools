@@ -45,15 +45,15 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_cameras')
         self.commandList = list()
 
-        self.addCommand(self.tb_hkey(name='tracking_camera_track',
+        self.addCommand(self.tb_hkey(name='trackingCameraTrack',
                                      annotation='creates/rebuilds a tracking camera to track your current selection',
                                      category=self.category,
                                      command=['trackingCamera.swapToTrackingCamera()']))
-        self.addCommand(self.tb_hkey(name='tracking_camera_update',
+        self.addCommand(self.tb_hkey(name='trackingCameraUpdate',
                                      annotation='updates the object tracked by the tracking camera, switches view',
                                      category=self.category,
                                      command=['trackingCamera.swapToTrackingCameraUpdateTarget()']))
-        self.addCommand(self.tb_hkey(name='tracking_camera_persp',
+        self.addCommand(self.tb_hkey(name='trackingCameraPersp',
                                      annotation='swaps the view to the perspective camera, matching your current view',
                                      category=self.category, command=['trackingCamera.swapToCamera()']))
         return self.commandList

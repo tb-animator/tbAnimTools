@@ -139,7 +139,7 @@ class functions(object):
 
     @staticmethod
     def get_max_index(curve):
-        return cmds.keyframe(curve, query=True, keyframeCount=True)
+        return cmds.keyframe(curve, query=True, keyframeCount=True) -1
 
     @staticmethod
     def get_key_times(curve, selected=True):
