@@ -175,7 +175,7 @@ class CameraPivot(toolAbstractFactory):
 
     if not pm.optionVar(exists='tumbler_enabled'):
         # TODO - make the option window so this is editable
-        pm.optionVar(intValue=('tumbler_enabled', 1))
+        pm.optionVar(intValue=('tumbler_enabled', 0))
 
     def __new__(cls):
         if CameraPivot.__instance is None:
