@@ -67,6 +67,7 @@ class slideTools(toolAbstractFactory):
     slideUI = None
 
     keyPressHandler = None
+    selectionChangedCallback = -1
 
     def __new__(cls):
         if slideTools.__instance is None:
@@ -116,8 +117,14 @@ class slideTools(toolAbstractFactory):
             self.app.removeEventFilter(self.keyPressHandler)
 
         self.tweenClass = self.pickInbetweenClass()
+
         self.slideUI = sliderWidget(self.funcs.getWidgetAtCursor(), tweemClass=self.tweenClass, funcs=self.funcs)
         self.slideUI.showUI()
+        try:
+            cmds.scriptJob(kill=self.selectionChangedCallback)
+        except:
+            pass
+        self.selectionChangedCallback = self.slideUI.createSelectionChangedScriptJob()
         print 'hello it is me'
         self.keyPressHandler = keypressHandler(self.tweenClass, self.slideUI)
         self.app.installEventFilter(self.keyPressHandler)
@@ -929,7 +936,7 @@ class sliderWidget(QWidget):
                  ):
         QWidget.__init__(self, parent)
 
-        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", pm.Callback(self.updateTweenClass)))
+
         self.isDragging = False
         self.currentDragButton = None
         if tweemClass is None:
@@ -1055,6 +1062,10 @@ class sliderWidget(QWidget):
         self.fillColourAltBottom = QColor(215, 128, 200, 88)
         self.currentFillColourTop = self.fillColourBaseTop
         self.currentFillColourBottom = self.fillColourBaseBottom
+
+    def createSelectionChangedScriptJob(self):
+        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", pm.Callback(self.updateTweenClass)))
+        return self.selectionChangedCallback
 
     def setWidgetVisibilityDuringDrag(self):
         pass
@@ -1211,7 +1222,7 @@ class sliderWidget(QWidget):
         self.setFocus()
 
     def close(self):
-        #cmds.scriptJob(kill=self.selectionChangedCallback)
+        cmds.scriptJob(kill=self.selectionChangedCallback)
         super(sliderWidget, self).close()
 
     def showUI(self):
