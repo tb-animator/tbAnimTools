@@ -10,6 +10,7 @@ qtVersion = pm.about(qtVersion=True)
 margin = 2
 from random import randint
 from Abstract import *
+
 if qtVersion.split('.')[0] < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
@@ -52,6 +53,7 @@ class hotkeys(hotKeyAbstractFactory):
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
+
 class slideTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
@@ -61,14 +63,18 @@ class slideTools(toolAbstractFactory):
     toolName = 'slideTools'
     hotkeyClass = hotkeys()
     funcs = functions()
-
+    app = None
     slideUI = None
+
+    keyPressHandler = None
 
     def __new__(cls):
         if slideTools.__instance is None:
             slideTools.__instance = object.__new__(cls)
 
         slideTools.__instance.val = cls.toolName
+        slideTools.__instance.app = QApplication.instance()
+
         return slideTools.__instance
 
     def __init__(self, **kwargs):
@@ -105,18 +111,50 @@ class slideTools(toolAbstractFactory):
         try:
             self.slideUI.close()
             self.slideUI.deleteLater()
+            self.app.removeEventFilter(self.keyPressHandler)
         except:
-            pass
+            self.app.removeEventFilter(self.keyPressHandler)
 
-        self.slideUI = sliderWidget(self.funcs.getWidgetAtCursor(), tweemClass=self.pickInbetweenClass(), funcs=self.funcs)
+        self.tweenClass = self.pickInbetweenClass()
+        self.slideUI = sliderWidget(self.funcs.getWidgetAtCursor(), tweemClass=self.tweenClass, funcs=self.funcs)
         self.slideUI.showUI()
+        print 'hello it is me'
+        self.keyPressHandler = keypressHandler(self.tweenClass, self.slideUI)
+        self.app.installEventFilter(self.keyPressHandler)
 
     def inbetweenSlideRelease(self):
         try:
             self.slideUI.close()
             self.slideUI.deleteLater()
+            self.app.removeEventFilter(self.keyPressHandler)
         except:
-            pass
+            self.app.removeEventFilter(self.keyPressHandler)
+
+
+class keypressHandler(QObject):
+
+    def __init__(self, tweenClass=None, UI=None):
+        super(keypressHandler, self).__init__()
+        self.tweenClass = tweenClass
+        self.UI = UI
+
+    def eventFilter(self, target, event):
+        if event.type() == event.KeyRelease:
+            if event.key() == Qt.Key_Control:
+                self.UI.controlReleased()
+                return True
+            elif event.key() == Qt.Key_Shift:
+                self.UI.shiftReleased()
+                return True
+        if event.type() == event.KeyPress:
+            if event.key() == Qt.Key_Control:
+                self.UI.controlPressed()
+                return True
+            elif event.key() == Qt.Key_Shift:
+                self.UI.shiftPressed()
+                return True
+        return False
+        return super(keypressHandler, self).eventFilter(target, event)
 
 
 class attrData(object):
@@ -132,13 +170,16 @@ class attrData(object):
 def lerpMVector(vecA, vecB, alpha):
     return vecB * alpha + vecA * (1.0 - alpha)
 
+
 def lerpFloat(a, b, alpha):
     return a * alpha + b * (1.0 - alpha)
+
 
 class tweenBase(object):
     ## Get the current UI Unit
     uiUnit = OpenMaya.MTime.uiUnit()
     keyboardModifier = None
+    labelText = 'base class'
 
     def __init__(self):
         self.keyState = pm.autoKeyframe(query=True, state=True)
@@ -170,9 +211,17 @@ class tweenBase(object):
         Cache the initial values/plugs to keep the speed high
         :return:
         """
+        self.get_modifier()
 
     def get_modifier(self):
-        self.keyboardModifier = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
+        self.keyboardModifier = {0: None,
+                                 1: 'shift',
+                                 4: 'ctrl',
+                                 5: 'ctrlShift',
+                                 8: 'alt',
+                                 9: 'shiftAlt',
+                                 12: 'ctrlAlt',
+                                 }[cmds.getModifiers()]
 
     def updateAlpha(self, alpha, disableAutoKey=True):
         """
@@ -181,7 +230,8 @@ class tweenBase(object):
         :param disableAutoKey:
         :return:
         """
-        self.get_modifier()
+        pass
+        # print self.keyboardModifier
 
     def om_plug_at_time(self, dep_node, plug, mdg):
         '''
@@ -221,6 +271,7 @@ class tweenBase(object):
 
 
 class worldSpaceTween(tweenBase):
+    labelText = 'worldSpaceTween'
     ignoredAttributeNames = ['translateX',
                              'translateY',
                              'translateZ',
@@ -302,8 +353,8 @@ class worldSpaceTween(tweenBase):
                 self.currentAttrData[obj] = attrData(validAttrs)
                 self.prevAttrData[obj] = attrData(validAttrs)
                 self.nextAttrData[obj] = attrData(validAttrs)
-        #print 'start times', self.startkeyTimes
-        #print 'end times', self.endKeyTimes
+        # print 'start times', self.startkeyTimes
+        # print 'end times', self.endKeyTimes
         for eachMob in self.iterSelection():
             obj_dag_path = om2.MDagPath.getAPathTo(eachMob)
             objMfn = OpenMaya.MFnDependencyNode(eachMob)
@@ -371,14 +422,17 @@ class worldSpaceTween(tweenBase):
 
             if not self.keyboardModifier == 'shift':
                 for index, plug in enumerate(translatePlugs):
-                    plug.setFloat(resultTranslate[index])
+                    if not plug.isLocked:
+                        plug.setFloat(resultTranslate[index])
             if not self.keyboardModifier == 'ctrl':
                 for index, plug in enumerate(rotatePlugs):
-                    plug.setFloat(resultRotate[index])
-
+                    if not plug.isLocked:
+                        plug.setFloat(resultRotate[index])
 
 
 class keyframeTween(tweenBase):
+    labelText = 'keyframeTween'
+
     def __init__(self):
         super(keyframeTween, self).__init__()
         self.keyState = pm.autoKeyframe(query=True, state=True)
@@ -405,6 +459,8 @@ class keyframeTween(tweenBase):
     def cacheValues(self):
         # just get one objects next and previous transforms
         thisTime = cmds.currentTime(query=True)
+        if not self.affectedObjects:
+            return
         for curve in self.affectedObjects:
             self.selectedKeyTimes[curve] = self.funcs.get_key_times(curve)
             self.selectedKeyIndexes[curve] = self.funcs.get_selected_key_indexes(curve)
@@ -423,19 +479,59 @@ class keyframeTween(tweenBase):
         super(keyframeTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
         pm.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
-        for curve in self.affectedObjects:
-            for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
-                if self.alpha >= 0:
-                    # lerp to next
-                    targetValue = self.curveNextValues[curve][index]
-                    outAlpha = alpha
-                else:
-                    # lerp to prev
-                    targetValue = self.curvePreviousValues[curve][index]
-                    outAlpha = alpha * -1
+        if self.keyboardModifier == 'shift':
+            # print 'just shift'
+            for curve in self.affectedObjects:
+                for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
+                    if self.alpha >= 0:
+                        # lerp to next
+                        targetValue = self.curveNextValues[curve][-1]
+                        outAlpha = alpha
+                    else:
+                        # lerp to prev
+                        targetValue = self.curvePreviousValues[curve][0]
+                        outAlpha = alpha * -1
 
-                lerpedValue = lerpFloat(targetValue, self.selectedKeyValues[curve][index], outAlpha)
-                cmds.keyframe(curve, edit=True, valueChange=lerpedValue, index=((indexVal),))
+                    lerpedValue = lerpFloat(targetValue, self.selectedKeyValues[curve][index], outAlpha)
+                    cmds.keyframe(curve, edit=True, valueChange=lerpedValue, index=((indexVal),))
+            return
+        if self.keyboardModifier == 'ctrl':
+            # print 'just control'
+            for curve in self.affectedObjects:
+                for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
+                    if self.alpha >= 0:
+                        # lerp to next
+                        targetValueA = self.curveNextValues[curve][index]
+                        targetValueB = self.curvePreviousValues[curve][index]
+                        targetValue = (targetValueA + targetValueB) / 2.0
+                        outAlpha = alpha
+                    else:
+                        # lerp to prev
+                        targetValue = self.curvePreviousValues[curve][0]
+                        outAlpha = alpha * -1
+
+                    lerpedValue = lerpFloat(targetValue, self.selectedKeyValues[curve][index], outAlpha)
+                    cmds.keyframe(curve, edit=True, valueChange=lerpedValue, index=((indexVal),))
+            return
+        for curve in self.affectedObjects:
+            if self.alpha >= 0:
+                # lerp to next
+                targetValue = self.curveNextValues[curve][-1]
+                baseValue = self.selectedKeyValues[curve][-1]
+                outAlpha = alpha
+            else:
+                # lerp to prev
+                targetValue = self.curvePreviousValues[curve][0]
+                baseValue = self.selectedKeyValues[curve][0]
+                outAlpha = alpha * -1
+            lerpedValue = lerpFloat(targetValue - baseValue, 0, outAlpha)
+            # print 'outAlpha', outAlpha, 'lerpedValue', lerpedValue
+            for index, indexVal in enumerate(self.selectedKeyIndexes[curve]):
+                # print self.selectedKeyValues[curve][index]
+                outValue = self.selectedKeyValues[curve][index] + lerpedValue
+
+                cmds.keyframe(curve, edit=True, valueChange=outValue, index=((indexVal),))
+
 
 class DragButton(QLabel):
     label = str()
@@ -471,10 +567,13 @@ class DragButton(QLabel):
                  baseIcon=baseIconFile,
                  hoverIcon=hoverIconFile,
                  activeIcon=activeIconFile,
-                 inactiveIcon=inactiveIconFile
+                 inactiveIcon=inactiveIconFile,
+                 width=16,
+                 height=16,
                  ):
         QLabel.__init__(self, parent)
-
+        self.drawWidth = width
+        self.drawHeight = height
         sp_retain = QSizePolicy()
         sp_retain.setRetainSizeWhenHidden(True)
         self.setSizePolicy(sp_retain)
@@ -494,16 +593,16 @@ class DragButton(QLabel):
         self.xMax = xMax
         self.setNonHoverSS()
         if self.percent <= 0:
-            self.restX = xMin + margin
+            self.restX = xMin
         elif self.percent >= 100:
-            self.restX = xMax - margin - self.width()
+            self.restX = xMax - self.width()
         else:
-            self.restX = ((xMax - xMin - self.width()) / (100 / self.percent)) + margin
+            self.restX = (0.5 * self.width()) + ((xMax - xMin - self.width()) / (100 / self.percent))
 
-        self.minButtonPos = self.xMin + margin
-        self.maxButtonPos = self.xMax - self.width() + margin
+        self.minButtonPos = self.xMin
+        self.maxButtonPos = self.xMax - self.width()
 
-        self.restY = 3 * margin
+        self.restY = 7
         self.restPoint = QPoint(self.restX, self.restY)
         self.move(self.restPoint)
         shadow = QGraphicsDropShadowEffect()
@@ -511,14 +610,51 @@ class DragButton(QLabel):
         shadow.setBlurRadius(3)
         self.setGraphicsEffect(shadow)
 
+        self.HoverlineColor = QColor(128, 255, 128, 128)
+        self.NonHoverlineColor = QColor(128, 128, 128, 128)
+
+        self.innerLineColour = self.NonHoverlineColor
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        fillColor = QColor(255, 165, 0, 180)
+        lineColor = QColor(64, 64, 64, 128)
+
+        qp.drawRoundedRect(QRect(0.5 * (self.width() - self.drawWidth -1),
+                                 0.5 * (self.height() - self.drawHeight-1),
+                                 self.drawWidth+2,
+                                 self.drawHeight+2), 2, 2)
+        sideEdge = (1.0 / self.rect().width()) * 10
+        topEdge = (1.0 / self.rect().height()) * 10
+
+        qp.setRenderHint(QPainter.Antialiasing)
+        #qp.setCompositionMode(QPainter.CompositionMode_HardLight)
+        orange = QColor(255, 160, 47, 64)
+        darkOrange = QColor(215, 128, 26, 64)
+
+        qp.setPen(QPen(QBrush(self.innerLineColour), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, orange)
+        grad.setColorAt(1, darkOrange)
+        qp.setBrush(QBrush(grad))
+
+        qp.drawRoundedRect(
+            QRect(0.5 * (self.width() - self.drawWidth), 0.5 * (self.height() - self.drawHeight), self.drawWidth,
+                  self.drawHeight), 4, 4)
+
+        qp.end()
+
     def updateAlpha(self):
         """
         sends the alpha value back to the ui parent class
         :return:
         """
-        range = (self.xMax - self.width()) - (self.xMin)
-        pos = self.pos().x() - margin
+        range = (self.xMax) - (self.xMin) - self.width()
+
+        pos = self.pos().x() - (0.5 * self.width())
         alpha = -1 * (1.0 - (pos / (range * 0.5)))
+        # print alpha
         if self.uiParent is not None:
             self.uiParent.updateAlpha(alpha)
 
@@ -531,25 +667,25 @@ class DragButton(QLabel):
 
     def setNonHoverSS(self):
         self.setStyleSheet("""
-       QWidget{
-           background-color: rgba(50, 50, 50, 0);
-           color : rgba(50, 50, 50, 255);
-           
-           font-weight: bold;
-           border-radius: 6px;
-       }
-       """)
+      QWidget{
+          background-color: rgba(50, 50, 50, 0);
+          color : rgba(50, 50, 50, 255);
+
+          font-weight: bold;
+          border-radius: 6px;
+      }
+      """)
         # background-image: url('%s\iceCream.png');
 
     def setHoverSS(self):
         self.setStyleSheet("""
-       QWidget{
-           background-color: rgba(50, 50, 50, 0);
-           color : rgba(50, 50, 50, 255);
-           font-weight: bold;
-           border-radius: 6px;
-       }
-       """)
+      QWidget{
+          background-color: rgba(50, 50, 50, 0);
+          color : rgba(50, 50, 50, 255);
+          font-weight: bold;
+          border-radius: 6px;
+      }
+      """)
 
     def setIconStateInactive(self):
         self.setPixmap(self.inactiveIcon)
@@ -566,11 +702,21 @@ class DragButton(QLabel):
     def mousePressEvent(self, event):
         self.__mousePressPos = None
         self.__mouseMovePos = None
-        if event.button() == Qt.LeftButton:
+        if self.uiParent.isDragging:
+            print 'mousePressEvent when already dragging'
+            return super(DragButton, self).mousePressEvent(event)
+        else:
+            self.uiParent.startDrag(event.button())
+
+        if event.button() == Qt.RightButton:
+            print 'RIGHT BUTTON PRESS'
+
+        if event.button() == Qt.LeftButton or event.button() == Qt.RightButton or event.button() == Qt.MiddleButton:
             self.__mousePressPos = event.globalPos()
             self.__mouseMovePos = event.globalPos()
             self.clickOffset = self.mapFromGlobal(event.globalPos())
             self.dragStart = self.mapFromGlobal(event.globalPos())
+
             self.updatePosition(event.globalPos())
             self.uiParent.hideAllAnchors()
             if self.masterDragger:
@@ -579,13 +725,20 @@ class DragButton(QLabel):
         super(DragButton, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton:
+        if event.buttons() == Qt.RightButton:
+            print 'RIGHT BUTTON MOVE'
+        if not self.uiParent.dragButton:
+            return super(DragButton, self).mouseMoveEvent(event)
+        if event.buttons() == Qt.LeftButton or event.buttons() == Qt.RightButton or event.buttons() == Qt.MiddleButton:
             if not self.draggable:
                 if self.masterDragger:
                     # dragging one of those dot controls
                     self.setIconStateInactive()
                     self.uiParent.hideAllAnchors()
                     self.masterDragger.setPositionFromSlider(self.pos() + QPoint(self.halfWidth, 0))
+                    # TODO - make the drag snap to the other anchors
+                    # print self.uiParent.anchorButtons
+                    # TODO - maybe split the get new position/alpha and the move
             # adjust offset from clicked point to origin of widget
             else:
                 self.updatePosition(event.globalPos())
@@ -594,7 +747,7 @@ class DragButton(QLabel):
 
     def mouseReleaseEvent(self, event):
         self.setIconStateBase()
-        self.uiParent.sliderReleased()
+        self.uiParent.endDrag()
         if self.__mousePressPos is not None:
             moved = event.globalPos() - self.__mousePressPos
             if moved.manhattanLength() > 3:
@@ -612,14 +765,18 @@ class DragButton(QLabel):
 
         ScreenVal = self.mapToParent(globalPos).x() - self.clickOffset.x()
 
-        if ScreenVal <= self.mapToGlobal(QPoint(self.xMin, 0)).x(): return
-        if ScreenVal >= self.mapToGlobal(QPoint(self.xMax, 0)).x(): return
-        # if current mouse position out of slider range, diff = 0
-
         diff = globalPos - self.__mouseMovePos
         diff.setY(0)
         newPos = self.mapFromGlobal(currPos + diff)
 
+        if ScreenVal < self.mapToGlobal(QPoint(self.xMin, 0)).x():
+            newPos.setX(self.minButtonPos)
+        if ScreenVal >= self.mapToGlobal(QPoint(self.xMax - self.width(), 0)).x():
+            # print 'here'
+            newPos.setX(self.maxButtonPos)
+        # if current mouse position out of slider range, diff = 0
+
+        # print 'new pos', newPos, self.minButtonPos, self.maxButtonPos
         newPos.setX(int(max(newPos.x(), self.minButtonPos)))
         newPos.setX(int(min(newPos.x(), self.maxButtonPos)))
         self.move(newPos)
@@ -639,22 +796,21 @@ class DragButton(QLabel):
         self.uiParent.setWidgetVisibilityDuringDrag()
 
     def enterEvent(self, event):
-        self.setHoverSS()
+        # self.setHoverSS()
         self.setHoverTint()
         return super(DragButton, self).enterEvent(event)
 
     def leaveEvent(self, event):
-        self.setNonHoverSS()
         self.setNoTint()
         return super(DragButton, self).enterEvent(event)
 
     def setHoverTint(self):
-        self.setTintEffect()
-        self.effect.setColor(hoverTint)
+        self.innerLineColour = self.HoverlineColor
+        self.update()
 
     def setNoTint(self):
-        self.setTintEffect()
-        self.effect.setColor(noTint)
+        self.innerLineColour = self.NonHoverlineColor
+        self.update()
 
     def setTintEffect(self):
         if self.graphicsEffect() is None:
@@ -671,19 +827,69 @@ class sliderBar(QLabel):
         QLabel.__init__(self)
         self.barWidth = width
         self.uiParent = uiParent
-        self.setFixedSize(self.barWidth, 20)
+        self.setFixedSize(self.barWidth, 24)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
+        # self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
         shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
+        shadow.setBlurRadius(5)
         self.setGraphicsEffect(shadow)
 
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        fillColor = QColor(255, 165, 0, 180)
+        lineColor = QColor(64, 64, 64, 64)
+        alpha = 50
+        sideEdge = (1.0 / self.rect().width()) * 10
+        topEdge = (1.0 / self.rect().height()) * 10
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+        orange = QColor(255, 160, 47, 32)
+        darkOrange = QColor(215, 128, 26, 32)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, orange)
+        grad.setColorAt(1, darkOrange)
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(QRect(0, 2, 300, 20), 4, 4)
+
+        qp.end()
+        return
+        # qp.setCompositionMode(qp.CompositionMode_Overlay)
+        # qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.setPen(QPen(QBrush(lineColor), 4))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, QColor(0, 0, 0, alpha))
+        grad.setColorAt(topEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1 - topEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1, QColor(0, 0, 0, alpha))
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 4, 4)
+        grad = QLinearGradient(0, 16, 400, 16)
+        grad.setColorAt(0, QColor(0, 0, 0, alpha))
+        grad.setColorAt(sideEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1 - sideEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1, QColor(0, 0, 0, alpha))
+
+        qp.setBrush(QBrush(grad))
+        # qp.setBrush(QBrush(self.currentFillColour))
+
+        qp.drawRoundedRect(self.rect(), 4, 4)
+
     def mousePressEvent(self, event):
+        if self.uiParent.isDragging:
+            print 'mousePressEvent when already dragging'
         self.uiParent.hideAllAnchors()
+        self.uiParent.startDrag(event.button())
+
         self.__mousePressPos = None
         self.__mouseMovePos = None
         if event.button() == Qt.LeftButton:
             self.__mousePressPos = event.globalPos()
+            self.__mousePressPos.setX(self.__mousePressPos.x() + 8)
             self.__mouseMovePos = event.globalPos()
 
         self.uiParent.dragButton.setPositionFromSlider(self.mapFromGlobal(self.__mousePressPos))
@@ -695,43 +901,77 @@ class sliderBar(QLabel):
             # adjust offset from clicked point to origin of widget
             self.__mousePressPos = event.globalPos()
             self.__mouseMovePos = event.globalPos()
+            self.__mousePressPos.setX(self.__mousePressPos.x() + 8)
 
         self.uiParent.dragButton.setPositionFromSlider(self.mapFromGlobal(self.__mousePressPos))
 
         super(sliderBar, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        self.uiParent.sliderReleased()
+        self.uiParent.endDrag()
         super(sliderBar, self).mouseReleaseEvent(event)
 
 
 class sliderWidget(QWidget):
-    def __init__(self, parent, tweemClass=None,
+    def __init__(self, parent, tweemClass=tweenBase,
+                 objectTweenClass=None,
+                 objectShiftTweenClass=None,
+                 objectControlTweenClass=None,
+                 keyTweenLMB=keyframeTween,
+                 keyTweenMMB=keyframeTween,
+                 keyTweenRMB=keyframeTween,
+                 keyShiftTweenClass=None,
+                 keyControlTweenClass=None,
                  funcs=None,
-                 largeAnchors=[0, 50, 100.0],
-                 smallAnchors=[12.5, 25.0, 37.5, 62.5, 75.0, 87.5]
+                 largeAnchors=[0, 100.0],
+                 mediumAnchors=[25.0, 50, 75.0],
+                 smallAnchors=[12.5, 37.5, 62.5, 87.5]
                  ):
         QWidget.__init__(self, parent)
+
+        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", pm.Callback(self.updateTweenClass)))
+        self.isDragging = False
+        self.currentDragButton = None
+        if tweemClass is None:
+            self.tweenClass = tweenBase()
+        else:
+            self.tweenClass = tweemClass
+        self.keyTweenClassDict = {
+            Qt.LeftButton: keyTweenLMB,
+            Qt.MiddleButton: keyTweenMMB,
+            Qt.RightButton: keyTweenRMB,
+        }
+        self.objTweenClassDict = {
+            Qt.LeftButton: worldSpaceTween,
+            Qt.MiddleButton: worldSpaceTween,
+            Qt.RightButton: worldSpaceTween,
+        }
+        self.currentTweenClassDict = None
+        self.affectingKeys = True
         self.funcs = funcs
+        self.barHorizontalOffset = 10
         self.setFocus()
         self.lastEvent = None
         self.dragButton = None
         self.anchorButtons = list()
         self.largeAnchorPositions = list()
+        self.mediumAnchorPositions = list()
         self.smallAnchorPositions = list()
         self.tweenClass = None
         self.barWidth = 300
         self.largeAnchorPositions = largeAnchors
+        self.mediumAnchorPositions = mediumAnchors
         self.smallAnchorPositions = smallAnchors
-        self.setFixedSize(400, 32)
+        self.setFixedSize(500, 64)
         self.mainLayout = QHBoxLayout(self)
         # self.setStyleSheet('QWidget{margin-left:-1px;}')
-        self.mainLayout.setContentsMargins(margin, margin, margin, margin)
-        self.mainLayout.setSpacing(0)
-        horizontalBar = sliderBar(self, self.barWidth)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        # self.mainLayout.setSpacing(0)
+        self.horizontalBar = sliderBar(self, self.barWidth)
         self.dragButton = DragButton("BD",
-                                     xMax=horizontalBar.width(),
-                                     parent=horizontalBar,
+                                     xMin=self.barHorizontalOffset,
+                                     xMax=self.horizontalBar.width() + self.barHorizontalOffset,
+                                     parent=self.horizontalBar,
                                      uiParent=self)
 
         self.setFocusPolicy(Qt.StrongFocus)
@@ -740,8 +980,9 @@ class sliderWidget(QWidget):
 
         for p in self.largeAnchorPositions:
             anchorBtn = DragButton("BD",
-                                   xMax=horizontalBar.width(),
-                                   parent=horizontalBar,
+                                   xMin=self.barHorizontalOffset,
+                                   xMax=self.horizontalBar.width() + self.barHorizontalOffset,
+                                   parent=self.horizontalBar,
                                    uiParent=self,
                                    draggable=False,
                                    percent=p,
@@ -749,13 +990,15 @@ class sliderWidget(QWidget):
                                    baseIcon=barSmallIconFile,
                                    hoverIcon=barSmallIconFile,
                                    activeIcon=dotSmallIconFile,
-                                   inactiveIcon=inactiveIconFile
+                                   inactiveIcon=inactiveIconFile,
+                                   width=12,
+                                   height=12,
                                    )
             self.anchorButtons.append(anchorBtn)
-        for p in self.smallAnchorPositions:
+        for p in self.mediumAnchorPositions:
             anchorBtn = DragButton("BD",
-                                   xMax=horizontalBar.width(),
-                                   parent=horizontalBar,
+                                   xMax=self.horizontalBar.width(),
+                                   parent=self.horizontalBar,
                                    uiParent=self,
                                    draggable=False,
                                    percent=p,
@@ -763,27 +1006,55 @@ class sliderWidget(QWidget):
                                    baseIcon=dotSmallIconFile,
                                    hoverIcon=dotSmallIconFile,
                                    activeIcon=dotSmallIconFile,
-                                   inactiveIcon=inactiveIconFile
+                                   inactiveIcon=inactiveIconFile,
+                                   width=10,
+                                   height=10,
                                    )
             self.anchorButtons.append(anchorBtn)
-        self.mainLayout.addWidget(horizontalBar)
+        for p in self.smallAnchorPositions:
+            anchorBtn = DragButton("BD",
+                                   xMax=self.horizontalBar.width(),
+                                   parent=self.horizontalBar,
+                                   uiParent=self,
+                                   draggable=False,
+                                   percent=p,
+                                   masterDragger=self.dragButton,
+                                   baseIcon=dotSmallIconFile,
+                                   hoverIcon=dotSmallIconFile,
+                                   activeIcon=dotSmallIconFile,
+                                   inactiveIcon=inactiveIconFile,
+                                   width=6,
+                                   height=6,
+                                   )
+            self.anchorButtons.append(anchorBtn)
+        self.mainLayout.addWidget(self.horizontalBar)
+        self.horizontalBar.move(2,2)
         for btn in self.anchorButtons:
             self.mainLayout.addWidget(btn)
         self.mainLayout.addWidget(self.dragButton)
+
+        self.labelLayout = QHBoxLayout()
+        self.mainLayout.addLayout(self.labelLayout)
+
+        # self.label = QLabel('testy test test')
+        # self.label.setFixedWidth(200)
+        # self.label.setStyleSheet("color: black")
+        # spacerItem = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        # self.labelLayout.addWidget(self.label)
+        # self.labelLayout.addItem(spacerItem)
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.windowFlags()
         self.setSS()
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
-        self.setGraphicsEffect(shadow)
 
-        if tweemClass is None:
-            self.tweenClass = tweenBase()
-        else:
-            self.tweenClass = tweemClass
+        self.fillColourBaseTop = QColor(255, 160, 47, 88)
+        self.fillColourBaseBottom = QColor(215, 128, 26, 88)
+        self.fillColourAltTop = QColor(255, 160, 200, 88)
+        self.fillColourAltBottom = QColor(215, 128, 200, 88)
+        self.currentFillColourTop = self.fillColourBaseTop
+        self.currentFillColourBottom = self.fillColourBaseBottom
 
     def setWidgetVisibilityDuringDrag(self):
         pass
@@ -799,13 +1070,76 @@ class sliderWidget(QWidget):
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
-        fillColor = QColor(255, 165, 0, 180)
-        lineColor = QColor(0, 0, 0, 0)
-        qp.setRenderHint(QPainter.Antialiasing)
-        qp.setPen(QPen(QBrush(lineColor), 8))
-        qp.setBrush(QBrush(fillColor))
-        qp.drawRoundedRect(self.rect(), 8, 8)
 
+        lineColor = QColor(64, 64, 64, 64)
+        alpha = 50
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+        orange = QColor(255, 160, 47, 32)
+        darkOrange = QColor(215, 128, 26, 32)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, orange)
+        grad.setColorAt(1, darkOrange)
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(QRect(314, 8, 180, 20), 4, 4)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setFont(QFont('Helvetic', 10))
+        textRect = QRect(318, 7, 500, 32)
+        '''
+        textRect.translate(0,1)
+        qp.setPen(QColor(0,0,0,20))
+        qp.drawText(textRect, Qt.AlignLeft, self.tweenClass.labelText)
+        textRect.translate(0, -2)
+        qp.setPen(QColor(0,0,0,255))
+        qp.drawText(textRect, Qt.AlignLeft, self.tweenClass.labelText)
+        textRect.translate(0, 1)
+        '''
+        qp.setPen(QColor(Qt.lightGray))
+        qp.drawText(textRect, Qt.AlignLeft, self.tweenClass.labelText)
+        qp.end()
+        '''
+        fillColor = QColor(255, 165, 0, 180)
+        lineColor = QColor(64, 64, 64, 64)
+        alpha = 50
+        sideEdge = (1.0 / self.rect().width()) * 10
+        topEdge = (1.0 / self.rect().height()) * 10
+        qp.setCompositionMode(qp.CompositionMode_Clear)
+        # qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+        orange = QColor(255, 160, 47, 32)
+        darkOrange = QColor(215, 128, 26, 32)
+
+        qp.setPen(QPen(QBrush(lineColor), 0))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, self.currentFillColourTop)
+        grad.setColorAt(1, self.currentFillColourBottom)
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 4, 4)
+
+        # qp.setCompositionMode(qp.CompositionMode_Overlay)
+        # qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.setPen(QPen(QBrush(lineColor), 4))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, QColor(0, 0, 0, alpha))
+        grad.setColorAt(topEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1 - topEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1, QColor(0, 0, 0, alpha))
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 4, 4)
+        grad = QLinearGradient(0, 16, 400, 16)
+        grad.setColorAt(0, QColor(0, 0, 0, alpha))
+        grad.setColorAt(sideEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1 - sideEdge, QColor(255, 255, 255, alpha * 0.5))
+        grad.setColorAt(1, QColor(0, 0, 0, alpha))
+
+        qp.setBrush(QBrush(grad))
+        # qp.setBrush(QBrush(self.currentFillColour))
+
+        qp.drawRoundedRect(self.rect(), 4, 4)
+        '''
         qp.end()
 
     def windowFlags(self):
@@ -815,29 +1149,35 @@ class sliderWidget(QWidget):
         ''' Moves the UI to the widget position '''
         pos = QCursor.pos()
         xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5))
+        self.move(pos.x() - (self.width() * 0.5) + 88, pos.y() - (self.height() * 0.5))
 
     def arrangeUI(self):
+        self.horizontalBar.move(self.barHorizontalOffset, 6)
+
         self.dragButton.setButtonToRestPosition()
         for btn in self.anchorButtons:
             btn.setButtonToRestPosition()
+        self.update()
 
     def setSS(self):
         self.setStyleSheet("""
-       QWidget{
-           background-color: rgba(55, 250, 55, 128);
-       }
-       QLayout{
-           background: rgba(128, 55, 55, 255);
-       }
-       QFrame{
-           border-style: None;
-           border-color: rgba(55, 55, 55, 128);
-           border-width: 5px;
-           border-radius: 5px;
-           background-color: rgba(55, 55, 55, 128);
-       }
-       """)
+      QWidget{
+          background-color: rgba(55, 250, 55, 0);
+      }
+        QLabel{
+          background-color: rgba(55, 250, 55, 0);
+      }
+      QLayout{
+          background: rgba(128, 55, 55, 0);
+      }
+      QFrame{
+          border-style: None;
+          border-color: rgba(55, 55, 55, 128);
+          border-width: 5px;
+          border-radius: 5px;
+          background-color: rgba(55, 55, 55, 0);
+      }
+      """)
 
     def mousePressEvent(self, event):
         self.__mousePressPos = None
@@ -862,6 +1202,7 @@ class sliderWidget(QWidget):
         self.tweenClass.begin()
 
     def updateAlpha(self, alpha):
+        # print 'sliderWidget updateAlpha', self.tweenClass
         self.tweenClass.updateAlpha(alpha)
 
     def show(self):
@@ -870,28 +1211,91 @@ class sliderWidget(QWidget):
         self.setFocus()
 
     def close(self):
+        #cmds.scriptJob(kill=self.selectionChangedCallback)
         super(sliderWidget, self).close()
 
     def showUI(self):
+        self.updateTweenClass()
         self.move_UI()
         self.show()
         self.arrangeUI()
+        # self.updateTweenClass()
+
+    def startDrag(self, button):
+        print 'starting new drag on button!!', button
         self.updateTweenClass()
 
-    def sliderReleased(self):
+        self.tweenClass = self.currentTweenClassDict[button]()
+        self.tweenClass.setAffectedObjects()
+        self.tweenClass.cacheValues()
+        self.tweenClass.get_modifier()
+        print 'affectedObjects', self.tweenClass.affectedObjects
+        self.currentDragButton = button
+        self.isDragging = True
+
+    def endDrag(self):
+        self.isDragging = False
+        self.currentDragButton = None
         self.tweenClass.apply()
         self.showAllAnchors()
         self.updateTweenClass()
-        self.arrangeUI()
 
     def updateTweenClass(self):
+        """
+        query the selection to decide what is the most appropriate tween class to use
+        :return:
+        """
+        print 'updating tween class'
+        selectedKeys = cmds.keyframe(query=True, selected=True)
+        selectedObjects = cmds.ls(sl=True, type='transform')
+        geState = getGraphEditorState()
+        if not geState:
+            self.affectingKeys = False
+            self.currentTweenClassDict = self.objTweenClassDict
+        else:
+            if selectedKeys:
+                self.affectingKeys = True
+                self.currentTweenClassDict = self.keyTweenClassDict
+            elif selectedObjects:
+                self.affectingKeys = False
+                self.currentTweenClassDict = self.objTweenClassDict
+        self.tweenClass = self.currentTweenClassDict[Qt.LeftButton]()
+        # self.label.setText(self.tweenClass.labelText)
+        self.arrangeUI()
         self.tweenClass.setAffectedObjects()
         self.tweenClass.cacheValues()
+        print self.tweenClass, self.tweenClass.labelText
+        self.update()
 
     def get_modifier(self):
+        print 'cmds.getModifiers()', cmds.getModifiers()
         self.keyboardModifier = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
 
+    def shiftPressed(self):
+        print 'UI shift pressed'
+        if self.isDragging:
+            return
+        # self.horizontalBar.setStyleSheet("QLabel {background-color: rgba(255, 128, 128, 128);}")
+        self.currentFillColourTop = self.fillColourAltTop
+        self.currentFillColourBottom = self.fillColourAltBottom
+        self.update()
+        # self.dragButton.setPixmap(self.dragButton.inactiveIcon)
 
+    def shiftReleased(self):
+        print 'UI shift released'
+        if self.isDragging:
+            return
+        # self.horizontalBar.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
+        self.currentFillColourTop = self.fillColourBaseTop
+        self.currentFillColourBottom = self.fillColourBaseBottom
+        self.update()
+        # self.dragButton.setPixmap(self.dragButton.activeIcon)
+
+    def controlPressed(self):
+        print 'UI control pressed'
+
+    def controlReleased(self):
+        print 'UI control released'
 
 
 # TODO - stop using this
@@ -913,4 +1317,3 @@ def getGraphEditorState():
         state = cmds.workspaceControl(GraphEdWindow, query=True, collapse=True)
         return not state
     return False
-

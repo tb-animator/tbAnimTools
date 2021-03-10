@@ -209,7 +209,7 @@ class functions(object):
 
     def getChannels(self, *arg):
         # TODO make this work with assets
-        chList = cmds.channelBox(self.getChannelBoxName,
+        chList = cmds.channelBox(self.getChannelBoxName(),
                                  query=True,
                                  selectedMainAttributes=True)
         if chList:

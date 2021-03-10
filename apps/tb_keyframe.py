@@ -92,7 +92,7 @@ class keyModifiers(toolAbstractFactory):
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'keyModifers'
+    toolName = 'keyModifiers'
     hotkeyClass = hotkeys()
     funcs = functions()
 

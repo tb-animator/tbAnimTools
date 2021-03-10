@@ -127,15 +127,22 @@ class trackingCamera(toolAbstractFactory):
     def createTrackingCamera(self):
         with self.funcs.keepSelection():
             cam, camShape = self.getCurrentCamera()
-            print 'current camera', cam
             self.getCameraTransform(cam)
-
-            self.trackerCam = cmds.duplicate(cam)
-            self.trackerCam = cmds.rename(self.trackerCam, 'tracker_cam')
-            self.trackerGrp = cmds.group(empty=True, world=True, name="tracker_grp")
-            pm.parent(self.trackerCam, self.trackerGrp)
-
-            self.constraint = pm.pointConstraint(self.camera_target, self.trackerGrp)
+            if not cmds.objExists('tracker_cam'):
+                self.trackerCam = cmds.duplicate(cam)
+                self.trackerCam = cmds.rename(self.trackerCam, 'tracker_cam')
+            else:
+                self.trackerCam = 'tracker_cam'
+                constraints = cmds.listRelatives(self.trackerCam, children=True, type='constraint')
+                if constraints:
+                    cmds.delete(constraints)
+            if not cmds.objExists("tracker_grp"):
+                self.trackerGrp = cmds.group(empty=True, world=True, name="tracker_grp")
+                pm.parent(self.trackerCam, self.trackerGrp)
+            else:
+                self.trackerGrp = "tracker_grp"
+            if self.camera_target:
+                self.constraint = pm.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(self.trackerCam)
 
     def updateTrackTarget(self):
@@ -168,5 +175,7 @@ class trackingCamera(toolAbstractFactory):
         self.current_r = cmds.xform(camera, query=True, absolute=True, rotation=True)
 
     def setCameraTransform(self, camera):
+        if not cmds.objectType(camera) == 'transform':
+            camera = cmds.listRelatives(camera, parent=True, type='transform')[0]
         cmds.xform(camera, worldSpace=True, absolute=True, translation=self.current_t)
         cmds.xform(camera, absolute=True, rotation=self.current_r)

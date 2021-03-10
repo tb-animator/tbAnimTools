@@ -105,7 +105,7 @@ class mainOptionWindow(QMainWindow):
         self.toolTypeScrollArea.setWidget(self.toolWidget)
         self.toolTypeScrollArea.setWidgetResizable(True)
         self.toolTypeScrollArea.setFixedWidth(148)
-        self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        #self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.optionUIScrollArea = QScrollArea()
         self.optionUIScrollArea.setWidgetResizable(True)
