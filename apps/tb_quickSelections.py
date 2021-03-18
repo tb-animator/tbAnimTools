@@ -43,8 +43,10 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os, stat
 import pickle
-
+import maya.OpenMayaUI as omUI
 from Abstract import *
+
+import getStyleSheet as getqss
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -68,7 +70,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='create_quick_select_set',
                                      annotation='create a new quick selection set from current selection',
                                      category=self.category,
-                                     command=['quickSelectionTools.create_qs_set()']))
+                                     command=['quickSelectionTools.saveQssDialig()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -100,6 +102,7 @@ class quickSelectionTools(toolAbstractFactory):
 
         self.save_dir = pm.optionVar.get('tb_qs_folder', 'c://qss//')
         self.qss_files = list()
+
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -188,6 +191,7 @@ class quickSelectionTools(toolAbstractFactory):
                                    fadeOutTime=4.0)
 
     def create_qs_set(self):
+
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -219,6 +223,18 @@ class quickSelectionTools(toolAbstractFactory):
             msg = "can't save a quick selection set with nothing selected!"
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
                                    fadeOutTime=4.0)
+
+    def saveQssDialig(self):
+        sel = cmds.ls(selection=True)
+        if not sel:
+            return pm.warning('Unable to save empty selection')
+        dialog = saveQssWidget()
+        dialog.saveSignal.connect(self.getSaveQssSignal)
+
+    def getSaveQssSignal(self, input):
+        print 'getSaveQssSignal', input
+        if input:
+            self.save_qs(input, cmds.ls(sl=True))
 
     def save_qs(self, qs_name, selection):
         print "saving ", qs_name, "with", selection
@@ -393,6 +409,8 @@ class quickSelectionTools(toolAbstractFactory):
             self.qss_widget(qss_name=items, parent=sub_layout)
         self.namespace_widget(parent=layout)
         pm.showWindow(qss_win)
+
+
 '''    
 
 
@@ -664,8 +682,104 @@ class quick_selection(object):
             message.error(position="botRight", prefix="Error", message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
 
 '''
+
+
 class qss_data_obj(object):
     def __init__(self, qs_name="", qs_objects=[]):
         self.qs_name = qs_name
         self.qs_objects = qs_objects
 
+
+class saveQssWidget(QWidget):
+    saveSignal = Signal(str)
+
+    def __init__(self):
+        super(saveQssWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setStyleSheet(
+            "QDialog { "
+            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);"
+            "}"
+            "saveQssWidget {"
+            "border-style: solid;"
+            "border: 1px solid #1e1e1e;"
+            "border-radius: 5;"
+            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);"
+
+            "}"
+        )
+        self.setWindowOpacity(0.9)
+        self.setWindowFlags(Qt.PopupFocusReason| Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFixedSize(300, 64)
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel('Save Quick Selection Set')
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel('Enter Name')
+        self.lineEdit = QLineEdit(sel[0].stripNamespace())
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        reg_ex = QRegExp("[a-z-A-Z0123456789_]+")
+        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+        self.lineEdit.setValidator(input_validator)
+
+        self.saveButton = QPushButton("Save")
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        # layout.addWidget(btnSetFolder)
+
+        mainLayout.addWidget(self.titleText)
+        mainLayout.addLayout(layout)
+        layout.addWidget(self.text)
+        layout.addWidget(self.lineEdit)
+        layout.addWidget(self.saveButton)
+
+        self.saveButton.clicked.connect(self.saveQss)
+        '''
+        radius = 8.0
+        path = QPainterPath()
+        self.resize(440, 220)
+        path.addRoundedRect(QRectF(self.rect()), radius, radius)
+        mask = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(mask)
+        '''
+        self.setLayout(mainLayout)
+        self.move(QApplication.desktop().screen().rect().center() - self.rect().center())
+        self.show()
+        self.lineEdit.setFocus()
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#4d4d4d")
+        grad.setColorAt(0.1, "#646464")
+        grad.setColorAt(1, "#5d5d5d")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def saveQss(self, *args):
+        self.saveSignal.emit(self.lineEdit.text())
+        self.close()
+
+    def keyPressEvent(self, event):
+        print("That's a press!")
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(saveQssWidget, self).keyPressEvent(event)

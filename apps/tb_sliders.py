@@ -324,6 +324,7 @@ class worldSpaceTween(tweenBase):
         generator style iterator over current Maya active selection
         :return: [MObject) an MObject for each item in the selection
         """
+        # TODO - bug here where the active seleciton list is curves, although the graph editor is closed
         sel = om2.MGlobal.getActiveSelectionList()
         for i in xrange(sel.length()):
             yield sel.getDependNode(i)

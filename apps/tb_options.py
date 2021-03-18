@@ -98,6 +98,8 @@ class mainOptionWindow(QMainWindow):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
         self.win.setWindowTitle('tbAnimTools - option')
+        self.win.setMinimumWidth(400)
+        self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
 
         self.toolTypeScrollArea = QScrollArea()

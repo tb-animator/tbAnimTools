@@ -183,6 +183,41 @@ class functions(object):
     def get_next_key_values_from_index(self, curve, index):
         return cmds.keyframe(curve, query=True, index=((min(index+1, self.get_max_index(curve))),), valueChange=True)
 
+    def get_all_layer_key_times(self, objects):
+        layers = cmds.ls(type='animLayer')
+        keyTimes = [None, None]
+        layerStates = dict()
+        if not layers:
+            times = sorted(list(cmds.keyframe(objects, query=True, timeChange=True)))
+            return [times[0], times[-1]]
+        else:
+            for layer in layers:
+                layerStates[layer] = [cmds.animLayer(layer, query=True, selected=True),
+                                      cmds.animLayer(layer, query=True, preferred=True)]
+                cmds.animLayer(layer, edit=True, selected=False),
+                cmds.animLayer(layer, edit=True, preferred=False)
+            for layer in layers:
+                cmds.animLayer(layer, edit=True, selected=True),
+                cmds.animLayer(layer, edit=True, preferred=True)
+                times = cmds.keyframe(objects, query=True, timeChange=True)
+                if not times:
+                    continue
+                times = sorted(times)
+                if not len(keyTimes) > 1:
+                    continue
+                print times[0], times[-1]
+                if keyTimes[0] is None: keyTimes[0] = times[0]
+                if keyTimes[1] is None: keyTimes[0] = times[-1]
+                if times[0] < keyTimes[0]: keyTimes[0] = times[0]
+                if times[-1] > keyTimes[1]: keyTimes[1] = times[-1]
+                cmds.animLayer(layer, edit=True, selected=False),
+                cmds.animLayer(layer, edit=True, preferred=False)
+            for layer in layers:
+                cmds.animLayer(layer, edit=True, selected=layerStates[layer][0]),
+                cmds.animLayer(layer, edit=True, preferred=layerStates[layer][1])
+        return keyTimes
+
+
     def match(self, data):
         ## match tangents for looping animations
         #

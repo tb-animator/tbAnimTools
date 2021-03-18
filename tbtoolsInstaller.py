@@ -1,9 +1,27 @@
+import maya.mel as mel
 import pymel.core as pm
 import os, stat
 import sys
 import inspect
 import io
 
+from functools import partial
+
+import maya.OpenMayaUI as omUI
+import getStyleSheet as getqss
+
+qtVersion = pm.about(qtVersion=True)
+if int(qtVersion.split('.')[0]) < 5:
+    from PySide.QtGui import *
+    from PySide.QtCore import *
+    from pysideuic import *
+    from shiboken import wrapInstance
+else:
+    from PySide2.QtWidgets import *
+    from PySide2.QtGui import *
+    from PySide2.QtCore import *
+    from pyside2uic import *
+    from shiboken2 import wrapInstance
 
 class module_maker():
     def __init__(self):
@@ -130,7 +148,9 @@ class module_maker():
             result_message += "module file created <span style=\""+self.colours['green']+ "\">Successfully</span> \n"
             result_message += "module file location <span style=\""+self.colours['yellow']+ "\">" \
                               + self.module_path() + "</span>\n\nEnjoy!"
-            self.result_window()
+            #self.result_window()
+            resultUI = ResultWindow()
+            resultUI.show()
         else:
             result_message += "<span style=\""+self.colours['red']+"<h3>WARNING</h3></span> :module file not created\n"
 
@@ -198,18 +218,39 @@ class installer():
         if self.appPath in sys.path:
             sys.path.remove(self.appPath)
 
-    def result_window(self):
-        # TODO - combine this with the hotkey check window?
-        if pm.window("installWin", exists=True):
-            pm.deleteUI("installWin")
-        window = pm.window(title="success!")
-        layout = pm.columnLayout(adjustableColumn=True)
-        pm.text(font="boldLabelFont", label="tbtools installed")
-        pm.text(label="")
-        pm.button(label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
-        pm.setParent('..')
-        pm.showWindow(window)
+class ResultWindow(QDialog):
+    def __init__(self):
+        super(ResultWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setStyleSheet(getqss.getStyleSheet())
+        layout = QVBoxLayout()
 
+        text = QLabel('tbAnimTools installation successful')
 
-module_maker().install()
-installer().install()
+        openHotkeyWindowBtn = QPushButton("Open Hotkey Window")
+        openHotkeyWindowBtn.clicked.connect(self.openHotkeyWindow)
+        openOptionsWindowBtn = QPushButton("Open Options Window")
+        openOptionsWindowBtn.clicked.connect(self.openOptionWindow)
+        btnBakePoseAdjustment = QPushButton("Close")
+        btnBakePoseAdjustment.clicked.connect(partial(self.close))
+
+        # layout.addWidget(btnSetFolder)
+        layout.addWidget(text)
+        layout.addWidget(openHotkeyWindowBtn)
+        layout.addWidget(openOptionsWindowBtn)
+
+        layout.addWidget(btnBakePoseAdjustment)
+
+        self.setLayout(layout)
+
+        #self.win.show()
+
+    def openHotkeyWindow(self, *args):
+        print 'openHotkeyWindow'
+        mel.eval("hotkeyEditorWindow")
+
+    def openOptionWindow(self, *args):
+        import tb_options as tbo
+        tbo.showOptions()
+
+#module_maker().install()
+#installer().install()

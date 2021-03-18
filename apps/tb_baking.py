@@ -51,7 +51,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
         self.setCategory('tbtools_layers')
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
-                                     annotation='constrain to objects with NO offset - post baked, constraint reversed',
+                                     annotation='quick bake selection to override layer',
                                      category=self.category, command=['bakeTools.bake_to_override()']))
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
                                      annotation='create additive layer for selection',
@@ -136,9 +136,15 @@ class bakeTools(toolAbstractFactory):
     """
 
     def bake_to_override(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        preContainers = set(pm.ls(type='container'))
         preBakeLayers = pm.ls(type='animLayer')
-        keyRange = list(sorted(set(cmds.keyframe(query=True, timeChange=True))))
+        keyRange = self.funcs.get_all_layer_key_times(sel)
+        if not keyRange:
+            keyRange = self.funcs.getTimelineRange()
+
         pm.bakeResults(sel,
                        time=(keyRange[0], keyRange[-1]),
                        simulation=False,
@@ -156,7 +162,15 @@ class bakeTools(toolAbstractFactory):
         postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
         for newAnimLayer in postBakeLayer:
             pm.setAttr(newAnimLayer + ".ghostColor", 16)
-            pm.rename(newAnimLayer, sel[0].namespace()[:-1] + '_' + sel[0].stripNamespace() + '_baked')
+            pm.rename(newAnimLayer, 'OverrideBaked')
+
+        resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
+        if not resultContainer:
+            return
+        pm.select(resultContainer, replace=True)
+        mel.eval('SelectContainerContents')
+        mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
+        pm.delete(resultContainer)
 
     def bake_to_locator(self, constrain=False, orientOnly=False):
         sel = pm.ls(sl=True)
