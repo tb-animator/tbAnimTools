@@ -272,7 +272,9 @@ class Pickwalk(toolAbstractFactory):
         self.libraryFilePath = os.path.join(self.defaultPickwalkDir, self.libraryFile)
 
         if not os.path.isfile(self.libraryFilePath):
-            self.createLibrary()
+            self.walkDataLibrary = WalkDataLibrary()
+            self.walkDataLibrary.save(self.libraryFilePath)
+            pm.optionVar['pickwalkLibrary'] = self.libraryFile
         else:
             self.walkDataLibrary = WalkDataLibrary()
             self.walkDataLibrary.load(self.libraryFilePath)
