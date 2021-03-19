@@ -31,6 +31,7 @@ import maya.api.OpenMaya as om2
 import pymel.core.datatypes as dt
 import math
 from Abstract import *
+from tb_UI import *
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -108,6 +109,9 @@ class bakeTools(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+    quickBakeSimOption = 'tbQuickBakeUseSim'
+    quickBakeRemoveContainerOption = 'tbQuickBakeRemoveContainer'
+
     def __new__(cls):
         if bakeTools.__instance is None:
             bakeTools.__instance = object.__new__(cls)
@@ -126,6 +130,10 @@ class bakeTools(toolAbstractFactory):
 
     def optionUI(self):
         super(bakeTools, self).optionUI()
+        simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
+        containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ', self.quickBakeRemoveContainerOption)
+        self.layout.addWidget(simOptionWidget)
+        self.layout.addWidget(containerOptionWidget)
         return self.layout
 
     def showUI(self):
@@ -164,43 +172,57 @@ class bakeTools(toolAbstractFactory):
             pm.setAttr(newAnimLayer + ".ghostColor", 16)
             pm.rename(newAnimLayer, 'OverrideBaked')
 
-        resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
-        if not resultContainer:
-            return
-        pm.select(resultContainer, replace=True)
-        mel.eval('SelectContainerContents')
-        mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
-        pm.delete(resultContainer)
+        if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
+            resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
+            if not resultContainer:
+                return
+            pm.select(resultContainer, replace=True)
+            mel.eval('SelectContainerContents')
+            mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
+            pm.delete(resultContainer)
 
     def bake_to_locator(self, constrain=False, orientOnly=False):
-        sel = pm.ls(sl=True)
-        locs = []
-        constraints = []
-        if sel:
-            for s in sel:
-                loc = pm.spaceLocator(name=s + '_baked')
-                print loc
-                loc.localScale.set(10, 10, 10)
-                loc.rotateOrder.set(2)
-                loc.getShape().overrideEnabled.set(True)
-                loc.getShape().overrideColor.set(14)
-                const = pm.parentConstraint(s, loc)
-                locs.append(loc)
-                constraints.append(const)
-        if locs:
-            pm.bakeResults(locs,
-                           simulation=False,
-                           disableImplicitControl=False,
-                           time=[pm.playbackOptions(query=True, minTime=True),
-                                 pm.playbackOptions(query=True, maxTime=True)],
-                           sampleBy=1)
-            if constrain:
-                pm.delete(constraints)
-                for cnt, loc in zip(sel, locs):
-                    skipT = self.funcs.getAvailableTranslates(cnt)
-                    skipR = self.funcs.getAvailableRotates(cnt)
-                    pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'), False: skipT}[orientOnly],
-                                        skipRotate=skipR)
+        with self.funcs.keepSelection():
+            sel = pm.ls(sl=True)
+            locs = []
+            constraints = []
+            if sel:
+                for s in sel:
+                    loc = pm.spaceLocator(name=s + '_baked')
+                    size = 1 * self.funcs.locator_unit_conversion()
+                    loc.localScale.set(size, size, size)
+                    loc.rotateOrder.set(2)
+                    loc.getShape().overrideEnabled.set(True)
+                    loc.getShape().overrideRGBColors.set(True)
+                    loc.getShape().overrideColorRGB.set((1.0, 0.537, 0.016))
+
+                    const = pm.parentConstraint(s, loc)
+                    locs.append(loc)
+                    constraints.append(const)
+            if locs:
+                pm.bakeResults(locs,
+                               simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                               sampleBy=1,
+                               oversamplingRate=1,
+                               disableImplicitControl=True,
+                               preserveOutsideKeys=False,
+                               sparseAnimCurveBake=True,
+                               removeBakedAttributeFromLayer=False,
+                               removeBakedAnimFromLayer=False,
+                               bakeOnOverrideLayer=False,
+                               minimizeRotation=True,
+                               controlPoints=False,
+                               shape=False,
+                               time=[pm.playbackOptions(query=True, minTime=True),
+                                     pm.playbackOptions(query=True, maxTime=True)],
+                               )
+                if constrain:
+                    pm.delete(constraints)
+                    for cnt, loc in zip(sel, locs):
+                        skipT = self.funcs.getAvailableTranslates(cnt)
+                        skipR = self.funcs.getAvailableRotates(cnt)
+                        pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'), False: skipT}[orientOnly],
+                                            skipRotate=skipR)
 
     def get_available_attrs(self, node):
         '''
@@ -268,10 +290,9 @@ class bakeTools(toolAbstractFactory):
 
     def add_layer(self, mode=False):
         sel = pm.ls(selection=True)[0].stripNamespace()
-        suffix = {True: ['_OVR', 16], False: ['_ADD', 15]}
-        if not sel:
-            return
-        newAnimLayer = pm.animLayer('%s%s' % (sel, suffix[mode][0]),
+        suffix = {True: ['Override', 16], False: ['Additive', 15]}
+
+        newAnimLayer = pm.animLayer(suffix[mode][0],
                                     override=mode,
                                     excludeScale=True,
                                     # excludeEnum=True,
@@ -285,6 +306,8 @@ class bakeTools(toolAbstractFactory):
         if not self.funcs.isTimelineHighlighted():
             return
         if not mode:
+            return
+        if not sel:
             return
 
         timeRange = self.funcs.getTimelineHighlightedRange()
@@ -302,6 +325,35 @@ class bakeTools(toolAbstractFactory):
         for layers in pm.ls(type='animLayer'):
             layers.selected.set(False)
 
+    def colourAnimLayers(self, *args):
+        """
+        Script job function to colour the anim layer tab based on ghosting colour
+        :param args:
+        :return:
+        """
+
+        def lerpFloat(a, b, alpha):
+            return a * alpha + b * (1.0 - alpha)
+
+        # TODO - hook this up to a script job when anim layer tab is rebuilt
+        if not pm.treeView('AnimLayerTabanimLayerEditor', query=True, exists=True):
+            return
+        layers = cmds.ls(type='animLayer')
+        for layer in layers:
+            colour = cmds.getAttr(layer + '.ghostColor') - 1
+            col = cmds.colorIndex(colour, q=True)
+            print layer, col
+            pm.treeView('AnimLayerTabanimLayerEditor',
+                        edit=True,
+                        labelBackgroundColor=[layer,
+                                              lerpFloat(col[0], 0.5, 0.5),
+                                              lerpFloat(col[1], 0.5, 0.5),
+                                              lerpFloat(col[2], 0.5, 0.5)])
+
+        print 'colourAnimLayers'
+
+
+# colourAnimLayers()
 
 '''    
 class bakeToLayer():

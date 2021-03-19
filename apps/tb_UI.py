@@ -228,7 +228,6 @@ class PickwalkQueryWidget(QDialog):
             self.close()
         return super(PickwalkQueryWidget, self).keyPressEvent(event)
 
-
 class promptWidget(QWidget):
     saveSignal = Signal(str)
 
@@ -302,6 +301,30 @@ class promptWidget(QWidget):
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
 
+class optionVarWidget(QWidget):
+    def __init__(self, label=str, optionVar=str):
+        super(optionVarWidget, self).__init__()
+        self.optionVar = optionVar
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+        self.labelText = QLabel(label)
+
+class optionVarBoolWidget(optionVarWidget):
+    def __init__(self, label=str, optionVar=str):
+        QWidget.__init__(self)
+        self.optionVar = optionVar
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+        self.labelText = QLabel(label)
+        self.checkBox = QCheckBox()
+        self.checkBox.setChecked(pm.optionVar.get(self.optionVar, False))
+        pm.optionVar(intValue=(self.optionVar, pm.optionVar.get(self.optionVar, False)))
+        self.checkBox.clicked.connect(self.checkBoxEdited)
+        self.layout.addWidget(self.labelText)
+        self.layout.addWidget(self.checkBox)
+
+    def checkBoxEdited(self):
+        pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
 
 class filePathWidget(QWidget):
     layout = None

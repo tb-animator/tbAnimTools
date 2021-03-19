@@ -376,7 +376,7 @@ class Pickwalk(toolAbstractFactory):
                 return conns[0]
 
     def pickwalk(self, direction=str, add=False):
-        sel = cmds.ls(sl=True, type='transform')
+        sel = pm.ls(sl=True, type='transform')
         returnedControls=list()
         if not sel:
             self.walkStandard(direction)
@@ -386,20 +386,33 @@ class Pickwalk(toolAbstractFactory):
             return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
         refName = None
-        refState = cmds.referenceQuery(walkObject, isNodeReferenced=True)
+        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
         if refState:
-            refName = cmds.referenceQuery(walkObject, filename=True, shortName=True).split('.')[0]
-            print 'is reference', refName
             # if it is referenced, check against pickwalk library entries
-
+            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
         else:
+            # might just be working in the rig file itself
             refName = cmds.file(query=True,  sceneName=True, shortName=True).split('.')[0]
         if refName:
             print 'query against pickwalk library'
             if refName in self.walkDataLibrary._fileToMapDict.keys():
+                mapName = self.walkDataLibrary._fileToMapDict[refName]
                 print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
+                result = self.walkDataLibrary.rigMapDict[mapName].walk(node=walkObject.stripNamespace(), direction=direction)
+                if result:
+                    if cmds.objExists(sel.namespace() + result):
+                        returnedControls.extend(result)
+                    else:
+                        self.walkStandard(direction)
+                        return
+
+                if add:
+                    print 'adding'
+                    returnedControls.extend(sel)
+                cmds.select(returnedControls, replace=True)
                 return
-            if refName not in self.walkDataLibrary.ignoredRigs:
+
+            elif refName not in self.walkDataLibrary.ignoredRigs:
                 print 'not ignored, must be new, query user to add/assign/ignore it'
                 prompt = PickwalkQueryWidget(title='New Rig Found', rigName=refName, text='This rig new, set up pickwalking on it?')
                 prompt.AssignNewRigSignal.connect(self.assignNewRigExistingMap)
@@ -412,7 +425,7 @@ class Pickwalk(toolAbstractFactory):
                     pass
 
         # anything beyond here is using attribute based pickwalking
-        userAttrs = cmds.listAttr(walkObject, userDefined=True)
+        userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         if not userAttrs:
             self.walkStandard(direction)
             return
@@ -426,8 +439,8 @@ class Pickwalk(toolAbstractFactory):
 
         for walkAttribute in self.picwalkAttributeNames[direction]:
             if not found:
-                if cmds.attributeQuery(walkAttribute, node=walkObject, exists=True):
-                    returnObj = self.pickWalkAttribute(node=walkObject, attribute=walkAttribute)
+                if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
+                    returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
                     if returnObj:
                         if isinstance(returnObj, list):
                             returnedControls.extend(returnObj)
@@ -490,6 +503,7 @@ class WalkDataLibrary(object):
         self.rigMapDict = dict()
         self.ignoredRigs = list()
         self._fileToMapDict = dict()
+        self._walkData = dict()
 
     def toJson(self):
         jsonData = '''{}'''
@@ -549,7 +563,7 @@ class WalkData(object):
     def toJson(self):
         jsonData = '''{}'''
         self.jsonObjectInfo = json.loads(jsonData)
-        self.jsonObjectInfo['destinations'] = 'testing'
+        self.jsonObjectInfo['destinations'] = {key: value.toJson() for key, value in self.destinations.items()}
         self.jsonObjectInfo['objectDict'] = {key.split(':')[-1]: value.toJson() for key, value in self.objectDict.items()}
         self.jsonObjectInfo['categoryKeys'] = {key: value for key, value in self.categoryKeys.items()}
 
@@ -568,6 +582,23 @@ class WalkData(object):
         print >> f, j
         f.close()
 
+    def walk(self, namespace=str(), node=str(), direction=str()):
+        print 'walk', node, direction
+        # do a check on walk for current object in any destination objects, set the appropriate index
+        if node not in self.objectDict.keys():
+            return None
+        target = self.objectDict[node][direction]
+        if target in self.destinations.keys():
+            # destination is a conditional destination
+            print ('destination is a conditional destination')
+            print self.destinations[target]
+            # check for condition attr/object?
+            # conditions met, pick alt/destination, use last used index
+            pass
+        else:
+            # destination is an object
+            return target
+        return None
 
 class WalkDirectionDict(object):
     """
@@ -607,6 +638,7 @@ class WalkDatinationInfo(object):
         self.destinationAlt = self.stripList(destinationAlt)
         self.conditionAttribute = conditionAttribute
         self.conditionValue = conditionValue
+        self._lastIndex = 0
 
     def stripList(self, input):
         if len(input):
@@ -932,13 +964,13 @@ class labelledLineEdit(QWidget):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             pm.warning('no channel selected')
-        self.lineEdit.setText(channels[0])
+        self.lineEdit.setText(channels[0].split(':')[-1])
 
     def pickObject(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
             pm.warning('no object selected')
-        self.lineEdit.setText(sel[0] + '_in')
+        self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
 
 class labelledDoubleSpinBox(QWidget):
@@ -976,6 +1008,7 @@ class labelledDoubleSpinBox(QWidget):
 class ControlListWidget(QWidget):
     pressedSignal = Signal(list())
     newDestinationSignal = Signal(str, str, str)
+    newConditionDestinationSignal = Signal(QStandardItem)
 
     def __init__(self, CLS=None, label='BLANK'):
         super(ControlListWidget, self).__init__()
@@ -1126,6 +1159,8 @@ class ControlListWidget(QWidget):
 
         if modifiers == Qt.ShiftModifier:
             print('Shift+Click')
+            self.sendNewConditionDestinationSignal(item)
+
         elif modifiers == Qt.ControlModifier:
             print('Control+Click')
             if hasattr(item, 'direction'):
@@ -1133,10 +1168,16 @@ class ControlListWidget(QWidget):
                 sel = cmds.ls(sl=True, type='transform')
                 if not sel:
                     return pm.warning('nothing selected')
-                item.setText(sel[0])
-                self.sendNewDestinationSignal(item.control, item.direction, sel[0])
+                walkObject = sel[0].split(':')[-1]
+                item.setText(walkObject)
+                self.sendNewDestinationSignal(item.control, item.direction, walkObject)
             else:
                 cmds.select(item.control, replace=True)
+
+    @Slot()
+    def sendNewConditionDestinationSignal(self, item):
+        print 'sendNewConditionDestinationSignal'
+        self.newConditionDestinationSignal.emit(item)
 
     @Slot()
     def sendNewDestinationSignal(self, control, direction, item):
@@ -1827,6 +1868,7 @@ class pickwalkMainWindow(QMainWindow):
         # self.left_layout.addStretch()
         # connect events
         self.controlListWidget.newDestinationSignal.connect(self.inputSignal_dirFromControlTreeView)
+        self.controlListWidget.newConditionDestinationSignal.connect(self.inputSignal_conditionDirFromControlTreeView)
         self.mainPickWidget.setActiveObjectSignal.connect(self.inputSignal_activeObjectSet)
         self.mainPickWidget.directionPressedObjectSignal.connect(self.addPickwalk)
         self.mainPickWidget.loopChanged.connect(self.inputSignal_loopChanged)
@@ -1897,6 +1939,18 @@ class pickwalkMainWindow(QMainWindow):
     def keyPressEvent(self, event):
         print("That's a press!")
         return super(pickwalkMainWindow, self).keyPressEvent(event)
+
+    def inputSignal_conditionDirFromControlTreeView(self, item):
+        print 'inputSignal_conditionDirFromControlTreeView', item.control, item.direction
+        index = self.destinationListWidget.treeView.selectedIndexes()[0]
+        if not index:
+            return
+        destinationItem = self.destinationListWidget.model.itemFromIndex(self.destinationListWidget.proxyModel.mapToSource(index))
+        print 'new destination item is,', item.text()
+        self.pickwalkCreator.setControlDestination(item.control,
+                                                   direction=item.direction,
+                                                   destination=destinationItem.text())
+        item.setText(destinationItem.text())
 
     def inputSignal_dirFromControlTreeView(self, control, direction, destination):
         print 'inputSignal_newDestinationFromControlTreeView', control, direction, destination
@@ -2019,7 +2073,7 @@ class PickwalkCreator(object):
         # add control entry in case it is not already there
         self.addControl(control)
         if destination in self.walkData.destinations.keys():
-            self.walkData.objectDict[control][direction] = self.walkData.destinations[destination]
+            self.walkData.objectDict[control][direction] = destination
         else:
             # destination is probably one object, just set it as a string
             print 'simple destination, object only'
@@ -2092,12 +2146,13 @@ class PickwalkCreator(object):
         :param walkDataFile:
         :return:
         """
+        # TODO - move this entirely to the WalkData class
         print 'loading data', walkDataFile
         jsonObjectInfo = json.load(open(walkDataFile))
 
         print jsonObjectInfo['destinations']
         self.walkData.destinations = jsonObjectInfo['destinations']
-        self.walkData.destinations = dict()
+        #self.walkData.destinations = dict()
         print jsonObjectInfo['objectDict'].keys()
         for key, value in jsonObjectInfo['objectDict'].items():
             self.addControl(key)
