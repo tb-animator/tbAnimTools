@@ -221,8 +221,11 @@ class bakeTools(toolAbstractFactory):
                     for cnt, loc in zip(sel, locs):
                         skipT = self.funcs.getAvailableTranslates(cnt)
                         skipR = self.funcs.getAvailableRotates(cnt)
-                        pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'), False: skipT}[orientOnly],
-                                            skipRotate=skipR)
+                        print 'skipT', skipT
+                        print 'skipR', skipR
+                        pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                                                                     False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
+                                            skipRotate= [x.split('rotate')[-1] for x in skipR])
 
     def get_available_attrs(self, node):
         '''
