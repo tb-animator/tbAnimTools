@@ -305,7 +305,7 @@ class aimTools(toolAbstractFactory):
             return
         aimAxis = 'z'
         upAxis = 'y'
-        flipAim = False,
+        flipAim = False
         flipUp = False
         distance = 10.0
         refName = self.funcs.getRefName(sel[0])
