@@ -1,5 +1,9 @@
 import abc
+import os
 import pymel.core as pm
+import maya.mel as mel
+import json
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -60,7 +64,9 @@ class hotKeyAbstractFactory(object):
                 lineCmds.append(('tbtoolCLS.tools["%s"].%s') % (tool, functionCalled))
 
             tryCmd = ['global tbtoolCLS',
-                      'try:']
+                      'try:',
+                      '\ttbtoolCLS = ClassFinder()'
+                      ]
             exceptCmd = [
                 'except:',
                 '\tfrom pluginLookup import ClassFinder',
@@ -68,12 +74,10 @@ class hotKeyAbstractFactory(object):
             cmd = ""
             for lines in tryCmd:
                 cmd = cmd + lines + "\n"
-            for lines in lineCmds:
-                cmd = cmd + '\t' + lines + "\n"
             for lines in exceptCmd:
                 cmd = cmd + lines + "\n"
             for lines in lineCmds:
-                cmd = cmd + '\t' + lines + "\n"
+                cmd = cmd + lines + "\n"
             return cmd
 
 
@@ -85,6 +89,8 @@ class toolAbstractFactory(object):
     funcs = None
 
     layout = None
+    classData = dict()
+    rawJsonData = None
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
@@ -112,3 +118,47 @@ class toolAbstractFactory(object):
     @abc.abstractmethod
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
+
+    def initData(self):
+        self.dataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
+        if not os.path.isdir(self.dataPath):
+            os.mkdir(self.dataPath)
+        self.dataFile = os.path.join(self.dataPath, self.toolName + '.json')
+
+    def toJson(self):
+        jsonData = '''{}'''
+        self.classData = json.loads(jsonData)
+
+    def saveData(self):
+        self.initData()
+        self.toJson()
+        j = json.dumps(self.classData, indent=4, separators=(',', ': '))
+        f = open(self.dataFile, 'w')
+        print >> f, j
+        f.close()
+
+    def loadData(self):
+        self.initData()
+        if not os.path.isfile(self.dataFile):
+            self.saveData()
+        self.rawJsonData = json.load(open(self.dataFile))
+
+    def openMM(self):
+        if cmds.popupMenu('tempMM', exists=True):
+            cmds.deleteUI('tempMM')
+        cmds.popupMenu('tempMM',
+                       button=1,
+                       ctl=False,
+                       alt=False,
+                       allowOptionBoxes=True,
+                       parent=mel.eval("findPanelPopupParent"),
+                       mm=True)
+        self.build_MM()
+        cmds.setParent('..', menu=True)
+
+    def build_MM(self):
+        pass
+
+    def closeMM(self):
+        if cmds.popupMenu('tempMM', exists=True):
+            cmds.deleteUI('tempMM')

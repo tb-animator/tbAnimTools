@@ -233,7 +233,6 @@ class aimTools(toolAbstractFactory):
             self.constraintControls(key)
 
     def aimToLocator(self, refName, name, target, data):
-        print 'aimToLocator', target
         aimAxis, upAxis = self.getAimAxis(data)
 
         up = self.funcs.tempLocator(name=name, suffix='upLoc')
@@ -268,13 +267,9 @@ class aimTools(toolAbstractFactory):
                                              }
 
     def getAimAxis(self, data):
-        print data
         flipVector = {True: [-1.0, 1.0], False: [1.0, -1.0]}  # make this data driven somehow?
-        print data['direction'][0], self.axisDict[data['direction'][0]]
-        print data['direction'][1], self.axisDict[data['direction'][1]]
-        print data['flipAim'], flipVector[data['flipAim']][0]
-        aimAxis = self.axisDict[data['direction'][0]] * flipVector[data['flipAim']][0]
-        upAxis = self.axisDict[data['direction'][1]] * flipVector[data['flipUp']][1]
+        aimAxis = self.axisDict[data['aimAxis']] * flipVector[data['flipAim']][0]
+        upAxis = self.axisDict[data['upAxis']] * flipVector[data['flipUp']][1]
         return aimAxis, upAxis
 
     def bake(self):
@@ -305,7 +300,6 @@ class aimTools(toolAbstractFactory):
                            worldUpType='object')
 
     def setDefaultUI(self, *args):
-        print 'setDefaultUI'
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -341,9 +335,6 @@ class aimTools(toolAbstractFactory):
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
         refName = self.funcs.getRefName(controlName)
-        print 'assignDefault', refName, controlName, aimAxis, upAxis, flipAim, flipUp, distance
-
-        print self.aimData
         if refName not in self.aimData.keys():
             self.aimData[refName] = dict()
         self.aimData[refName][controlName.split(':')[-1]] = {'aimAxis': aimAxis,
@@ -362,45 +353,6 @@ class aimTools(toolAbstractFactory):
         jsonData = '''{}'''
         self.classData = json.loads(jsonData)
         self.classData['aimData'] = self.aimData
-
-
-def getMatrix(node):
-    '''
-    Gets the world matrix of an object based on name.
-    '''
-    # Selection list object and MObject for our matrix
-    selection = OpenMaya.MSelectionList()
-    selection.add(node)
-    mObj = selection.getDependNode(0)
-    fnThisNode = OpenMaya.MFnDependencyNode(mObj)
-    worldMatrixAttr = fnThisNode.attribute("worldMatrix")
-    matrixPlug = OpenMaya.MPlug(mObj, worldMatrixAttr)
-    matrixPlug = matrixPlug.elementByLogicalIndex(0)
-    matrixObject = matrixPlug.asMObject()
-    worldMatrixData = OpenMaya.MFnMatrixData(matrixObject)
-    worldMatrix = worldMatrixData.matrix()
-
-    return worldMatrix
-
-
-def decompMatrix(node, matrix):
-    '''
-    Decomposes a MMatrix in new api. Returns an list of translation,rotation,scale in world space.
-    '''
-    rotOrder = cmds.getAttr('%s.rotateOrder' % node)
-    mTransformMtx = OpenMaya.MTransformationMatrix(matrix)
-
-    trans = mTransformMtx.translation(OpenMaya.MSpace.kWorld)
-    mVector_translate = om.MVector(trans[0], trans[1], trans[2])
-    eulerRot = mTransformMtx.rotation()
-
-    eulerRot[0] = 0.0
-    eulerRot[2] = 0.0
-    eulerRot.reorderIt(rotOrder)
-    angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
-    scale = mTransformMtx.scale(OpenMaya.MSpace.kWorld)
-    return {'translate': trans, 'translateMVector': mVector_translate, 'rotate': angles, 'scale': scale}
-
 
 def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
     selList = om.MSelectionList()

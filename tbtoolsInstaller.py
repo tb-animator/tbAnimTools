@@ -8,7 +8,17 @@ import io
 from functools import partial
 
 import maya.OpenMayaUI as omUI
-import getStyleSheet as getqss
+qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
+
+def getStyleSheet():
+    print qssFile
+    stream = QFile(qssFile)
+    if stream.open(QFile.ReadOnly):
+        st = str(stream.readAll())
+        stream.close()
+    else:
+        print(stream.errorString())
+    return st
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -34,6 +44,7 @@ class module_maker():
         self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
         self.python_paths = ['apps', 'lib', '']
         self.maya_script_paths = ['scripts']
+        self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
         self.xbmlang_paths = ['Icons']
         self.out_lines = []
         self.module_file = 'tbAnimTools.mod'
@@ -62,6 +73,9 @@ class module_maker():
             self.out_lines.append('PYTHONPATH+:='+paths)
         for paths in self.maya_script_paths:
             self.out_lines.append('MAYA_SCRIPT_PATH+:='+paths)
+        for paths in self.maya_plugin_paths:
+            self.out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
+
         for paths in self.xbmlang_paths:
             self.out_lines.append('XBMLANGPATH+:='+paths)
 
@@ -153,7 +167,7 @@ class module_maker():
             resultUI.show()
         else:
             result_message += "<span style=\""+self.colours['red']+"<h3>WARNING</h3></span> :module file not created\n"
-
+        '''
         message_state = pm.optionVar.get("inViewMessageEnable", 1)
         pm.optionVar(intValue=("inViewMessageEnable", 1))
         pm.inViewMessage(amg=result_message,
@@ -162,7 +176,7 @@ class module_maker():
                          fadeOutTime=2.0,
                          fade=True)
         pm.optionVar(intValue=("inViewMessageEnable", message_state))
-
+        '''
     def result_window(self):
         if pm.window("installWin", exists=True):
             pm.deleteUI("installWin")
@@ -200,15 +214,8 @@ class installer():
 
             import module_startup
             module_startup.initialise().load_everything()
-            import tb_messages
-            tb_messages.info(prefix=' INSTALLATION',
-                             message=' : Success',
-                             fadeStayTime=5,
-                             fadeOutTime=5,
-                             fade=True,
-                             position='botRight')
-        except:
-            pm.warning('installation failed')
+        except Exception as e:
+            pm.warning(e.message)
 
     def clearMultipleSysPaths(self):
         if self.filepath in sys.path:
@@ -221,7 +228,7 @@ class installer():
 class ResultWindow(QDialog):
     def __init__(self):
         super(ResultWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
-        self.setStyleSheet(getqss.getStyleSheet())
+        self.setStyleSheet(getStyleSheet())
         layout = QVBoxLayout()
 
         text = QLabel('tbAnimTools installation successful')
@@ -252,5 +259,5 @@ class ResultWindow(QDialog):
         import tb_options as tbo
         tbo.showOptions()
 
-#module_maker().install()
-#installer().install()
+module_maker().install()
+installer().install()

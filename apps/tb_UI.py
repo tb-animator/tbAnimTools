@@ -127,7 +127,9 @@ class AimAxisDialog(BaseDialog):
         flipAimLabel = QLabel('Flip Aim')
         flipUpLabel = QLabel('Flip Up')
         self.flipAimCB = QCheckBox()
+        self.flipAimCB.setChecked(flipAim)
         self.flipUpCB = QCheckBox()
+        self.flipUpCB.setChecked(flipUp)
         self.itemLayout = QHBoxLayout()
         self.aimComboBox = QComboBox()
         for item in itemList:
@@ -169,7 +171,7 @@ class AimAxisDialog(BaseDialog):
                                str(self.upComboBox.currentText()),
                                str(self.flipAimCB.isChecked()),
                                str(self.flipUpCB.isChecked()),
-                               1.0
+                               self.distanceSpinBox.value()
                                )
         self.close()
 

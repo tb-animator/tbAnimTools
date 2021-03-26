@@ -32,6 +32,8 @@ class ClassFinder(object):
     allClasses = list()
     tools = dict()
 
+    animLayerScriptJob = -1
+
     def __new__(cls):
         if ClassFinder.__instance is None:
             ClassFinder.__instance = object.__new__(cls)
@@ -90,3 +92,10 @@ class ClassFinder(object):
                 for name, cls in inspect.getmembers(importlib.import_module(module_name), inspect.isclass):
                     if cls.__module__ == module_name:
                         yield cls
+
+    def startupScriptJobs(self):
+        if self.animLayerScriptJob is not -1:
+            self.animLayerScriptJob = pm.scriptJob(event=('aninLayerRebuild', self.colourAnimLayers))
+
+    def colourAnimLayers(self):
+        print 'colourAnimLayers'

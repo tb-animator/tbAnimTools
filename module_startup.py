@@ -55,4 +55,3 @@ class initialise(object):
         # camera pivot update
         mutils.executeDeferred('import maya.mel as mel')
         mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')
-
