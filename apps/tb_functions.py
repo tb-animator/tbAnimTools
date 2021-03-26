@@ -88,6 +88,16 @@ class functions(object):
         else:
             return self.get_modelEditors(pm.lsUI(editors=True))[0]
 
+    def tempLocator(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
+        loc = pm.spaceLocator(name=name + '_' + suffix)
+        size = scale * self.locator_unit_conversion()
+        loc.localScale.set(size, size, size)
+        loc.rotateOrder.set(2)
+        loc.getShape().overrideEnabled.set(True)
+        loc.getShape().overrideRGBColors.set(True)
+        loc.getShape().overrideColorRGB.set(color)
+        return loc
+
     @staticmethod
     def filter_modelEditors(editors):
         return pm.objectTypeUI(editors) == 'modelEditor'
@@ -498,8 +508,13 @@ class functions(object):
         return conversion[pm.currentUnit(query=True, linear=True)]
 
     @staticmethod
+    def linear_unit_conversion():
+        conversion = {'mm': 0.1, 'cm': 1.0, 'm': 100.0, 'in': 2.54, 'ft': 30.48, 'yd': 91.44}
+        return conversion[pm.currentUnit(query=True, linear=True)]
+
+    @staticmethod
     def locator_unit_conversion():
-        conversion = {'mm': 100.0, 'cm': 10.0, 'm': 0.001, 'in': 0.0394, 'ft': 0.0033, 'yd': 0.0011}
+        conversion = {'mm': 10.0, 'cm': 1.0, 'm': 0.01, 'in': 0.0394, 'ft': 0.0033, 'yd': 0.0011}
         return conversion[pm.currentUnit(query=True, linear=True)]
 
     # time unit conversion
@@ -507,3 +522,12 @@ class functions(object):
     def time_conversion():
         conversion = {'game': 15, 'film': 24, 'pal': 25, 'ntsc': 30, 'show': 48, 'palf': 50, 'ntscf': 60}
         return float(conversion[pm.currentUnit(query=True, time=True)])
+
+    def getRefName(self, obj):
+        refState = cmds.referenceQuery(str(obj), isNodeReferenced=True)
+        if refState:
+            # if it is referenced, check against pickwalk library entries
+            return cmds.referenceQuery(str(obj), filename=True, shortName=True).split('.')[0]
+        else:
+            # might just be working in the rig file itself
+            return cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]

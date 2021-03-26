@@ -99,6 +99,7 @@ class trackingCamera(toolAbstractFactory):
         return super(trackingCamera, self).optionUI()
 
     def showUI(self):
+
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def swapToTrackingCamera(self):
@@ -158,7 +159,8 @@ class trackingCamera(toolAbstractFactory):
                 self.createTrackingCamera()
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)
-            pm.delete(self.constraint)
+            if cmds.objExists(self.constraint):
+                pm.delete(self.constraint)
             self.constraint = pm.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(cam)
 

@@ -19,10 +19,6 @@
     send issues/ requests to brimblashman@gmail.com
     visit tb-animator.blogspot.com for "stuff"
 
-    usage - to automatically add a bunch of commands for hotkeys
-    import tb_keyCommands as tb_hotKeys
-    tb_hotKeys.hotkey_tool().update_commands()
-
 *******************************************************************************
 '''
 import pymel.core as pm

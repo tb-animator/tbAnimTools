@@ -43,13 +43,14 @@ class CustomDialog(QDialog):
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
 
+
 class BaseDialog(QDialog):
     def __init__(self, parent=None, title='title?', text='message?'
                  ):
         super(BaseDialog, self).__init__(parent=parent)
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle("HELLO!")
-        self.setWindowOpacity(0.9)
+        self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
@@ -95,27 +96,109 @@ class BaseDialog(QDialog):
             self.close()
         return super(BaseDialog, self).keyPressEvent(event)
 
-class PickListDialog(BaseDialog):
-    assignSignal = Signal(str)
 
-    def __init__(self, parent=None, title='title!!!?', text='what  what?', itemList=list()):
-        super(PickListDialog, self).__init__(parent=parent, title=title, text=text)
+class AimAxisDialog(BaseDialog):
+    assignSignal = Signal(str, str, str, bool, bool, float)
+
+    def __init__(self, controlName=str, parent=None,
+                 title='Assign default aim for control',
+                 text='what  what?',
+                 itemList=['x','y','z'],
+                 aimAxis='x',
+                 upAxis='z',
+                 flipAim=False,
+                 flipUp=False,
+                 distance=10.0):
+        super(AimAxisDialog, self).__init__(parent=parent, title=title, text=text)
+        self.setFixedSize(450, 130)
+        self.controlName = controlName
+        self.aimAxis = aimAxis
+        self.upAxis = upAxis
+        self.flipAim = flipAim
+        self.flipUp = flipUp
         buttonLayout = QHBoxLayout()
         self.assignButton = QPushButton('Assign')
         self.assignButton.clicked.connect(self.assignPressed)
         self.cancelButton = QPushButton('Cancel')
         self.cancelButton.clicked.connect(self.close)
 
-        itemComboBox = QComboBox()
+        aimLabel = QLabel('Aim Axis')
+        upLabel = QLabel('Up Axis')
+        flipAimLabel = QLabel('Flip Aim')
+        flipUpLabel = QLabel('Flip Up')
+        self.flipAimCB = QCheckBox()
+        self.flipUpCB = QCheckBox()
+        self.itemLayout = QHBoxLayout()
+        self.aimComboBox = QComboBox()
         for item in itemList:
-            itemComboBox.addItem(item)
-        self.layout.addWidget(itemComboBox)
+            self.aimComboBox.addItem(item)
+        self.upComboBox = QComboBox()
+        for item in itemList:
+            self.upComboBox.addItem(item)
+        self.aimComboBox.setFixedWidth(32)
+        self.upComboBox.setFixedWidth(32)
+
+        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
+        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
+
+        self.distanceSpinBox = QDoubleSpinBox()
+        distanceLabel = QLabel('Distance')
+        self.distanceSpinBox.setFixedWidth(80)
+        self.distanceSpinBox.setValue(distance)
+        self.distanceSpinBox.setMaximum(1000.0)
+        self.distanceSpinBox.setSingleStep(0.1)
+        self.itemLayout.addWidget(aimLabel)
+        self.itemLayout.addWidget(self.aimComboBox)
+        self.itemLayout.addWidget(upLabel)
+        self.itemLayout.addWidget(self.upComboBox)
+        self.itemLayout.addWidget(flipAimLabel)
+        self.itemLayout.addWidget(self.flipAimCB)
+        self.itemLayout.addWidget(flipUpLabel)
+        self.itemLayout.addWidget(self.flipUpCB)
+        self.itemLayout.addWidget(distanceLabel)
+        self.itemLayout.addWidget(self.distanceSpinBox)
+
+        self.layout.addLayout(self.itemLayout)
         self.layout.addLayout(buttonLayout)
         buttonLayout.addWidget(self.assignButton)
         buttonLayout.addWidget(self.cancelButton)
 
     def assignPressed(self):
-        self.assignSignal.emit('test')
+        self.assignSignal.emit(self.controlName,
+                               str(self.aimComboBox.currentText()),
+                               str(self.upComboBox.currentText()),
+                               str(self.flipAimCB.isChecked()),
+                               str(self.flipUpCB.isChecked()),
+                               1.0
+                               )
+        self.close()
+
+
+class PickListDialog(BaseDialog):
+    assignSignal = Signal(str, str)
+
+    def __init__(self, rigName=str, parent=None, title='title!!!?', text='what  what?', itemList=list()):
+        super(PickListDialog, self).__init__(parent=parent, title=title, text=text)
+        self.rigName = rigName
+        buttonLayout = QHBoxLayout()
+        self.assignButton = QPushButton('Assign')
+        self.assignButton.clicked.connect(self.assignPressed)
+        self.cancelButton = QPushButton('Cancel')
+        self.cancelButton.clicked.connect(self.close)
+
+        self.itemComboBox = QComboBox()
+        for item in itemList:
+            self.itemComboBox.addItem(item)
+        self.layout.addWidget(self.itemComboBox)
+        self.layout.addLayout(buttonLayout)
+        buttonLayout.addWidget(self.assignButton)
+        buttonLayout.addWidget(self.cancelButton)
+
+    def assignPressed(self):
+        print 'assign pressed', str(self.itemComboBox.currentText())
+        self.assignSignal.emit(str(self.itemComboBox.currentText()), str(self.rigName))
+        self.close()
+
 
 class PickwalkQueryWidget(QDialog):
     AssignNewRigSignal = Signal(str)
@@ -228,6 +311,7 @@ class PickwalkQueryWidget(QDialog):
             self.close()
         return super(PickwalkQueryWidget, self).keyPressEvent(event)
 
+
 class promptWidget(QWidget):
     saveSignal = Signal(str)
 
@@ -301,6 +385,7 @@ class promptWidget(QWidget):
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
 
+
 class optionVarWidget(QWidget):
     def __init__(self, label=str, optionVar=str):
         super(optionVarWidget, self).__init__()
@@ -309,7 +394,10 @@ class optionVarWidget(QWidget):
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
 
+
 class optionVarBoolWidget(optionVarWidget):
+    changedSignal = Signal(bool)
+
     def __init__(self, label=str, optionVar=str):
         QWidget.__init__(self)
         self.optionVar = optionVar
@@ -325,6 +413,10 @@ class optionVarBoolWidget(optionVarWidget):
 
     def checkBoxEdited(self):
         pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
+
+    def sendChangedSignal(self):
+        self.changedSignal.emit(self.checkBox.isChecked())
+
 
 class filePathWidget(QWidget):
     layout = None

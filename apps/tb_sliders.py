@@ -580,6 +580,7 @@ class DragButton(QLabel):
                  height=16,
                  ):
         QLabel.__init__(self, parent)
+        self.shouldDraw = True
         self.drawWidth = width
         self.drawHeight = height
         sp_retain = QSizePolicy()
@@ -626,18 +627,21 @@ class DragButton(QLabel):
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
+        if not self.shouldDraw:
+            qp.setCompositionMode(QPainter.CompositionMode_Clear)
+            qp.end()
         fillColor = QColor(255, 165, 0, 180)
         lineColor = QColor(64, 64, 64, 128)
 
-        qp.drawRoundedRect(QRect(0.5 * (self.width() - self.drawWidth -1),
-                                 0.5 * (self.height() - self.drawHeight-1),
-                                 self.drawWidth+2,
-                                 self.drawHeight+2), 2, 2)
+        qp.drawRoundedRect(QRect(0.5 * (self.width() - self.drawWidth - 1),
+                                 0.5 * (self.height() - self.drawHeight - 1),
+                                 self.drawWidth + 2,
+                                 self.drawHeight + 2), 2, 2)
         sideEdge = (1.0 / self.rect().width()) * 10
         topEdge = (1.0 / self.rect().height()) * 10
 
         qp.setRenderHint(QPainter.Antialiasing)
-        #qp.setCompositionMode(QPainter.CompositionMode_HardLight)
+        qp.setCompositionMode(QPainter.CompositionMode_HardLight)
         orange = QColor(255, 160, 47, 64)
         darkOrange = QColor(215, 128, 26, 64)
 
@@ -696,16 +700,15 @@ class DragButton(QLabel):
       """)
 
     def setIconStateInactive(self):
+        self.shouldDraw = False
         self.setPixmap(self.inactiveIcon)
 
     def setIconStateBase(self):
+        self.shouldDraw = True
         self.setPixmap(self.baseIcon)
 
     def setIconStateHover(self):
         self.setPixmap(self.hoverIcon)
-
-    def setIconStateInactive(self):
-        self.setPixmap(self.inactiveIcon)
 
     def mousePressEvent(self, event):
         self.__mousePressPos = None
@@ -726,9 +729,11 @@ class DragButton(QLabel):
             self.dragStart = self.mapFromGlobal(event.globalPos())
 
             self.updatePosition(event.globalPos())
-            self.uiParent.hideAllAnchors()
+
             if self.masterDragger:
                 self.masterDragger.setPositionFromSlider(self.pos() + QPoint(self.halfWidth, 0))
+            else:
+                self.uiParent.hideAllAnchors()
             # self.uiParent.hideAllAnchors()
         super(DragButton, self).mousePressEvent(event)
 
@@ -742,11 +747,12 @@ class DragButton(QLabel):
                 if self.masterDragger:
                     # dragging one of those dot controls
                     self.setIconStateInactive()
-                    self.uiParent.hideAllAnchors()
                     self.masterDragger.setPositionFromSlider(self.pos() + QPoint(self.halfWidth, 0))
                     # TODO - make the drag snap to the other anchors
                     # print self.uiParent.anchorButtons
                     # TODO - maybe split the get new position/alpha and the move
+                else:
+                    self.uiParent.hideAllAnchors()
             # adjust offset from clicked point to origin of widget
             else:
                 self.updatePosition(event.globalPos())
@@ -829,11 +835,11 @@ class DragButton(QLabel):
 
 class sliderBar(QLabel):
     uiParent = None
-    barWidth = 300
+    barWidth = 303
 
     def __init__(self, uiParent, width):
         QLabel.__init__(self)
-        self.barWidth = width
+        self.barWidth = width - 1
         self.uiParent = uiParent
         self.setFixedSize(self.barWidth, 24)
         self.setAlignment(Qt.AlignCenter)
@@ -847,22 +853,39 @@ class sliderBar(QLabel):
         qp.begin(self)
 
         fillColor = QColor(255, 165, 0, 180)
-        lineColor = QColor(64, 64, 64, 64)
-        alpha = 50
+        fillColorClear = QColor(255, 165, 0, 0)
+        lineColor = QColor(64, 64, 64, 128)
+        lineColor2 = QColor(128, 128, 128, 128)
+        alpha = 128
         sideEdge = (1.0 / self.rect().width()) * 10
         topEdge = (1.0 / self.rect().height()) * 10
         # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
-        orange = QColor(255, 160, 47, 32)
-        darkOrange = QColor(215, 128, 26, 32)
-
+        orange = QColor(255, 160, 47, alpha)
+        darkOrange = QColor(215, 128, 26, alpha)
+        grey = QColor(98, 98, 98, alpha)
         qp.setPen(QPen(QBrush(lineColor), 2))
-        grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, orange)
-        grad.setColorAt(1, darkOrange)
+        grad = QLinearGradient(200, 0, 200, alpha)
+        grad.setColorAt(0, grey)
+        grad.setColorAt(1, grey)
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(QRect(0, 2, 300, 20), 4, 4)
+        qp.drawRoundedRect(QRect(0, 2, self.barWidth, 20), 4, 4)
+        qp.setPen(QPen(QBrush(lineColor), 4))
+        qp.setBrush(QBrush(fillColorClear))
+
+        font = QFont()
+        # font.setStrikeOut(True)
+        font.setStyleHint(QFont.Helvetica, QFont.PreferAntialias)
+        font.setPointSize(12)
+        qp.setBrush(Qt.black)
+        qp.setFont(font)
+
+        textPath = QPainterPath()
+        qp.setPen(QColor(255, 160, 47, 255))
+        qp.setBrush(QColor(255, 128, 78, 255))
+        textPath.addText(5, 18, font, "Feedback>")
+        # qp.drawPath(textPath)
 
         qp.end()
         return
@@ -932,11 +955,10 @@ class sliderWidget(QWidget):
                  keyControlTweenClass=None,
                  funcs=None,
                  largeAnchors=[0, 100.0],
-                 mediumAnchors=[25.0, 50, 75.0],
+                 mediumAnchors=[25.0, 75.0],
                  smallAnchors=[12.5, 37.5, 62.5, 87.5]
                  ):
         QWidget.__init__(self, parent)
-
 
         self.isDragging = False
         self.currentDragButton = None
@@ -966,7 +988,7 @@ class sliderWidget(QWidget):
         self.mediumAnchorPositions = list()
         self.smallAnchorPositions = list()
         self.tweenClass = None
-        self.barWidth = 300
+        self.barWidth = 302
         self.largeAnchorPositions = largeAnchors
         self.mediumAnchorPositions = mediumAnchors
         self.smallAnchorPositions = smallAnchors
@@ -978,9 +1000,10 @@ class sliderWidget(QWidget):
         self.horizontalBar = sliderBar(self, self.barWidth)
         self.dragButton = DragButton("BD",
                                      xMin=self.barHorizontalOffset,
-                                     xMax=self.horizontalBar.width() + self.barHorizontalOffset,
+                                     xMax=self.horizontalBar.width() + self.barHorizontalOffset - 1,
                                      parent=self.horizontalBar,
-                                     uiParent=self)
+                                     uiParent=self,
+                                     )
 
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -989,7 +1012,7 @@ class sliderWidget(QWidget):
         for p in self.largeAnchorPositions:
             anchorBtn = DragButton("BD",
                                    xMin=self.barHorizontalOffset,
-                                   xMax=self.horizontalBar.width() + self.barHorizontalOffset,
+                                   xMax=self.horizontalBar.width() + self.barHorizontalOffset - 1,
                                    parent=self.horizontalBar,
                                    uiParent=self,
                                    draggable=False,
@@ -999,13 +1022,13 @@ class sliderWidget(QWidget):
                                    hoverIcon=barSmallIconFile,
                                    activeIcon=dotSmallIconFile,
                                    inactiveIcon=inactiveIconFile,
-                                   width=12,
-                                   height=12,
+                                   width=10,
+                                   height=10,
                                    )
             self.anchorButtons.append(anchorBtn)
         for p in self.mediumAnchorPositions:
             anchorBtn = DragButton("BD",
-                                   xMax=self.horizontalBar.width(),
+                                   xMax=self.horizontalBar.width() - 1,
                                    parent=self.horizontalBar,
                                    uiParent=self,
                                    draggable=False,
@@ -1015,8 +1038,8 @@ class sliderWidget(QWidget):
                                    hoverIcon=dotSmallIconFile,
                                    activeIcon=dotSmallIconFile,
                                    inactiveIcon=inactiveIconFile,
-                                   width=10,
-                                   height=10,
+                                   width=6,
+                                   height=6,
                                    )
             self.anchorButtons.append(anchorBtn)
         for p in self.smallAnchorPositions:
@@ -1036,7 +1059,7 @@ class sliderWidget(QWidget):
                                    )
             self.anchorButtons.append(anchorBtn)
         self.mainLayout.addWidget(self.horizontalBar)
-        self.horizontalBar.move(2,2)
+        self.horizontalBar.move(2, 2)
         for btn in self.anchorButtons:
             self.mainLayout.addWidget(btn)
         self.mainLayout.addWidget(self.dragButton)
@@ -1072,34 +1095,62 @@ class sliderWidget(QWidget):
         pass
 
     def hideAllAnchors(self):
+        print 'hide all anchors'
         for btn in self.anchorButtons:
             btn.setIconStateInactive()
+            btn.update()
 
     def showAllAnchors(self):
         for btn in self.anchorButtons:
             btn.setIconStateBase()
+            btn.update()
 
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
+        alpha = 198
 
+        fillColor = QColor(128, 128, 128, alpha)
         lineColor = QColor(64, 64, 64, 64)
-        alpha = 50
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
-        qp.setRenderHint(QPainter.Antialiasing)
-        orange = QColor(255, 160, 47, 32)
-        darkOrange = QColor(215, 128, 26, 32)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        orange = QColor(255, 160, 47, alpha)
+        darkOrange = QColor(215, 128, 26, alpha)
+
+        outlineGradient = QLinearGradient(0, -1000, 300, 1000)
+        outlineGradient.setColorAt(0, Qt.white)
+        outlineGradient.setColorAt(0.3, orange)
+        outlineGradient.setColorAt(0.6, orange)
+        outlineGradient.setColorAt(1, Qt.black)
+        qp.setBrush(QBrush(outlineGradient))
+
+        qp.setBrush(QBrush(fillColor))
+        qp.setPen(QPen(QBrush(fillColor), 1))
+        qp.setRenderHint(QPainter.Antialiasing)
+        #qp.setCompositionMode(qp.CompositionMode_Source)
+        #qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.drawRoundedRect(QRect(0, 0, 321, 52), 4, 4)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+
+
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, orange)
         grad.setColorAt(1, darkOrange)
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(QRect(314, 8, 180, 20), 4, 4)
-        qp.setCompositionMode(qp.CompositionMode_Source)
-        qp.setFont(QFont('Helvetic', 10))
-        textRect = QRect(318, 7, 500, 32)
+        #qp.setCompositionMode(qp.CompositionMode_Source)
+
+        font = QFont()
+        font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
+        font.setPointSize(10)
+        qp.setBrush(Qt.black)
+        qp.setFont(font)
+
+        textPath = QPainterPath()
+        qp.setPen(QColor(64, 64, 64, 255))
+        qp.setBrush(QColor(64, 64, 64, 255))
+        textPath.addText(16, 44, font, self.tweenClass.labelText)
+        qp.drawPath(textPath)
+
         '''
         textRect.translate(0,1)
         qp.setPen(QColor(0,0,0,20))
@@ -1109,8 +1160,7 @@ class sliderWidget(QWidget):
         qp.drawText(textRect, Qt.AlignLeft, self.tweenClass.labelText)
         textRect.translate(0, 1)
         '''
-        qp.setPen(QColor(Qt.lightGray))
-        qp.drawText(textRect, Qt.AlignLeft, self.tweenClass.labelText)
+
         qp.end()
         '''
         fillColor = QColor(255, 165, 0, 180)
@@ -1161,7 +1211,7 @@ class sliderWidget(QWidget):
         ''' Moves the UI to the widget position '''
         pos = QCursor.pos()
         xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5) + 88, pos.y() - (self.height() * 0.5))
+        self.move(pos.x() - (self.width() * 0.5) + 88, pos.y() - (self.height() * 0.5) + 15)
 
     def arrangeUI(self):
         self.horizontalBar.move(self.barHorizontalOffset, 6)
@@ -1214,7 +1264,7 @@ class sliderWidget(QWidget):
         self.tweenClass.begin()
 
     def updateAlpha(self, alpha):
-        # print 'sliderWidget updateAlpha', self.tweenClass
+        # print 'sliderWidget updateAlpha', self.tweenClass, alpha
         self.tweenClass.updateAlpha(alpha)
 
     def show(self):

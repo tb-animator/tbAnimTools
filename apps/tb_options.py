@@ -29,8 +29,6 @@ import pymel.core as pm
 from pluginLookup import ClassFinder
 import getStyleSheet as getqss
 
-reload(tb_UI)
-
 if not pm.optionVar(exists='playblast_folder'):
     pm.optionVar(stringValue=('playblast_folder', "c:"))
 

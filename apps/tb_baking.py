@@ -182,50 +182,44 @@ class bakeTools(toolAbstractFactory):
             pm.delete(resultContainer)
 
     def bake_to_locator(self, constrain=False, orientOnly=False):
-        with self.funcs.keepSelection():
-            sel = pm.ls(sl=True)
-            locs = []
-            constraints = []
-            if sel:
-                for s in sel:
-                    loc = pm.spaceLocator(name=s + '_baked')
-                    size = 1 * self.funcs.locator_unit_conversion()
-                    loc.localScale.set(size, size, size)
-                    loc.rotateOrder.set(2)
-                    loc.getShape().overrideEnabled.set(True)
-                    loc.getShape().overrideRGBColors.set(True)
-                    loc.getShape().overrideColorRGB.set((1.0, 0.537, 0.016))
 
-                    const = pm.parentConstraint(s, loc)
-                    locs.append(loc)
-                    constraints.append(const)
-            if locs:
-                pm.bakeResults(locs,
-                               simulation=pm.optionVar.get(self.quickBakeSimOption, False),
-                               sampleBy=1,
-                               oversamplingRate=1,
-                               disableImplicitControl=True,
-                               preserveOutsideKeys=False,
-                               sparseAnimCurveBake=True,
-                               removeBakedAttributeFromLayer=False,
-                               removeBakedAnimFromLayer=False,
-                               bakeOnOverrideLayer=False,
-                               minimizeRotation=True,
-                               controlPoints=False,
-                               shape=False,
-                               time=[pm.playbackOptions(query=True, minTime=True),
-                                     pm.playbackOptions(query=True, maxTime=True)],
-                               )
-                if constrain:
-                    pm.delete(constraints)
-                    for cnt, loc in zip(sel, locs):
-                        skipT = self.funcs.getAvailableTranslates(cnt)
-                        skipR = self.funcs.getAvailableRotates(cnt)
-                        print 'skipT', skipT
-                        print 'skipR', skipR
-                        pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                     False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
-                                            skipRotate= [x.split('rotate')[-1] for x in skipR])
+        sel = pm.ls(sl=True)
+        locs = []
+        constraints = []
+        if sel:
+            for s in sel:
+                loc = self.funcs.tempLocator(name=s, suffix='baked')
+                const = pm.parentConstraint(s, loc)
+                locs.append(loc)
+                constraints.append(const)
+        if locs:
+            pm.bakeResults(locs,
+                           simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                           sampleBy=1,
+                           oversamplingRate=1,
+                           disableImplicitControl=True,
+                           preserveOutsideKeys=False,
+                           sparseAnimCurveBake=True,
+                           removeBakedAttributeFromLayer=False,
+                           removeBakedAnimFromLayer=False,
+                           bakeOnOverrideLayer=False,
+                           minimizeRotation=True,
+                           controlPoints=False,
+                           shape=False,
+                           time=[pm.playbackOptions(query=True, minTime=True),
+                                 pm.playbackOptions(query=True, maxTime=True)],
+                           )
+            if constrain:
+                pm.delete(constraints)
+                for cnt, loc in zip(sel, locs):
+                    skipT = self.funcs.getAvailableTranslates(cnt)
+                    skipR = self.funcs.getAvailableRotates(cnt)
+                    print 'skipT', skipT
+                    print 'skipR', skipR
+                    pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                                                                 False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
+                                        skipRotate= [x.split('rotate')[-1] for x in skipR])
+        pm.select(locs, replace=True)
 
     def get_available_attrs(self, node):
         '''

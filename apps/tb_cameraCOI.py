@@ -28,6 +28,7 @@ import pymel.core as pm
 import maya.cmds as cmds
 import maya.mel as mel
 from Abstract import *
+from tb_UI import *
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -167,11 +168,17 @@ class CameraPivot(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+    cameraPivotOption = 'tbCameraPivot'
     frequency = 0.1667
     contextQuery = {'manipMove': getMoveManipPosition,
                     'manipRotate': getRotateManipPosition,
                     'manipScale': getScaleManipPosition,
                     'selectTool': getSelectManipPosition}
+
+    SomethingSelectedScriptJob = -1
+    DragReleaseScriptJob = -1
+    ModelPanelSetFocusScriptJob = -1
+    playbackModeChangedScriptJob = -1
 
     if not pm.optionVar(exists='tumbler_enabled'):
         # TODO - make the option window so this is editable
@@ -194,7 +201,12 @@ class CameraPivot(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(CameraPivot, self).optionUI()
+        super(CameraPivot, self).optionUI()
+        useTumbleOptionWidget = optionVarBoolWidget('Center camera pivot on selection ', self.cameraPivotOption)
+        self.layout.addWidget(useTumbleOptionWidget)
+        # connect the checkbox changed event to the function that handles removing/adding the camera scriptJobs
+        useTumbleOptionWidget.changedSignal.connect(self.updateScriptJobStatus)
+        return self.layout
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -233,8 +245,7 @@ class CameraPivot(toolAbstractFactory):
     def doIt(self, *args):
         cmds.undoInfo(stateWithoutFlush=False)
         try:
-            if pm.optionVar.get('tumbler_enabled', False) and self.elapsedTime():
-                print 'tumbling'
+            if pm.optionVar.get(self.cameraPivotOption, False) and self.elapsedTime():
                 self.time = cmds.timerX()  # set a new time stamp to prevent spamming
                 selection = cmds.ls(selection=True)
                 if not selection:
@@ -303,8 +314,37 @@ class CameraPivot(toolAbstractFactory):
             cmds.undoInfo(stateWithoutFlush=True)
         cmds.undoInfo(stateWithoutFlush=True)
 
+    def updateScriptJobStatus(self, status):
+        if status:
+            self.createCameraPivotScriptJob()
+        else:
+            self.removePivotScriptJobs()
+
+    def removePivotScriptJobs(self):
+        try:
+            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+        except:
+            pass
+        try:
+            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+        except:
+            pass
+        try:
+            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+        except:
+            pass
+        try:
+            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+        except:
+            pass
+
     def createCameraPivotScriptJob(self):
-        mel.eval('scriptJob -conditionTrue \"SomethingSelected\" updateCameraPivot')
-        mel.eval('scriptJob -event \"DragRelease\" updateCameraPivot')
-        mel.eval('scriptJob -event \"ModelPanelSetFocus\" updateCameraPivot')
-        mel.eval('scriptJob -event \"playbackModeChanged\" updateCameraPivot')
+        self.removePivotScriptJobs()
+        if self.SomethingSelectedScriptJob != -1:
+            self.SomethingSelectedScriptJob = (cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt)))
+        if self.DragReleaseScriptJob != -1:
+            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("DragRelease", CameraPivot().doIt)))
+        if self.ModelPanelSetFocusScriptJob != -1:
+            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt)))
+        if self.playbackModeChangedScriptJob != -1:
+            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt)))
