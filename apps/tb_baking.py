@@ -216,8 +216,8 @@ class bakeTools(toolAbstractFactory):
                 for cnt, loc in zip(sel, locs):
                     skipT = self.funcs.getAvailableTranslates(cnt)
                     skipR = self.funcs.getAvailableRotates(cnt)
-                    print 'skipT', skipT
-                    print 'skipR', skipR
+                    #print 'skipT', skipT
+                    #print 'skipR', skipR
                     pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
                                                                  False: [x.split('translate')[-1] for x in skipT]}[
                         orientOnly],
@@ -344,7 +344,7 @@ class bakeTools(toolAbstractFactory):
         for layer in layers:
             colour = cmds.getAttr(layer + '.ghostColor') - 1
             col = cmds.colorIndex(colour, q=True)
-            print layer, col
+            #print layer, col
             pm.treeView('AnimLayerTabanimLayerEditor',
                         edit=True,
                         labelBackgroundColor=[layer,
@@ -352,7 +352,7 @@ class bakeTools(toolAbstractFactory):
                                               lerpFloat(col[1], 0.5, 0.5),
                                               lerpFloat(col[2], 0.5, 0.5)])
 
-        print 'colourAnimLayers'
+        #print 'colourAnimLayers'
 
     def counterLayerAnimation(self):
         """
@@ -412,108 +412,3 @@ class bakeTools(toolAbstractFactory):
                        controlPoints=False,
                        shape=False)
         pm.delete(locators)
-
-# colourAnimLayers()
-
-'''    
-class bakeToLayer():
-    def __init__(self):
-        self.sel = cmds.ls(selection=True)
-        self.objs = dict()
-
-        print self.sel
-
-        for s in self.sel: self.objs[s] = self.makeLocator(s)
-
-        isolator().isolateAll(state=True)
-
-
-        isolator().isolateAll(state=False)
-
-    def makeLocator(self, obj):
-        loc = cmds.spaceLocator(name='%s_BAKED_' % obj)[0]
-        cmds.parentConstraint(obj, loc, maintainOffset=False)
-        return loc
-
-    def bake(self):
-        print 'Baking', self.objs
-
-        # bake the keys down on the new layer
-        cmds.bakeResults(list(self.objs.values()), simulation=False,
-                         disableImplicitControl=False,
-                         #removeBakedAttributeFromLayer=False,
-                         #destinationLayer=resultLayer,
-                         #bakeOnOverrideLayer=False,
-                         time=(0, 100),
-                         sampleBy=1)
-
-        pass
-
-    def unBake(self):
-        pass
-
-'''
-
-
-def space_list_intersection(selection_dict):
-    '''
-    Returns only the spaces that are shared between all input nodes
-    :param selection_dict:
-    :return:
-    '''
-    ordered_spaces = []
-
-    all_spaces = [pm.Attribute(key + '.' + value).getEnums() for key, value in selection_dict.items()]
-    for space in all_spaces:
-        ordered_sub_space = []
-        for index in range(len(space)):
-            ordered_sub_space.append(space.key(index))
-        ordered_spaces.append(ordered_sub_space)
-
-    return list(sorted(set(ordered_spaces[0]).intersection(*ordered_spaces), key=ordered_spaces[0].index))
-
-
-def get_space_string(node):
-    node = pm.PyNode(node)
-    return node.SpaceSwitch.getEnums().keys()
-
-
-def get_space_name(node, attr, spaceName):
-    # print node.SpaceSwitch.getEnums().keys()
-    matching_space = [space for space in pm.Attribute(attr, node=node).getEnums().keys() if
-                      spaceName.lower() in str(space).lower()]
-    print node, spaceName, matching_space
-    return matching_space[0]
-
-
-def spaceMenu(_node, selection, cAttributes):
-    # _spaces = _node.space.get()
-    # print _spaces
-
-    # we use this dict to store the space attribute and the object ( in case we have multiple names in use )
-    obj_spaces_dict = {}
-    for x in selection:
-        for attr in cAttributes.spaceSwitchAttributes:
-            if cmds.attributeQuery(attr, node=x, exists=True):
-                obj_spaces_dict[x] = attr
-    print '!! shared spaces !!'
-
-    _space_list = space_list_intersection(obj_spaces_dict)
-    _list_length = len(_space_list)
-
-    mod = get_modifier()
-    pm.menuItem(divider=True)
-    pm.menuItem(label=mod, enablepic=False)
-
-    for space in _space_list:
-        pm.menuItem(label='   %s' % space, boldFont=True, command=pm.Callback(temp_space, obj_spaces_dict, space))
-
-
-def get_modifier():
-    mod = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
-    return mod
-
-
-def temp_space(obj_spaces_dict, space):
-    print obj_spaces_dict.items()
-    print 'swap to %s' % space
