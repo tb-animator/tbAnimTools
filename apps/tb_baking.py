@@ -24,7 +24,6 @@
 *******************************************************************************
 '''
 import pymel.core as pm
-import tb_timeline as tl
 import maya.mel as mel
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
@@ -60,7 +59,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
                                      annotation='create override layer for selection',
                                      category=self.category, command=['bakeTools.addOverrideLayer()']))
-
+        self.addCommand(self.tb_hkey(name='counterAnimLayer',
+                                     annotation='create counter layer for selection',
+                                     category=self.category, command=['bakeTools.counterLayerAnimation()']))
         self.setCategory('tbtools_constraints')
         self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='constrain to object to locator',
                                      category=self.category,
@@ -131,7 +132,8 @@ class bakeTools(toolAbstractFactory):
     def optionUI(self):
         super(bakeTools, self).optionUI()
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
-        containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ', self.quickBakeRemoveContainerOption)
+        containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
+                                                    self.quickBakeRemoveContainerOption)
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         return self.layout
@@ -181,9 +183,9 @@ class bakeTools(toolAbstractFactory):
             mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
             pm.delete(resultContainer)
 
-    def bake_to_locator(self, constrain=False, orientOnly=False):
-
-        sel = pm.ls(sl=True)
+    def bake_to_locator(self, sel=list, constrain=False, orientOnly=False, select=True):
+        if not sel:
+            sel = pm.ls(sl=True)
         locs = []
         constraints = []
         if sel:
@@ -217,9 +219,12 @@ class bakeTools(toolAbstractFactory):
                     print 'skipT', skipT
                     print 'skipR', skipR
                     pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                 False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
-                                        skipRotate= [x.split('rotate')[-1] for x in skipR])
-        pm.select(locs, replace=True)
+                                                                 False: [x.split('translate')[-1] for x in skipT]}[
+                        orientOnly],
+                                        skipRotate=[x.split('rotate')[-1] for x in skipR])
+        if select:
+            pm.select(locs, replace=True)
+        return locs
 
     def get_available_attrs(self, node):
         '''
@@ -349,6 +354,64 @@ class bakeTools(toolAbstractFactory):
 
         print 'colourAnimLayers'
 
+    def counterLayerAnimation(self):
+        """
+        Counters the animation of the last selected object in the layer, outputs the countered
+        animation into a new layer under the other.
+        :return:
+        """
+        sel = pm.ls(sl=True)
+        if not sel:
+            return cmds.warning('nothing selected')
+        if len(sel) == 1:
+            return cmds.warning('please select at least one controller to counter, followed by the driver')
+        animLayer = self.funcs.get_selected_layers()
+        if not animLayer:
+            return cmds.warning('no anim layer selected')
+        driver = sel[-1]
+        targets = sel[:-1]
+
+        affectedLayers = cmds.animLayer([driver], q=True, affectedLayers=True)
+        if animLayer[0] not in affectedLayers:
+            return cmds.warning('driver control is not found in the selected layer')
+        keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
+        if not keyRange:
+            return cmds.warning('driver control does not appear to have any keys in the selected layer')
+        resultLayer = pm.animLayer(animLayer[0] + '_Counter')
+        pm.setAttr(resultLayer + '.scaleAccumulationMode', 0)
+        pm.animLayer(resultLayer, edit=True, parent=animLayer[0])
+        allAttrs = list()
+        for target in targets:
+            translates = self.funcs.getAvailableTranslates(target)
+            rotates = self.funcs.getAvailableRotates(target)
+            attrs = ['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ']
+            layerAttrs = [target + '.' + x for x in attrs if x not in translates + rotates]
+            pm.animLayer(resultLayer, edit=True, attribute=layerAttrs)
+            allAttrs.extend(layerAttrs)
+
+        # mut the layer to get the underlying animtion
+        pm.animLayer(animLayer[0], edit=True, mute=True)
+        # bake the controls to locators
+        locators = self.bake_to_locator(sel=targets, constrain=True, select=False)
+        # restore the animation layer
+        pm.animLayer(animLayer[0], edit=True, mute=False)
+        # bake out the result values
+        pm.bakeResults(allAttrs,
+                       time=(keyRange[0], keyRange[-1]),
+                       destinationLayer=resultLayer,
+                       simulation=False,
+                       sampleBy=1,
+                       oversamplingRate=1,
+                       disableImplicitControl=True,
+                       preserveOutsideKeys=False,
+                       sparseAnimCurveBake=True,
+                       removeBakedAttributeFromLayer=False,
+                       removeBakedAnimFromLayer=False,
+                       bakeOnOverrideLayer=False,
+                       minimizeRotation=True,
+                       controlPoints=False,
+                       shape=False)
+        pm.delete(locators)
 
 # colourAnimLayers()
 

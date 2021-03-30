@@ -193,6 +193,15 @@ class functions(object):
     def get_next_key_values_from_index(self, curve, index):
         return cmds.keyframe(curve, query=True, index=((min(index+1, self.get_max_index(curve))),), valueChange=True)
 
+    @staticmethod
+    def get_selected_layers():
+        allLayers = cmds.ls(type='animLayer')
+        selectedLayers = []
+        for layer in allLayers:
+            if cmds.animLayer(layer, query=True, selected=True):
+                selectedLayers.append(layer)
+        return selectedLayers
+
     def get_all_layer_key_times(self, objects):
         layers = cmds.ls(type='animLayer')
         keyTimes = [None, None]
