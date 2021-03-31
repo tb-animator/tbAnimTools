@@ -17,9 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
-
-    usage
+    visit https://tbanimtools.blogspot.com/ for "stuff"
 
 
 *******************************************************************************
@@ -110,6 +108,8 @@ class Pickwalk(toolAbstractFactory):
     toolName = 'Pickwalk'
     hotkeyClass = None
     funcs = None
+
+    defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
 
     transformTranslateDict = dict()
     transformRotateDict = dict()
@@ -228,6 +228,8 @@ class Pickwalk(toolAbstractFactory):
         layout.addWidget(revertArrowLabel)
         subLayout.addLayout(layout)
 
+        endOptionWidget = optionVarBoolWidget('Default to standard walk on empty custom map ', self.defaultToStandardAtDeadEndOption)
+        self.layout.addWidget(endOptionWidget)
         return self.layout
 
     def showUI(self):
@@ -365,20 +367,23 @@ class Pickwalk(toolAbstractFactory):
                                                          node=walkObject.stripNamespace(),
                                                          direction=direction)
                 if result:
-                    #print 'data walk result', result
+                    print 'data walk result', result
                     if cmds.objExists(walkObject.namespace() + result):
-                        #print 'final result', walkObject.namespace() + result
+                        print 'final result', walkObject.namespace() + result
                         returnedControls.append(result)
                     else:
-                        self.walkStandard(direction)
+                        if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
+                            self.walkStandard(direction)
                         return
 
                 if add:
-                    #print 'adding'
+                    print 'adding'
                     returnedControls.append(sel)
-                #print 'final returnedControls', returnedControls
-                cmds.select(returnedControls, replace=True)
-                return
+
+                print 'final returnedControls', returnedControls
+                if returnedControls:
+                    cmds.select(returnedControls, replace=True)
+                    return
 
             elif refName not in self.walkDataLibrary.ignoredRigs:
                 #print 'not ignored, must be new, query user to add/assign/ignore it'
@@ -418,6 +423,9 @@ class Pickwalk(toolAbstractFactory):
                             returnedControls.append(returnObj)
                             found = True
 
+        if not returnedControls:
+            self.walkStandard(direction)
+            return
         if add:
             returnedControls.extend(sel)
         cmds.select(returnedControls, replace=True)

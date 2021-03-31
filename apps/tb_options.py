@@ -1,4 +1,3 @@
-__author__ = 'tom.bailey'
 '''TB Animation Tools is a toolset for animators
 
 *******************************************************************************
@@ -18,7 +17,8 @@ __author__ = 'tom.bailey'
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''
@@ -128,7 +128,7 @@ class mainOptionWindow(QMainWindow):
 
         # find tools with UI, make list of tool keys?
         toolOptionWidgets = dict()
-        for index, tool in enumerate(self.tbtoolsCLS.tools.keys()):
+        for index, tool in enumerate(sorted(self.tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
             print tool
             self.toolWidget.insertItem(index, tool)
             toolOptionWidgets[tool] = QWidget()

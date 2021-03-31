@@ -17,16 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
 
-    usage - to automatically add a bunch of commands for hotkeys
-
-    from tb_manipulators import manips
-    manips.cycleRotation()
-    manips.cycleTranslation()
-    manips.cycle_selection_mask()
-
-    manips.cycle_key_type()
 
 *******************************************************************************
 '''
@@ -55,11 +47,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_keyframing')
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='zero_translates', annotation='zero translation values',
-                                     category=self.category, command=['manips.zero_translates()']))
+                                     category=self.category, command=['Manipulators.zero_translates()']))
         self.addCommand(self.tb_hkey(name='zero_rotates', annotation='zero rotation values',
-                                     category=self.category, command=['manips.zero_rotates()']))
+                                     category=self.category, command=['Manipulators.zero_rotates()']))
         self.addCommand(self.tb_hkey(name='zero_scales', annotation='zero scale values',
-                                     category=self.category, command=['manips.zero_scales()']))
+                                     category=self.category, command=['Manipulators.zero_scales()']))
 
         # manipulator tools
         cat = 'tbtools_manipulators'
@@ -67,35 +59,35 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='cycle the rotation mode',
                                      category=cat,
                                      command=[
-                                         'manips.cycleRotation()']))
+                                         'Manipulators.cycleRotation()']))
         self.addCommand(self.tb_hkey(name='cycle_translation',
                                      annotation='cycle the translation mode',
                                      category=cat,
                                      command=[
-                                         'manips.cycleTranslation()']))
+                                         'Manipulators.cycleTranslation()']))
         self.addCommand(self.tb_hkey(name='cycle_object_selection_mask',
                                      annotation='cycle the selection mask',
                                      category=cat,
                                      command=[
-                                         'manips.cycle_selection_mask()']))
+                                         'Manipulators.cycle_selection_mask()']))
         self.addCommand(self.tb_hkey(name='cycle_set_keyframe_type',
                                      annotation='cycle the setkey type',
                                      category=cat,
                                      command=[
-                                         'manips.cycle_key_type()']))
+                                         'Manipulators.cycle_key_type()']))
         return self.commandList
 
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class manips(toolAbstractFactory):
+class Manipulators(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'manips'
+    toolName = 'Manipulators'
     hotkeyClass = hotkeys()
     funcs = functions()
 
@@ -124,11 +116,11 @@ class manips(toolAbstractFactory):
     key_messageLabel = "message position"
 
     def __new__(cls):
-        if manips.__instance is None:
-            manips.__instance = object.__new__(cls)
+        if Manipulators.__instance is None:
+            Manipulators.__instance = object.__new__(cls)
 
-        manips.__instance.val = cls.toolName
-        return manips.__instance
+        Manipulators.__instance.val = cls.toolName
+        return Manipulators.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -140,7 +132,7 @@ class manips(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(manips, self).optionUI()
+        return super(Manipulators, self).optionUI()
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

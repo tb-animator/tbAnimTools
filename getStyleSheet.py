@@ -22,10 +22,13 @@ qssFile = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'darkorange.
 
 def getStyleSheet():
     print qssFile
+    if not os.path.isfile(qssFile):
+        return pm.warning('stylesheet file not found')
     stream = QFile(qssFile)
     if stream.open(QFile.ReadOnly):
         st = str(stream.readAll())
         stream.close()
+        return st
     else:
         print(stream.errorString())
-    return st
+        return pm.warning('Failing to load stylesheet')

@@ -17,14 +17,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
-
-    usage
+    visit https://tbanimtools.blogspot.com/ for "stuff"
 
 
 *******************************************************************************
 '''
 import pymel.core as pm
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -40,6 +39,41 @@ else:
 import maya.cmds as cmds
 import pymel.core as pm
 from Abstract import *
+
+viewFlags = ['controllers',
+             'polymeshes',
+             'nurbsCurves',
+             'nurbsSurfaces',
+             'cv',
+             'hulls',
+             'subdivSurfaces',
+             'planes',
+             'lights',
+             'cameras',
+             'imagePlane',
+             'joints',
+             'ikHandles',
+             'deformers',
+             'dynamics',
+             'particleInstancers',
+             'fluids',
+             'hairSystems',
+             'follicles',
+             'nCloths',
+             'nParticles',
+             'nRigids',
+             'dynamicConstraints',
+             'locators',
+             'dimensions',
+             'pivots',
+             'handles',
+             'textures',
+             'strokes',
+             'motionTrails',
+             'pluginShapes',
+             'clipGhosts',
+             'greasePencils',
+             'pluginObjects']
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -81,6 +115,11 @@ class viewModeTool(toolAbstractFactory):
     toolName = 'viewModeTool'
     hotkeyClass = None
     funcs = None
+    viewData = dict()
+
+    viewControlsCustomOption = 'viewControlsCustomOption'
+    viewMeshesCustomOption = 'viewMeshesCustomOption'
+    viewAllCustomOption = 'viewAllCustomOption'
 
     def __new__(cls):
         if viewModeTool.__instance is None:
@@ -92,6 +131,7 @@ class viewModeTool(toolAbstractFactory):
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
+        self.loadData()
 
     """
     Declare an interface for operations that create abstract product
@@ -99,39 +139,136 @@ class viewModeTool(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(viewModeTool, self).optionUI()
+        super(viewModeTool, self).optionUI()
+        subWdiget = QWidget()
+        subLayout = QVBoxLayout()
+        self.layout.addWidget(subWdiget)
+        subWdiget.setLayout(subLayout)
+
+        layout = QHBoxLayout()
+        controlLabel = QLabel('Set custom Control View')
+        setControlButton = QPushButton('Set')
+        setControlButton.clicked.connect(self.setCustomControlView)
+        removeControlButton = QPushButton('Remove')
+        removeControlButton.clicked.connect(self.removeCustomControlView)
+        layout.addWidget(setControlButton)
+        layout.addWidget(removeControlButton)
+        layout.addWidget(controlLabel)
+        subLayout.addLayout(layout)
+
+        layout = QHBoxLayout()
+        modelLabel = QLabel('Set custom Model View')
+        setModelButton = QPushButton('Set')
+        setModelButton.clicked.connect(self.setCustomModelView)
+        removeModelButton = QPushButton('Remove')
+        removeModelButton.clicked.connect(self.removeCustomModelView)
+        layout.addWidget(setModelButton)
+        layout.addWidget(removeModelButton)
+        layout.addWidget(modelLabel)
+        subLayout.addLayout(layout)
+
+        layout = QHBoxLayout()
+        allLabel = QLabel('Set custom All View')
+        setAllButton = QPushButton('Set')
+        setAllButton.clicked.connect(self.setCustomAllView)
+        removeAllButton = QPushButton('Remove')
+        removeAllButton.clicked.connect(self.removeCustomAllView)
+        layout.addWidget(setAllButton)
+        layout.addWidget(removeAllButton)
+        layout.addWidget(allLabel)
+        subLayout.addLayout(layout)
+
+        setControlButton.setFixedWidth(48)
+        setModelButton.setFixedWidth(48)
+        setAllButton.setFixedWidth(48)
+        removeControlButton.setFixedWidth(72)
+        removeModelButton.setFixedWidth(72)
+        removeAllButton.setFixedWidth(72)
+
+        return self.layout
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
+
+    def getCurrentFlags(self):
+        panel = self.funcs.getModelPanel()
+        flagDict = dict()
+        for flag in viewFlags:
+            try:
+                value = cmds.modelEditor(panel, query=True, **{flag: True})
+                flagDict[flag] = value
+            except:
+                cmds.warning('bad flag', flag)
+                continue
+        return flagDict
+
+    def setFlagsFromDict(self, flagDict):
+        panel = self.funcs.getModelPanel()
+        for flag in viewFlags:
+            try:
+                cmds.modelEditor(panel, edit=True, **{flag: flagDict[flag]})
+            except:
+                continue
+    def setCustomControlView(self, *args):
+        self.savePreset('controls')
+        pm.optionVar(intValue=(self.viewControlsCustomOption, True))
+        self.loadData()
+
+    def setCustomModelView(self, *args):
+        self.savePreset('models')
+        pm.optionVar(intValue=(self.viewMeshesCustomOption, True))
+        self.loadData()
+
+    def setCustomAllView(self, *args):
+        self.savePreset('everything')
+        pm.optionVar(intValue=(self.viewAllCustomOption, True))
+        self.loadData()
+
+    def removeCustomControlView(self, *args):
+        pm.optionVar(intValue=(self.viewControlsCustomOption, False))
+        if 'controls' in self.viewData['viewData'].keys():
+            self.viewData['viewData'].pop('controls')
+        self.saveData()
+
+    def removeCustomModelView(self, *args):
+        pm.optionVar(intValue=(self.viewMeshesCustomOption, False))
+        if 'models' in self.viewData['viewData'].keys():
+            self.viewData['viewData'].pop('models')
+        self.saveData()
+
+    def removeCustomAllView(self, *args):
+        pm.optionVar(intValue=(self.viewAllCustomOption, False))
+        if 'everything' in self.viewData['viewData'].keys():
+            self.viewData['viewData'].pop('everything')
+        self.saveData()
+
+    def savePreset(self, presetName):
+        self.loadData()
+        flags = self.getCurrentFlags()
+        self.viewData['viewData'][presetName] = flags
+        self.saveData()
+        self.loadData()
 
     def viewNone(self, panel):
         cmds.modelEditor(panel, edit=True,
                          allObjects=False)
 
-    def viewMeshes(self):
+    def viewMode(self, key='everything', custom=False, default='everything'):
         panel = self.funcs.getModelPanel()
-        self.viewNone(panel)
-        cmds.modelEditor(panel, edit=True,
-                         polymeshes=True,
-                         nurbsSurfaces=True)
-        cmds.modelEditor(panel, edit=True,
-                         pluginObjects=('gpuCacheDisplayFilter', True))
+        # self.viewNone(panel)
+        print 'is custom?', custom
+        print self.viewData['viewData'].get(key, default)
+        self.setFlagsFromDict({False: default, True: self.viewData['viewData'].get(key, default)}[bool(custom)])
 
     def viewControls(self):
-        panel = self.funcs.getModelPanel()
-        self.viewNone(panel)
-        cmds.modelEditor(panel, edit=True,
-                         joints=True,
-                         nurbsCurves=True)
-        cmds.modelEditor(panel, edit=True,
-                         pluginObjects=('gpuCacheDisplayFilter', True))
-        cmds.modelEditor(panel, edit=True,
-                         greasePencils=True)
+        self.viewMode(key='controls', custom=pm.optionVar.get(self.viewControlsCustomOption, False), default=controls)
+
+    def viewMeshes(self):
+        print 'viewMeshesCustomOption', pm.optionVar.get(self.viewMeshesCustomOption, False)
+        self.viewMode(key='models', custom=pm.optionVar.get(self.viewMeshesCustomOption, False), default=models)
 
     def viewAll(self):
-        panel = self.funcs.getModelPanel()
-        cmds.modelEditor(panel, edit=True,
-                         allObjects=True)
+        self.viewMode(key='everything', custom=pm.optionVar.get(self.viewAllCustomOption, False), default=everything)
 
     def toggleXrayJoints(self):
         panel = self.funcs.getModelPanel()
@@ -142,3 +279,124 @@ class viewModeTool(toolAbstractFactory):
         panel = self.funcs.getModelPanel()
         cmds.modelEditor(panel, edit=True,
                          xray=not cmds.modelEditor(panel, query=True, xray=True))
+
+    def loadData(self):
+        super(viewModeTool, self).loadData()
+        self.viewData = self.rawJsonData.get('viewData', dict())
+        if 'viewData' not in self.viewData.keys():
+            self.viewData['viewData'] = dict()
+
+    def toJson(self):
+        jsonData = '''{}'''
+        self.classData = json.loads(jsonData)
+        self.classData['viewData'] = self.viewData
+
+
+controls = {
+    'controllers': True,
+    'polymeshes': False,
+    'nurbsCurves': True,
+    'nurbsSurfaces': True,
+    'cv': True,
+    'hulls': True,
+    'subdivSurfaces': True,
+    'planes': True,
+    'lights': True,
+    'cameras': True,
+    'imagePlane': True,
+    'joints': True,
+    'ikHandles': True,
+    'deformers': True,
+    'dynamics': True,
+    'particleInstancers': True,
+    'fluids': True,
+    'hairSystems': True,
+    'follicles': True,
+    'nCloths': True,
+    'nParticles': True,
+    'nRigids': True,
+    'dynamicConstraints': True,
+    'locators': True,
+    'dimensions': True,
+    'pivots': True,
+    'handles': True,
+    'textures': True,
+    'strokes': True,
+    'motionTrails': True,
+    'pluginShapes': True,
+    'clipGhosts': True,
+    'greasePencils': True,
+    'pluginObjects': True,
+}
+everything = {
+    'controllers': True,
+    'polymeshes': True,
+    'nurbsCurves': True,
+    'nurbsSurfaces': True,
+    'cv': True,
+    'hulls': True,
+    'subdivSurfaces': True,
+    'planes': True,
+    'lights': True,
+    'cameras': True,
+    'imagePlane': True,
+    'joints': True,
+    'ikHandles': True,
+    'deformers': True,
+    'dynamics': True,
+    'particleInstancers': True,
+    'fluids': True,
+    'hairSystems': True,
+    'follicles': True,
+    'nCloths': True,
+    'nParticles': True,
+    'nRigids': True,
+    'dynamicConstraints': True,
+    'locators': True,
+    'dimensions': True,
+    'pivots': True,
+    'handles': True,
+    'textures': True,
+    'strokes': True,
+    'motionTrails': True,
+    'pluginShapes': True,
+    'clipGhosts': True,
+    'greasePencils': True,
+    'pluginObjects': True,
+}
+models = {
+    'controllers': False,
+    'nurbsCurves': False,
+    'polymeshes': True,
+    'nurbsSurfaces': False,
+    'cv': False,
+    'hulls': False,
+    'subdivSurfaces': False,
+    'planes': False,
+    'lights': False,
+    'cameras': False,
+    'imagePlane': False,
+    'joints': False,
+    'ikHandles': False,
+    'deformers': False,
+    'dynamics': False,
+    'particleInstancers': False,
+    'fluids': False,
+    'hairSystems': False,
+    'follicles': False,
+    'nCloths': False,
+    'nParticles': True,
+    'nRigids': False,
+    'dynamicConstraints': False,
+    'locators': False,
+    'dimensions': False,
+    'pivots': False,
+    'handles': False,
+    'textures': False,
+    'strokes': False,
+    'motionTrails': False,
+    'pluginShapes': False,
+    'clipGhosts': False,
+    'greasePencils': True,
+    'pluginObjects': True,
+}

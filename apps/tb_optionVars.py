@@ -1,4 +1,27 @@
-__author__ = 'user'
+'''TB Animation Tools is a toolset for animators
+
+*******************************************************************************
+    License and Copyright
+    Copyright 2015-Tom Bailey
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    send issues/ requests to brimblashman@gmail.com
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
+
+*******************************************************************************
+'''
 import pymel.core as pm
 
 class optionVar_utils(object):
@@ -47,32 +70,32 @@ class optionVar_utils(object):
 
 def set_default_values():
     if pm.optionVar.get('tb_firstRun', True):
-        from tb_manipulators import manips
+        from tb_manipulators import Manipulators
         print "setting up default option vars for first run"
 
-        pm.optionVar(intValue=(manips().translate_optionVar+"_msg", 1))
-        pm.optionVar(stringValue=(manips().translate_messageVar+"_msg", 'topLeft'))
+        pm.optionVar(intValue=(Manipulators().translate_optionVar + "_msg", 1))
+        pm.optionVar(stringValue=(Manipulators().translate_messageVar + "_msg", 'topLeft'))
 
-        pm.optionVar(intValue=(manips().rotate_optionVar+"_msg", 1))
-        pm.optionVar(stringValue=(manips().rotate_messageVar+"_msg", 'topLeft'))
+        pm.optionVar(intValue=(Manipulators().rotate_optionVar + "_msg", 1))
+        pm.optionVar(stringValue=(Manipulators().rotate_messageVar + "_msg", 'topLeft'))
 
-        pm.optionVar(intValue=(manips().key_optionVar+"_msg", 1))
-        pm.optionVar(stringValue=(manips().key_messageVar+"_msg", 'topLeft'))
+        pm.optionVar(intValue=(Manipulators().key_optionVar + "_msg", 1))
+        pm.optionVar(stringValue=(Manipulators().key_messageVar + "_msg", 'topLeft'))
 
         default_moves = ['Object', 'Local', 'World']
-        pm.optionVar.pop(manips().translate_optionVar)
+        pm.optionVar.pop(Manipulators().translate_optionVar)
         for modes in default_moves:
-            pm.optionVar(stringValueAppend=(manips().translate_optionVar, modes))
+            pm.optionVar(stringValueAppend=(Manipulators().translate_optionVar, modes))
 
         default_rotations = ['Local', 'World', 'Gimbal']
-        pm.optionVar.pop(manips().rotate_optionVar)
+        pm.optionVar.pop(Manipulators().rotate_optionVar)
         for modes in default_rotations:
-            pm.optionVar(stringValueAppend=(manips().rotate_optionVar, modes))
+            pm.optionVar(stringValueAppend=(Manipulators().rotate_optionVar, modes))
 
         default_keys = ['spline', 'linear', 'step']
-        pm.optionVar.pop(manips().key_optionVar)
+        pm.optionVar.pop(Manipulators().key_optionVar)
         for modes in default_keys:
-            pm.optionVar(stringValueAppend=(manips().key_optionVar, modes))
+            pm.optionVar(stringValueAppend=(Manipulators().key_optionVar, modes))
         return True
     else:
         return False

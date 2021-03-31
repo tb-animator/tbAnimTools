@@ -49,15 +49,15 @@ class hotKeyAbstractFactory(object):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
     class tb_hkey(object):
-        def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""]):
+        def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""], help=[""]):
             self.name = name
             self.annotation = annotation
             self.category = category
             self.language = language
-            self.command = self.collapse_command_list(command)
+            self.command = self.collapse_command_list(command, help)
             self.hotkeyName = self.name + 'NameCommand'
 
-        def collapse_command_list(self, command):
+        def collapse_command_list(self, command, help):
             lineCmds = list()
             for line in command:
                 tool, functionCalled = line.split('.')
@@ -73,11 +73,16 @@ class hotKeyAbstractFactory(object):
                 '\ttbtoolCLS = ClassFinder()']
             cmd = ""
             for lines in tryCmd:
-                cmd = cmd + lines + "\n"
+                cmd += lines + "\n"
             for lines in exceptCmd:
-                cmd = cmd + lines + "\n"
+                cmd += lines + "\n"
             for lines in lineCmds:
-                cmd = cmd + lines + "\n"
+                cmd += lines + "\n"
+            cmd += "\n\n"
+            cmd += '"""About ----------------------------------------------\n'
+            for lines in help:
+                cmd += lines + "\n"
+            cmd += '----------------------------------------------------"""'
             return cmd
 
 

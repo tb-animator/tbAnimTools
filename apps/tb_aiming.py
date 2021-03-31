@@ -16,10 +16,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    this script holds a bunch of useful keyframe related functions to make life easier
-
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''
@@ -63,13 +62,13 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_constraints')
         self.addCommand(self.tb_hkey(name='bakeAim',
                                      annotation='useful comment',
-                                     category=self.category, command=['aimTools.quickAim()']))
+                                     category=self.category, command=['AimTools.quickAim()']))
         self.addCommand(self.tb_hkey(name='aimToolsMMPressed',
                                      annotation='useful comment',
-                                     category=self.category, command=['aimTools.openMM()']))
+                                     category=self.category, command=['AimTools.openMM()']))
         self.addCommand(self.tb_hkey(name='aimToolsMMReleased',
                                      annotation='useful comment',
-                                     category=self.category, command=['aimTools.closeMM()']))
+                                     category=self.category, command=['AimTools.closeMM()']))
 
         return self.commandList
 
@@ -77,13 +76,13 @@ class hotkeys(hotKeyAbstractFactory):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class aimTools(toolAbstractFactory):
+class AimTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'aimTools'
+    toolName = 'AimTools'
     hotkeyClass = hotkeys()
     funcs = functions()
 
@@ -96,16 +95,16 @@ class aimTools(toolAbstractFactory):
     distance = 100.0
     aimData = dict()
     lastUseData = dict()
-    defaultData = {'direction': 'xy', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+    defaultData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
 
     def __new__(cls):
-        if aimTools.__instance is None:
-            aimTools.__instance = object.__new__(cls)
+        if AimTools.__instance is None:
+            AimTools.__instance = object.__new__(cls)
 
-        aimTools.__instance.val = cls.toolName
-        aimTools.__instance.loadData()
+        AimTools.__instance.val = cls.toolName
+        AimTools.__instance.loadData()
 
-        return aimTools.__instance
+        return AimTools.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -130,7 +129,7 @@ class aimTools(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(aimTools, self).optionUI()
+        super(AimTools, self).optionUI()
         return self.layout
 
     def showUI(self):
@@ -183,32 +182,31 @@ class aimTools(toolAbstractFactory):
 
     def quickAim(self, *args):
         # TODO make this handle multiple objects
-        default = {'direction': 'xy', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict=self.aimData,
-                           default=default)
+                           default=self.defaultData)
 
     def quickAimXY(self, *args):
-        default = {'direction': 'xy', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimZY(self, *args):
-        default = {'direction': 'zy', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimXZ(self, *args):
-        default = {'direction': 'xz', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimYZ(self, *args):
-        default = {'direction': 'yz', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimYX(self, *args):
-        default = {'direction': 'yx', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimZX(self, *args):
-        default = {'direction': 'zx', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
         self.aimToLocators(directionDict={}, default=default)
 
     def aimToLocators(self, directionDict=dict(), default=dict()):
@@ -240,8 +238,10 @@ class aimTools(toolAbstractFactory):
 
         self.locators.extend([str(up), str(aim)])
         self.controlInfo[target] = [str(aim), aimAxis, str(up), upAxis]
-        targetPos = cmds.xform(target, query=True, worldSpace=True, translation=True)
+        targetPos = cmds.xform(target, query=True, worldSpace=True, absolute=True, rotatePivot=True)
         targetPosMVector = om.MVector(targetPos[0], targetPos[1], targetPos[2])
+
+        # depending on the rig this really doesn't work
         upVec = getLocalVecToWorldSpaceAPI(target, vec=upAxis, offset=targetPosMVector,
                                            mult=data['distance'] / self.funcs.locator_unit_conversion())
         fwdVec = getLocalVecToWorldSpaceAPI(target, vec=aimAxis, offset=targetPosMVector,
@@ -267,9 +267,9 @@ class aimTools(toolAbstractFactory):
                                              }
 
     def getAimAxis(self, data):
-        flipVector = {True: [-1.0, 1.0], False: [1.0, -1.0]}  # make this data driven somehow?
-        aimAxis = self.axisDict[data['aimAxis']] * flipVector[data['flipAim']][0]
-        upAxis = self.axisDict[data['upAxis']] * flipVector[data['flipUp']][1]
+        flipVector = {True: -1.0, False: 1.0}  # make this data driven somehow?
+        aimAxis = self.axisDict[data['aimAxis']] * flipVector[data['flipAim']]
+        upAxis = self.axisDict[data['upAxis']] * flipVector[data['flipUp']]
         return aimAxis, upAxis
 
     def bake(self):
@@ -346,7 +346,7 @@ class aimTools(toolAbstractFactory):
         self.saveData()
 
     def loadData(self):
-        super(aimTools, self).loadData()
+        super(AimTools, self).loadData()
         self.aimData = self.rawJsonData.get('aimData', dict())
 
     def toJson(self):
@@ -354,11 +354,13 @@ class aimTools(toolAbstractFactory):
         self.classData = json.loads(jsonData)
         self.classData['aimData'] = self.aimData
 
+
 def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
     selList = om.MSelectionList()
     selList.add(node)
     nodeDagPath = om.MDagPath()
     selList.getDagPath(0, nodeDagPath)
     matrix = nodeDagPath.inclusiveMatrix()
-    vec = ((vec * matrix).normal() * mult) + offset
+    vec = ((vec * matrix).normal() * mult)
+    vec += offset
     return vec.x, vec.y, vec.z

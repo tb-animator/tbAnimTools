@@ -16,10 +16,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    this script holds a bunch of useful timeline functions to make life easier
-
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''
@@ -375,7 +374,7 @@ class quickSelectionTools(toolAbstractFactory):
         pm.setParent(r_layout)
         g_layout = pm.gridLayout(numberOfColumns=2, cellWidthHeight=(100, 20))
         self.rb_col = pm.radioCollection()
-        print self.rb_col
+
         rb_file = pm.radioButton(collection=self.rb_col,
                                  label='from file',
                                  onCommand=fileMode)
@@ -742,16 +741,9 @@ class saveQssWidget(QWidget):
         layout.addWidget(self.saveButton)
 
         self.saveButton.clicked.connect(self.saveQss)
-        '''
-        radius = 8.0
-        path = QPainterPath()
-        self.resize(440, 220)
-        path.addRoundedRect(QRectF(self.rect()), radius, radius)
-        mask = QRegion(path.toFillPolygon().toPolygon())
-        self.setMask(mask)
-        '''
+
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().screen().rect().center() - self.rect().center())
+        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
 
@@ -779,7 +771,8 @@ class saveQssWidget(QWidget):
         self.close()
 
     def keyPressEvent(self, event):
-        print("That's a press!")
+        if event.key() == Qt.Key_Return:
+            self.saveQss()
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(saveQssWidget, self).keyPressEvent(event)

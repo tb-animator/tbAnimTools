@@ -17,7 +17,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''

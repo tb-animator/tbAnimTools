@@ -16,10 +16,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    this script holds a bunch of useful keyframe related functions to make life easier
-
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''
@@ -31,7 +30,7 @@ import pymel.core.datatypes as dt
 import math
 from Abstract import *
 from tb_UI import *
-
+import tb_helpStrings
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -51,48 +50,53 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
         self.setCategory('tbtools_layers')
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
-                                     annotation='quick bake selection to override layer',
-                                     category=self.category, command=['bakeTools.bake_to_override()']))
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bake_to_override()'],
+                                     help=tb_helpStrings.simpleBakeToOverride))
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
-                                     annotation='create additive layer for selection',
-                                     category=self.category, command=['bakeTools.addAdditiveLayer()']))
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.addAdditiveLayer()'],
+                                     help=tb_helpStrings.quickCreateAdditiveLayer))
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
-                                     annotation='create override layer for selection',
-                                     category=self.category, command=['bakeTools.addOverrideLayer()']))
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.addOverrideLayer()'],
+                                     help=tb_helpStrings.quickCreateOverrideLayer))
         self.addCommand(self.tb_hkey(name='counterAnimLayer',
-                                     annotation='create counter layer for selection',
-                                     category=self.category, command=['bakeTools.counterLayerAnimation()']))
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.counterLayerAnimation()'],
+                                     help=tb_helpStrings.counterAnimLayer))
         self.setCategory('tbtools_constraints')
-        self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='constrain to object to locator',
+        self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='',
                                      category=self.category,
-                                     command=['bakeTools.bake_to_locator(constrain=True, orientOnly=False)']))
+                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
+                                     help=tb_helpStrings.bakeToLocator))
         self.addCommand(
             self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
                          category=self.category,
-                         command=['bakeTools.bake_to_locator(constrain=True, orientOnly=True)']))
+                         command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset', annotation='constrain to objects with NO offset',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake',
                                      annotation='constrain to objects with offset - post baked',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake',
                                      annotation='constrain to objects with NO offset - post baked',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse',
                                      annotation='constrain to objects with offset - post baked, constraint reversed',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse',
                                      annotation='constrain to objects with NO offset - post baked, constraint reversed',
                                      category=self.category, command=[
-                'bakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
 
         return self.commandList
 
@@ -100,25 +104,28 @@ class hotkeys(hotKeyAbstractFactory):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class bakeTools(toolAbstractFactory):
+class BakeTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'bakeTools'
+    toolName = 'BakeTools'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     quickBakeSimOption = 'tbQuickBakeUseSim'
     quickBakeRemoveContainerOption = 'tbQuickBakeRemoveContainer'
 
-    def __new__(cls):
-        if bakeTools.__instance is None:
-            bakeTools.__instance = object.__new__(cls)
+    overrideLayerColour = 19
+    additiveLayerColour = 18
 
-        bakeTools.__instance.val = cls.toolName
-        return bakeTools.__instance
+    def __new__(cls):
+        if BakeTools.__instance is None:
+            BakeTools.__instance = object.__new__(cls)
+
+        BakeTools.__instance.val = cls.toolName
+        return BakeTools.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -130,7 +137,7 @@ class bakeTools(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(bakeTools, self).optionUI()
+        super(BakeTools, self).optionUI()
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
         containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
                                                     self.quickBakeRemoveContainerOption)
@@ -149,41 +156,43 @@ class bakeTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return
-        preContainers = set(pm.ls(type='container'))
-        preBakeLayers = pm.ls(type='animLayer')
-        keyRange = self.funcs.get_all_layer_key_times(sel)
-        if not keyRange:
-            keyRange = self.funcs.getTimelineRange()
+        with self.funcs.keepSelection():
+            preContainers = set(pm.ls(type='container'))
+            preBakeLayers = pm.ls(type='animLayer')
+            keyRange = self.funcs.get_all_layer_key_times(sel)
+            if not keyRange:
+                keyRange = self.funcs.getTimelineRange()
 
-        pm.bakeResults(sel,
-                       time=(keyRange[0], keyRange[-1]),
-                       simulation=False,
-                       sampleBy=1,
-                       oversamplingRate=1,
-                       disableImplicitControl=True,
-                       preserveOutsideKeys=False,
-                       sparseAnimCurveBake=True,
-                       removeBakedAttributeFromLayer=False,
-                       removeBakedAnimFromLayer=False,
-                       bakeOnOverrideLayer=True,
-                       minimizeRotation=True,
-                       controlPoints=False,
-                       shape=False)
-        postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
-        for newAnimLayer in postBakeLayer:
-            pm.setAttr(newAnimLayer + ".ghostColor", 16)
-            pm.rename(newAnimLayer, 'OverrideBaked')
+            pm.bakeResults(sel,
+                           time=(keyRange[0], keyRange[-1]),
+                           simulation=False,
+                           sampleBy=1,
+                           oversamplingRate=1,
+                           disableImplicitControl=True,
+                           preserveOutsideKeys=False,
+                           sparseAnimCurveBake=True,
+                           removeBakedAttributeFromLayer=False,
+                           removeBakedAnimFromLayer=False,
+                           bakeOnOverrideLayer=True,
+                           minimizeRotation=True,
+                           controlPoints=False,
+                           shape=False)
+            postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
+            for newAnimLayer in postBakeLayer:
+                pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
+                pm.rename(newAnimLayer, 'OverrideBaked')
 
-        if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
-            resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
-            if not resultContainer:
-                return
-            pm.select(resultContainer, replace=True)
-            mel.eval('SelectContainerContents')
-            mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
-            pm.delete(resultContainer)
+            if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
+                resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
+                if not resultContainer:
+                    return
+                pm.select(resultContainer, replace=True)
+                mel.eval('SelectContainerContents')
+                mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
+                pm.delete(resultContainer)
+        self.funcs.select_layer(str(postBakeLayer))
 
-    def bake_to_locator(self, sel=list, constrain=False, orientOnly=False, select=True):
+    def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True):
         if not sel:
             sel = pm.ls(sl=True)
         locs = []
@@ -291,8 +300,7 @@ class bakeTools(toolAbstractFactory):
         self.add_layer(mode=False)
 
     def add_layer(self, mode=False):
-        sel = pm.ls(selection=True)[0].stripNamespace()
-        suffix = {True: ['Override', 16], False: ['Additive', 15]}
+        suffix = {True: ['Override', self.overrideLayerColour], False: ['Additive', self.additiveLayerColour]}
 
         newAnimLayer = pm.animLayer(suffix[mode][0],
                                     override=mode,
@@ -309,8 +317,6 @@ class bakeTools(toolAbstractFactory):
             return
         if not mode:
             return
-        if not sel:
-            return
 
         timeRange = self.funcs.getTimelineHighlightedRange()
         cmds.setKeyframe(animLayer=newAnimLayer,
@@ -322,6 +328,10 @@ class bakeTools(toolAbstractFactory):
                          controlPoints=False,
                          shape=False,
                          identity=True)
+        # in case there's something to do automatically to the objects?
+        sel = pm.ls(selection=True)
+        if not sel:
+            return
 
     def deselect_layers(self):
         for layers in pm.ls(type='animLayer'):

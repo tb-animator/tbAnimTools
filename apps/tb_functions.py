@@ -16,10 +16,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    this script holds a bunch of useful keyframe related functions to make life easier
-
     send issues/ requests to brimblashman@gmail.com
-    visit tb-animator.blogspot.com for "stuff"
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
 
 *******************************************************************************
 '''
@@ -202,6 +201,14 @@ class functions(object):
                 selectedLayers.append(layer)
         return selectedLayers
 
+    def select_layer(self, layerName):
+        layers = cmds.ls(type='animLayer')
+        for layer in layers:
+            cmds.animLayer(layer, edit=True, selected=False)
+            cmds.animLayer(layer, edit=True, preferred=False)
+        cmds.animLayer(layerName, edit=True, preferred=True)
+        cmds.animLayer(layerName, edit=True, selected=True)
+
     def get_all_layer_key_times(self, objects):
         layers = cmds.ls(type='animLayer')
         keyTimes = [None, None]
@@ -224,7 +231,6 @@ class functions(object):
                 times = sorted(times)
                 if not len(keyTimes) > 1:
                     continue
-                print times[0], times[-1]
                 if keyTimes[0] is None: keyTimes[0] = times[0]
                 if keyTimes[1] is None: keyTimes[0] = times[-1]
                 if times[0] < keyTimes[0]: keyTimes[0] = times[0]
