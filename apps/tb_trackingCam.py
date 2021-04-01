@@ -140,11 +140,11 @@ class trackingCamera(toolAbstractFactory):
                     cmds.delete(constraints)
             if not cmds.objExists("tracker_grp"):
                 self.trackerGrp = cmds.group(empty=True, world=True, name="tracker_grp")
-                pm.parent(self.trackerCam, self.trackerGrp)
+                cmds.parent(self.trackerCam, self.trackerGrp)
             else:
                 self.trackerGrp = "tracker_grp"
             if self.camera_target:
-                self.constraint = pm.pointConstraint(self.camera_target, self.trackerGrp)
+                self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(self.trackerCam)
 
     def updateTrackTarget(self):
@@ -161,8 +161,8 @@ class trackingCamera(toolAbstractFactory):
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)
             if cmds.objExists(self.constraint):
-                pm.delete(self.constraint)
-            self.constraint = pm.pointConstraint(self.camera_target, self.trackerGrp)
+                cmds.delete(self.constraint)
+            self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(cam)
 
     def getCurrentCamera(self):

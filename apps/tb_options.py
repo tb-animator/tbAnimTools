@@ -96,7 +96,7 @@ class mainOptionWindow(QMainWindow):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
         self.win.setWindowTitle('tbAnimTools - option')
-        self.win.setMinimumWidth(400)
+        self.win.setMinimumWidth(650)
         self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
 
@@ -109,7 +109,7 @@ class mainOptionWindow(QMainWindow):
 
         self.optionUIScrollArea = QScrollArea()
         self.optionUIScrollArea.setWidgetResizable(True)
-        self.optionUIScrollArea.setFixedWidth(360)
+        #self.optionUIScrollArea.setFixedWidth(360)
         self.optionUIScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         self.toolLayout = QVBoxLayout()

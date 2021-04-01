@@ -336,6 +336,96 @@ class PickwalkQueryWidget(QDialog):
             self.close()
         return super(PickwalkQueryWidget, self).keyPressEvent(event)
 
+class TextInputWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(str)
+
+    def __init__(self, title=str, label=str, buttonText=str, default=str):
+        super(TextInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setStyleSheet(
+            "QDialog { "
+            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);"
+            "}"
+            "saveQssWidget {"
+            "border-style: solid;"
+            "border: 1px solid #1e1e1e;"
+            "border-radius: 5;"
+            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);"
+
+            "}"
+        )
+        self.setWindowOpacity(0.9)
+        self.setWindowFlags(Qt.PopupFocusReason| Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFixedSize(300, 64)
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel(title)
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel(label)
+        self.lineEdit = QLineEdit(default)
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        reg_ex = QRegExp("[a-z-A-Z0123456789_]+")
+        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+        self.lineEdit.setValidator(input_validator)
+
+        self.saveButton = QPushButton(buttonText)
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        # layout.addWidget(btnSetFolder)
+
+        mainLayout.addWidget(self.titleText)
+        mainLayout.addLayout(layout)
+        layout.addWidget(self.text)
+        layout.addWidget(self.lineEdit)
+        layout.addWidget(self.saveButton)
+
+        self.saveButton.clicked.connect(self.acceptedFunction)
+
+        self.setLayout(mainLayout)
+        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.show()
+        self.lineEdit.setFocus()
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#4d4d4d")
+        grad.setColorAt(0.1, "#646464")
+        grad.setColorAt(1, "#5d5d5d")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.text())
+        self.close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.acceptedFunction()
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(TextInputWidget, self).keyPressEvent(event)
 
 class promptWidget(QWidget):
     saveSignal = Signal(str)
