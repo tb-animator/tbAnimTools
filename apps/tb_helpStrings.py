@@ -7,3 +7,6 @@ counterAnimLayer = ['creates an additive layer which will counter',
                     'other objects will be baked into an additive',
                     'layer that fully counter animates the selected layer.']
 bakeToLocator = ['bake current selection to world space locators']
+
+OpenPickwalkCreator = ['Open the pickwalk creation UI']
+OpenPickwalkLibrary = ['Open the pickwalk map assignment UI']

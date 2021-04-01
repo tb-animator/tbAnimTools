@@ -59,6 +59,16 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory('tbtools_pickwalking')
         self.commandList = list()
+        self.addCommand(self.tb_hkey(name='tbOpenPickwalkCreator',
+                                     annotation='OpenPickwalkCreator',
+                                     category=self.category,
+                                     command=['Pickwalk.openCreator()'],
+                                     help=self.helpStrings.OpenPickwalkCreator))
+        self.addCommand(self.tb_hkey(name='tbOpenPickwalkLibrary',
+                                     annotation='OpenPickwalkLibrary',
+                                     category=self.category,
+                                     command=['Pickwalk.openLibrary()'],
+                                     help=self.helpStrings.OpenPickwalkLibrary))
         self.addCommand(self.tb_hkey(name='tbPickwalkUp',
                                      annotation='pickwalk up, defaults to message attrs, then standard maya function',
                                      category=self.category,
@@ -370,7 +380,7 @@ class Pickwalk(toolAbstractFactory):
                     print 'data walk result', result
                     if cmds.objExists(walkObject.namespace() + result):
                         print 'final result', walkObject.namespace() + result
-                        returnedControls.append(result)
+                        returnedControls.append(walkObject.namespace() + result)
                     else:
                         if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
                             self.walkStandard(direction)
@@ -467,18 +477,17 @@ class Pickwalk(toolAbstractFactory):
             pass
 
     def assignRig(self, rigMap, rigName):
-        #print 'assign map to rig', rigMap, rigName
         self.walkDataLibrary.assignRig(rigMap, rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
 
-    def assignIgnoreNewRig(self):
-        pass
-        #print 'assignIgnoreNewRig'
+    def assignIgnoreNewRig(self, rigName):
+        self.walkDataLibrary.ignoreRig(rigName)
+        self.walkDataLibrary.save(self.libraryFilePath)
 
     def assignNewRigNewMap(self, rigName):
         win = pickwalkMainWindow()
         newMap = win.saveAsLibrary()
-        #print 'new map', newMap
+
         self.walkDataLibrary.assignRig(newMap, rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
         win.show()
@@ -497,11 +506,20 @@ class WalkDataLibrary(object):
         self.jsonObjectInfo['rigMapDict'] = {key: value for key, value in self.rigMapDict.items()}
         self.jsonObjectInfo['ignoredRigs'] = self.ignoredRigs
 
-    def assignRig(self, key, map):
+    def assignRig(self, mapName, rigName):
+        for mapName, values in self.rigMapDict.items():
+            if rigName in values:
+                values.remove(rigName)
+        if rigName in self.ignoredRigs:
+            self.ignoredRigs.remove(rigName)
+        self.rigMapDict[mapName].append(rigName)
+
+    def ignoreRig(self, rigName):
         for key, values in self.rigMapDict.items():
-            if map in values:
-                values.remove(map)
-        self.rigMapDict[key].append(map)
+            if rigName in values:
+                values.remove(rigName)
+        if rigName not in self.ignoredRigs:
+            self.ignoredRigs.append(rigName)
 
     def save(self, filePath):
         """
@@ -1697,6 +1715,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         else:
             self.walkDataLibrary.load(self.libraryFilePath)
         self.currentMap = None
+        self.currentIgnoredRig = None
 
         # Main Widgets
         # setup stylesheet
@@ -1720,6 +1739,9 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.addReferenceButton = QPushButton('Add Rig To Map')
         self.addReferenceButton.clicked.connect(self.addRigToMap)
 
+        self.assignIgnoredRigButton = QPushButton('Assign Ignored Rig to Map')
+        self.assignIgnoredRigButton.clicked.connect(self.addRigToFromIgnoreListMap)
+
         self.pickwalkMapTree = QTreeSingleViewWidget(label='Pickwalk Maps')
         self.referencedRigsTree = QTreeSingleViewWidget(label='Referenced Rigs')
         self.ignoredRigsTree = QTreeSingleViewWidget(label='Ignored Rigs')
@@ -1727,11 +1749,16 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.right_layout.addWidget(self.referencedRigsTree)
         self.right_layout.addWidget(self.addReferenceButton)
         self.right_layout.addWidget(self.ignoredRigsTree)
+        self.right_layout.addWidget(self.assignIgnoredRigButton)
 
         self.pickwalkMapTree.pressedSignal.connect(self.mapClicked)
+        self.ignoredRigsTree.pressedSignal.connect(self.ignoredClicked)
 
         self.getAllPickwalkMaps()
         self.updateUI()
+
+    def ignoredClicked(self, item):
+        self.currentIgnoredRig = item
 
     def mapClicked(self, item):
         self.currentMap = item
@@ -1746,6 +1773,17 @@ class pickwalkRigAssignemtWindow(QMainWindow):
                                             "Maya files (*.ma *.mb)")
         return fname[0] or None
 
+    def addRigToFromIgnoreListMap(self):
+        if not self.currentMap:
+            return
+        if not self.currentIgnoredRig:
+            return
+        self.walkDataLibrary.assignRig(self.currentMap, self.currentIgnoredRig)
+
+        self.walkDataLibrary.save(self.libraryFilePath)
+        Pickwalk().loadWalkLibrary()
+        self.updateUI()
+
     def addRigToMap(self):
         if not self.currentMap:
             return
@@ -1754,10 +1792,11 @@ class pickwalkRigAssignemtWindow(QMainWindow):
             return None
         baseName = os.path.basename(fname)
 
-        self.walkDataLibrary.assignRig(self.currentMap, baseName)
+        self.walkDataLibrary.assignRig(self.currentMap, baseName.split('.')[0])
 
         self.walkDataLibrary.save(self.libraryFilePath)
-        self.updateReferencedRigView()
+        Pickwalk().loadWalkLibrary()
+        self.updateUI()
 
     def updateUI(self):
         self.pickwalkMapTree.CLS = self.walkDataLibrary

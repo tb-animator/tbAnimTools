@@ -19,12 +19,13 @@ else:
 # maya module imports
 import maya.cmds as cmds
 from apps.tb_functions import functions
-
+import tb_helpStrings
 
 class hotKeyAbstractFactory(object):
     __metaclass__ = abc.ABCMeta
     category = 'tbtools'
     commandList = list()
+    helpStrings = tb_helpStrings
 
     def __init__(self, **kwargs):
         pass

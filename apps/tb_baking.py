@@ -31,6 +31,7 @@ import math
 from Abstract import *
 from tb_UI import *
 import tb_helpStrings
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -52,24 +53,24 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
-                                     help=tb_helpStrings.simpleBakeToOverride))
+                                     help=self.helpStrings.simpleBakeToOverride))
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addAdditiveLayer()'],
-                                     help=tb_helpStrings.quickCreateAdditiveLayer))
+                                     help=self.helpStrings.quickCreateAdditiveLayer))
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addOverrideLayer()'],
-                                     help=tb_helpStrings.quickCreateOverrideLayer))
+                                     help=self.helpStrings.quickCreateOverrideLayer))
         self.addCommand(self.tb_hkey(name='counterAnimLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.counterLayerAnimation()'],
-                                     help=tb_helpStrings.counterAnimLayer))
+                                     help=self.helpStrings.counterAnimLayer))
         self.setCategory('tbtools_constraints')
         self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='',
                                      category=self.category,
                                      command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
-                                     help=tb_helpStrings.bakeToLocator))
+                                     help=self.helpStrings.bakeToLocator))
         self.addCommand(
             self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
                          category=self.category,
@@ -225,8 +226,8 @@ class BakeTools(toolAbstractFactory):
                 for cnt, loc in zip(sel, locs):
                     skipT = self.funcs.getAvailableTranslates(cnt)
                     skipR = self.funcs.getAvailableRotates(cnt)
-                    #print 'skipT', skipT
-                    #print 'skipR', skipR
+                    # print 'skipT', skipT
+                    # print 'skipR', skipR
                     pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
                                                                  False: [x.split('translate')[-1] for x in skipT]}[
                         orientOnly],
@@ -354,7 +355,7 @@ class BakeTools(toolAbstractFactory):
         for layer in layers:
             colour = cmds.getAttr(layer + '.ghostColor') - 1
             col = cmds.colorIndex(colour, q=True)
-            #print layer, col
+            # print layer, col
             pm.treeView('AnimLayerTabanimLayerEditor',
                         edit=True,
                         labelBackgroundColor=[layer,
@@ -362,7 +363,7 @@ class BakeTools(toolAbstractFactory):
                                               lerpFloat(col[1], 0.5, 0.5),
                                               lerpFloat(col[2], 0.5, 0.5)])
 
-        #print 'colourAnimLayers'
+        # print 'colourAnimLayers'
 
     def counterLayerAnimation(self):
         """
