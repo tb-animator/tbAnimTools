@@ -466,7 +466,7 @@ class Pickwalk(toolAbstractFactory):
 
     def assignNewRigExistingMap(self, rigName):
         #print 'load a dialog to assign one of the existing maps'
-        self.getAllPickwalkMaps()
+
         prompt = PickListDialog(title='Assign rig to existing map', text='Pick exising pickwalk map for rig',
                                 itemList=self.walkDataLibrary.rigMapDict.keys(),
                                 rigName=rigName)
@@ -479,18 +479,22 @@ class Pickwalk(toolAbstractFactory):
     def assignRig(self, rigMap, rigName):
         self.walkDataLibrary.assignRig(rigMap, rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
+        self.getAllPickwalkMaps()
 
     def assignIgnoreNewRig(self, rigName):
         self.walkDataLibrary.ignoreRig(rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
+        self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
+        print 'assignNewRigNewMap', rigName
         win = pickwalkMainWindow()
-        newMap = win.saveAsLibrary()
-
-        self.walkDataLibrary.assignRig(newMap, rigName)
-        self.walkDataLibrary.save(self.libraryFilePath)
         win.show()
+        newMap = win.saveAsLibrary()
+        print 'new map', newMap
+        self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
+        self.walkDataLibrary.save(self.libraryFilePath)
+        self.getAllPickwalkMaps()
 
 
 class WalkDataLibrary(object):
@@ -507,12 +511,14 @@ class WalkDataLibrary(object):
         self.jsonObjectInfo['ignoredRigs'] = self.ignoredRigs
 
     def assignRig(self, mapName, rigName):
-        for mapName, values in self.rigMapDict.items():
+        for key, values in self.rigMapDict.items():
             if rigName in values:
                 values.remove(rigName)
         if rigName in self.ignoredRigs:
             self.ignoredRigs.remove(rigName)
+        print self.rigMapDict
         self.rigMapDict[mapName].append(rigName)
+        print self.rigMapDict
 
     def ignoreRig(self, rigName):
         for key, values in self.rigMapDict.items():
@@ -1293,12 +1299,19 @@ class QTreeSingleViewWidget(QFrame):
     def sendValueChangedSignal(self):
         self.pressedSignal.emit(list())
 
+    def appendItem(self, i):
+        item = QStandardItem(i)
+        self.model.appendRow(item)
+
+    def removeItem(self, item):
+        for item in self.model.findItems(item):
+            self.model.removeRow(item.row())
+
     def updateView(self, items):
         self.model.clear()
         self.listView.blockSignals(True)
         for i in items:
-            item = QStandardItem(i)
-            self.model.appendRow(item)
+            self.appendItem(i)
         self.listView.blockSignals(False)
 
     def filterRegExpChanged(self, value):
@@ -1716,6 +1729,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
             self.walkDataLibrary.load(self.libraryFilePath)
         self.currentMap = None
         self.currentIgnoredRig = None
+        self.currentRig = None
 
         # Main Widgets
         # setup stylesheet
@@ -1738,7 +1752,8 @@ class pickwalkRigAssignemtWindow(QMainWindow):
 
         self.addReferenceButton = QPushButton('Add Rig To Map')
         self.addReferenceButton.clicked.connect(self.addRigToMap)
-
+        self.removeeferenceButton = QPushButton('Remove Rig From Map')
+        self.removeeferenceButton.clicked.connect(self.removeRigFromMap)
         self.assignIgnoredRigButton = QPushButton('Assign Ignored Rig to Map')
         self.assignIgnoredRigButton.clicked.connect(self.addRigToFromIgnoreListMap)
 
@@ -1748,14 +1763,19 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.left_layout.addWidget(self.pickwalkMapTree)
         self.right_layout.addWidget(self.referencedRigsTree)
         self.right_layout.addWidget(self.addReferenceButton)
+        self.right_layout.addWidget(self.removeeferenceButton)
         self.right_layout.addWidget(self.ignoredRigsTree)
         self.right_layout.addWidget(self.assignIgnoredRigButton)
 
         self.pickwalkMapTree.pressedSignal.connect(self.mapClicked)
+        self.referencedRigsTree.pressedSignal.connect(self.referenceClicked)
         self.ignoredRigsTree.pressedSignal.connect(self.ignoredClicked)
 
         self.getAllPickwalkMaps()
         self.updateUI()
+
+    def referenceClicked(self, item):
+        self.currentRig = item
 
     def ignoredClicked(self, item):
         self.currentIgnoredRig = item
@@ -1782,7 +1802,18 @@ class pickwalkRigAssignemtWindow(QMainWindow):
 
         self.walkDataLibrary.save(self.libraryFilePath)
         Pickwalk().loadWalkLibrary()
-        self.updateUI()
+        self.referencedRigsTree.appendItem(self.currentIgnoredRig)
+        self.ignoredRigsTree.removeItem(self.currentIgnoredRig)
+
+    def removeRigFromMap(self):
+        if not self.currentMap:
+            return
+        if not self.currentRig:
+            return
+        self.walkDataLibrary.ignoreRig(self.currentRig)
+        self.referencedRigsTree.removeItem(self.currentRig)
+        self.ignoredRigsTree.appendItem(self.currentRig)
+        self.walkDataLibrary.save(self.libraryFilePath)
 
     def addRigToMap(self):
         if not self.currentMap:
@@ -1796,7 +1827,8 @@ class pickwalkRigAssignemtWindow(QMainWindow):
 
         self.walkDataLibrary.save(self.libraryFilePath)
         Pickwalk().loadWalkLibrary()
-        self.updateUI()
+        self.ignoredRigsTree.removeItem(baseName.split('.')[0])
+        self.pickwalkMapTree.appendItem(baseName.split('.')[0])
 
     def updateUI(self):
         self.pickwalkMapTree.CLS = self.walkDataLibrary
@@ -1979,6 +2011,8 @@ class pickwalkMainWindow(QMainWindow):
         self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
         self.pickwalkCreator.load(self.pickwalkCreator.walkData._filePath)
         self.refreshUI()
+        Pickwalk().loadWalkLibrary()
+        Pickwalk().getAllPickwalkMaps()
 
     def saveAsLibrary(self):
         save_filename = QFileDialog.getSaveFileName(self,
@@ -1991,6 +2025,7 @@ class pickwalkMainWindow(QMainWindow):
             if self.overwriteQuery().exec_() != 1024:
                 return
         self.pickwalkCreator.walkData.save(save_filename[0])
+        Pickwalk().loadWalkLibrary()
         return os.path.basename(save_filename[0])
 
     def overwriteQuery(self):
@@ -2071,13 +2106,13 @@ class pickwalkMainWindow(QMainWindow):
         self.endOnSelf = state
 
     def inputSignal_mirrorSelection(self, sideA, sideB):
-        #print 'inputSignal_mirrorSelection', sideA, sideB
+        print 'inputSignal_mirrorSelection', sideA, sideB
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return pm.warning('No selection')
         for s in sel:
             self.pickwalkCreator.mirror(s.split(':')[-1], [sideA, sideB])
-
+        self.updateTreeView()
     def inputSignal_destinationAdded(self, input):
         #print 'inputSignal_destinationAdded', input
         self.pickwalkCreator.addDestination(name=input.get('name', 'defaultName'),
@@ -2156,22 +2191,43 @@ class PickwalkCreator(object):
         #print 'sides', sideList
         for key, walkDirection in self.walkData.objectDict.items():
             mirrorDir = dict()
+
             if key == item:
-                #print 'need to mirror', key
+                print 'need to mirror', key
                 for dir, value in walkDirection.__dict__.items():
+                    found = False
                     if not value:
                         #print dir, 'is empty'
                         mirrorDir[dir] = None
                         continue
                     if value in self.walkData.destinations.keys():
-                        #print dir, 'is condition'
+                        print dir, 'is condition - not made this bit yet'
                         continue
                     else:
                         mirrorDir[dir] = value
                         for s in sideList:
-                            if s in value:
-                                mirrorDir[dir] = value.replace(s, sideList[not sideList.index(s)])
+                            if not found:
+                                if s in value:
+                                    found = True
+                                    #print 'side found', value
+                                    mirrorValue = str(value)
+                                    mirrorDir[dir] = mirrorValue.replace(s, sideList[not sideList.index(s)])
+
                 #print 'mirrorDir', mirrorDir
+                for s in sideList:
+                    if s in key:
+                        mirrorKey = key.replace(s, sideList[not sideList.index(s)])
+                        #print 'mirrorKey', mirrorKey
+                        self.addControl(mirrorKey)
+                        # print key, value, type(value)
+                        for dKey, dValue in mirrorDir.items():
+                            print 'setControlDestination', mirrorKey, dKey, dValue
+                            self.setControlDestination(mirrorKey,
+                                                       direction=dKey,
+                                                       destination=dValue)
+                            print self.walkData.objectDict[mirrorKey].__dict__
+                        pass
+
 
     def replaceDestination(self, original=str, new=str):
         """
@@ -2195,8 +2251,9 @@ class PickwalkCreator(object):
             self.walkData.objectDict[control][direction] = destination
         else:
             # destination is probably one object, just set it as a string
-            #print 'simple destination, object only'
+            #print 'simple destination, object only', control, direction, destination
             self.walkData.objectDict[control][direction] = destination
+
 
     def addPickwalkChain(self,
                          controls=list(),
