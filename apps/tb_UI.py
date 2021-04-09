@@ -570,7 +570,7 @@ class optionWidget(QWidget):
         self.mainLayout.addWidget(self.scroll)
 
         self.label = QLabel(self.labelText)
-        self.label.setStyleSheet("font-weight: bold; font-size: 18px;");
+        self.label.setStyleSheet("font-weight: bold; font-size: 18px;")
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.layout.addWidget(self.label)
         self.setGeometry(600, 100, 1000, 900)
