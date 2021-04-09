@@ -118,7 +118,7 @@ class playback(toolAbstractFactory):
         super(playback, self).optionUI()
         flipWidget = intFieldWidget(optionVar=self.flipFrame_opv, defaultValue=self.flipFrame_default, label='Flip frame count')
         self.layout.addWidget(flipWidget)
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

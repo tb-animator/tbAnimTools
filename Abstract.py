@@ -1,4 +1,5 @@
 import abc
+import re
 import os
 import pymel.core as pm
 import maya.mel as mel
@@ -20,6 +21,7 @@ else:
 import maya.cmds as cmds
 from apps.tb_functions import functions
 import tb_helpStrings
+from apps.tb_UI import *
 
 class hotKeyAbstractFactory(object):
     __metaclass__ = abc.ABCMeta
@@ -91,6 +93,7 @@ class toolAbstractFactory(object):
     __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'baseTool'
+
     hotkeyClass = None
     funcs = None
 
@@ -116,10 +119,10 @@ class toolAbstractFactory(object):
 
     @abc.abstractmethod
     def optionUI(self):
-        self.layout = QFormLayout()
-        label = QLabel(self.toolName)
-        self.layout.addWidget(label)
-        return self.layout
+        toolUIName = re.sub("([a-z])([A-Z])", "\g<1> \g<2>", self.toolName)
+        self.optionWidget = optionWidget(label=toolUIName)
+        self.layout = self.optionWidget.layout
+        return self.optionWidget
 
     @abc.abstractmethod
     def showUI(self):

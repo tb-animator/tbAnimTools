@@ -54,6 +54,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['isolator.toggle_isolate()']))
+        self.addCommand(self.tb_hkey(name='addToIsolation',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['isolator.addToIsolation()']))
 
         return self.commandList
 
@@ -107,3 +111,16 @@ class isolator(toolAbstractFactory):
         else:
             cmds.isolateSelect(panel, state=1)
             cmds.isolateSelect(panel, addSelected=True)
+
+    def addToIsolation(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        panels = self.funcs.getAllModelPanels()
+        if not panels:
+            return
+        for p in panels:
+            state = pm.isolateSelect(p, query=True, state=True)
+            if state:
+                cmds.isolateSelect(p, addSelected=True)
+

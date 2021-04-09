@@ -121,6 +121,8 @@ class viewModeTool(toolAbstractFactory):
     viewMeshesCustomOption = 'viewMeshesCustomOption'
     viewAllCustomOption = 'viewAllCustomOption'
 
+    lastPanel = None
+
     def __new__(cls):
         if viewModeTool.__instance is None:
             viewModeTool.__instance = object.__new__(cls)
@@ -185,7 +187,7 @@ class viewModeTool(toolAbstractFactory):
         removeModelButton.setFixedWidth(72)
         removeAllButton.setFixedWidth(72)
 
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -255,8 +257,8 @@ class viewModeTool(toolAbstractFactory):
 
     def viewMode(self, key='everything', custom=False, default='everything'):
         panel = self.funcs.getModelPanel()
+        print 'panel', panel
         # self.viewNone(panel)
-        print 'is custom?', custom
         print self.viewData['viewData'].get(key, default)
         self.setFlagsFromDict({False: default, True: self.viewData['viewData'].get(key, default)}[bool(custom)])
 

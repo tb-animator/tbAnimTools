@@ -26,7 +26,9 @@ class ClassFinder(object):
     directory = None
     baseDirectory = None
     toolsBaseDirectory = 'apps'
+    proToolsBaseDirectory = 'proApps'
     toolsDirectory = None
+    proToolsDirectory = None
 
     loadedClasses = dict()
     allClasses = list()
@@ -48,22 +50,32 @@ class ClassFinder(object):
         self.directory = os.path.dirname(os.path.abspath(__file__))
         self.baseDirectory = os.path.split(self.directory)[-1]
         self.toolsBaseDirectory = 'apps'
+        self.proToolsBaseDirectory = 'proApps'
         self.toolsDirectory = os.path.join(self.directory, self.toolsBaseDirectory)
-        print 'startup', self.toolsDirectory
+        self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory)
+        #print 'startup', self.toolsDirectory
         self.loadPluginsByClass()
 
     def loadPluginsByClass(self):
-        print '!! loadPluginsByClass !!'
-        print 'toolsBaseDirectory', self.toolsBaseDirectory, 'toolsDirectory', self.toolsDirectory
+        #print '!! loadPluginsByClass !!'
+        #print 'toolsBaseDirectory', self.toolsBaseDirectory, 'toolsDirectory', self.toolsDirectory
+        #print 'toolsBaseDirectory', self.proToolsBaseDirectory, 'proToolsDirectory', self.proToolsDirectory
         self.allClasses = [cls for cls in
                            self.getAllModulesInFolder(self.toolsBaseDirectory, self.toolsDirectory)
                            if cls]
+        self.allProClasses = [cls for cls in
+                           self.getAllModulesInFolder(self.proToolsBaseDirectory, self.proToolsDirectory)
+                           if cls]
+        #print 'allProClasses', self.allProClasses
+        self.allClasses.extend(self.allProClasses)
         hotkeyClasses = [cls for cls in self.allClasses if cls.__base__ == hotKeyAbstractFactory]
         toolClasses = [cls for cls in self.allClasses if cls.__base__ == toolAbstractFactory]
-        print 'toolClasses'
+        #print 'toolClasses'
+        '''
         for t in toolClasses:
             print '\t', t
         print '\n\n'
+        '''
         self.tools = dict()
         for cls in toolClasses:
             print 'instancing tool', cls, cls.toolName

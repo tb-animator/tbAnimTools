@@ -28,7 +28,7 @@ import tb_UI as tb_UI
 import pymel.core as pm
 from pluginLookup import ClassFinder
 import getStyleSheet as getqss
-
+import re
 if not pm.optionVar(exists='playblast_folder'):
     pm.optionVar(stringValue=('playblast_folder', "c:"))
 
@@ -89,15 +89,13 @@ class mainOptionWindow(QMainWindow):
          }
         }'''
         self.setStyleSheet(windowCss)
-        # QApplication.setStyle(QStyleFactory.create("cde"))
-        # self.setStyle(QStyleFactory.create("windowsvista"))
 
     def buildUI(self):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
         self.win.setWindowTitle('tbAnimTools - option')
         self.win.setMinimumWidth(650)
-        self.win.setMinimumHeight(300)
+        #self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
 
         self.toolTypeScrollArea = QScrollArea()
@@ -105,36 +103,30 @@ class mainOptionWindow(QMainWindow):
         self.toolTypeScrollArea.setWidget(self.toolWidget)
         self.toolTypeScrollArea.setWidgetResizable(True)
         self.toolTypeScrollArea.setFixedWidth(148)
-        #self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.optionUIScrollArea = QScrollArea()
         self.optionUIScrollArea.setWidgetResizable(True)
-        #self.optionUIScrollArea.setFixedWidth(360)
-        self.optionUIScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.optionUIScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.optionUIScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.toolLayout = QVBoxLayout()
         self.toolWidget.setLayout(self.toolLayout)
 
         self.toolOptionStack = QStackedWidget(self)
-
+        self.toolOptionStack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.toolOptionLayout = QVBoxLayout(self)
-        self.toolOptionLayout.addWidget(self.toolOptionStack)
-
-        self.optionUIScrollArea.setLayout(self.toolOptionLayout)
 
         self.win.setLayout(self.mainLayout)
         self.mainLayout.addWidget(self.toolTypeScrollArea)
-        self.mainLayout.addWidget(self.optionUIScrollArea)
+        self.mainLayout.addWidget(self.toolOptionStack)
 
         # find tools with UI, make list of tool keys?
-        toolOptionWidgets = dict()
         for index, tool in enumerate(sorted(self.tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
-            print tool
-            self.toolWidget.insertItem(index, tool)
-            toolOptionWidgets[tool] = QWidget()
-            optionLayout = self.tbtoolsCLS.tools[tool].optionUI()
-            toolOptionWidgets[tool].setLayout(optionLayout)
-            self.toolOptionStack.addWidget(toolOptionWidgets[tool])
+            if self.tbtoolsCLS.tools[tool] is not None:
+
+                self.toolWidget.insertItem(index, re.sub("([a-z])([A-Z])", "\g<1> \g<2>", tool))
+                self.toolOptionStack.addWidget(self.tbtoolsCLS.tools[tool].optionUI())
 
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
 

@@ -50,9 +50,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory('tbtools_keyframing')
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='match_tangent_start_to_end', annotation='',
-                                     category=self.category, command=['keyModifiers.matchStartTangentsToEndTangents()']))
+                                     category=self.category,
+                                     command=['keyModifiers.matchStartTangentsToEndTangents()']))
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
-                                     category=self.category, command=['keyModifiers.matchEndTangentsToStartTangents()']))
+                                     category=self.category,
+                                     command=['keyModifiers.matchEndTangentsToStartTangents()']))
         self.addCommand(self.tb_hkey(name='filter_channelBox',
                                      annotation='filters the current channelBox selection in the graph editor',
                                      category=self.category, command=['keyModifiers.filterChannels()']))
@@ -78,6 +80,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='eulerFilterSelection',
                                      annotation='euler filter your current keyframe selection',
                                      category=self.category, command=['keyModifiers.eulerFilterSelectedKeys()']))
+        self.addCommand(self.tb_hkey(name='createMotionTrail',
+                                     annotation='',
+                                     category=self.category, command=['keyModifiers.createMotionPath()'],
+                                     help=self.helpStrings.createMotionTrail))
 
         return self.commandList
 
@@ -115,7 +121,7 @@ class keyModifiers(toolAbstractFactory):
         super(keyModifiers, self).optionUI()
         testButton = QPushButton('Flip frame count')
         self.layout.addWidget(testButton)
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -337,3 +343,27 @@ class keyModifiers(toolAbstractFactory):
         angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
         _node = pm.PyNode(node)
         pm.setAttr(_node.rotate, angles)
+
+    def createMotionPath(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        with self.funcs.keepSelection():
+            trials = []
+            for s in sel:
+                cmds.select(s, replace=True)
+                moTrail = cmds.snapshot(motionTrail=True,
+                                        increment=1,
+                                        startTime=self.funcs.getTimelineMin(),
+                                        endTime=self.funcs.getTimelineMax())
+                cmds.select(moTrail, replace=True)
+                mel.eval("addToIsolation")
+
+    def removeMotionPath(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        for s in sel:
+            motionTrail = cmds.listConnections(s, type='motionTrail')
+            if motionTrail:
+                cmds.delete(motionTrail)

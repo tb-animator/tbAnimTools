@@ -42,6 +42,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os, stat
 import pickle
+import json
 import maya.OpenMayaUI as omUI
 from Abstract import *
 from tb_UI import *
@@ -69,7 +70,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='create_quick_select_set',
                                      annotation='create a new quick selection set from current selection',
                                      category=self.category,
-                                     command=['QuickSelectionTools.saveQssDialig()']))
+                                     command=['QuickSelectionTools.saveQssDialog()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -90,6 +91,8 @@ class QuickSelectionTools(toolAbstractFactory):
     quickSelectFolder = 'qssFiles'
     quickSelectFolderDefault = None
     quickSelectSavePath = None
+
+    quickSelectOnQssSuffix = 'quickSelectOnQssSuffix'
 
     namespace_mode = 0
 
@@ -120,8 +123,11 @@ class QuickSelectionTools(toolAbstractFactory):
         super(QuickSelectionTools, self).optionUI()
         self.initData()
         dirWidget = filePathWidget(self.quickSelectFolderOption, self.quickSelectFolderDefault)
+        quickSelectOnQssWidget = optionVarBoolWidget('Quick select selection only on sets named _qss', self.quickSelectOnQssSuffix)
         self.layout.addWidget(dirWidget)
-        return self.layout
+        self.layout.addWidget(quickSelectOnQssWidget)
+        self.layout.addStretch()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -142,13 +148,18 @@ class QuickSelectionTools(toolAbstractFactory):
         else:
             return "QuickSelects"
 
-    @staticmethod
-    def get_sets():
+    def get_sets(self):
+        print 'get_sets!'
         all_sets = cmds.ls(sets=True)
         qs_sets = list()
-        for a_set in all_sets:
-            if cmds.sets(a_set, query=True, text=True) == 'gCharacterSet':
-                qs_sets.append(a_set)
+        print 'pre', all_sets
+        if pm.optionVar.get(self.quickSelectOnQssSuffix, True):
+            all_sets = [q for q in all_sets if q.endswith('_qss')]
+        print 'post', all_sets
+        for qs_name in all_sets:
+            if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
+                qs_sets.append(qs_name)
+
         return qs_sets
 
     def qs_select(self):
@@ -182,15 +193,6 @@ class QuickSelectionTools(toolAbstractFactory):
     @staticmethod
     def get_set_contents(qss_set):
         return cmds.sets(qss_set, query=True)
-
-    @staticmethod
-    def get_sets():
-        all_sets = cmds.ls(sets=True)
-        qs_sets = []
-        for a_set in all_sets:
-            if cmds.sets(a_set, query=True, text=True) == 'gCharacterSet':
-                qs_sets.append(a_set)
-        return qs_sets
 
     def check_set_membership(self, selection, sel_set):
         sel_set_members = cmds.sets(sel_set, query=True)
@@ -238,7 +240,7 @@ class QuickSelectionTools(toolAbstractFactory):
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
                                    fadeOutTime=4.0)
 
-    def saveQssDialig(self):
+    def saveQssDialog(self):
         sel = cmds.ls(selection=True)
         if not sel:
             return pm.warning('Unable to save empty selection')
@@ -308,17 +310,25 @@ class QuickSelectionTools(toolAbstractFactory):
                                  default='default')
         dialog.acceptedSignal.connect(self.getSaveFileSignal)
 
-    def getSaveFileSignal(self, input):
-        if input:
-            save_file = os.path.join(self.quickSelectSavePath, input + ".qss")
+    def getSaveFileSignal(self, fileName):
+        if fileName:
+            save_file = os.path.join(self.quickSelectSavePath, fileName + ".qss")
+            jsonFile = os.path.join(self.quickSelectSavePath, fileName + ".json")
             if not os.path.isdir(self.quickSelectSavePath):
                 os.mkdir(self.quickSelectSavePath)
             else:
                 os.chmod(self.quickSelectSavePath, stat.S_IWRITE)
             out_data = []
+            jsonData = '''{}'''
+            setData = json.loads(jsonData)
             for qsets in self.get_sets():
                 out_data.append(qss_data_obj(qs_name=str(qsets), qs_objects=self.get_set_contents(qsets)))
+                setData[str(qsets)] = self.get_set_contents(qsets)
             pickle.dump(out_data, open(save_file, "wb"))
+            j = json.dumps(setData, indent=4, separators=(',', ': '))
+            f = open(jsonFile, 'w')
+            print >> f, j
+            f.close()
 
     def load_qss_file(self, qss_name):
         """
@@ -347,6 +357,11 @@ class qss_data_obj(object):
         self.qs_name = qs_name
         self.qs_objects = qs_objects
 
+    def toJson(self):
+        jsonData = '''{}'''
+        jsonObjectInfo = json.loads(jsonData)
+        jsonObjectInfo['qs_name'] = self.qs_name
+        jsonObjectInfo['qs_objects'] = self.qs_objects
 
 class saveQssWidget(QWidget):
     saveSignal = Signal(str)

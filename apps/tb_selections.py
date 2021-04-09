@@ -93,7 +93,7 @@ class selectionTools(toolAbstractFactory):
 
     def optionUI(self):
         super(selectionTools, self).optionUI()
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

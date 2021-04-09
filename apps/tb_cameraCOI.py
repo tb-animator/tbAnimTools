@@ -204,7 +204,7 @@ class CameraPivot(toolAbstractFactory):
         self.layout.addWidget(useTumbleOptionWidget)
         # connect the checkbox changed event to the function that handles removing/adding the camera scriptJobs
         useTumbleOptionWidget.changedSignal.connect(self.updateScriptJobStatus)
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

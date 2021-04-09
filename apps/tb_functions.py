@@ -69,6 +69,8 @@ class functions(object):
                       'yellow': 'style=\"color:#FFFF00;\"',
                       }
 
+    lastPanel = None
+
     def getChannelBoxName(self):
         if not self.gChannelBoxName:
             self.gChannelBoxName = pm.melGlobals['gChannelBoxName']
@@ -81,11 +83,18 @@ class functions(object):
 
     # get the current model panel
     def getModelPanel(self):
-        curPanel = pm.getPanel(underPointer=True) or pm.getPanel(withFocus=True)
+        print 'getModelPanel!'
+        curPanel = pm.getPanel(withFocus=True) or self.lastPanel # pm.getPanel(underPointer=True)
         if pm.objectTypeUI(curPanel) == 'modelEditor':
+            self.lastPanel = curPanel
             return curPanel
+        elif self.lastPanel:
+            return self.lastPanel
         else:
-            return self.get_modelEditors(pm.lsUI(editors=True))[0]
+            return self.get_modelEditors(pm.lsUI(editors=True))[-1]
+
+    def getAllModelPanels(self):
+        return self.get_modelEditors(pm.lsUI(editors=True))
 
     def tempLocator(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
         loc = pm.spaceLocator(name=name + '_' + suffix)
@@ -206,8 +215,11 @@ class functions(object):
         for layer in layers:
             cmds.animLayer(layer, edit=True, selected=False)
             cmds.animLayer(layer, edit=True, preferred=False)
-        cmds.animLayer(layerName, edit=True, preferred=True)
-        cmds.animLayer(layerName, edit=True, selected=True)
+        if not isinstance(layerName, list):
+            layerName = [layerName]
+        for layer in layerName:
+            cmds.animLayer(layer, edit=True, preferred=True)
+            cmds.animLayer(layer, edit=True, selected=True)
 
     def get_all_layer_key_times(self, objects):
         layers = cmds.ls(type='animLayer')
@@ -500,7 +512,7 @@ class functions(object):
             if cmds.panel(graphEdParent, query=True, exists=True):
                 GraphEdWindow = cmds.panel(graphEdParent, query=True, control=True).split('|')[0]
 
-        if GraphEdWindow:
+        if len(GraphEdWindow):
             state = cmds.workspaceControl(GraphEdWindow, query=True, collapse=True)
         else:
             mel.eval('GraphEditor;')
@@ -546,3 +558,27 @@ class functions(object):
         else:
             # might just be working in the rig file itself
             return cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+
+    @staticmethod
+    def checkKeyableState(input):
+        if not isinstance(input, list):
+            input = [input]
+
+        newLayer = pm.animLayer('ChannelTest')
+        for i in input:
+            if not cmds.attributeQuery('rotateOrder', node=i, keyable=True):
+                try:
+                    cmds.setAttr(i + '.rotateOrder', channelBox=True)
+                    cmds.setAttr(i + '.rotateOrder', keyable=True)
+                except:
+                    pm.warning('Unable to set keyable state on %s' % i)
+                pm.animLayer(newLayer, edit=True, attribute=i + '.rotateOrder')
+                if not i + '.rotateOrder' in pm.animLayer(newLayer, query=True, attribute=True):
+                    pm.warning('%s cannot be added to a layer as it is not set to keyable' % i)
+                    pm.delete(newLayer)
+                    return False
+
+        if pm.animLayer(newLayer, query=True, exists=True):
+            pm.delete(newLayer)
+
+        return True

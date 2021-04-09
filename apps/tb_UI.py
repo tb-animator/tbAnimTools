@@ -68,10 +68,14 @@ class CustomDialog(QDialog):
 
 
 class BaseDialog(QDialog):
+    oldPos = None
+
     def __init__(self, parent=None, title='title?', text='message?'
                  ):
         super(BaseDialog, self).__init__(parent=parent)
-        self.setStyleSheet(getqss.getStyleSheet())
+        self.stylesheet = getqss.getStyleSheet()
+        self.setStyleSheet(self.stylesheet)
+
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
@@ -86,12 +90,12 @@ class BaseDialog(QDialog):
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
-        self.text = QLabel(text)
-        self.text.setStyleSheet(getqss.getStyleSheet())
+        self.infoText = QLabel(text)
+        self.infoText.setStyleSheet(self.stylesheet)
 
         self.mainLayout.addWidget(self.titleText)
         self.mainLayout.addLayout(self.layout)
-        self.layout.addWidget(self.text)
+        self.layout.addWidget(self.infoText)
 
         self.setLayout(self.mainLayout)
 
@@ -119,9 +123,23 @@ class BaseDialog(QDialog):
             self.close()
         return super(BaseDialog, self).keyPressEvent(event)
 
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        delta = QPoint (event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
 
 class AimAxisDialog(BaseDialog):
     assignSignal = Signal(str, str, str, bool, bool, float)
+    editedSignal = Signal(str, str, str, bool, bool, float)
+    closeSignal = Signal()
 
     def __init__(self, controlName=str, parent=None,
                  title='Assign default aim for control',
@@ -188,15 +206,34 @@ class AimAxisDialog(BaseDialog):
         buttonLayout.addWidget(self.assignButton)
         buttonLayout.addWidget(self.cancelButton)
 
+        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.flipAimCB.clicked.connect(self.widgetedited)
+        self.flipUpCB.clicked.connect(self.widgetedited)
+        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
+
     def assignPressed(self):
         self.assignSignal.emit(self.controlName,
                                str(self.aimComboBox.currentText()),
                                str(self.upComboBox.currentText()),
-                               str(self.flipAimCB.isChecked()),
-                               str(self.flipUpCB.isChecked()),
+                               self.flipAimCB.isChecked(),
+                               self.flipUpCB.isChecked(),
                                self.distanceSpinBox.value()
                                )
         self.close()
+
+    def close(self):
+        self.closeSignal.emit()
+        super(AimAxisDialog, self).close()
+
+    def widgetedited(self, *args):
+        self.editedSignal.emit(self.controlName,
+                               str(self.aimComboBox.currentText()),
+                               str(self.upComboBox.currentText()),
+                               self.flipAimCB.isChecked(),
+                               self.flipUpCB.isChecked(),
+                               self.distanceSpinBox.value()
+                               )
 
 
 class PickListDialog(BaseDialog):
@@ -341,23 +378,15 @@ class TextInputWidget(QWidget):
     Simple prompt with text input
     """
     acceptedSignal = Signal(str)
+    oldPos = None
 
     def __init__(self, title=str, label=str, buttonText=str, default=str):
         super(TextInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
-        self.setStyleSheet(
-            "QDialog { "
-            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);"
-            "}"
-            "saveQssWidget {"
-            "border-style: solid;"
-            "border: 1px solid #1e1e1e;"
-            "border-radius: 5;"
-            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);"
 
-            "}"
-        )
-        self.setWindowOpacity(0.9)
+
+
+        self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason| Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
@@ -396,7 +425,11 @@ class TextInputWidget(QWidget):
         self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
-
+        self.setStyleSheet(
+            "TextInputWidget { "
+            "border-radius: 8;"
+            "}"
+        )
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
@@ -409,9 +442,9 @@ class TextInputWidget(QWidget):
 
         qp.setPen(QPen(QBrush(lineColor), 2))
         grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, "#4d4d4d")
-        grad.setColorAt(0.1, "#646464")
-        grad.setColorAt(1, "#5d5d5d")
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
         qp.drawRoundedRect(self.rect(), 16, 16)
         qp.end()
@@ -426,6 +459,19 @@ class TextInputWidget(QWidget):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(TextInputWidget, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        delta = QPoint (event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
 
 class promptWidget(QWidget):
     saveSignal = Signal(str)
@@ -499,6 +545,36 @@ class promptWidget(QWidget):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
+
+class optionWidget(QWidget):
+    def __init__(self, label=str):
+        super(optionWidget, self).__init__()
+        self.labelText = label
+        self.initUI()
+
+    def initUI(self):
+        self.mainLayout = QVBoxLayout()
+        self.setLayout(self.mainLayout)
+        self.scroll = QScrollArea()             # Scroll Area which contains the widgets, set as the centralWidget
+        self.scrollWidget = QWidget()                 # Widget that contains the collection of Vertical Box
+        self.layout = QVBoxLayout()               # The Vertical Box that contains the Horizontal Boxes of  labels and buttons
+
+        self.scrollWidget.setLayout(self.layout)
+
+        #Scroll Area Properties
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.scrollWidget)
+
+        self.mainLayout.addWidget(self.scroll)
+
+        self.label = QLabel(self.labelText)
+        self.label.setStyleSheet("font-weight: bold; font-size: 18px;");
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.layout.addWidget(self.label)
+        self.setGeometry(600, 100, 1000, 900)
+        self.setWindowTitle('Scroll Area Demonstration')
 
 
 class optionVarWidget(QWidget):
@@ -622,3 +698,108 @@ class radioGroupWidget(QWidget):
 
     def extBtnState(self, b):
         pm.optionVar[self.optionVar] = b.text()
+
+
+class LicenseWin(BaseDialog):
+    ActivateSignal = Signal(str, str)
+    leftClick = False
+    oldPos = None
+
+    def __init__(self, parent=None, title='Tool Name?'):
+        super(LicenseWin, self).__init__(parent=parent)
+        self.setWindowTitle("LicenseWin!")
+
+        #QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        #QBtn.button(QDialogButtonBox.Ok).setText("Activate")
+        #QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
+        #self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox = QDialogButtonBox()
+        self.buttonBox.addButton("Activate", QDialogButtonBox.AcceptRole)
+        self.buttonBox.addButton("Cancel", QDialogButtonBox.RejectRole)
+        self.buttonBox.accepted.connect(self.activate)
+        self.buttonBox.rejected.connect(self.reject)
+        #self.buttonBox.accepted.connect(self.activate)
+        #self.buttonBox.rejected.connect(self.reject)
+
+        #self.buttonLayout = QVBoxLayout()
+        #self.activateButton = QPushButton('Activate')
+        #self.quitButton = QPushButton('Exit')
+
+        self.setFixedSize(400, 180)
+        self.gridLayout = QGridLayout()
+        self.titleText.setText(title)
+        self.titleText.setStyleSheet("font-weight: bold; font-size: 14px;");
+        self.titleText.setAlignment(Qt.AlignCenter | Qt.AlignTop)
+        self.infoText.setText('Please enter your license key and email address used for this purchase')
+        self.infoText.setWordWrap(True)
+
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.licenseKeyLabel = QLabel('License key::')
+        self.licenseKeyLabel.setStyleSheet(getqss.getStyleSheet())
+        self.licenseLineEdit = QLineEdit()
+        self.emailLabel = QLabel('Email Address::')
+        self.emailLabel.setStyleSheet(getqss.getStyleSheet())
+        self.emailLineEdit = QLineEdit()
+
+        #self.mainLayout.addWidget(self.titleText)
+        #self.mainLayout.addWidget(self.infoText)
+        self.gridLayout.addWidget(self.licenseKeyLabel, 0,0)
+        self.gridLayout.addWidget(self.licenseLineEdit, 0, 1)
+        self.gridLayout.addWidget(self.emailLabel, 1, 0)
+        self.gridLayout.addWidget(self.emailLineEdit, 1, 1)
+        self.mainLayout.addLayout(self.gridLayout)
+        #self.buttonWidget.activateSignal.connect(self.dragLeaveEvent())
+        self.mainLayout.addWidget(self.buttonBox)
+
+        #self.activateButton.clicked.connect(self.activate)
+        self.startPos = None
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if self.oldPos:
+            delta = QPoint (event.globalPos() - self.oldPos)
+            self.move(self.x() + delta.x(), self.y() + delta.y())
+            self.oldPos = event.globalPos()
+            self.update()
+            self.updateGeometry()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+    '''
+    def mouseMoveEvent(self, event):
+        print 'mousePressEvent', self.leftClick
+        if self.leftClick:
+            self.move(event.globalPos().x(), event.globalPos().y() )
+        super(LicenseWin, self).mouseMoveEvent(event)
+        return False
+
+    def mousePressEvent(self, event):
+        print 'mousePressEvent', event.button()
+        if event.button() == Qt.LeftButton:
+            global X, Y
+            X = event.pos().x()
+            Y = event.pos().y()
+            self.leftClick = True
+        super(LicenseWin, self).mousePressEvent(event)
+        return False
+
+    def mouseReleaseEvent(self, event):
+        self.leftClick = False
+        print 'mouseReleaseEvent' , self.leftClick
+        super(LicenseWin, self).mouseReleaseEvent(event)
+        return False
+    '''
+
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(LicenseWin, self).keyPressEvent(event)
+
+    def activate(self):
+        self.ActivateSignal.emit(self.licenseLineEdit.text(), self.emailLineEdit.text())
+
+    def cancel(self):
+        self.close()

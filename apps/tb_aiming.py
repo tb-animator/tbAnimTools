@@ -130,7 +130,7 @@ class AimTools(toolAbstractFactory):
 
     def optionUI(self):
         super(AimTools, self).optionUI()
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -272,6 +272,10 @@ class AimTools(toolAbstractFactory):
         upAxis = self.axisDict[data['upAxis']] * flipVector[data['flipUp']]
         return aimAxis, upAxis
 
+    def getAxis(self, axis, flip):
+        flipVector = {True: -1.0, False: 1.0}  # make this data driven somehow?
+        return self.axisDict[axis] * flipVector[flip]
+
     def bake(self):
         keyRange = self.funcs.get_all_layer_key_times(self.targets)
         if not keyRange:
@@ -317,7 +321,8 @@ class AimTools(toolAbstractFactory):
                 flipAim = self.aimData[refName][name]['flipAim']
                 flipUp = self.aimData[refName][name]['flipUp']
                 distance = self.aimData[refName][name]['distance']
-        prompt = AimAxisDialog(controlName=sel[0],
+        prompt = AimAxisDialog(parent=self.funcs.getMainWindow(),
+                               controlName=sel[0],
                                title='Assign default aim for control',
                                text=sel[0],
                                itemList=['x', 'y', 'z'],
@@ -326,12 +331,58 @@ class AimTools(toolAbstractFactory):
                                flipAim=flipAim,
                                flipUp=flipUp,
                                distance=distance)
+        prompt.show()
         prompt.assignSignal.connect(self.assignDefault)
-
+        prompt.editedSignal.connect(self.updatePreview)
+        prompt.closeSignal.connect(self.deletePreview)
+        prompt.widgetedited()
+        '''
         if prompt.exec_():
             pass
         else:
             pass
+        '''
+
+    def updatePreview(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
+        print 'controlName', controlName
+        print 'aimAxis', aimAxis,
+        print 'upAxis', upAxis,
+        print 'flipAim', flipAim,
+        print 'flipUp', flipUp,
+        print 'distance', distance
+        fwdPreview = 'fwd_Preview'
+        upPreview = 'up_Preview'
+        if not cmds.objExists(fwdPreview):
+            fwdPreview = self.funcs.tempLocator(name='fwd', suffix='Preview')
+            fwdAnn = pm.annotate(fwdPreview, tx='Aim Forward', p=(0, 1, 0))
+            pm.parent(fwdAnn, fwdPreview)
+        if not cmds.objExists(upPreview):
+            upPreview = self.funcs.tempLocator(name='up', suffix='Preview')
+            upAnn = pm.annotate(upPreview, tx='Aim Up', p=(0, 1, 0))
+            pm.parent(upAnn, upPreview)
+        fwdPreview = pm.PyNode(fwdPreview)
+        upPreview = pm.PyNode(upPreview)
+        fwdPos = self.getPosition(controlName, self.getAxis(aimAxis, flipAim), distance)
+        upPos = self.getPosition(controlName, self.getAxis(upAxis, flipUp), distance)
+        fwdPreview.translate.set(fwdPos)
+        upPreview.translate.set(upPos)
+
+    def deletePreview(self):
+        fwdPreview = 'fwd_Preview'
+        upPreview = 'up_Preview'
+        if cmds.objExists(fwdPreview):
+            cmds.delete(fwdPreview)
+        if cmds.objExists(upPreview):
+            cmds.delete(upPreview)
+
+    def getPosition(self, target, axis, distance):
+        targetPos = cmds.xform(target, query=True, worldSpace=True, absolute=True, rotatePivot=True)
+        targetPosMVector = om.MVector(targetPos[0], targetPos[1], targetPos[2])
+
+        # depending on the rig this really doesn't work
+        vec = getLocalVecToWorldSpaceAPI(target, vec=axis, offset=targetPosMVector,
+                                           mult=distance / self.funcs.locator_unit_conversion())
+        return vec
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
         refName = self.funcs.getRefName(controlName)
@@ -364,3 +415,4 @@ def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 
     vec = ((vec * matrix).normal() * mult)
     vec += offset
     return vec.x, vec.y, vec.z
+

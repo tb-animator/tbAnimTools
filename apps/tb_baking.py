@@ -144,7 +144,8 @@ class BakeTools(toolAbstractFactory):
                                                     self.quickBakeRemoveContainerOption)
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
-        return self.layout
+        self.layout.addStretch()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -183,15 +184,18 @@ class BakeTools(toolAbstractFactory):
                 pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
                 pm.rename(newAnimLayer, 'OverrideBaked')
 
-            if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
-                resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
-                if not resultContainer:
-                    return
-                pm.select(resultContainer, replace=True)
-                mel.eval('SelectContainerContents')
-                mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
-                pm.delete(resultContainer)
+            self.removeContainersPostBake(preContainers)
         self.funcs.select_layer(str(postBakeLayer))
+
+    def removeContainersPostBake(self, preContainers):
+        if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
+            resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
+            if not resultContainer:
+                return
+            pm.select(resultContainer, replace=True)
+            mel.eval('SelectContainerContents')
+            mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
+            pm.delete(resultContainer)
 
     def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True):
         if not sel:
@@ -205,6 +209,7 @@ class BakeTools(toolAbstractFactory):
                 locs.append(loc)
                 constraints.append(const)
         if locs:
+            preContainers = set(pm.ls(type='container'))
             pm.bakeResults(locs,
                            simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                            sampleBy=1,
@@ -221,6 +226,7 @@ class BakeTools(toolAbstractFactory):
                            time=[pm.playbackOptions(query=True, minTime=True),
                                  pm.playbackOptions(query=True, maxTime=True)],
                            )
+            self.removeContainersPostBake(preContainers)
             if constrain:
                 pm.delete(constraints)
                 for cnt, loc in zip(sel, locs):
@@ -407,6 +413,7 @@ class BakeTools(toolAbstractFactory):
         # restore the animation layer
         pm.animLayer(animLayer[0], edit=True, mute=False)
         # bake out the result values
+        preContainers = set(pm.ls(type='container'))
         pm.bakeResults(allAttrs,
                        time=(keyRange[0], keyRange[-1]),
                        destinationLayer=resultLayer,
@@ -423,3 +430,4 @@ class BakeTools(toolAbstractFactory):
                        controlPoints=False,
                        shape=False)
         pm.delete(locators)
+        self.removeContainersPostBake(preContainers)

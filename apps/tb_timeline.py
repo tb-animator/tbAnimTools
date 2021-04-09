@@ -104,7 +104,7 @@ class timeline(toolAbstractFactory):
         super(timeline, self).optionUI()
         testButton = QPushButton('some test button')
         self.layout.addWidget(testButton)
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

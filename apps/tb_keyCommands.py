@@ -118,9 +118,9 @@ class tbToolLoader(object):
             return
         if not self.existing_commands:
             return
-        print 'extra_commands', self.extra_commands
+        #print 'extra_commands', self.extra_commands
         needed_ignore_names = [item for item in self.existing_commands if item in self.existing_commands]
-        print needed_ignore_names
+        #print needed_ignore_names
         return
         for items in self.extra_commands:
             if items in self.existing_commands:
@@ -131,13 +131,13 @@ class tbToolLoader(object):
             pm.optionVar(stringValueAppend=('tb_extra_commands', items))
 
     def removeBadCommands(self):
-        print 'removeBadCommands...'
-        print 'existing_commands', self.existing_commands
-        print 'allCommandNames', self.allCommandNames
-        print 'extra_commands', self.extra_commands
+        #print 'removeBadCommands...'
+        #print 'existing_commands', self.existing_commands
+        #print 'allCommandNames', self.allCommandNames
+        #print 'extra_commands', self.extra_commands
         commands = [com for com in self.existing_commands if
                     com not in self.allCommandNames and com not in self.extra_commands]
-        print commands
+        #print commands
         if commands:
             hotkey_cleanup(commands_to_delete=commands)
 

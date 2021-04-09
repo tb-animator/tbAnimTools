@@ -130,7 +130,7 @@ class playblastTool(toolAbstractFactory):
         aviBtn.setChecked(self.playblastExt_opv == 'avi')
         movBtn.setChecked(self.playblastExt_opv == 'mov')
         '''
-        return self.layout
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'showUI', ' function not implemented')

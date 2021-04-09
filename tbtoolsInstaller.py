@@ -1,4 +1,5 @@
 import maya.mel as mel
+import maya.cmds as cmds
 import pymel.core as pm
 import os, stat
 import sys
@@ -42,7 +43,7 @@ class module_maker():
         self.win_versions = ['win32', 'win64'][pm.about(is64=True)]
         self.maya_version = pm.about(version=True)
         self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
-        self.python_paths = ['apps', 'lib', '']
+        self.python_paths = ['', 'apps', 'proApps']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
         self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
         self.xbmlang_paths = ['Icons']
