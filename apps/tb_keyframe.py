@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -51,39 +51,35 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='match_tangent_start_to_end', annotation='',
                                      category=self.category,
-                                     command=['keyModifiers.matchStartTangentsToEndTangents()']))
+                                     command=['KeyModifiers.matchStartTangentsToEndTangents()']))
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
                                      category=self.category,
                                      command=['keyModifiers.matchEndTangentsToStartTangents()']))
         self.addCommand(self.tb_hkey(name='filter_channelBox',
                                      annotation='filters the current channelBox selection in the graph editor',
-                                     category=self.category, command=['keyModifiers.filterChannels()']))
+                                     category=self.category, command=['KeyModifiers.filterChannels()']))
 
         self.addCommand(self.tb_hkey(name='setTangentsLinear',
                                      annotation='Sets your current key selection or timeline key to linear',
-                                     category=self.category, command=['keyModifiers.setTangentsLinear()']))
+                                     category=self.category, command=['KeyModifiers.setTangentsLinear()']))
         self.addCommand(self.tb_hkey(name='setTangentsAuto',
                                      annotation='Sets your current key selection or timeline key to auto',
-                                     category=self.category, command=['keyModifiers.setTangentsAuto()']))
+                                     category=self.category, command=['KeyModifiers.setTangentsAuto()']))
         self.addCommand(self.tb_hkey(name='setTangentsSpline',
                                      annotation='Sets your current key selection or timeline key to spline',
-                                     category=self.category, command=['keyModifiers.setTangentsSpline()']))
+                                     category=self.category, command=['KeyModifiers.setTangentsSpline()']))
         self.addCommand(self.tb_hkey(name='setTangentsFlat',
                                      annotation='Sets your current key selection or timeline key to flat',
-                                     category=self.category, command=['keyModifiers.setTangentsFlat()']))
+                                     category=self.category, command=['KeyModifiers.setTangentsFlat()']))
         self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
                                      annotation='Toggle the collapsed state of the graph editor - if docked',
-                                     category=self.category, command=['keyModifiers.toggleDockedGraphEd()']))
+                                     category=self.category, command=['KeyModifiers.toggleDockedGraphEd()']))
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
-                                     category=self.category, command=['keyModifiers.level()']))
+                                     category=self.category, command=['KeyModifiers.level()']))
         self.addCommand(self.tb_hkey(name='eulerFilterSelection',
                                      annotation='euler filter your current keyframe selection',
-                                     category=self.category, command=['keyModifiers.eulerFilterSelectedKeys()']))
-        self.addCommand(self.tb_hkey(name='createMotionTrail',
-                                     annotation='',
-                                     category=self.category, command=['keyModifiers.createMotionPath()'],
-                                     help=self.helpStrings.createMotionTrail))
+                                     category=self.category, command=['KeyModifiers.eulerFilterSelectedKeys()']))
 
         return self.commandList
 
@@ -91,22 +87,22 @@ class hotkeys(hotKeyAbstractFactory):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class keyModifiers(toolAbstractFactory):
+class KeyModifiers(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'keyModifiers'
+    toolName = 'KeyModifiers'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     def __new__(cls):
-        if keyModifiers.__instance is None:
-            keyModifiers.__instance = object.__new__(cls)
+        if KeyModifiers.__instance is None:
+            KeyModifiers.__instance = object.__new__(cls)
 
-        keyModifiers.__instance.val = cls.toolName
-        return keyModifiers.__instance
+        KeyModifiers.__instance.val = cls.toolName
+        return KeyModifiers.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -118,9 +114,7 @@ class keyModifiers(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(keyModifiers, self).optionUI()
-        testButton = QPushButton('Flip frame count')
-        self.layout.addWidget(testButton)
+        super(KeyModifiers, self).optionUI()
         return self.optionWidget
 
     def showUI(self):
@@ -344,26 +338,3 @@ class keyModifiers(toolAbstractFactory):
         _node = pm.PyNode(node)
         pm.setAttr(_node.rotate, angles)
 
-    def createMotionPath(self):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return
-        with self.funcs.keepSelection():
-            trials = []
-            for s in sel:
-                cmds.select(s, replace=True)
-                moTrail = cmds.snapshot(motionTrail=True,
-                                        increment=1,
-                                        startTime=self.funcs.getTimelineMin(),
-                                        endTime=self.funcs.getTimelineMax())
-                cmds.select(moTrail, replace=True)
-                mel.eval("addToIsolation")
-
-    def removeMotionPath(self):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return
-        for s in sel:
-            motionTrail = cmds.listConnections(s, type='motionTrail')
-            if motionTrail:
-                cmds.delete(motionTrail)

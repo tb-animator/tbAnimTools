@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -58,19 +58,19 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='select_quick_select_set_objs',
                                      annotation='',
                                      category=self.category,
-                                     command=['QuickSelectionTools.qs_select()']))
+                                     command=['QuickSelectionSets.qs_select()']))
         self.addCommand(self.tb_hkey(name='quick_select_load_window',
                                      annotation='load quick selects from saved files',
                                      category=self.category,
-                                     command=['QuickSelectionTools.openQssLoadWindow()']))
+                                     command=['QuickSelectionSets.openQssLoadWindow()']))
         self.addCommand(self.tb_hkey(name='save_quick_selects_to_file',
                                      annotation='load quick selects from saved files',
                                      category=self.category,
-                                     command=['QuickSelectionTools.save_qs_to_file()']))
+                                     command=['QuickSelectionSets.save_qs_to_file()']))
         self.addCommand(self.tb_hkey(name='create_quick_select_set',
                                      annotation='create a new quick selection set from current selection',
                                      category=self.category,
-                                     command=['QuickSelectionTools.saveQssDialog()']))
+                                     command=['QuickSelectionSets.saveQssDialog()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -83,7 +83,7 @@ class QuickSelectionTools(toolAbstractFactory):
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'QuickSelectionTools'
+    toolName = 'QuickSelectionSets'
     hotkeyClass = hotkeys()
     funcs = functions()
 

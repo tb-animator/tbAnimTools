@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -162,6 +162,10 @@ class functions(object):
     @staticmethod
     def get_key_times(curve, selected=True):
         return cmds.keyframe(curve, query=True, selected=selected, timeChange=True)
+
+    @staticmethod
+    def get_object_key_times(target):
+        return sorted(list(set(cmds.keyframe(target, query=True, timeChange=True))))
 
     @staticmethod
     def get_selected_key_indexes(curve):
@@ -331,7 +335,8 @@ class functions(object):
         elif max:
             return cmds.timeControl(self.getPlayBackSlider(), query=True, rangeArray=True)[1]
         else:
-            return cmds.timeControl(self.getPlayBackSlider(), query=True, rangeArray=True)
+            timeRange = cmds.timeControl(self.getPlayBackSlider(), query=True, rangeArray=True)
+            return timeRange[0], timeRange[1] -1
 
     def isTimelineHighlighted(self):
         return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 1

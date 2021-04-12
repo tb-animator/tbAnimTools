@@ -23,8 +23,12 @@
 *******************************************************************************
 '''
 import pymel.core as pm
+import tb_timeline as tl
+import maya.mel as mel
 import maya.cmds as cmds
-
+import maya.api.OpenMaya as om2
+import pymel.core.datatypes as dt
+import math
 from Abstract import *
 
 qtVersion = pm.about(qtVersion=True)
@@ -39,47 +43,43 @@ else:
     from PySide2.QtCore import *
     from pyside2uic import *
     from shiboken2 import wrapInstance
-__author__ = 'tom.bailey'
-
-
-
 
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_view')
+        self.setCategory('tbtools_motionTrails')
         self.commandList = list()
-
-        self.addCommand(self.tb_hkey(name='toggle_isolate_selection',
+        self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',
-                                     category=self.category,
-                                     command=['isolator.toggle_isolate()']))
-        self.addCommand(self.tb_hkey(name='addToIsolation',
+                                     category=self.category, command=['MotionTrails.createMotionPath()'],
+                                     help=self.helpStrings.createMotionTrail))
+        self.addCommand(self.tb_hkey(name='removeMotionTrail',
                                      annotation='',
-                                     category=self.category,
-                                     command=['isolator.addToIsolation()']))
+                                     category=self.category, command=['MotionTrails.removeMotionPath()'],
+                                     help=self.helpStrings.removeMotionTrail))
 
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
-class isolator(toolAbstractFactory):
+
+class MotionTrails(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'isolator'
+    toolName = 'MotionTrails'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     def __new__(cls):
-        if isolator.__instance is None:
-            isolator.__instance = object.__new__(cls)
+        if MotionTrails.__instance is None:
+            MotionTrails.__instance = object.__new__(cls)
 
-        isolator.__instance.val = cls.toolName
-        return isolator.__instance
+        MotionTrails.__instance.val = cls.toolName
+        return MotionTrails.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -91,36 +91,32 @@ class isolator(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(isolator, self).optionUI()
+        super(MotionTrails, self).optionUI()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
-    def toggle_isolate(self):
-        '''
-        import isolate as iso
-        reload (iso)
-        iso.isolate()
-        '''
-        panel = self.funcs.getModelPanel()
-
-        state = cmds.isolateSelect(panel, query=True, state=True)
-        if state:
-            cmds.isolateSelect(panel, state=0)
-            pm.isolateSelect(panel, removeSelected=True)
-        else:
-            cmds.isolateSelect(panel, state=1)
-            cmds.isolateSelect(panel, addSelected=True)
-
-    def addToIsolation(self):
+    def createMotionPath(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return
-        panels = self.funcs.getAllModelPanels()
-        if not panels:
-            return
-        for p in panels:
-            state = pm.isolateSelect(p, query=True, state=True)
-            if state:
-                cmds.isolateSelect(p, addSelected=True)
+        with self.funcs.keepSelection():
+            trials = []
+            for s in sel:
+                cmds.select(s, replace=True)
+                moTrail = cmds.snapshot(motionTrail=True,
+                                        increment=1,
+                                        startTime=self.funcs.getTimelineMin(),
+                                        endTime=self.funcs.getTimelineMax())
+                cmds.select(moTrail, replace=True)
+                mel.eval("addToIsolation")
 
+    def removeMotionPath(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        for s in sel:
+            motionTrail = cmds.listConnections(s, type='motionTrail')
+            if motionTrail:
+                cmds.delete(motionTrail)

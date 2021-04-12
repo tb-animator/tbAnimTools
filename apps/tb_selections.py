@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -53,34 +53,34 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='select_all_anim_curves',
                                      annotation='',
                                      category=self.category,
-                                     command=['selectionTools.select_all_non_referenced_curves()']))
+                                     command=['SelectionTools.select_all_non_referenced_curves()']))
         # char set selector
         self.addCommand(self.tb_hkey(name='select_character_set_objs',
                                      annotation='',
                                      category=self.category,
                                      command=[
-                                              'selectionTools.select_cheracter_set()']))
+                                              'SelectionTools.select_cheracter_set()']))
         return self.commandList
 
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
-class selectionTools(toolAbstractFactory):
+class SelectionTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'selectionTools'
+    toolName = 'SelectionTools'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     def __new__(cls):
-        if selectionTools.__instance is None:
-            selectionTools.__instance = object.__new__(cls)
+        if SelectionTools.__instance is None:
+            SelectionTools.__instance = object.__new__(cls)
 
-        selectionTools.__instance.val = cls.toolName
-        return selectionTools.__instance
+        SelectionTools.__instance.val = cls.toolName
+        return SelectionTools.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -92,7 +92,7 @@ class selectionTools(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(selectionTools, self).optionUI()
+        super(SelectionTools, self).optionUI()
         return self.optionWidget
 
     def showUI(self):

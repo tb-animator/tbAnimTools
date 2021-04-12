@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -51,28 +51,28 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='toggle_playback_tool',
                                      annotation='does fancy playback toggling',
                                      category=self.category,
-                                     command=['playback.playPause()']))
+                                     command=['Playback.playPause()']))
         self.addCommand(self.tb_hkey(name='toggle_playback_viewport',
                                      annotation='does fancy playback toggling viewport modes',
                                      category=self.category,
-                                     command=['playback.toggleAll()']))
+                                     command=['Playback.toggleAll()']))
         self.addCommand(self.tb_hkey(name='flip_playback',
                                      annotation='does fancy playback toggling',
                                      category=self.category,
-                                     command=['playback.flipPlayback()']))
+                                     command=['Playback.flipPlayback()']))
         return self.commandList
 
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class playback(toolAbstractFactory):
+class Playback(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'playback'
+    toolName = 'Playback'
     hotkeyClass = None
     funcs = None
 
@@ -98,11 +98,11 @@ class playback(toolAbstractFactory):
     cached_currentTime = None
 
     def __new__(cls):
-        if playback.__instance is None:
-            playback.__instance = object.__new__(cls)
+        if Playback.__instance is None:
+            Playback.__instance = object.__new__(cls)
 
-        playback.__instance.val = cls.toolName
-        return playback.__instance
+        Playback.__instance.val = cls.toolName
+        return Playback.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -115,7 +115,7 @@ class playback(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(playback, self).optionUI()
+        super(Playback, self).optionUI()
         flipWidget = intFieldWidget(optionVar=self.flipFrame_opv, defaultValue=self.flipFrame_default, label='Flip frame count')
         self.layout.addWidget(flipWidget)
         return self.optionWidget

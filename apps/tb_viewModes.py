@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -83,36 +83,36 @@ class hotkeys(hotKeyAbstractFactory):
 
         self.addCommand(self.tb_hkey(name='ViewMode_xray_joints', annotation='',
                                      category=self.category,
-                                     command=['viewModeTool.toggleXrayJoints()']))
+                                     command=['ViewModes.toggleXrayJoints()']))
         self.addCommand(self.tb_hkey(name='ViewMode_xray',
                                      annotation='',
                                      category=self.category,
-                                     command=['viewModeTool.toggleXray()']))
+                                     command=['ViewModes.toggleXray()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_Joints',
                                      annotation='',
                                      category=self.category,
-                                     command=['viewModeTool.viewControls()']))
+                                     command=['ViewModes.viewControls()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_Meshes',
                                      annotation='',
                                      category=self.category,
-                                     command=['viewModeTool.viewMeshes()']))
+                                     command=['ViewModes.viewMeshes()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_All',
                                      annotation='',
                                      category=self.category,
-                                     command=['viewModeTool.viewAll()']))
+                                     command=['ViewModes.viewAll()']))
         return self.commandList
 
     def assignHotkeys(self):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class viewModeTool(toolAbstractFactory):
+class ViewModeTool(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'viewModeTool'
+    toolName = 'ViewModes'
     hotkeyClass = None
     funcs = None
     viewData = dict()
@@ -124,11 +124,11 @@ class viewModeTool(toolAbstractFactory):
     lastPanel = None
 
     def __new__(cls):
-        if viewModeTool.__instance is None:
-            viewModeTool.__instance = object.__new__(cls)
+        if ViewModeTool.__instance is None:
+            ViewModeTool.__instance = object.__new__(cls)
 
-        viewModeTool.__instance.val = cls.toolName
-        return viewModeTool.__instance
+        ViewModeTool.__instance.val = cls.toolName
+        return ViewModeTool.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -141,9 +141,14 @@ class viewModeTool(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(viewModeTool, self).optionUI()
+        super(ViewModeTool, self).optionUI()
         subWdiget = QWidget()
         subLayout = QVBoxLayout()
+        infoText = QLabel()
+        infoText.setText(
+            'Use these buttons to override the view mode commands with the current object types visible in the viewport')
+        infoText.setWordWrap(True)
+        self.layout.addWidget(infoText)
         self.layout.addWidget(subWdiget)
         subWdiget.setLayout(subLayout)
 
@@ -186,7 +191,7 @@ class viewModeTool(toolAbstractFactory):
         removeControlButton.setFixedWidth(72)
         removeModelButton.setFixedWidth(72)
         removeAllButton.setFixedWidth(72)
-
+        self.layout.addStretch()
         return self.optionWidget
 
     def showUI(self):
@@ -256,17 +261,12 @@ class viewModeTool(toolAbstractFactory):
                          allObjects=False)
 
     def viewMode(self, key='everything', custom=False, default='everything'):
-        panel = self.funcs.getModelPanel()
-        print 'panel', panel
-        # self.viewNone(panel)
-        print self.viewData['viewData'].get(key, default)
         self.setFlagsFromDict({False: default, True: self.viewData['viewData'].get(key, default)}[bool(custom)])
 
     def viewControls(self):
         self.viewMode(key='controls', custom=pm.optionVar.get(self.viewControlsCustomOption, False), default=controls)
 
     def viewMeshes(self):
-        print 'viewMeshesCustomOption', pm.optionVar.get(self.viewMeshesCustomOption, False)
         self.viewMode(key='models', custom=pm.optionVar.get(self.viewMeshesCustomOption, False), default=models)
 
     def viewAll(self):
@@ -283,7 +283,7 @@ class viewModeTool(toolAbstractFactory):
                          xray=not cmds.modelEditor(panel, query=True, xray=True))
 
     def loadData(self):
-        super(viewModeTool, self).loadData()
+        super(ViewModeTool, self).loadData()
         self.viewData = self.rawJsonData.get('viewData', dict())
         if 'viewData' not in self.viewData.keys():
             self.viewData['viewData'] = dict()

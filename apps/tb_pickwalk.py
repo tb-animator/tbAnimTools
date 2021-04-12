@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -2291,7 +2291,7 @@ class PickwalkCreator(object):
                 # print 'mirrorDir', mirrorDir
                 for s in sideList:
                     if s in key:
-                        mirrorKey = key.replace(s, sideList[not sideList.index(s)])
+                        mirrorKey = self.directionsDict[key]
                         # print 'mirrorKey', mirrorKey
                         self.addControl(mirrorKey)
                         # print key, value, type(value)

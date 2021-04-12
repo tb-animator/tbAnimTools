@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -647,7 +647,7 @@ class intFieldWidget(QWidget):
     optionVar = None
     optionValue = 0
 
-    def __init__(self, optionVar=str(), defaultValue=int(), label=str()):
+    def __init__(self, optionVar=str(), defaultValue=int(), label=str(), minimum=0, maximum=1, step=0.1):
         QWidget.__init__(self)
         self.optionVar = optionVar
         self.defaultValue = defaultValue
@@ -659,6 +659,9 @@ class intFieldWidget(QWidget):
         label = QLabel(label)
 
         self.spinBox = QSpinBox()
+        self.spinBox.setMaximum(maximum)
+        self.spinBox.setMinimum(minimum)
+        self.spinBox.setSingleStep(step)
         self.spinBox.setProperty("value", self.optionValue)
         self.layout.addWidget(label)
         self.layout.addWidget(self.spinBox)

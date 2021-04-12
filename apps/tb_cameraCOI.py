@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -204,6 +204,7 @@ class CameraPivot(toolAbstractFactory):
         self.layout.addWidget(useTumbleOptionWidget)
         # connect the checkbox changed event to the function that handles removing/adding the camera scriptJobs
         useTumbleOptionWidget.changedSignal.connect(self.updateScriptJobStatus)
+        self.layout.addStretch()
         return self.optionWidget
 
     def showUI(self):

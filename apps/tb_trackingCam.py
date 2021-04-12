@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -49,27 +49,27 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='trackingCameraTrack',
                                      annotation='creates/rebuilds a tracking camera to track your current selection',
                                      category=self.category,
-                                     command=['trackingCamera.swapToTrackingCamera()']))
+                                     command=['TrackingCamera.swapToTrackingCamera()']))
         self.addCommand(self.tb_hkey(name='trackingCameraUpdate',
                                      annotation='updates the object tracked by the tracking camera, switches view',
                                      category=self.category,
-                                     command=['trackingCamera.swapToTrackingCameraUpdateTarget()']))
+                                     command=['TrackingCamera.swapToTrackingCameraUpdateTarget()']))
         self.addCommand(self.tb_hkey(name='trackingCameraPersp',
                                      annotation='swaps the view to the perspective camera, matching your current view',
-                                     category=self.category, command=['trackingCamera.swapToCamera()']))
+                                     category=self.category, command=['TrackingCamera.swapToCamera()']))
         return self.commandList
 
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class trackingCamera(toolAbstractFactory):
+class TrackingCamera(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'trackingCamera'
+    toolName = 'TrackingCamera'
     hotkeyClass = hotkeys()
     funcs = functions()
 
@@ -81,11 +81,11 @@ class trackingCamera(toolAbstractFactory):
     camera_target = None
 
     def __new__(cls):
-        if trackingCamera.__instance is None:
-            trackingCamera.__instance = object.__new__(cls)
+        if TrackingCamera.__instance is None:
+            TrackingCamera.__instance = object.__new__(cls)
 
-        trackingCamera.__instance.val = cls.toolName
-        return trackingCamera.__instance
+        TrackingCamera.__instance.val = cls.toolName
+        return TrackingCamera.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -97,7 +97,7 @@ class trackingCamera(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(trackingCamera, self).optionUI()
+        return super(TrackingCamera, self).optionUI()
 
     def showUI(self):
 

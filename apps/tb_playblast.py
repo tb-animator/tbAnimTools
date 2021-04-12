@@ -2,7 +2,7 @@
 
 *******************************************************************************
     License and Copyright
-    Copyright 2015-Tom Bailey
+    Copyright 2020-Tom Bailey
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -53,12 +53,12 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='incrememnt and save playblasts in mov',
                                      category=self.category,
                                      command=[
-                                         'playblastTool.make_playblast(ext="mov")']))
+                                         'Playblast.make_playblast(ext="mov")']))
         self.addCommand(self.tb_hkey(name='incremental_playblast_avi',
                                      annotation='incrememnt and save playblasts in avi',
                                      category=self.category,
                                      command=[
-                                         'playblastTool.make_playblast(ext="avi")']))
+                                         'Playblast.make_playblast(ext="avi")']))
 
         return self.commandList
 
@@ -66,13 +66,13 @@ class hotkeys(hotKeyAbstractFactory):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class playblastTool(toolAbstractFactory):
+class PlayblastTool(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'playblastTool'
+    toolName = 'Playblast'
     hotkeyClass = hotkeys()
     funcs = functions()
 
@@ -83,11 +83,11 @@ class playblastTool(toolAbstractFactory):
     playblastExt_default = 'mov'
 
     def __new__(cls):
-        if playblastTool.__instance is None:
-            playblastTool.__instance = object.__new__(cls)
+        if PlayblastTool.__instance is None:
+            PlayblastTool.__instance = object.__new__(cls)
 
-        playblastTool.__instance.val = cls.toolName
-        return playblastTool.__instance
+        PlayblastTool.__instance.val = cls.toolName
+        return PlayblastTool.__instance
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
@@ -99,7 +99,7 @@ class playblastTool(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(playblastTool, self).optionUI()
+        super(PlayblastTool, self).optionUI()
 
         dirWidget = filePathWidget('tb_playblast_folder', self.playblastDir_default)
 
@@ -109,27 +109,7 @@ class playblastTool(toolAbstractFactory):
 
         self.layout.addWidget(dirWidget)
         self.layout.addWidget(fileTypeWidget)
-
-        '''
-        videoTypeLayout = QHBoxLayout()
-        videoTypeLabel = QLabel('output file type')
-        videoTypeGrp = QButtonGroup()  # Letter group
-        movBtn = QRadioButton("mov")
-        movBtn.toggled.connect(lambda: self.extBtnState(movBtn))
-        videoTypeGrp.addButton(movBtn)
-        aviBtn = QRadioButton("avi")
-        aviBtn.toggled.connect(lambda: self.extBtnState(aviBtn))
-        videoTypeGrp.addButton(aviBtn)
-        videoTypeLayout.addWidget(videoTypeLabel)
-        videoTypeLayout.addWidget(movBtn)
-        videoTypeLayout.addWidget(aviBtn)
-        layout.addWidget(dirWidget)
-        layout.addLayout(videoTypeLayout)
-
-        self.playblastExt_opv = pm.optionVar.get(self.playblastExt_opv, self.playblastExt_default)
-        aviBtn.setChecked(self.playblastExt_opv == 'avi')
-        movBtn.setChecked(self.playblastExt_opv == 'mov')
-        '''
+        self.layout.addStretch()
         return self.optionWidget
 
     def showUI(self):
