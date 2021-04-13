@@ -60,16 +60,19 @@ import pymel.core.datatypes as dt
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory('tbtools_constraints')
+        self.setCategory('tbtools_gravity')
         self.addCommand(self.tb_hkey(name='quickJump',
                                      annotation='useful comment',
-                                     category=self.category, command=['GravityTools.quickJump()']))
-        self.addCommand(self.tb_hkey(name='quickJump',
+                                     category=self.category, command=['GravityTools.quickJump()'],
+                                     help=self.helpStrings.gravity.get('quickJump')))
+        self.addCommand(self.tb_hkey(name='jumpAllKeyWindows',
                                      annotation='useful comment',
-                                     category=self.category, command=['GravityTools.jumpAllKeyWindows()']))
-        self.addCommand(self.tb_hkey(name='quickJump',
+                                     category=self.category, command=['GravityTools.jumpAllKeyWindows()'],
+                                     help=self.helpStrings.gravity.get('jumpAllKeyWindows')))
+        self.addCommand(self.tb_hkey(name='jumpUsingInitialFrameVelocity',
                                      annotation='useful comment',
-                                     category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()']))
+                                     category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
+                                     help=self.helpStrings.gravity.get('jumpUsingInitialFrameVelocity')))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
