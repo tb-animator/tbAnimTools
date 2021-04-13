@@ -221,10 +221,10 @@ class AimTools(toolAbstractFactory):
             refName = self.funcs.getRefName(target)
             if refName not in directionDict.keys():
                 data = default
-            elif target not in directionDict[refName].keys():
+            elif name not in directionDict[refName].keys():
                 data = default
             else:
-                data = directionDict[refName][target]
+                data = directionDict[refName][name]
             self.aimToLocator(refName, name, target, data)
         self.bake()
         for key in self.controlInfo.keys():
@@ -247,13 +247,15 @@ class AimTools(toolAbstractFactory):
         fwdVec = getLocalVecToWorldSpaceAPI(target, vec=aimAxis, offset=targetPosMVector,
                                             mult=data['distance'] / self.funcs.locator_unit_conversion())
 
-        up.translate.set(upVec)
-        aim.translate.set(fwdVec)
+        fwdPos = self.getPosition(target, self.getAxis(data['aimAxis'], data['flipAim']), data['distance'])
+        upPos = self.getPosition(target, self.getAxis(data['upAxis'], data['flipUp']), data['distance'])
+        aim.translate.set(fwdPos)
+        up.translate.set(upPos)
 
-        self.constraints.append(cmds.parentConstraint(target, str(up),
+        self.constraints.append(cmds.parentConstraint(target, str(aim),
                                                       maintainOffset=True,
                                                       skipRotate=('x', 'y', 'z')))
-        self.constraints.append(cmds.parentConstraint(target, str(aim),
+        self.constraints.append(cmds.parentConstraint(target, str(up),
                                                       maintainOffset=True,
                                                       skipRotate=('x', 'y', 'z')))
 
@@ -344,12 +346,6 @@ class AimTools(toolAbstractFactory):
         '''
 
     def updatePreview(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
-        print 'controlName', controlName
-        print 'aimAxis', aimAxis,
-        print 'upAxis', upAxis,
-        print 'flipAim', flipAim,
-        print 'flipUp', flipUp,
-        print 'distance', distance
         fwdPreview = 'fwd_Preview'
         upPreview = 'up_Preview'
         if not cmds.objExists(fwdPreview):

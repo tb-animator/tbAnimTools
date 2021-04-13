@@ -100,7 +100,7 @@ class functions(object):
         loc = pm.spaceLocator(name=name + '_' + suffix)
         size = scale * self.locator_unit_conversion()
         loc.localScale.set(size, size, size)
-        loc.rotateOrder.set(2)
+        loc.rotateOrder.set(3)
         loc.getShape().overrideEnabled.set(True)
         loc.getShape().overrideRGBColors.set(True)
         loc.getShape().overrideColorRGB.set(color)
