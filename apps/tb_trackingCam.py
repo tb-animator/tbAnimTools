@@ -160,8 +160,10 @@ class TrackingCamera(toolAbstractFactory):
                 self.createTrackingCamera()
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)
-            if cmds.objExists(self.constraint):
-                cmds.delete(self.constraint)
+            if self.constraint:
+                for c in self.constraint:
+                    if cmds.objExists(c):
+                        cmds.delete(c)
             self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(cam)
 
