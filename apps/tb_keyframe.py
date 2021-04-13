@@ -54,7 +54,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      command=['KeyModifiers.matchStartTangentsToEndTangents()']))
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
                                      category=self.category,
-                                     command=['keyModifiers.matchEndTangentsToStartTangents()']))
+                                     command=['KeyModifiers.matchEndTangentsToStartTangents()']))
         self.addCommand(self.tb_hkey(name='filter_channelBox',
                                      annotation='filters the current channelBox selection in the graph editor',
                                      category=self.category, command=['KeyModifiers.filterChannels()']))
