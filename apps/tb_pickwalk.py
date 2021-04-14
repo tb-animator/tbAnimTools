@@ -263,7 +263,7 @@ class Pickwalk(toolAbstractFactory):
                         name=command + 'NameCommand')
 
     def assignShiftArrowHotkeys(self):
-        for direction, command in self.walkHotkeyMap.items():
+        for direction, command in self.walkAddHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
                         name=command + 'NameCommand')
@@ -389,7 +389,8 @@ class Pickwalk(toolAbstractFactory):
 
                 if add:
                     print 'adding'
-                    returnedControls.extend([str(s) for s in sel])
+                    #returnedControls.extend([str(s) for s in sel])
+                    returnedControls = [str(s) for s in sel].extend(returnedControls)
                     #returnedControls.append(sel)
 
                 print 'final returnedControls', returnedControls
@@ -439,7 +440,7 @@ class Pickwalk(toolAbstractFactory):
             self.walkStandard(direction)
             return
         if add:
-            returnedControls.extend([str(s) for s in sel])
+            returnedControls = [str(s) for s in sel].extend(returnedControls)
         cmds.select(returnedControls, replace=True)
 
     def walkUp(self):
