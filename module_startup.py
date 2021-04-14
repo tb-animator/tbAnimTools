@@ -25,15 +25,14 @@
 *******************************************************************************
 '''
 import maya.utils as mutils
-import apps.tb_optionVars as tbo
 import pymel.core as pm
-import apps.tb_keyCommands as tb_hotKeys
 import maya.mel as mel
+import tbtoolsUpdater as upd
 
 class initialise(object):
     def check_for_updates(self):
-        pass
-        #upd.updater().check_version()
+        updater = upd.updater()
+        updater.check_version()
     '''
     def loadRMB(self, *args):
         try:
@@ -42,9 +41,15 @@ class initialise(object):
             print "BAD CALLBACK", Exception, e
     '''
     def load_everything(self):
+        self.check_for_updates()
+
+        import apps.tb_optionVars as tbo
+        import apps.tb_keyCommands as tb_hotKeys
+        reload(tbo)
+        reload(tb_hotKeys)
+
         keyLoader = tb_hotKeys.tbToolLoader()
         keyLoader.loadAllCommands()
-
         if tbo.set_default_values():
             pm.optionVar(intValue=('tb_firstRun', 0))
 

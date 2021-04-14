@@ -1,7 +1,4 @@
-import os
 import pymel.core as pm
-
-from Abstract import *
 import os
 
 
@@ -21,7 +18,6 @@ else:
 qssFile = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'darkorange.qss'))
 
 def getStyleSheet():
-    print qssFile
     if not os.path.isfile(qssFile):
         return pm.warning('stylesheet file not found')
     stream = QFile(qssFile)
