@@ -129,12 +129,82 @@ class BaseDialog(QDialog):
     def mouseMoveEvent(self, event):
         if not self.oldPos:
             return
-        delta = QPoint (event.globalPos() - self.oldPos)
+        delta = QPoint(event.globalPos() - self.oldPos)
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPos = event.globalPos()
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
+
+class AimAxisWidget(QWidget):
+    editedSignal = Signal(str, str, bool, bool, float)
+
+    def __init__(self, itemList=['x', 'y', 'z'],
+                 aimAxis='x',
+                 upAxis='z',
+                 flipAim=False,
+                 flipUp=False,
+                 distance=10.0):
+        super(AimAxisWidget, self).__init__()
+        self.aimAxis = aimAxis
+        self.upAxis = upAxis
+        self.flipAim = flipAim
+        self.flipUp = flipUp
+        self.distance = distance
+        self.itemLayout = QHBoxLayout()
+        self.setLayout(self.itemLayout)
+        aimLabel = QLabel('Aim Axis')
+        upLabel = QLabel('Up Axis')
+        flipAimLabel = QLabel('Flip Aim')
+        flipUpLabel = QLabel('Flip Up')
+        self.flipAimCB = QCheckBox()
+        self.flipAimCB.setChecked(flipAim)
+        self.flipUpCB = QCheckBox()
+        self.flipUpCB.setChecked(flipUp)
+        self.aimComboBox = QComboBox()
+        for item in itemList:
+            self.aimComboBox.addItem(item)
+        self.upComboBox = QComboBox()
+        for item in itemList:
+            self.upComboBox.addItem(item)
+        self.aimComboBox.setFixedWidth(32)
+        self.upComboBox.setFixedWidth(32)
+
+        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
+        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
+
+        self.distanceSpinBox = QDoubleSpinBox()
+        distanceLabel = QLabel('Distance')
+        self.distanceSpinBox.setFixedWidth(80)
+        self.distanceSpinBox.setValue(distance)
+        self.distanceSpinBox.setMaximum(1000.0)
+        self.distanceSpinBox.setSingleStep(0.1)
+        self.itemLayout.addWidget(aimLabel)
+        self.itemLayout.addWidget(self.aimComboBox)
+        self.itemLayout.addWidget(upLabel)
+        self.itemLayout.addWidget(self.upComboBox)
+        self.itemLayout.addWidget(flipAimLabel)
+        self.itemLayout.addWidget(self.flipAimCB)
+        self.itemLayout.addWidget(flipUpLabel)
+        self.itemLayout.addWidget(self.flipUpCB)
+        self.itemLayout.addWidget(distanceLabel)
+        self.itemLayout.addWidget(self.distanceSpinBox)
+
+        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.flipAimCB.clicked.connect(self.widgetedited)
+        self.flipUpCB.clicked.connect(self.widgetedited)
+        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
+
+    def widgetedited(self, *args):
+        self.editedSignal.emit(str(self.aimComboBox.currentText()),
+                               str(self.upComboBox.currentText()),
+                               self.flipAimCB.isChecked(),
+                               self.flipUpCB.isChecked(),
+                               self.distanceSpinBox.value()
+                               )
+
 
 class AimAxisDialog(BaseDialog):
     assignSignal = Signal(str, str, str, bool, bool, float)
@@ -144,7 +214,7 @@ class AimAxisDialog(BaseDialog):
     def __init__(self, controlName=str, parent=None,
                  title='Assign default aim for control',
                  text='what  what?',
-                 itemList=['x','y','z'],
+                 itemList=['x', 'y', 'z'],
                  aimAxis='x',
                  upAxis='z',
                  flipAim=False,
@@ -163,6 +233,13 @@ class AimAxisDialog(BaseDialog):
         self.cancelButton = QPushButton('Cancel')
         self.cancelButton.clicked.connect(self.close)
 
+        self.aimWidget = AimAxisWidget(itemList=itemList,
+                                       aimAxis=aimAxis,
+                                       upAxis=upAxis,
+                                       flipAim=flipAim,
+                                       flipUp=flipUp,
+                                       distance=distance)
+        '''
         aimLabel = QLabel('Aim Axis')
         upLabel = QLabel('Up Axis')
         flipAimLabel = QLabel('Flip Aim')
@@ -200,18 +277,19 @@ class AimAxisDialog(BaseDialog):
         self.itemLayout.addWidget(self.flipUpCB)
         self.itemLayout.addWidget(distanceLabel)
         self.itemLayout.addWidget(self.distanceSpinBox)
-
-        self.layout.addLayout(self.itemLayout)
+        '''
+        self.layout.addWidget(self.aimWidget)
         self.layout.addLayout(buttonLayout)
         buttonLayout.addWidget(self.assignButton)
         buttonLayout.addWidget(self.cancelButton)
-
+        '''
         self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
         self.upComboBox.currentIndexChanged.connect(self.widgetedited)
         self.flipAimCB.clicked.connect(self.widgetedited)
         self.flipUpCB.clicked.connect(self.widgetedited)
         self.distanceSpinBox.valueChanged.connect(self.widgetedited)
-
+        '''
+        self.aimWidget.editedSignal.connect(self.widgetedited)
     def assignPressed(self):
         self.assignSignal.emit(self.controlName,
                                str(self.aimComboBox.currentText()),
@@ -226,13 +304,13 @@ class AimAxisDialog(BaseDialog):
         self.closeSignal.emit()
         super(AimAxisDialog, self).close()
 
-    def widgetedited(self, *args):
+    def widgetedited(self, aim, up, flipAim, flipUp, distance):
         self.editedSignal.emit(self.controlName,
-                               str(self.aimComboBox.currentText()),
-                               str(self.upComboBox.currentText()),
-                               self.flipAimCB.isChecked(),
-                               self.flipUpCB.isChecked(),
-                               self.distanceSpinBox.value()
+                               aim,
+                               up,
+                               flipAim,
+                               flipUp,
+                               distance
                                )
 
 
@@ -373,6 +451,7 @@ class PickwalkQueryWidget(QDialog):
             self.close()
         return super(PickwalkQueryWidget, self).keyPressEvent(event)
 
+
 class TextInputWidget(QWidget):
     """
     Simple prompt with text input
@@ -384,10 +463,8 @@ class TextInputWidget(QWidget):
         super(TextInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
 
-
-
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason| Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -430,6 +507,7 @@ class TextInputWidget(QWidget):
             "border-radius: 8;"
             "}"
         )
+
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
@@ -466,12 +544,13 @@ class TextInputWidget(QWidget):
     def mouseMoveEvent(self, event):
         if not self.oldPos:
             return
-        delta = QPoint (event.globalPos() - self.oldPos)
+        delta = QPoint(event.globalPos() - self.oldPos)
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPos = event.globalPos()
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
 
 class promptWidget(QWidget):
     saveSignal = Signal(str)
@@ -546,6 +625,7 @@ class promptWidget(QWidget):
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
 
+
 class optionWidget(QWidget):
     def __init__(self, label=str):
         super(optionWidget, self).__init__()
@@ -555,13 +635,13 @@ class optionWidget(QWidget):
     def initUI(self):
         self.mainLayout = QVBoxLayout()
         self.setLayout(self.mainLayout)
-        self.scroll = QScrollArea()             # Scroll Area which contains the widgets, set as the centralWidget
-        self.scrollWidget = QWidget()                 # Widget that contains the collection of Vertical Box
-        self.layout = QVBoxLayout()               # The Vertical Box that contains the Horizontal Boxes of  labels and buttons
+        self.scroll = QScrollArea()  # Scroll Area which contains the widgets, set as the centralWidget
+        self.scrollWidget = QWidget()  # Widget that contains the collection of Vertical Box
+        self.layout = QVBoxLayout()  # The Vertical Box that contains the Horizontal Boxes of  labels and buttons
 
         self.scrollWidget.setLayout(self.layout)
 
-        #Scroll Area Properties
+        # Scroll Area Properties
         self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll.setWidgetResizable(True)
@@ -712,21 +792,21 @@ class LicenseWin(BaseDialog):
         super(LicenseWin, self).__init__(parent=parent)
         self.setWindowTitle("LicenseWin!")
 
-        #QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        #QBtn.button(QDialogButtonBox.Ok).setText("Activate")
-        #QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
-        #self.buttonBox = QDialogButtonBox(QBtn)
+        # QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        # QBtn.button(QDialogButtonBox.Ok).setText("Activate")
+        # QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
+        # self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox = QDialogButtonBox()
         self.buttonBox.addButton("Activate", QDialogButtonBox.AcceptRole)
         self.buttonBox.addButton("Cancel", QDialogButtonBox.RejectRole)
         self.buttonBox.accepted.connect(self.activate)
         self.buttonBox.rejected.connect(self.reject)
-        #self.buttonBox.accepted.connect(self.activate)
-        #self.buttonBox.rejected.connect(self.reject)
+        # self.buttonBox.accepted.connect(self.activate)
+        # self.buttonBox.rejected.connect(self.reject)
 
-        #self.buttonLayout = QVBoxLayout()
-        #self.activateButton = QPushButton('Activate')
-        #self.quitButton = QPushButton('Exit')
+        # self.buttonLayout = QVBoxLayout()
+        # self.activateButton = QPushButton('Activate')
+        # self.quitButton = QPushButton('Exit')
 
         self.setFixedSize(400, 180)
         self.gridLayout = QGridLayout()
@@ -744,17 +824,17 @@ class LicenseWin(BaseDialog):
         self.emailLabel.setStyleSheet(getqss.getStyleSheet())
         self.emailLineEdit = QLineEdit()
 
-        #self.mainLayout.addWidget(self.titleText)
-        #self.mainLayout.addWidget(self.infoText)
-        self.gridLayout.addWidget(self.licenseKeyLabel, 0,0)
+        # self.mainLayout.addWidget(self.titleText)
+        # self.mainLayout.addWidget(self.infoText)
+        self.gridLayout.addWidget(self.licenseKeyLabel, 0, 0)
         self.gridLayout.addWidget(self.licenseLineEdit, 0, 1)
         self.gridLayout.addWidget(self.emailLabel, 1, 0)
         self.gridLayout.addWidget(self.emailLineEdit, 1, 1)
         self.mainLayout.addLayout(self.gridLayout)
-        #self.buttonWidget.activateSignal.connect(self.dragLeaveEvent())
+        # self.buttonWidget.activateSignal.connect(self.dragLeaveEvent())
         self.mainLayout.addWidget(self.buttonBox)
 
-        #self.activateButton.clicked.connect(self.activate)
+        # self.activateButton.clicked.connect(self.activate)
         self.startPos = None
 
     def mousePressEvent(self, event):
@@ -762,7 +842,7 @@ class LicenseWin(BaseDialog):
 
     def mouseMoveEvent(self, event):
         if self.oldPos:
-            delta = QPoint (event.globalPos() - self.oldPos)
+            delta = QPoint(event.globalPos() - self.oldPos)
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.oldPos = event.globalPos()
             self.update()
@@ -770,6 +850,7 @@ class LicenseWin(BaseDialog):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
     '''
     def mouseMoveEvent(self, event):
         print 'mousePressEvent', self.leftClick
@@ -794,7 +875,6 @@ class LicenseWin(BaseDialog):
         super(LicenseWin, self).mouseReleaseEvent(event)
         return False
     '''
-
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:

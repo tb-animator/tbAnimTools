@@ -96,6 +96,7 @@ class AimTools(toolAbstractFactory):
     aimData = dict()
     lastUseData = dict()
     defaultData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+    defaultAimData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
 
     def __new__(cls):
         if AimTools.__instance is None:
@@ -130,6 +131,22 @@ class AimTools(toolAbstractFactory):
 
     def optionUI(self):
         super(AimTools, self).optionUI()
+        infoText = QLabel()
+        infoText.setText(
+            'Set the default quick aim values here. If a control does not have a specific preset created, the tool will default to these values.\n'
+            'The distance value will be used for quick anim bakes for specific axis')
+        infoText.setWordWrap(True)
+        self.aimWidget = AimAxisWidget(itemList=['x','y','z'],
+                                       aimAxis=self.defaultAimData.get('aimAxis'),
+                                       upAxis=self.defaultAimData.get('upAxis'),
+                                       flipAim=self.defaultAimData.get('flipAim'),
+                                       flipUp=self.defaultAimData.get('flipUp'),
+                                       distance=self.defaultAimData.get('distance'))
+        self.aimWidget.itemLayout.addStretch()
+        self.layout.addWidget(infoText)
+        self.layout.addWidget(self.aimWidget)
+        self.layout.addStretch()
+        self.aimWidget.editedSignal.connect(self.updateDefault)
         return self.optionWidget
 
     def showUI(self):
@@ -183,30 +200,30 @@ class AimTools(toolAbstractFactory):
     def quickAim(self, *args):
         # TODO make this handle multiple objects
         self.aimToLocators(directionDict=self.aimData,
-                           default=self.defaultData)
+                           default=self.defaultAimData)
 
     def quickAimXY(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimZY(self, *args):
-        default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimXZ(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimYZ(self, *args):
-        default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimYX(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def quickAimZX(self, *args):
-        default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+        default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict={}, default=default)
 
     def aimToLocators(self, directionDict=dict(), default=dict()):
@@ -337,7 +354,7 @@ class AimTools(toolAbstractFactory):
         prompt.assignSignal.connect(self.assignDefault)
         prompt.editedSignal.connect(self.updatePreview)
         prompt.closeSignal.connect(self.deletePreview)
-        prompt.widgetedited()
+        prompt.aimWidget.widgetedited()
         '''
         if prompt.exec_():
             pass
@@ -362,6 +379,14 @@ class AimTools(toolAbstractFactory):
         upPos = self.getPosition(controlName, self.getAxis(upAxis, flipUp), distance)
         fwdPreview.translate.set(fwdPos)
         upPreview.translate.set(upPos)
+
+    def updateDefault(self, aimAxis, upAxis, flipAim, flipUp, distance):
+        self.defaultAimData['aimAxis'] = aimAxis
+        self.defaultAimData['upAxis'] = upAxis
+        self.defaultAimData['flipAim'] = flipAim
+        self.defaultAimData['flipUp'] = flipUp
+        self.defaultAimData['distance'] = distance
+        self.saveData()
 
     def deletePreview(self):
         fwdPreview = 'fwd_Preview'
@@ -395,11 +420,13 @@ class AimTools(toolAbstractFactory):
     def loadData(self):
         super(AimTools, self).loadData()
         self.aimData = self.rawJsonData.get('aimData', dict())
+        self.defaultAimData = self.rawJsonData.get('defaultAimData', self.defaultData)
 
     def toJson(self):
         jsonData = '''{}'''
         self.classData = json.loads(jsonData)
         self.classData['aimData'] = self.aimData
+        self.classData['defaultAimData'] = self.defaultAimData
 
 
 def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
