@@ -290,13 +290,14 @@ class AimAxisDialog(BaseDialog):
         self.distanceSpinBox.valueChanged.connect(self.widgetedited)
         '''
         self.aimWidget.editedSignal.connect(self.widgetedited)
+
     def assignPressed(self):
         self.assignSignal.emit(self.controlName,
-                               str(self.aimComboBox.currentText()),
-                               str(self.upComboBox.currentText()),
-                               self.flipAimCB.isChecked(),
-                               self.flipUpCB.isChecked(),
-                               self.distanceSpinBox.value()
+                               str(self.aimWidget.aimComboBox.currentText()),
+                               str(self.aimWidget.upComboBox.currentText()),
+                               self.aimWidget.flipAimCB.isChecked(),
+                               self.aimWidget.flipUpCB.isChecked(),
+                               self.aimWidget.distanceSpinBox.value()
                                )
         self.close()
 

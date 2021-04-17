@@ -371,77 +371,81 @@ class Pickwalk(toolAbstractFactory):
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if refName:
             # print 'query against pickwalk library'
-            if refName in self.walkDataLibrary._fileToMapDict.keys():
-                mapName = self.walkDataLibrary._fileToMapDict[refName]
-                # print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
-                result = self.pickwalkData[mapName].walk(namespace=walkObject.namespace(),
-                                                         node=walkObject.stripNamespace(),
-                                                         direction=direction)
-                if result:
-                    print 'data walk result', result
-                    if cmds.objExists(walkObject.namespace() + result):
-                        print 'final result', walkObject.namespace() + result
-                        returnedControls.append(walkObject.namespace() + result)
-                    else:
-                        if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
-                            self.walkStandard(direction)
-                        return
+            returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
+            if returnedControls == False:
+                # means a standard walk has been performed
+                return
+            # print 'main', returnedControls
 
-                if add:
-                    print 'adding'
-                    #returnedControls.extend([str(s) for s in sel])
-                    returnedControls = [str(s) for s in sel].extend(returnedControls)
-                    #returnedControls.append(sel)
+        if not returnedControls:
+            # anything beyond here is using attribute based pickwalking
+            userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
+            if not userAttrs:
+                self.walkStandard(direction)
+                return
+            pickAttributes = [i for i in self.picwalkAttributeNames[direction] if i in userAttrs]
+            if not pickAttributes:
+                # didn't find any custom pickwalk attributes, use the regular walk
+                self.walkStandard(direction)
+                return
 
-                print 'final returnedControls', returnedControls
-                if returnedControls:
-                    cmds.select(returnedControls, replace=True)
-                    return
+            found = False
 
-            elif refName not in self.walkDataLibrary.ignoredRigs:
-                # print 'not ignored, must be new, query user to add/assign/ignore it'
-                prompt = PickwalkQueryWidget(title='New Rig Found', rigName=refName,
-                                             text='This rig new, set up pickwalking on it?')
-                prompt.AssignNewRigSignal.connect(self.assignNewRigExistingMap)
-                prompt.IgnoreRigSignal.connect(self.assignIgnoreNewRig)
-                prompt.CreateNewRigMapSignal.connect(self.assignNewRigNewMap)
-
-                if prompt.exec_():
-                    pass
-                else:
-                    pass
-
-        # anything beyond here is using attribute based pickwalking
-        userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
-        if not userAttrs:
-            self.walkStandard(direction)
-            return
-        pickAttributes = [i for i in self.picwalkAttributeNames[direction] if i in userAttrs]
-        if not pickAttributes:
-            # didn't find any custom pickwalk attributes, use the regular walk
-            self.walkStandard(direction)
-            return
-
-        found = False
-
-        for walkAttribute in self.picwalkAttributeNames[direction]:
-            if not found:
-                if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
-                    returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
-                    if returnObj:
-                        if isinstance(returnObj, list):
-                            returnedControls.extend(returnObj)
-                            found = True
-                        else:
-                            returnedControls.append(returnObj)
-                            found = True
+            for walkAttribute in self.picwalkAttributeNames[direction]:
+                if not found:
+                    if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
+                        returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
+                        if returnObj:
+                            if isinstance(returnObj, list):
+                                returnedControls.extend(returnObj)
+                                found = True
+                            else:
+                                returnedControls.append(returnObj)
+                                found = True
 
         if not returnedControls:
             self.walkStandard(direction)
             return
         if add:
-            returnedControls = [str(s) for s in sel].extend(returnedControls)
+            cmds.select([str(s) for s in sel] + returnedControls, replace=True)
+            return
         cmds.select(returnedControls, replace=True)
+
+    def dataDrivenWalk(self, direction, refName, walkObject):
+        returnedControls = list()
+        if refName in self.walkDataLibrary._fileToMapDict.keys():
+            mapName = self.walkDataLibrary._fileToMapDict[refName]
+            # print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
+            result = self.pickwalkData[mapName].walk(namespace=walkObject.namespace(),
+                                                     node=walkObject.stripNamespace(),
+                                                     direction=direction)
+            if result:
+                # print 'data walk result', result
+                if cmds.objExists(walkObject.namespace() + result):
+                    # print 'final result', walkObject.namespace() + result
+                    returnedControls.append(walkObject.namespace() + result)
+                else:
+                    if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
+                        self.walkStandard(direction)
+                    return False
+            return returnedControls
+
+
+        elif refName not in self.walkDataLibrary.ignoredRigs:
+            self.queryWalkOnNewRig(refName)
+        return returnedControls
+
+    def queryWalkOnNewRig(self, refName):
+        # print 'not ignored, must be new, query user to add/assign/ignore it'
+        prompt = PickwalkQueryWidget(title='New Rig Found', rigName=refName,
+                                     text='This rig new, set up pickwalking on it?')
+        prompt.AssignNewRigSignal.connect(self.assignNewRigExistingMap)
+        prompt.IgnoreRigSignal.connect(self.assignIgnoreNewRig)
+        prompt.CreateNewRigMapSignal.connect(self.assignNewRigNewMap)
+        if prompt.exec_():
+            pass
+        else:
+            pass
 
     def walkUp(self):
         self.pickwalk(direction='up')

@@ -204,29 +204,29 @@ class AimTools(toolAbstractFactory):
 
     def quickAimXY(self, *args):
         default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimZY(self, *args):
         default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimXZ(self, *args):
         default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimYZ(self, *args):
         default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimYX(self, *args):
         default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimZX(self, *args):
         default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
-        self.aimToLocators(directionDict={}, default=default)
+        self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
-    def aimToLocators(self, directionDict=dict(), default=dict()):
+    def aimToLocators(self, directionDict=dict(), default=dict(), forceDefault=False):
         sel = cmds.ls(sl=True)
         if not sel: return
         self.targets = sel
@@ -236,12 +236,18 @@ class AimTools(toolAbstractFactory):
         for target in self.targets:
             name = target.split(':')[-1]
             refName = self.funcs.getRefName(target)
+            # compare to see if there is a preset in directionDict
             if refName not in directionDict.keys():
                 data = default
             elif name not in directionDict[refName].keys():
                 data = default
             else:
-                data = directionDict[refName][name]
+                if forceDefault:
+                    # forcing an override to the preset aim, if there is a preset, grab it's distance value
+                    data = default
+                    data['distance'] = directionDict[refName][name]['distance']
+                else:
+                    data = directionDict[refName][name]
             self.aimToLocator(refName, name, target, data)
         self.bake()
         for key in self.controlInfo.keys():
@@ -297,8 +303,10 @@ class AimTools(toolAbstractFactory):
 
     def bake(self):
         keyRange = self.funcs.get_all_layer_key_times(self.targets)
-        if not keyRange:
+        if keyRange[0] is None:
+            print 'no keys'
             keyRange = self.funcs.getTimelineRange()
+        print keyRange[0], keyRange[1]
         bakeLayer = cmds.animLayer('AimBakeLocators', override=True)
         cmds.bakeResults(self.locators, time=(keyRange[0], keyRange[1]),
                          simulation=False,
