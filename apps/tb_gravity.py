@@ -65,10 +65,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.quickJump()'],
                                      help=self.helpStrings.gravity.get('quickJump')))
-        self.addCommand(self.tb_hkey(name='jumpAllKeyWindows',
+        self.addCommand(self.tb_hkey(name='jumpAllKeypairs',
                                      annotation='useful comment',
-                                     category=self.category, command=['GravityTools.jumpAllKeyWindows()'],
-                                     help=self.helpStrings.gravity.get('jumpAllKeyWindows')))
+                                     category=self.category, command=['GravityTools.jumpAllKeypairs()'],
+                                     help=self.helpStrings.gravity.get('jumpAllKeypairs')))
         self.addCommand(self.tb_hkey(name='jumpUsingInitialFrameVelocity',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
@@ -112,7 +112,7 @@ class GravityTools(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 
-        self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity) / self.funcs.unit_conversion()
+        self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity)
         self.uiUnit = om.MTime.uiUnit()
     """
     Declare an interface for operations that create abstract product
@@ -238,7 +238,7 @@ class GravityTools(toolAbstractFactory):
             endTranslation = self.getMatrixTranslation(endMtx)
             initialVelocity = (endTranslation-startTranslation) * self.funcs.time_conversion()
             arcX = self.arcCalc(endTranslation.x, initialVelocity.x, durationFrames, 0)
-            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames, self.gravity)
+            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames, self.gravity / self.funcs.unit_conversion())
             arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, 0)
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locator)
 
@@ -250,7 +250,7 @@ class GravityTools(toolAbstractFactory):
         startTranslation.z /= self.funcs.unit_conversion()
         return startTranslation
 
-    def jumpAllKeyWindows(self):
+    def jumpAllKeypairs(self):
         self.uiUnit = om.MTime.uiUnit()
         sel = cmds.ls(sl=True)
         if not sel:
@@ -319,10 +319,10 @@ class GravityTools(toolAbstractFactory):
         durationSeconds = float(durationFrames / self.funcs.time_conversion())
         #print 'durationSeconds', durationSeconds
         velocityX = self.getJumpInitialVelocity(displacement.x, durationSeconds, 0)
-        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds, -self.gravity)
+        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds, -self.gravity / self.funcs.unit_conversion())
         velocityZ = self.getJumpInitialVelocity(displacement.z, durationSeconds, 0)
         arcX = self.arcCalc(startTranslation.x, velocityX, durationFrames, 0)
-        arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, self.gravity)
+        arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, self.gravity / self.funcs.unit_conversion())
         arcZ = self.arcCalc(startTranslation.z, velocityZ, durationFrames, 0)
         #print len(arcX), durationFrames
         #print arcX
