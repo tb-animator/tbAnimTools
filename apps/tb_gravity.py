@@ -60,7 +60,7 @@ import pymel.core.datatypes as dt
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory('tbtools_gravity')
+        self.setCategory(self.helpStrings.category.get('gravity'))
         self.addCommand(self.tb_hkey(name='quickJump',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.quickJump()'],

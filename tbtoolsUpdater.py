@@ -31,6 +31,8 @@ class updater():
         self.realPath = os.path.realpath(__file__)
         self.basename = os.path.basename(__file__)
         self.base_dir = os.path.normpath(os.path.dirname(__file__))
+        if not os.path.isdir(os.path.join(self.base_dir, 'appData')):
+            os.mkdir(os.path.join(self.base_dir, 'appData'))
         self.versionDataFile = os.path.join(self.base_dir, 'appData', 'tbVersion.json')
         self.dateFormat = '%Y-%m-%d'
         if not os.path.isfile(self.versionDataFile):

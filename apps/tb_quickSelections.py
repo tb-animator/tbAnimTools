@@ -51,7 +51,7 @@ import getStyleSheet as getqss
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_selection')
+        self.setCategory(self.helpStrings.category.get('selection'))
         self.commandList = list()
 
         # quick selection set - select

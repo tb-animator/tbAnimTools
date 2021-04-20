@@ -42,7 +42,7 @@ else:
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_view')
+        self.setCategory(self.helpStrings.category.get('timeline'))
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='shift_time_range_start',

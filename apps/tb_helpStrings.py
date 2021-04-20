@@ -1,3 +1,18 @@
+tbAnimTools = 'tbAnimTools'
+category = {'snap': '%s_Snaps' % tbAnimTools,
+            'layers': '%s_AnimLayers' % tbAnimTools,
+            'view': '%s_Viewport' % tbAnimTools,
+            'timeline': '%s_TimeSlider' % tbAnimTools,
+            'selection': '%s_Selection' % tbAnimTools,
+            'motionTrails': '%s_MotionTrails' % tbAnimTools,
+            'cameras': '%s_Cameras' % tbAnimTools,
+            'gravity': '%s_Gravity' % tbAnimTools,
+            'manipulators': '%s_Manipulators' % tbAnimTools,
+            'keying': '%s_Keyframe' % tbAnimTools,
+            'sliders': '%s_Sliders' % tbAnimTools,
+            'pickwalk': '%s_Pickwalk' % tbAnimTools,
+            'constraints': '%s_Constraints' % tbAnimTools,
+            }
 simpleBakeToOverride = ['bake current selection to an override layer']
 quickCreateAdditiveLayer = ['create a new additive layer, selection is', 'added to the layer']
 quickCreateOverrideLayer = ['create a new override layer, selection is', 'added to the layer']

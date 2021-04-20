@@ -59,7 +59,7 @@ import pymel.core.datatypes as dt
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory('tbtools_constraints')
+        self.setCategory(self.helpStrings.category.get('constraints'))
         self.addCommand(self.tb_hkey(name='bakeAim',
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.quickAim()']))

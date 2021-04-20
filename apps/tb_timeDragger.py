@@ -47,7 +47,7 @@ from functools import partial
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_manipulators')
+        self.setCategory(self.helpStrings.category.get('timeline'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
@@ -191,7 +191,7 @@ class timeDragger(toolAbstractFactory):
                 self.evaluate_mode = cmds.evaluationManager(mode='off')
             except:
                 pass
-            self.step = pm.optionVar.get(self.step_var, 2)
+            self.step = pm.optionVar.get(self.step_var, 1)
             self.even_only = pm.optionVar.get(self.step_optionVar, True)
             print "step even", self.even_only
             cmds.setToolTo(self.step_ctx)

@@ -46,11 +46,13 @@ class module_maker():
         self.python_paths = ['', 'apps', 'proApps']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
         self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
+        self.maya_common_plugin_paths = ['plugins/common']
         self.xbmlang_paths = ['Icons']
         self.out_lines = []
         self.module_file = 'tbAnimTools.mod'
         self.module_template = os.path.join(self.filepath, self.module_file)
         self.current_module_data = None
+        self.firstInstall = False
 
     def maya_module_dir(self):
         return os.path.join(pm.internalVar(userAppDir=True) + "modules\\")
@@ -63,22 +65,34 @@ class module_maker():
                       + self.win_versions \
                       + ' MAYAVERSION:' \
                       + self.maya_version \
-                      + ' tbtools 1.0 ' \
+                      + ' tbAnimTools 1.0 ' \
                       + self.filepath + '\\'
         return module_path
 
-    def make_module_data(self):
-        self.out_lines = ['\n']
-        self.out_lines.append(self.make_module_path_data())
-        for paths in self.python_paths:
-            self.out_lines.append('PYTHONPATH+:='+paths)
-        for paths in self.maya_script_paths:
-            self.out_lines.append('MAYA_SCRIPT_PATH+:='+paths)
-        for paths in self.maya_plugin_paths:
-            self.out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
+    def make_core_module_path_data(self):
+        module_path = '+  tbAnimTools 1.0 ' + self.filepath + '\\'
+        return module_path
 
+    def make_core_module_data(self):
+        out_lines = [self.make_core_module_path_data()]
+        for paths in self.python_paths:
+            out_lines.append('PYTHONPATH+:=' + paths)
+        for paths in self.maya_script_paths:
+            out_lines.append('MAYA_SCRIPT_PATH+:=' + paths)
+        for paths in self.maya_common_plugin_paths:
+            out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
         for paths in self.xbmlang_paths:
-            self.out_lines.append('XBMLANGPATH+:='+paths)
+            out_lines.append('XBMLANGPATH+:=' + paths)
+        return out_lines
+
+    def make_module_data(self, version):
+        out_lines = ['\n']
+        out_lines.append(version)
+
+        for paths in self.maya_plugin_paths:
+            out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
+        print 'make_module_data', out_lines
+        return out_lines
 
     def write_module_file(self):
         self.read_module_file()
@@ -96,22 +110,37 @@ class module_maker():
 
     def read_module_file(self):
         print 'read_module_file'
+        existingVersions = list()
         if os.path.isfile(self.module_path()):
             f = open(self.module_path(), 'r')
             self.current_module_data = f.read().splitlines()
             match = False
             f.close()
             for lineIndex, line in enumerate(self.current_module_data):
+                if line.startswith('+ PLATFORM'):
+                    # finding a new block
+                    print 'found', line
+                    existingVersions.append(line)
                 if 'PLATFORM:%s' % self.win_versions and 'MAYAVERSION:%s' % self.maya_version in line:
                     match = True
-                    self.current_module_data[lineIndex] = self.make_module_path_data()
-            if not match:
-                # create a new entry
-                print 'making new entry'
-                self.make_module_data()
-                print 'current_module_data', self.current_module_data
-                self.current_module_data.extend(self.out_lines)
-                print self.current_module_data
+                    #self.current_module_data[lineIndex] = self.make_module_path_data()
+
+        print 'existingVersions', existingVersions
+        self.out_lines = list()
+        self.out_lines.extend(self.make_core_module_data())
+        print 'self.out_lines', self.out_lines
+        for version in existingVersions:
+            print 'existing version', version
+            self.out_lines.extend(self.make_module_data(version))
+
+        if not match:
+            # create a new entry
+            print 'making new entry'
+            self.out_lines.extend(self.make_module_data(self.make_module_path_data()))
+        print 'FINAL\n'
+        for line in self.out_lines:
+            print line
+        self.current_module_data = self.out_lines
 
     def replace_path(self, fileName, path, newpath):
         f = open(fileName,'r')
@@ -129,6 +158,7 @@ class module_maker():
         print 'checking module file'
 
         if not os.path.isfile(self.module_path()):
+            self.firstInstall = True
             print self.module_path(), 'not found, creating it'
             f = open(str(self.module_path()), 'a+')  # open file in append mode
             f.writelines('')
@@ -159,25 +189,13 @@ class module_maker():
 
         result_message = "<h3>Installation result</h3>\t\n"
 
-        if not state:
+        if self.firstInstall:
             result_message += "module file created <span style=\""+self.colours['green']+ "\">Successfully</span> \n"
             result_message += "module file location <span style=\""+self.colours['yellow']+ "\">" \
                               + self.module_path() + "</span>\n\nEnjoy!"
-            #self.result_window()
             resultUI = ResultWindow()
             resultUI.show()
-        else:
-            result_message += "<span style=\""+self.colours['red']+"<h3>WARNING</h3></span> :module file not created\n"
-        '''
-        message_state = pm.optionVar.get("inViewMessageEnable", 1)
-        pm.optionVar(intValue=("inViewMessageEnable", 1))
-        pm.inViewMessage(amg=result_message,
-                         pos='botRight',
-                         dragKill=True,
-                         fadeOutTime=2.0,
-                         fade=True)
-        pm.optionVar(intValue=("inViewMessageEnable", message_state))
-        '''
+
     def result_window(self):
         if pm.window("installWin", exists=True):
             pm.deleteUI("installWin")
@@ -260,5 +278,6 @@ class ResultWindow(QDialog):
         import tb_options as tbo
         tbo.showOptions()
 
-module_maker().install()
-installer().install()
+if __name__ == "__main__":
+    module_maker().install()
+    installer().install()

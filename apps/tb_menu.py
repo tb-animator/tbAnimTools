@@ -39,6 +39,10 @@ class main_menu(object):
 
         pm.menuItem(label="options", command=open_options, parent=self.main_menu)
         # pm.menuItem(label="download updates (experimental)",command=download_updates, parent=self.main_menu)
+        editorMenu = pm.menuItem(label='editors', subMenu=True, parent=self.main_menu)
+        pm.menuItem(label='Pickwalk Creator', command='tbOpenPickwalkCreator', sourceType='mel', parent=editorMenu)
+        pm.menuItem(label='Pickwalk Library', command='tbOpenPickwalkLibrary', sourceType='mel', parent=editorMenu)
+
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="online help", command=open_anim_page, parent=self.main_menu)
 

@@ -66,7 +66,7 @@ dragTint = QColor(0, 128, 0)
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_sliders')
+        self.setCategory(self.helpStrings.category.get('sliders'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='inbetweenSliderPress', annotation='',
                                      category=self.category, command=['slideTools.inbetweenSlidePress()']))
@@ -447,7 +447,9 @@ class worldSpaceTween(tweenBase):
             transformMatrixObj = om2.MTransformationMatrix(resultMatrix)
             resultTranslate = transformMatrixObj.translation(om2.MSpace.kWorld)
             resultRotate = transformMatrixObj.rotation(asQuaternion=False)
+            rotateOrder = self.mfnDepNodes[obj].findPlug('rotateOrder', False).asInt()
 
+            resultRotate.reorderIt(rotateOrder)
             translateNames = ['tx', 'ty', 'tz']  # , 'rx','ry', 'rz', 'sx', 'sy', 'sz', ]
             translatePlugs = [self.mfnDepNodes[obj].findPlug(eachName, False) for eachName in translateNames]
             rotateNames = ['rotateX', 'rotateY', 'rotateZ']

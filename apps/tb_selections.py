@@ -47,7 +47,7 @@ from Abstract import *
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_selection')
+        self.setCategory(self.helpStrings.category.get('selection'))
         self.commandList = list()
         # all curve selector
         self.addCommand(self.tb_hkey(name='select_all_anim_curves',

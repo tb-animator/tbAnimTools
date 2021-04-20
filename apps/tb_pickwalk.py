@@ -59,7 +59,7 @@ btnWidth = 80
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_pickwalking')
+        self.setCategory(self.helpStrings.category.get('pickwalk'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='tbOpenPickwalkCreator',
                                      annotation='OpenPickwalkCreator',
@@ -1911,7 +1911,7 @@ class pickwalkMainWindow(QMainWindow):
     endOnSelf = False
 
     activeObject = None
-
+    title ='tbPickwwalkSetup'
     def __init__(self):
         super(pickwalkMainWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
@@ -2025,16 +2025,33 @@ class pickwalkMainWindow(QMainWindow):
     def newLibrary(self):
         self.pickwalkCreator = PickwalkCreator()
         self.refreshUI()
+        self.setWindowTitle('tbPickwwalkSetup :: untitled')
 
     def loadLibraryForCurrent(self):
         # TODO - implement this to look at the main walk library and open the
         # TODO - correct map file
         #
-        fname = self.browseToFile()
+        refName = None
+        fname = None
+        sel = cmds.ls(sl=True)
+        if sel:
+            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            if refState:
+                # if it is referenced, check against pickwalk library entries
+                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+        else:
+            # might just be working in the rig file itself
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        if refName in Pickwalk().walkDataLibrary._fileToMapDict.keys():
+            mapName = Pickwalk().walkDataLibrary._fileToMapDict[refName]
+            fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName +'.json')
+        if not fname:
+            fname = self.browseToFile()
         if not fname:
             return None
         self.pickwalkCreator.load(fname)
         self.refreshUI()
+        self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
 
     def loadLibrary(self):
         fname = self.browseToFile()
@@ -2043,6 +2060,7 @@ class pickwalkMainWindow(QMainWindow):
         self.pickwalkCreator.walkData = WalkData()
         self.pickwalkCreator.load(fname)
         self.refreshUI()
+        self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
 
     def appendLibrary(self):
         fname = self.browseToFile()
@@ -2080,6 +2098,7 @@ class pickwalkMainWindow(QMainWindow):
                 return
         self.pickwalkCreator.walkData.save(save_filename[0])
         Pickwalk().loadWalkLibrary()
+        self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename)
         return os.path.basename(save_filename[0])
 
     def overwriteQuery(self):
@@ -2225,9 +2244,9 @@ class pickwalkMainWindow(QMainWindow):
 class PickwalkCreator(object):
     destKey = '_dest'
 
-    ''' Acceptable directions as keys, opposite direction as value'''
-    directionsDict = {'up': 'down',
-                      'down': 'up',
+    ''' Acceptable directions as keys, opposite direction as value for mirroring'''
+    directionsDict = {'up': 'up',
+                      'down': 'down',
                       'left': 'right',
                       'right': 'left'}
 
@@ -2272,14 +2291,15 @@ class PickwalkCreator(object):
         :param item:
         :return:
         """
-        # print 'sides', sideList
+        #print 'sides', sideList
         for key, walkDirection in self.walkData.objectDict.items():
             mirrorDir = dict()
-
+            #print key, item
             if key == item:
                 if not self.validForMirror(key, sideList):
+                    #print 'not valid for mirror'
                     continue
-                print 'need to mirror', key
+                #print 'need to mirror', key
                 for dir, value in walkDirection.__dict__.items():
                     found = False
                     if not value:
@@ -2287,26 +2307,22 @@ class PickwalkCreator(object):
                         mirrorDir[dir] = None
                         continue
                     if value in self.walkData.destinations.keys():
-                        print dir, 'is condition - not made this bit yet'
+                        #print dir, 'is condition - not made this bit yet'
                         # recusrively mirror any destination info found here
                         self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
                         # add the mirror key to the destination list, mirror it
                     mirrorDir[dir] = self.getMirrorName(value, sideList)
 
-                # print 'mirrorDir', mirrorDir
-                for s in sideList:
-                    if s in key:
-                        mirrorKey = self.directionsDict[key]
-                        # print 'mirrorKey', mirrorKey
-                        self.addControl(mirrorKey)
-                        # print key, value, type(value)
-                        for dKey, dValue in mirrorDir.items():
-                            print 'setControlDestination', mirrorKey, dKey, dValue
-                            self.setControlDestination(mirrorKey,
-                                                       direction=dKey,
-                                                       destination=dValue)
-                            print self.walkData.objectDict[mirrorKey].__dict__
-                        pass
+                #print 'mirrorDir', mirrorDir
+                mirrorKey = self.getMirrorName(key, sideList)
+
+                for dKey, dValue in mirrorDir.items():
+                    #print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
+                    self.setControlDestination(mirrorKey,
+                                               direction=dKey,
+                                               destination=dValue)
+                    #print self.walkData.objectDict[mirrorKey].__dict__
+                pass
 
     def mirrorWalkDestination(self, destinationKey=str(), sideList=list(), processed=list()):
         """
@@ -2448,7 +2464,7 @@ class PickwalkCreator(object):
         """
         controlName = control.split(':')[-1]
         self.addControl(controlName)
-        print 'controlName', controlName
+        #print 'controlName', controlName
         userAttrs = cmds.listAttr(control, userDefined=True)
         if not userAttrs:
             return
@@ -2464,7 +2480,7 @@ class PickwalkCreator(object):
                     destination = cmds.listConnections(control + '.' + m, source=True, destination=False)
                 elif attrType == 'string':
                     destination = cmds.getAttr(control + '.' + m)
-                print control, m, attrType, destination
+                #print control, m, attrType, destination
                 if destination:
                     if isinstance(destination, list):
                         if len(destination) > 1:

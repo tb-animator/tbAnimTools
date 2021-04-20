@@ -41,6 +41,8 @@ class initialise(object):
             print "BAD CALLBACK", Exception, e
     '''
     def load_everything(self):
+        import tbtoolsInstaller
+        tbtoolsInstaller.module_maker().install()
         self.check_for_updates()
 
         import apps.tb_optionVars as tbo

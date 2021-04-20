@@ -47,7 +47,7 @@ __author__ = 'tom.bailey'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_view')
+        self.setCategory(self.helpStrings.category.get('view'))
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='toggle_isolate_selection',

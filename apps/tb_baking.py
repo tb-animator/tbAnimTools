@@ -49,7 +49,7 @@ else:
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory('tbtools_layers')
+        self.setCategory(self.helpStrings.category.get('layers'))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
@@ -66,7 +66,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['BakeTools.counterLayerAnimation()'],
                                      help=self.helpStrings.counterAnimLayer))
-        self.setCategory('tbtools_constraints')
+        self.setCategory(self.helpStrings.category.get('constraints'))
         self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='',
                                      category=self.category,
                                      command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],

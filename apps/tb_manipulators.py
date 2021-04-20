@@ -44,7 +44,7 @@ else:
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_keyframing')
+        self.setCategory(self.helpStrings.category.get('keying'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='zero_translates', annotation='zero translation values',
                                      category=self.category, command=['Manipulators.zero_translates()']))
@@ -54,7 +54,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category, command=['Manipulators.zero_scales()']))
 
         # manipulator tools
-        cat = 'tbtools_manipulators'
+        cat = self.helpStrings.category.get('manipulators')
         self.addCommand(self.tb_hkey(name='cycle_rotation',
                                      annotation='cycle the rotation mode',
                                      category=cat,

@@ -93,15 +93,17 @@ class tbToolLoader(object):
 
     def updateCommands(self):
         for commands in self.allCommands:
+
             self.addCommand(commands)
 
     def addCommand(self, command):
         try:
-            if not pm.runTimeCommand(command.name, exists=True):
-                pm.runTimeCommand(command.name)
+            # in theory deleting the command and re adding it will keep everything in a nice order
+            if pm.runTimeCommand(command.name, exists=True):
+                pm.runTimeCommand(command.name, edit=True, delete=True)
 
             pm.runTimeCommand(command.name,
-                              edit=True,
+                              #edit=True,
                               annotation=command.annotation,
                               category=command.category,
                               commandLanguage=command.language,
@@ -112,6 +114,7 @@ class tbToolLoader(object):
                              sourceType='mel')
         except Exception as e:
             cmds.warning(e, e.message)
+
 
     def removeUnneededIgnoreEntries(self):
         if not self.extra_commands:

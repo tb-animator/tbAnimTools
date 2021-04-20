@@ -45,7 +45,7 @@ __author__ = 'tom.bailey'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_cameras')
+        self.setCategory(self.helpStrings.category.get('cameras'))
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='updateCameraPivot',

@@ -47,7 +47,7 @@ else:
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_motionTrails')
+        self.setCategory(self.helpStrings.category.get('motionTrails'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',

@@ -46,7 +46,7 @@ from apps.tb_UI import *
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_view')
+        self.setCategory(self.helpStrings.category.get('timeline'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='toggle_playback_tool',
                                      annotation='does fancy playback toggling',

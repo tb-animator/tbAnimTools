@@ -78,7 +78,7 @@ viewFlags = ['controllers',
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_view')
+        self.setCategory(self.helpStrings.category.get('view'))
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='ViewMode_xray_joints', annotation='',

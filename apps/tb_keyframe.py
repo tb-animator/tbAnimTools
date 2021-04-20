@@ -47,7 +47,7 @@ else:
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_keyframing')
+        self.setCategory(self.helpStrings.category.get('keying'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='match_tangent_start_to_end', annotation='',
                                      category=self.category,

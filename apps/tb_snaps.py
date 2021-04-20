@@ -43,7 +43,7 @@ else:
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory('tbtools_keyframing')
+        self.setCategory(self.helpStrings.category.get('snap'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='store_ctrl_transform', annotation='store object transform',
                                      category=self.category, command=[
@@ -54,6 +54,13 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='snap_objects', annotation='snap selection',
                                      category=self.category, command=[
                 'SnapTools.snap_selection()']))
+        self.addCommand(self.tb_hkey(name='point_snap_objects', annotation='point snap selection',
+                                     category=self.category, command=[
+                'SnapTools.point_snap_selection()']))
+        self.addCommand(self.tb_hkey(name='orient_snap_objects', annotation='orient snap selection',
+                                     category=self.category, command=[
+                'SnapTools.orient_snap_selection()']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -105,7 +112,7 @@ class SnapTools(toolAbstractFactory):
         # TODO use actual vectors
         return [vector1[0] + vector2[0], vector1[1] + vector2[1], vector1[2] + vector2[2]]
 
-    def snap_selection(self):
+    def snap_selection(self, translate=True, orient=True):
         sel = cmds.ls(selection=True)
         if not sel:
             return
@@ -117,11 +124,17 @@ class SnapTools(toolAbstractFactory):
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
             for x in xrange(int(startTime), int(endTime)):
                 cmds.currentTime(x)
-                self.snap_object(original, target)
+                self.snap_object(original, target, translate, orient)
         else:
-            self.snap_object(original, target)
+            self.snap_object(original, target, translate, orient)
 
-    def snap_object(self, original, target):
+    def point_snap_selection(self):
+        self.snap_selection(translate=True, orient=False)
+
+    def orient_snap_selection(self):
+        self.snap_selection(translate=False, orient=True)
+
+    def snap_object(self, original, target, translate, orient):
         original_rotation = self.get_world_rotation(original)
         original_pivot_position = self.get_world_pivot(original)
         original_world_position = self.get_world_space(original)
@@ -133,17 +146,17 @@ class SnapTools(toolAbstractFactory):
         _pivot_difference = self.minus(target_pivot_position, original_pivot_position)
         _out_position = self.plus(original_world_position, _pivot_difference)
 
-        self.set_world_translation(original, _out_position)
-        self.set_world_rotation(original, target_rotation)
-        self.set_world_rotation(original, target_rotation)
+        if translate:
+            self.set_world_translation(original, _out_position)
 
-        # orient_snap(original, target)
+        if not orient:
+            self.set_world_rotation(original, target_rotation)
 
-        rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
-        node_ro = pm.xform(original, query=True, rotateOrder=True)
-        ro = pm.xform(target, query=True, rotateOrder=True)
-        pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
-        pm.xform(original, rotateOrder=node_ro, preserve=True)
+            rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
+            node_ro = pm.xform(original, query=True, rotateOrder=True)
+            ro = pm.xform(target, query=True, rotateOrder=True)
+            pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
+            pm.xform(original, rotateOrder=node_ro, preserve=True)
 
     def store_transform(self):
         sel = cmds.ls(selection=True)
