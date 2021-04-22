@@ -8,6 +8,7 @@ import zipfile
 from distutils.dir_util import copy_tree
 
 import getStyleSheet as getqss
+from apps.tb_UI import *
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -34,11 +35,13 @@ class updater():
         if not os.path.isdir(os.path.join(self.base_dir, 'appData')):
             os.mkdir(os.path.join(self.base_dir, 'appData'))
         self.versionDataFile = os.path.join(self.base_dir, 'appData', 'tbVersion.json')
-        self.dateFormat = '%Y-%m-%d'
+        self.dateFormat = '%Y-%m-%dT%H:%M'
+        self.uiDateFormat = '%Y-%m-%d'
+        self.timeFormat = '%H:%M'
         if not os.path.isfile(self.versionDataFile):
-            self.save((datetime.datetime.now() - datetime.timedelta(days=365)).date())
+            self.save((datetime.datetime.now() - datetime.timedelta(days=365)))
         self.jsonProjectData = json.load(open(self.versionDataFile))
-        self.currentVersion = self.convertDateFromString(self.jsonProjectData['version']).date()
+        self.currentVersion = self.convertDateFromString(self.jsonProjectData['version'])
 
     def save(self, version):
         jsonData = '''{}'''
@@ -51,16 +54,27 @@ class updater():
         f.close()
 
     def convertDateFromString(self, date_time):
-        datetime_str = datetime.datetime.strptime(date_time, self.dateFormat)
+        try:
+            datetime_str = datetime.datetime.strptime(date_time, self.dateFormat)
+        except:
+            datetime_str = datetime.datetime.strptime(date_time, self.uiDateFormat)
         return datetime_str
 
     def check_version(self):
-        print 'check_version'
         response = urllib2.urlopen(self.datUrl)
         data = json.load(response)
-        lastPush = datetime.datetime.strptime(data.get('pushed_at')[0:10], self.dateFormat).date()
+        lastPush = datetime.datetime.strptime(data.get('pushed_at')[0:16], self.dateFormat)
         if lastPush > self.currentVersion:
-            if self.updateQuery(lastPush).exec_() != 1024:
+            lastPushDay = lastPush.strftime(self.uiDateFormat)
+            lastPushTime = lastPush.strftime(self.timeFormat)
+
+            currentVersionDay = self.currentVersion.strftime(self.uiDateFormat)
+            currentVersionTime = self.currentVersion.strftime(self.timeFormat)
+
+            updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
+                                  oldVersion=currentVersionDay + ' ' + currentVersionTime,
+                                  updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
+            if updateWin.exec_() != 1:
                 return
             self.download_project_files()
             self.save(lastPush)
@@ -84,15 +98,14 @@ class updater():
 
         copy_tree(os.path.join(destinationPath, 'tbAnimTools-main'), destinationPathFinal)
 
+        message_state = pm.optionVar.get("inViewMessageEnable", 1)
+        pm.optionVar(intValue=("inViewMessageEnable", 1))
+        pm.inViewMessage(amg='tbAnimTools update complete',
+                         pos='botRight',
+                         dragKill=True,
+                         fadeOutTime=10.0,
+                         fade=False)
+        pm.optionVar(intValue=("inViewMessageEnable", message_state))
+
     def CopyFolder(in_fold, out_fold):
         copy_tree(in_fold, out_fold)
-
-    def updateQuery(self, version):
-        msg = QMessageBox()
-        msg.setStyleSheet(getqss.getStyleSheet())
-        msg.setIcon(QMessageBox.Warning)
-
-        msg.setText("Download latest version - %s" % version.strftime(self.dateFormat))
-        msg.setWindowTitle("tbAnimTools update found")
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        return msg

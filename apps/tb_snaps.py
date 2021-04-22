@@ -149,9 +149,8 @@ class SnapTools(toolAbstractFactory):
         if translate:
             self.set_world_translation(original, _out_position)
 
-        if not orient:
+        if orient:
             self.set_world_rotation(original, target_rotation)
-
             rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
             node_ro = pm.xform(original, query=True, rotateOrder=True)
             ro = pm.xform(target, query=True, rotateOrder=True)

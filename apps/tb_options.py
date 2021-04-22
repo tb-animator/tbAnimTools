@@ -55,7 +55,6 @@ def getMainWindow():
 
 
 def showOptions():
-    print 'showOptions'
     optionWindow = mainOptionWindow()
     optionWindow.showUI()
 
@@ -131,7 +130,6 @@ class mainOptionWindow(QMainWindow):
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
 
     def displayToolOptions(self, index):
-        print 'displayToolOptions', index
         self.toolOptionStack.setCurrentIndex(index)
 
     def showUI(self):

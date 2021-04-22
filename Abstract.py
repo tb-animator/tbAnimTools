@@ -83,8 +83,9 @@ class hotKeyAbstractFactory(object):
                 cmd += lines + "\n"
             cmd += "\n\n"
             cmd += '"""About ----------------------------------------------\n'
-            for lines in help:
-                cmd += lines + "\n"
+            if help:
+                for lines in help:
+                    cmd += lines + "\n"
             cmd += '----------------------------------------------------"""'
             return cmd
 
