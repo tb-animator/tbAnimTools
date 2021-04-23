@@ -231,7 +231,7 @@ class GravityTools(toolAbstractFactory):
                            destinationLayer=selectedLayer[0],
                            sampleBy=1,
                            oversamplingRate=1,
-                           preserveOutsideKeys=False,
+                           preserveOutsideKeys=True,
                            sparseAnimCurveBake=True,
                            removeBakedAttributeFromLayer=False,
                            removeBakedAnimFromLayer=False,
