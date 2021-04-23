@@ -215,22 +215,32 @@ class GravityTools(toolAbstractFactory):
             sel = [sel]
         for s in sel:
             constraints.append(pm.pointConstraint(locs[s], s))
-        selectedLayer = self.funcs.get_selected_layers()
-        cmds.refresh()
-        if selectedLayer:
+        selectedLayer = self.funcs.get_selected_layers(ignoreBase=True)
+        print 'selected layer', selectedLayer
+
+        if len(selectedLayer):
             print start, end
             """
             Baking to a layer will remove the outside keys, as preserveOutsideKeys does not work with layers
             Need a function to snapshot the existing animation and merge it after baking
             """
-            pm.bakeResults(sel, simulation=False,
+            pm.bakeResults(sel,
+                           simulation=False,
                            disableImplicitControl=True,
                            # removeBakedAttributeFromLayer=False,
                            destinationLayer=selectedLayer[0],
-                           # bakeOnOverrideLayer=False,
+                           sampleBy=1,
+                           oversamplingRate=1,
                            preserveOutsideKeys=False,
+                           sparseAnimCurveBake=True,
+                           removeBakedAttributeFromLayer=False,
+                           removeBakedAnimFromLayer=False,
+                           bakeOnOverrideLayer=False,
+                           minimizeRotation=True,
+                           controlPoints=False,
+                           shape=False,
                            time=(start, end),
-                           sampleBy=1)
+                           )
         else:
             pm.bakeResults(sel, simulation=False,
                          disableImplicitControl=True,

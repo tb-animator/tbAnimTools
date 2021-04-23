@@ -209,14 +209,19 @@ class functions(object):
     def initBaseAnimationLayer(self):
         cmds.delete(cmds.animLayer())
 
-    def get_selected_layers(self):
+    def get_selected_layers(self, ignoreBase=False):
         if cmds.animLayer(q=True, root=True) == None:
             self.initBaseAnimationLayer()
+            return []
         allLayers = cmds.ls(type='animLayer')
         selectedLayers = []
         for layer in allLayers:
             if cmds.animLayer(layer, query=True, selected=True):
+                if ignoreBase:
+                    if layer == cmds.animLayer(q=True, root=True):
+                        continue
                 selectedLayers.append(layer)
+
         return selectedLayers
 
     def select_layer(self, layerName):
