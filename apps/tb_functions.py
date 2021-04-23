@@ -206,8 +206,12 @@ class functions(object):
     def get_next_key_values_from_index(self, curve, index):
         return cmds.keyframe(curve, query=True, index=((min(index+1, self.get_max_index(curve))),), valueChange=True)
 
-    @staticmethod
-    def get_selected_layers():
+    def initBaseAnimationLayer(self):
+        cmds.delete(cmds.animLayer())
+
+    def get_selected_layers(self):
+        if cmds.animLayer(q=True, root=True) == None:
+            self.initBaseAnimationLayer()
         allLayers = cmds.ls(type='animLayer')
         selectedLayers = []
         for layer in allLayers:
