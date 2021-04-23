@@ -64,7 +64,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('gravity'))
         self.addCommand(self.tb_hkey(name='quickJump',
                                      annotation='useful comment',
-                                     category=self.category, command=['GravityTools.quickJump()'],
+                                     category=self.category, command=['GravityTools.doQuickJump()'],
                                      help=self.helpStrings.gravity.get('quickJump')))
         self.addCommand(self.tb_hkey(name='jumpAllKeypairs',
                                      annotation='useful comment',
