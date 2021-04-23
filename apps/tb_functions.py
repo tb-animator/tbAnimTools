@@ -83,7 +83,6 @@ class functions(object):
 
     # get the current model panel
     def getModelPanel(self):
-        print 'getModelPanel!'
         curPanel = pm.getPanel(withFocus=True) or self.lastPanel # pm.getPanel(underPointer=True)
         if pm.objectTypeUI(curPanel) == 'modelEditor':
             self.lastPanel = curPanel
@@ -165,7 +164,9 @@ class functions(object):
 
     @staticmethod
     def get_object_key_times(target):
-        return sorted(list(set(cmds.keyframe(target, query=True, timeChange=True))))
+        keyTimes = cmds.keyframe(target, query=True, timeChange=True)
+        if keyTimes: return sorted(list(set(keyTimes)))
+        return list()
 
     @staticmethod
     def get_selected_key_indexes(curve):
@@ -388,7 +389,6 @@ class functions(object):
 
     # shift active time range so current frame is start frame
     def shiftTimelineRangeEndToCurrentFrame(self):
-        print self.getTimelineRangeFrameCount()
         self.setTimelineMin(time=(pm.getCurrentTime() - self.getTimelineRangeFrameCount()))
         self.setTimelineMax()
 

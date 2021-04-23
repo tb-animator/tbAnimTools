@@ -61,8 +61,7 @@ class updater():
         return datetime_str
 
     def check_version(self):
-        response = urllib2.urlopen(self.datUrl)
-        data = json.load(response)
+        data = self.getGithubData()
         lastPush = datetime.datetime.strptime(data.get('pushed_at')[0:16], self.dateFormat)
         if lastPush > self.currentVersion:
             lastPushDay = lastPush.strftime(self.uiDateFormat)
@@ -78,6 +77,11 @@ class updater():
                 return
             self.download_project_files()
             self.save(lastPush)
+
+    def getGithubData(self):
+        response = urllib2.urlopen(self.datUrl)
+        data = json.load(response)
+        return data
 
     def get_url_dir(self, dir):
         out = dir.replace(self.base_dir, self.master_url).replace("\\", "/")

@@ -30,6 +30,7 @@ import maya.OpenMaya as om
 import maya.api.OpenMaya as om2
 import pymel.core.datatypes as dt
 import math
+import bisect
 from Abstract import *
 from tb_UI import *
 
@@ -68,11 +69,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='jumpAllKeypairs',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpAllKeypairs()'],
-                                     help=self.helpStrings.gravity.get('jumpAllKeypairs')))
+                                     help=self.helpStrings.gravity.get('doJumpAllKeypairs')))
         self.addCommand(self.tb_hkey(name='jumpUsingInitialFrameVelocity',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
-                                     help=self.helpStrings.gravity.get('jumpUsingInitialFrameVelocity')))
+                                     help=self.helpStrings.gravity.get('doJumpUsingInitialFrameVelocity')))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
@@ -173,16 +174,31 @@ class GravityTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return
+        timeRange = None
         if self.funcs.isTimelineHighlighted():
             timeRange = self.funcs.getTimelineHighlightedRange()
-        else:
-            timeRange = self.funcs.getTimelineRange()
-        start = timeRange[0]
-        end = timeRange[1]
-        duration = end - start
+
+        currentTime = cmds.currentTime(query=True)
         mobjDict = dict()
         locs = dict()
+
         for s in sel:
+            if timeRange is None:
+                keyTimes = self.funcs.get_object_key_times(s)
+                idx = bisect.bisect_left(keyTimes, currentTime)
+                if idx-1 < 0:
+                    start = currentTime
+                else:
+                    start = keyTimes[idx-1]
+                if idx >= len(keyTimes):
+                    end = currentTime
+                else:
+                    end = keyTimes[idx]
+            else:
+                start = timeRange[0]
+                end = timeRange[1]
+            duration = end - start
+
             locs[s] = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
             mobjDict[s] = self.getMobject(s)
             startMx, endMtx = self.getJumpDisplacement(mobjDict[s], start, end)
@@ -191,26 +207,30 @@ class GravityTools(toolAbstractFactory):
             arcX, arcY, arcZ = self.getJumpArc(startTranslation, endTranslation, duration)
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
 
-    def jumpSelectedTimelineRange(self):
-        """
-        Makes a jump locator for each object, jump duration is the selected timeline range
-        :return:
-        """
-        self.uiUnit = om.MTime.uiUnit()
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return
-        if self.funcs.isTimelineHighlighted():
-            timeRange = self.funcs.getTimelineHighlightedRange()
-        else:
-            timeRange = self.funcs.getTimelineRange()
-        start = timeRange[0]
-        end = timeRange[1]
-        duration = end - start
+        self.bakeJumpToControl(start, end, locs, sel)
 
+    def bakeJumpToControl(self, start, end, locs, sel):
+        constraints = list()
+        if not isinstance(sel, list):
+            sel = [sel]
         for s in sel:
-            locator = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
-            self.jumpTimeRange(s, locator, start, end)
+            constraints.append(pm.pointConstraint(locs[s], s))
+        pm.bakeResults(sel, simulation=False,
+                         disableImplicitControl=False,
+                         # removeBakedAttributeFromLayer=False,
+                         destinationLayer=self.funcs.get_selected_layers()[0],
+                         # bakeOnOverrideLayer=False,
+                         preserveOutsideKeys=True,
+                         time=(start, end),
+                         sampleBy=1)
+
+        pm.delete(constraints)
+        for s in sel:
+            pm.delete(locs[s])
+
+    def doJumpUsingInitialFrameVelocity(self):
+        with self.funcs.keepSelection():
+            self.jumpUsingInitialFrameVelocity()
 
     def jumpUsingInitialFrameVelocity(self):
         self.uiUnit = om.MTime.uiUnit()
@@ -229,9 +249,10 @@ class GravityTools(toolAbstractFactory):
         velEnd = timeRange[0]
         start = timeRange[0]
         end = timeRange[1]
+        locs = dict()
         durationFrames = end - start
         for s in sel:
-            locator = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
+            locs[s] = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
             mobj = self.getMobject(s)
             startMx, endMtx = self.getJumpDisplacement(mobj, velStart, velEnd)
             startTranslation = self.getMatrixTranslation(startMx)
@@ -240,7 +261,9 @@ class GravityTools(toolAbstractFactory):
             arcX = self.arcCalc(endTranslation.x, initialVelocity.x, durationFrames, 0)
             arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames, self.gravity / self.funcs.unit_conversion())
             arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, 0)
-            self.keyJumpArc(arcX, arcY, arcZ, start, end, locator)
+            self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
+
+        self.bakeJumpToControl(start, end, locs, sel)
 
     def getMatrixTranslation(self, mtx):
         startMTransform = om2.MTransformationMatrix(mtx)
@@ -250,21 +273,26 @@ class GravityTools(toolAbstractFactory):
         startTranslation.z /= self.funcs.unit_conversion()
         return startTranslation
 
+    def doJumpAllKeypairs(self):
+        with self.funcs.keepSelection():
+            self.jumpAllKeypairs()
+
     def jumpAllKeypairs(self):
         self.uiUnit = om.MTime.uiUnit()
         sel = cmds.ls(sl=True)
         if not sel:
             return
+        locs = dict()
         for s in sel:
             keyTimes = self.funcs.get_object_key_times(s)
             if not keyTimes:
                 continue
             if len(keyTimes) == 1:
                 continue
-            locator = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
+            locs[s] = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
             for i in range(1, len(keyTimes)):
-                print i-1, i
-                self.jumpTimeRange(s, locator, keyTimes[i-1], keyTimes[i])
+                self.jumpTimeRange(s, locs[s], keyTimes[i-1], keyTimes[i])
+            self.bakeJumpToControl(keyTimes[0], keyTimes[-1], locs, s)
 
     def jumpTimeRange(self, ref, locator, start, end):
         """
@@ -296,9 +324,6 @@ class GravityTools(toolAbstractFactory):
         translation = MTransform.translation(om2.MSpace.kWorld)
         rotatePivot = MTransform.rotatePivot(om2.MSpace.kWorld)
         rotatePivotTranslation = MTransform.rotatePivotTranslation(om2.MSpace.kPostTransform)
-        print 'translation', translation
-        print 'rotatePivot', rotatePivot
-        print 'rotatePivotTranslation', rotatePivotTranslation
 
 
     def getJumpDisplacement(self, target, startTime, endTime):
@@ -315,17 +340,13 @@ class GravityTools(toolAbstractFactory):
     def getJumpArc(self, startTranslation, endTranslation, durationFrames):
         # calculate time vs frames
         displacement = endTranslation - startTranslation
-        #print 'disp', displacement
         durationSeconds = float(durationFrames / self.funcs.time_conversion())
-        #print 'durationSeconds', durationSeconds
         velocityX = self.getJumpInitialVelocity(displacement.x, durationSeconds, 0)
         velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds, -self.gravity / self.funcs.unit_conversion())
         velocityZ = self.getJumpInitialVelocity(displacement.z, durationSeconds, 0)
         arcX = self.arcCalc(startTranslation.x, velocityX, durationFrames, 0)
         arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, self.gravity / self.funcs.unit_conversion())
         arcZ = self.arcCalc(startTranslation.z, velocityZ, durationFrames, 0)
-        #print len(arcX), durationFrames
-        #print arcX
         return arcX, arcY, arcZ
 
 
@@ -333,7 +354,6 @@ class GravityTools(toolAbstractFactory):
         outVals = list()
         for x in range(0, int(durationFrames + 1)):
             timeStep = float(x / self.funcs.time_conversion())
-            #print timeStep
             outVals.append((x0 + v0 * timeStep + 0.5 * (timeStep * timeStep * gravity)))
         return outVals
 
@@ -362,5 +382,4 @@ class GravityTools(toolAbstractFactory):
         tfmMatrix = om2.MTransformationMatrix()
         tfmMatrix.setTranslation(om2.MVector(rotatePivotValueX, rotatePivotValueY, rotatePivotValueZ),
                                  om2.MSpace.kWorld)
-        # print tfmMatrix.asMatrix() * value
         return tfmMatrix.asMatrix() * value
