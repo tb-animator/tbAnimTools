@@ -115,6 +115,7 @@ class GravityTools(toolAbstractFactory):
 
         self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity)
         self.uiUnit = om.MTime.uiUnit()
+
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -123,7 +124,8 @@ class GravityTools(toolAbstractFactory):
     def optionUI(self):
         super(GravityTools, self).optionUI()
         infoText = QLabel()
-        infoText.setText('Set the gravity value in cm here. Default is -981. Some rigs are built to odd units/dimensions so adjust accordingly')
+        infoText.setText(
+            'Set the gravity value in cm here. Default is -981. Some rigs are built to odd units/dimensions so adjust accordingly')
         infoText.setWordWrap(True)
         gravityScale = intFieldWidget(optionVar=self.gravityOption,
                                       defaultValue=pm.optionVar.get(self.gravityOption, self.defaultGravity),
@@ -165,10 +167,11 @@ class GravityTools(toolAbstractFactory):
     calculation for max height
     - (v0 * v0) / 2 * a)
     '''
+
     def doQuickJump(self):
         with self.funcs.keepSelection():
             self.quickJump()
-            
+
     def quickJump(self):
         self.uiUnit = om.MTime.uiUnit()
         sel = cmds.ls(sl=True)
@@ -186,10 +189,10 @@ class GravityTools(toolAbstractFactory):
             if timeRange is None:
                 keyTimes = self.funcs.get_object_key_times(s)
                 idx = bisect.bisect_left(keyTimes, currentTime)
-                if idx-1 < 0:
+                if idx - 1 < 0:
                     start = currentTime
                 else:
-                    start = keyTimes[idx-1]
+                    start = keyTimes[idx - 1]
                 if idx >= len(keyTimes):
                     end = currentTime
                 else:
@@ -213,18 +216,35 @@ class GravityTools(toolAbstractFactory):
         constraints = list()
         if not isinstance(sel, list):
             sel = [sel]
-        for s in sel:
-            constraints.append(pm.pointConstraint(locs[s], s))
+
         selectedLayer = self.funcs.get_selected_layers(ignoreBase=True)
-        print 'selected layer', selectedLayer
+        attrList = list()
+        plugs = dict()
+        curves = dict()
+        curveDuplicates = dict()
 
         if len(selectedLayer):
-            print start, end
             """
             Baking to a layer will remove the outside keys, as preserveOutsideKeys does not work with layers
             Need a function to snapshot the existing animation and merge it after baking
             """
-            pm.bakeResults(sel,
+
+            for s in sel:
+                for attr in ['translateX', 'translateY', 'translateZ']:
+                    attrList.append(s + '.' + attr)
+                    # hack for pre maya 2020.4.3
+                    plug = self.funcs.getPlugsFromLayer(str(s) + '.' + attr, selectedLayer[0])
+                    plugs[s + '.' + attr] = plug
+                    curve = cmds.listConnections(plug, source=True, destination=False)
+                    if curve:
+                        curves[s + '.' + attr] = curve[0]
+                        curveDuplicates[s + '.' + attr] = cmds.duplicate(curve[0])[0]
+
+        for s in sel:
+            constraints.append(pm.pointConstraint(locs[s], s))
+
+        if len(selectedLayer):
+            pm.bakeResults(attrList,
                            simulation=False,
                            disableImplicitControl=True,
                            # removeBakedAttributeFromLayer=False,
@@ -241,15 +261,28 @@ class GravityTools(toolAbstractFactory):
                            shape=False,
                            time=(start, end),
                            )
+
+            for s in sel:
+                for attr in ['translateX', 'translateY', 'translateZ']:
+                    # hack for pre maya 2020.4.3
+                    curve = curves.get(s + '.' + attr, None)
+                    if not curve:
+                        continue
+                    curveOriginal = curveDuplicates.get(s + '.' + attr, None)
+                    resultCurve = cmds.listConnections(plugs[s + '.' + attr] , source=True, destination=False)
+                    cmds.copyKey(resultCurve, time=(start, end), option="curve")
+                    cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
+                    cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
+                    cmds.delete(resultCurve)
         else:
             pm.bakeResults(sel, simulation=False,
-                         disableImplicitControl=True,
-                         # removeBakedAttributeFromLayer=False,
-                         #destinationLayer=pm.animLayer(query=True, root=True),
-                         # bakeOnOverrideLayer=False,
-                         preserveOutsideKeys=True,
-                         time=(start, end),
-                         sampleBy=1)
+                           disableImplicitControl=True,
+                           # removeBakedAttributeFromLayer=False,
+                           # destinationLayer=pm.animLayer(query=True, root=True),
+                           # bakeOnOverrideLayer=False,
+                           preserveOutsideKeys=True,
+                           time=(start, end),
+                           sampleBy=1)
 
         pm.delete(constraints)
         for s in sel:
@@ -272,7 +305,7 @@ class GravityTools(toolAbstractFactory):
             timeRange = self.funcs.getTimelineHighlightedRange()
         else:
             timeRange = self.funcs.getTimelineRange()
-        velStart = timeRange[0]-1
+        velStart = timeRange[0] - 1
         velEnd = timeRange[0]
         start = timeRange[0]
         end = timeRange[1]
@@ -284,9 +317,10 @@ class GravityTools(toolAbstractFactory):
             startMx, endMtx = self.getJumpDisplacement(mobj, velStart, velEnd)
             startTranslation = self.getMatrixTranslation(startMx)
             endTranslation = self.getMatrixTranslation(endMtx)
-            initialVelocity = (endTranslation-startTranslation) * self.funcs.time_conversion()
+            initialVelocity = (endTranslation - startTranslation) * self.funcs.time_conversion()
             arcX = self.arcCalc(endTranslation.x, initialVelocity.x, durationFrames, 0)
-            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames, self.gravity / self.funcs.unit_conversion())
+            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames,
+                                self.gravity / self.funcs.unit_conversion())
             arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, 0)
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
 
@@ -318,7 +352,7 @@ class GravityTools(toolAbstractFactory):
                 continue
             locs[s] = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
             for i in range(1, len(keyTimes)):
-                self.jumpTimeRange(s, locs[s], keyTimes[i-1], keyTimes[i])
+                self.jumpTimeRange(s, locs[s], keyTimes[i - 1], keyTimes[i])
             self.bakeJumpToControl(keyTimes[0], keyTimes[-1], locs, s)
 
     def jumpTimeRange(self, ref, locator, start, end):
@@ -352,7 +386,6 @@ class GravityTools(toolAbstractFactory):
         rotatePivot = MTransform.rotatePivot(om2.MSpace.kWorld)
         rotatePivotTranslation = MTransform.rotatePivotTranslation(om2.MSpace.kPostTransform)
 
-
     def getJumpDisplacement(self, target, startTime, endTime):
         startTimeMdg = om2.MDGContext(om2.MTime(startTime, self.uiUnit))
         startMtx = self.getWworldMatrixAtTime('worldMatrix', target, startTimeMdg)
@@ -362,20 +395,20 @@ class GravityTools(toolAbstractFactory):
         return startMtx, endMtx
 
     def getJumpInitialVelocity(self, x, duration, gravity):
-        return (x/duration + (0.5 * gravity * duration))
+        return (x / duration + (0.5 * gravity * duration))
 
     def getJumpArc(self, startTranslation, endTranslation, durationFrames):
         # calculate time vs frames
         displacement = endTranslation - startTranslation
         durationSeconds = float(durationFrames / self.funcs.time_conversion())
         velocityX = self.getJumpInitialVelocity(displacement.x, durationSeconds, 0)
-        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds, -self.gravity / self.funcs.unit_conversion())
+        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds,
+                                                -self.gravity / self.funcs.unit_conversion())
         velocityZ = self.getJumpInitialVelocity(displacement.z, durationSeconds, 0)
         arcX = self.arcCalc(startTranslation.x, velocityX, durationFrames, 0)
         arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, self.gravity / self.funcs.unit_conversion())
         arcZ = self.arcCalc(startTranslation.z, velocityZ, durationFrames, 0)
         return arcX, arcY, arcZ
-
 
     def arcCalc(self, x0, v0, durationFrames, gravity):
         outVals = list()

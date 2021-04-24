@@ -596,3 +596,56 @@ class functions(object):
             pm.delete(newLayer)
 
         return True
+
+    def getPlugsFromLayer(self, nodeAttr, animLayer):
+        """ Find the animBlendNode plug corresponding to the given node, attribute,
+        and animation layer.
+        """
+        if not self.is_in_anim_layer(nodeAttr, animLayer):
+            return None
+        # print 'getPlugsFromLayer', nodeAttr, animLayer
+        plug = None
+        basePlug = None
+        layerPlug = None
+        if animLayer == cmds.animLayer(q=True, root=True):
+            # For the base animation layer, traverse the chain of animBlendNodes all
+            # the way to the end.  The plug will be "inputA" on that last node.
+            blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
+            history = cmds.listHistory(blendNode)
+            lastAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[-1]
+            if cmds.objectType(lastAnimBlendNode, isa='animBlendNodeAdditiveRotation'):
+                letterXYZ = nodeAttr[-1]
+                plug = '{0}.inputA{1}'.format(lastAnimBlendNode, letterXYZ.upper())
+            else:
+                plug = '{0}.inputA'.format(lastAnimBlendNode)
+        else:
+            # For every layer other than the base animation layer, we can just use
+            # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
+            # broken in Python, so we have to use MEL.
+            print 'getPlugsFromLayer' , nodeAttr
+            cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
+            blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
+            print blendNode, 'blendNode'
+            blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
+            history = cmds.listHistory(blendNode)
+            firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
+            basePlug = firstAnimBlendNode + '.inputA'
+            layerPlug = firstAnimBlendNode + '.inputB'
+            plug = mel.eval(cmd)
+        return plug
+
+    @staticmethod
+    def is_in_anim_layer(nodeName, animLayer):
+        """ Determine if the given object is in the given animation layer.
+
+        Parameters:
+        * obj - Can be either a node name, like "pCube1", or a node/attribute combo,
+            like "pCube1.translateX".
+        * animLayer - The name of an animation layer.
+
+        """
+
+        objAnimLayers = cmds.animLayer([nodeName], q=True, affectedLayers=True) or []
+        if animLayer in objAnimLayers:
+            return True
+        return False
