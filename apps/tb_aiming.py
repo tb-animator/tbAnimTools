@@ -304,9 +304,7 @@ class AimTools(toolAbstractFactory):
     def bake(self):
         keyRange = self.funcs.get_all_layer_key_times(self.targets)
         if keyRange[0] is None:
-            print 'no keys'
             keyRange = self.funcs.getTimelineRange()
-        print keyRange[0], keyRange[1]
         bakeLayer = cmds.animLayer('AimBakeLocators', override=True)
         cmds.bakeResults(self.locators, time=(keyRange[0], keyRange[1]),
                          simulation=False,
