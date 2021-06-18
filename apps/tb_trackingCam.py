@@ -156,7 +156,7 @@ class TrackingCamera(toolAbstractFactory):
                 return cmds.warning('unable to track tracking camera with tracking camera')
             if self.trackerGrp in self.camera_target:
                 return cmds.warning('unable to track tracking camera with tracking camera')
-            if not self.trackerGrp:
+            if not pm.objExists(self.trackerGrp):
                 self.createTrackingCamera()
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)

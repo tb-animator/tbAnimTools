@@ -56,6 +56,8 @@ import pymel.core as pm
 import pymel.core.datatypes as dt
 
 
+
+
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
@@ -136,7 +138,7 @@ class AimTools(toolAbstractFactory):
             'Set the default quick aim values here. If a control does not have a specific preset created, the tool will default to these values.\n'
             'The distance value will be used for quick anim bakes for specific axis')
         infoText.setWordWrap(True)
-        self.aimWidget = AimAxisWidget(itemList=['x','y','z'],
+        self.aimWidget = AimAxisWidget(itemList=['x', 'y', 'z'],
                                        aimAxis=self.defaultAimData.get('aimAxis'),
                                        upAxis=self.defaultAimData.get('upAxis'),
                                        flipAim=self.defaultAimData.get('flipAim'),
@@ -203,27 +205,33 @@ class AimTools(toolAbstractFactory):
                            default=self.defaultAimData)
 
     def quickAimXY(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimZY(self, *args):
-        default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimXZ(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'x', 'upAxis': 'z', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimYZ(self, *args):
-        default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'y', 'upAxis': 'z', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimYX(self, *args):
-        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'x', 'upAxis': 'y', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def quickAimZX(self, *args):
-        default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False, 'distance': self.defaultAimData.get('distance')}
+        default = {'aimAxis': 'z', 'upAxis': 'x', 'flipAim': False, 'flipUp': False,
+                   'distance': self.defaultAimData.get('distance')}
         self.aimToLocators(directionDict=self.aimData, default=default, forceDefault=True)
 
     def aimToLocators(self, directionDict=dict(), default=dict(), forceDefault=False):
@@ -256,19 +264,13 @@ class AimTools(toolAbstractFactory):
     def aimToLocator(self, refName, name, target, data):
         aimAxis, upAxis = self.getAimAxis(data)
 
-        up = self.funcs.tempLocator(name=name, suffix='upLoc')
-        aim = self.funcs.tempLocator(name=name, suffix='fwdLoc')
+        up = self.funcs.tempControl(name=name, suffix='upLoc', scale=data.get('scale', 1.0))
+        aim = self.funcs.tempControl(name=name, suffix='fwdLoc', scale=data.get('scale', 1.0))
 
         self.locators.extend([str(up), str(aim)])
         self.controlInfo[target] = [str(aim), aimAxis, str(up), upAxis]
         targetPos = cmds.xform(target, query=True, worldSpace=True, absolute=True, rotatePivot=True)
         targetPosMVector = om.MVector(targetPos[0], targetPos[1], targetPos[2])
-
-        # depending on the rig this really doesn't work
-        upVec = getLocalVecToWorldSpaceAPI(target, vec=upAxis, offset=targetPosMVector,
-                                           mult=data['distance'] / self.funcs.locator_unit_conversion())
-        fwdVec = getLocalVecToWorldSpaceAPI(target, vec=aimAxis, offset=targetPosMVector,
-                                            mult=data['distance'] / self.funcs.locator_unit_conversion())
 
         fwdPos = self.getPosition(target, self.getAxis(data['aimAxis'], data['flipAim']), data['distance'])
         upPos = self.getPosition(target, self.getAxis(data['upAxis'], data['flipUp']), data['distance'])
@@ -288,7 +290,8 @@ class AimTools(toolAbstractFactory):
                                              'upAxis': upAxis,
                                              'flipAim': data['flipAim'],
                                              'flipUp': data['flipUp'],
-                                             'distance': data['distance']
+                                             'distance': data['distance'],
+                                             'scale': data.get('scale', 1.0)
                                              }
 
     def getAimAxis(self, data):
@@ -336,16 +339,17 @@ class AimTools(toolAbstractFactory):
         upAxis = 'y'
         flipAim = False
         flipUp = False
-        distance = 10.0
+        distance = 100.0
         refName = self.funcs.getRefName(sel[0])
         if refName in self.aimData.keys():
             name = sel[0].split(':')[-1]
             if name in self.aimData[refName].keys():
-                aimAxis = self.aimData[refName][name]['aimAxis']
-                upAxis = self.aimData[refName][name]['upAxis']
-                flipAim = self.aimData[refName][name]['flipAim']
-                flipUp = self.aimData[refName][name]['flipUp']
-                distance = self.aimData[refName][name]['distance']
+                aimAxis = self.aimData[refName][name].get('aimAxis', 'z')
+                upAxis = self.aimData[refName][name].get('upAxis', 'y')
+                flipAim = self.aimData[refName][name].get('flipAim', False)
+                flipUp = self.aimData[refName][name].get('flipUp', False)
+                distance = self.aimData[refName][name].get('distance', 100)
+                scale = self.aimData[refName][name].get('scale', 1.0)
         prompt = AimAxisDialog(parent=self.funcs.getMainWindow(),
                                controlName=sel[0],
                                title='Assign default aim for control',
@@ -368,30 +372,33 @@ class AimTools(toolAbstractFactory):
             pass
         '''
 
-    def updatePreview(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
+    def updatePreview(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         fwdPreview = 'fwd_Preview'
         upPreview = 'up_Preview'
         if not cmds.objExists(fwdPreview):
-            fwdPreview = self.funcs.tempLocator(name='fwd', suffix='Preview')
+            fwdPreview = self.funcs.tempControl(name='fwd', suffix='Preview', scale=scale)
             fwdAnn = pm.annotate(fwdPreview, tx='Aim Forward', p=(0, 1, 0))
             pm.parent(fwdAnn, fwdPreview)
         if not cmds.objExists(upPreview):
-            upPreview = self.funcs.tempLocator(name='up', suffix='Preview')
+            upPreview = self.funcs.tempControl(name='up', suffix='Preview', scale=scale)
             upAnn = pm.annotate(upPreview, tx='Aim Up', p=(0, 1, 0))
             pm.parent(upAnn, upPreview)
         fwdPreview = pm.PyNode(fwdPreview)
         upPreview = pm.PyNode(upPreview)
+        fwdPreview.scale.set(scale, scale, scale)
+        upPreview.scale.set(scale, scale, scale)
         fwdPos = self.getPosition(controlName, self.getAxis(aimAxis, flipAim), distance)
         upPos = self.getPosition(controlName, self.getAxis(upAxis, flipUp), distance)
         fwdPreview.translate.set(fwdPos)
         upPreview.translate.set(upPos)
 
-    def updateDefault(self, aimAxis, upAxis, flipAim, flipUp, distance):
+    def updateDefault(self, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         self.defaultAimData['aimAxis'] = aimAxis
         self.defaultAimData['upAxis'] = upAxis
         self.defaultAimData['flipAim'] = flipAim
         self.defaultAimData['flipUp'] = flipUp
         self.defaultAimData['distance'] = distance
+        self.defaultAimData['scale'] = scale
         self.saveData()
 
     def deletePreview(self):
@@ -408,10 +415,10 @@ class AimTools(toolAbstractFactory):
 
         # depending on the rig this really doesn't work
         vec = getLocalVecToWorldSpaceAPI(target, vec=axis, offset=targetPosMVector,
-                                           mult=distance / self.funcs.locator_unit_conversion())
+                                         mult=distance / self.funcs.unit_conversion())
         return vec
 
-    def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance):
+    def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         refName = self.funcs.getRefName(controlName)
         if refName not in self.aimData.keys():
             self.aimData[refName] = dict()
@@ -419,7 +426,8 @@ class AimTools(toolAbstractFactory):
                                                              'upAxis': upAxis,
                                                              'flipAim': flipAim,
                                                              'flipUp': flipUp,
-                                                             'distance': distance
+                                                             'distance': distance,
+                                                             'scale': scale
                                                              }
         self.saveData()
 
@@ -444,4 +452,3 @@ def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 
     vec = ((vec * matrix).normal() * mult)
     vec += offset
     return vec.x, vec.y, vec.z
-

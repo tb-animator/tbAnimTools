@@ -62,6 +62,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='setTangentsLinear',
                                      annotation='Sets your current key selection or timeline key to linear',
                                      category=self.category, command=['KeyModifiers.setTangentsLinear()']))
+        self.addCommand(self.tb_hkey(name='setTangentsStepped',
+                                     annotation='Sets your current key selection or timeline key to linear',
+                                     category=self.category, command=['KeyModifiers.setTangentsStepped()']))
         self.addCommand(self.tb_hkey(name='setTangentsAuto',
                                      annotation='Sets your current key selection or timeline key to auto',
                                      category=self.category, command=['KeyModifiers.setTangentsAuto()']))
@@ -169,6 +172,9 @@ class KeyModifiers(toolAbstractFactory):
 
     def setTangentsLinear(self):
         self.setTangentType('linear')
+
+    def setTangentsStepped(self):
+        self.setTangentType('step')
 
     def setTangentsSpline(self):
         self.setTangentType('spline')
@@ -337,4 +343,3 @@ class KeyModifiers(toolAbstractFactory):
         angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
         _node = pm.PyNode(node)
         pm.setAttr(_node.rotate, angles)
-

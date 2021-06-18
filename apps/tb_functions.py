@@ -28,6 +28,8 @@ import maya.OpenMayaAnim as oma
 import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
+import pymel.core.datatypes as dt
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -42,6 +44,64 @@ else:
     from shiboken2 import wrapInstance
 from contextlib import contextmanager
 import maya.OpenMaya as om
+
+orbPointList = [[0.0, 25.0, 0.0],
+                [0.0, 23.097, 9.567074999999999],
+                [0.0, 17.677675, 17.677675],
+                [0.0, 9.567074999999999, 23.097],
+                [0.0, 0.0, 25.0],
+                [0.0, -9.567074999999999, 23.097],
+                [0.0, -17.677675, 17.677675],
+                [0.0, -23.097, 9.567074999999999],
+                [0.0, -25.0, 0.0],
+                [0.0, -23.097, -9.567074999999999],
+                [0.0, -17.677675, -17.677675],
+                [0.0, -9.567074999999999, -23.097],
+                [0.0, 0.0, -25.0],
+                [0.0, 9.567074999999999, -23.097],
+                [0.0, 17.677675, -17.677675],
+                [0.0, 23.097, -9.567074999999999],
+                [0.0, 25.0, 0.0],
+                [9.567074999999999, 23.097, 0.0],
+                [17.677675, 17.677675, 0.0],
+                [23.097, 9.567074999999999, 0.0],
+                [25.0, 0.0, 0.0],
+                [23.097, -9.567074999999999, 0.0],
+                [17.677675, -17.677675, 0.0],
+                [9.567074999999999, -23.097, 0.0],
+                [0.0, -25.0, 0.0],
+                [-9.567074999999999, -23.097, 0.0],
+                [-17.677675, -17.677675, 0.0],
+                [-23.097, -9.567074999999999, 0.0],
+                [-25.0, 0.0, 0.0],
+                [-23.097, 9.567074999999999, 0.0],
+                [-17.677675, 17.677675, 0.0],
+                [-9.567074999999999, 23.097, 0.0],
+                [0.0, 25.0, 0.0],
+                [0.0, 23.097, -9.567074999999999],
+                [0.0, 17.677675, -17.677675],
+                [0.0, 9.567074999999999, -23.097],
+                [0.0, 0.0, -25.0],
+                [-9.567074999999999, 0.0, -23.097],
+                [-17.677675, 0.0, -17.677675],
+                [-23.097, 0.0, -9.567074999999999],
+                [-25.0, 0.0, 0.0],
+                [-23.097, 0.0, 9.567074999999999],
+                [-17.677675, 0.0, 17.677675],
+                [-9.567074999999999, 0.0, 23.097],
+                [0.0, 0.0, 25.0],
+                [9.567074999999999, 0.0, 23.097],
+                [17.677675, 0.0, 17.677675],
+                [23.097, 0.0, 9.567074999999999],
+                [25.0, 0.0, 0.0],
+                [23.097, 0.0, -9.567074999999999],
+                [17.677675, 0.0, -17.677675],
+                [9.567074999999999, 0.0, -23.097],
+                [0.0, 0.0, -25.0]]
+orbKnotList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+               21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+               39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]
+
 
 class functions(object):
     """
@@ -83,7 +143,7 @@ class functions(object):
 
     # get the current model panel
     def getModelPanel(self):
-        curPanel = pm.getPanel(withFocus=True) or self.lastPanel # pm.getPanel(underPointer=True)
+        curPanel = pm.getPanel(withFocus=True) or self.lastPanel  # pm.getPanel(underPointer=True)
         if pm.objectTypeUI(curPanel) == 'modelEditor':
             self.lastPanel = curPanel
             return curPanel
@@ -104,6 +164,16 @@ class functions(object):
         loc.getShape().overrideRGBColors.set(True)
         loc.getShape().overrideColorRGB.set(color)
         return loc
+
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
+        control, shape = self.drawOrb(scale=scale)
+        control.rename(name + '_' + suffix)
+
+        control.rotateOrder.set(3)
+        shape.overrideEnabled.set(True)
+        shape.overrideRGBColors.set(True)
+        shape.overrideColorRGB.set(color)
+        return control
 
     @staticmethod
     def filter_modelEditors(editors):
@@ -149,14 +219,13 @@ class functions(object):
         else:
             return None
 
-
     @staticmethod
     def get_keys_from_selection(node=cmds.ls(selection=True)):
         return cmds.keyframe(node, query=True, selected=True, name=True)
 
     @staticmethod
     def get_max_index(curve):
-        return cmds.keyframe(curve, query=True, keyframeCount=True) -1
+        return cmds.keyframe(curve, query=True, keyframeCount=True) - 1
 
     @staticmethod
     def get_key_times(curve, selected=True):
@@ -201,10 +270,10 @@ class functions(object):
         return cmds.keyframe(curve, query=True, time=time_range, valueChange=True)
 
     def get_prev_key_values_from_index(self, curve, index):
-        return cmds.keyframe(curve, query=True, index=((max(0, index-1)),), valueChange=True)
+        return cmds.keyframe(curve, query=True, index=((max(0, index - 1)),), valueChange=True)
 
     def get_next_key_values_from_index(self, curve, index):
-        return cmds.keyframe(curve, query=True, index=((min(index+1, self.get_max_index(curve))),), valueChange=True)
+        return cmds.keyframe(curve, query=True, index=((min(index + 1, self.get_max_index(curve))),), valueChange=True)
 
     def initBaseAnimationLayer(self):
         cmds.delete(cmds.animLayer())
@@ -267,7 +336,6 @@ class functions(object):
                 cmds.animLayer(layer, edit=True, selected=layerStates[layer][0]),
                 cmds.animLayer(layer, edit=True, preferred=layerStates[layer][1])
         return keyTimes
-
 
     def match(self, data):
         ## match tangents for looping animations
@@ -346,7 +414,7 @@ class functions(object):
             return cmds.timeControl(self.getPlayBackSlider(), query=True, rangeArray=True)[1]
         else:
             timeRange = cmds.timeControl(self.getPlayBackSlider(), query=True, rangeArray=True)
-            return timeRange[0], timeRange[1] -1
+            return timeRange[0], timeRange[1] - 1
 
     def isTimelineHighlighted(self):
         return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 1
@@ -442,12 +510,14 @@ class functions(object):
 
     @staticmethod
     def getAvailableTranslates(node):
-        return [attr.lower() for attr in ['translateX', 'translateY', 'translateZ'] if not cmds.getAttr(node + '.' + attr, settable=True)]
+        return [attr.lower() for attr in ['translateX', 'translateY', 'translateZ'] if
+                not cmds.getAttr(node + '.' + attr, settable=True)]
 
     @staticmethod
     def getAvailableRotates(node):
         return [attr.lower() for attr in ['rotateX', 'rotateY', 'rotateZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
+
     @staticmethod
     def getAvailableScales(node):
         return [attr.lower() for attr in ['scaleX', 'scaleY', 'scaleZ'] if
@@ -464,14 +534,14 @@ class functions(object):
 
     # yellow info prefix highlighting
     def infoMessage(self, position="botRight", prefix="", message="", fadeStayTime=2.0, fadeOutTime=2.0, fade=True):
-            prefix = '<hl>%s</hl>' % prefix
-            self.enable_messages()
-            pm.inViewMessage(amg=prefix + message,
-                             pos=position,
-                             fadeStayTime=fadeStayTime,
-                             fadeOutTime=fadeOutTime,
-                             fade=fade)
-            self.disable_messages()
+        prefix = '<hl>%s</hl>' % prefix
+        self.enable_messages()
+        pm.inViewMessage(amg=prefix + message,
+                         pos=position,
+                         fadeStayTime=fadeStayTime,
+                         fadeOutTime=fadeOutTime,
+                         fade=fade)
+        self.disable_messages()
 
     # prefix will be highlighted in red!
     def errorMessage(self, position="botRight", prefix="", message="", fadeStayTime=0.5, fadeOutTime=4.0, fade=True):
@@ -622,7 +692,7 @@ class functions(object):
             # For every layer other than the base animation layer, we can just use
             # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
             # broken in Python, so we have to use MEL.
-            print 'getPlugsFromLayer' , nodeAttr
+            print 'getPlugsFromLayer', nodeAttr
             cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
             print blendNode, 'blendNode'
@@ -649,3 +719,11 @@ class functions(object):
         if animLayer in objAnimLayers:
             return True
         return False
+
+    def drawOrb(self, scale=1.0):
+        print [dt.Vector(x) * scale * self.unit_conversion() for x in orbPointList]
+        curve = cmds.curve(degree=1,
+                           knot=orbKnotList,
+                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in orbPointList])
+        curve = pm.PyNode(curve)
+        return curve, curve.getShape()
