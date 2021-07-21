@@ -36,16 +36,16 @@ margin = 2
 from random import randint
 from Abstract import *
 
-if qtVersion.split('.')[0] < 5:
+if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 import sys, os
 
@@ -83,7 +83,7 @@ class slideTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'slideTools'
     hotkeyClass = hotkeys()
@@ -150,7 +150,7 @@ class slideTools(toolAbstractFactory):
         except:
             pass
         self.selectionChangedCallback = self.slideUI.createSelectionChangedScriptJob()
-        print 'hello it is me'
+
         self.keyPressHandler = keypressHandler(self.tweenClass, self.slideUI)
         self.app.installEventFilter(self.keyPressHandler)
 
@@ -741,13 +741,13 @@ class DragButton(QLabel):
         self.__mousePressPos = None
         self.__mouseMovePos = None
         if self.uiParent.isDragging:
-            print 'mousePressEvent when already dragging'
+            print ('mousePressEvent when already dragging')
             return super(DragButton, self).mousePressEvent(event)
         else:
             self.uiParent.startDrag(event.button())
 
         if event.button() == Qt.RightButton:
-            print 'RIGHT BUTTON PRESS'
+            print ('RIGHT BUTTON PRESS')
 
         if event.button() == Qt.LeftButton or event.button() == Qt.RightButton or event.button() == Qt.MiddleButton:
             self.__mousePressPos = event.globalPos()
@@ -766,7 +766,7 @@ class DragButton(QLabel):
 
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.RightButton:
-            print 'RIGHT BUTTON MOVE'
+            print ('RIGHT BUTTON MOVE')
         if not self.uiParent.dragButton:
             return super(DragButton, self).mouseMoveEvent(event)
         if event.buttons() == Qt.LeftButton or event.buttons() == Qt.RightButton or event.buttons() == Qt.MiddleButton:
@@ -939,7 +939,7 @@ class sliderBar(QLabel):
 
     def mousePressEvent(self, event):
         if self.uiParent.isDragging:
-            print 'mousePressEvent when already dragging'
+            print ('mousePressEvent when already dragging')
         self.uiParent.hideAllAnchors()
         self.uiParent.startDrag(event.button())
 
@@ -1122,7 +1122,7 @@ class sliderWidget(QWidget):
         pass
 
     def hideAllAnchors(self):
-        print 'hide all anchors'
+        print ('hide all anchors')
         for btn in self.anchorButtons:
             btn.setIconStateInactive()
             btn.update()
@@ -1311,14 +1311,14 @@ class sliderWidget(QWidget):
         # self.updateTweenClass()
 
     def startDrag(self, button):
-        print 'starting new drag on button!!', button
+        print ('starting new drag on button!!', button)
         self.updateTweenClass()
 
         self.tweenClass = self.currentTweenClassDict[button]()
         self.tweenClass.setAffectedObjects()
         self.tweenClass.cacheValues()
         self.tweenClass.get_modifier()
-        print 'affectedObjects', self.tweenClass.affectedObjects
+        print ('affectedObjects', self.tweenClass.affectedObjects)
         self.currentDragButton = button
         self.isDragging = True
 
@@ -1334,7 +1334,7 @@ class sliderWidget(QWidget):
         query the selection to decide what is the most appropriate tween class to use
         :return:
         """
-        print 'updating tween class'
+        print ('updating tween class')
         selectedKeys = cmds.keyframe(query=True, selected=True)
         selectedObjects = cmds.ls(sl=True, type='transform')
         geState = getGraphEditorState()
@@ -1353,15 +1353,15 @@ class sliderWidget(QWidget):
         self.arrangeUI()
         self.tweenClass.setAffectedObjects()
         self.tweenClass.cacheValues()
-        print self.tweenClass, self.tweenClass.labelText
+        print (self.tweenClass, self.tweenClass.labelText)
         self.update()
 
     def get_modifier(self):
-        print 'cmds.getModifiers()', cmds.getModifiers()
+        print ('cmds.getModifiers()', cmds.getModifiers())
         self.keyboardModifier = {0: None, 1: 'shift', 4: 'ctrl'}[cmds.getModifiers()]
 
     def shiftPressed(self):
-        print 'UI shift pressed'
+        print ('UI shift pressed')
         if self.isDragging:
             return
         # self.horizontalBar.setStyleSheet("QLabel {background-color: rgba(255, 128, 128, 128);}")
@@ -1371,7 +1371,7 @@ class sliderWidget(QWidget):
         # self.dragButton.setPixmap(self.dragButton.inactiveIcon)
 
     def shiftReleased(self):
-        print 'UI shift released'
+        print ('UI shift released')
         if self.isDragging:
             return
         # self.horizontalBar.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
@@ -1381,10 +1381,10 @@ class sliderWidget(QWidget):
         # self.dragButton.setPixmap(self.dragButton.activeIcon)
 
     def controlPressed(self):
-        print 'UI control pressed'
+        print ('UI control pressed')
 
     def controlReleased(self):
-        print 'UI control released'
+        print ('UI control released')
 
 
 # TODO - stop using this

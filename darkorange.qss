@@ -1,4 +1,3 @@
-
 QToolTip
 {
      border: 1px solid black;
@@ -122,6 +121,7 @@ QComboBox
     border-style: solid;
     border: 1px solid #1e1e1e;
     border-radius: 5;
+    height: 18;
 }
 
 QComboBox:hover,QPushButton:hover

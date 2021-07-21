@@ -28,13 +28,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 import maya.cmds as cmds
 import pymel.core as pm
@@ -100,6 +100,19 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['ViewModes.viewAll()']))
+        self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
+                                     annotation='Toggle the collapsed state of the graph editor - if docked',
+                                     category=self.category, command=['ViewModes.toggleDockedGraphEd()']))
+        self.addCommand(self.tb_hkey(name='toggleDockedOutliner',
+                                     annotation='Toggle the collapsed state of the outliner - if docked',
+                                     category=self.category, command=['ViewModes.toggleDockedOutliner()']))
+
+        self.addCommand(self.tb_hkey(name='toggleMenuBarVisibility',
+                                     annotation='Toggles the state of all the menu bars and top toolbar',
+                                     category=self.category,
+                                     command=['ViewModes.toggleMenuBarVisibility()']))
+
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -110,7 +123,7 @@ class ViewModeTool(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'ViewModes'
     hotkeyClass = None
@@ -281,6 +294,28 @@ class ViewModeTool(toolAbstractFactory):
         panel = self.funcs.getModelPanel()
         cmds.modelEditor(panel, edit=True,
                          xray=not cmds.modelEditor(panel, query=True, xray=True))
+
+    def toggleDockedGraphEd(self):
+        self.funcs.toggleDockedGraphEd()
+
+    def toggleMenuBarVisibility(self):
+        state = int(pm.optionVar['mainWindowMenubarVis'])
+        mel.eval('setMainMenubarVisible %s' % int(not state))
+        mel.eval('toggleMenuBarsInPanels %s' % int(not state))
+        mel.eval('toggleModelEditorBarsInAllPanels %s' % int(state))
+        # tool box and status line toggle
+        pm.workspaceControl("StatusLine", edit=True, visible=int(not state))
+        pm.workspaceControl("ToolBox", edit=True, visible=int(not state))
+
+    def toggleDockedOutliner(self):
+        panel = "Outliner"
+        # check outliner exists
+        if not cmds.workspaceControl(panel, exists=True):
+            mel.eval("global int $gOutlinerPanelNeedsInit;$gOutlinerPanelNeedsInit = true;")
+            mel.eval("initOutlinerPanel()")
+            cmds.workspaceControl(panel, edit=True, restore=True)
+        cmds.workspaceControl(panel, edit=True,
+                              collapse=not cmds.workspaceControl(panel, query=True, collapse=True))
 
     def loadData(self):
         super(ViewModeTool, self).loadData()

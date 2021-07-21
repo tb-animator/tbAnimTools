@@ -30,13 +30,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -51,21 +51,21 @@ class tbToolLoader(object):
     loadedHotkeyClasses = list()
 
     def loadAllCommands(self):
-        print 'loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys']
+        print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
         self.allCommands = list()
         self.instantiateHotkeyClasses()
         self.getHotkeyCommandsFromLoadedClasses()
         self.allCommandNames = [command.name for command in self.allCommands]
         self.allCategories = list(set([command.category for command in self.allCommands]))
-        print 'allCommands', self.allCommands
-        print 'allCategories', self.allCategories
+        print ('allCommands', self.allCommands)
+        print ('allCategories', self.allCategories)
         self.getExistingCommands()
         self.updateCommands()
         self.removeBadCommands()
 
     def getHotkeyCommandsFromLoadedClasses(self):
         for cls in self.loadedHotkeyClasses:
-            print 'loading hotkeys from class:: ', cls
+            print ('loading hotkeys from class:: ', cls)
             self.allCommands.extend(cls.createHotkeyCommands())
 
     def instantiateHotkeyClasses(self):
@@ -74,7 +74,7 @@ class tbToolLoader(object):
 
     def assignHotkeysFromLoadedClasses(self):
         for cls in self.loadedHotkeyClasses:
-            print 'assigning hotkeys from class:: ', cls
+            print ('assigning hotkeys from class:: ', cls)
             cls.assignHotkeys()
 
     def getExistingCommands(self):

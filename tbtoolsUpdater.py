@@ -1,4 +1,11 @@
-import urllib2
+from __future__ import absolute_import
+from __future__ import print_function
+import sys
+if sys.version_info >= (2, 8):
+    from urllib.request import *
+else:
+    from urllib2 import *
+
 import json
 import datetime
 import shutil
@@ -14,13 +21,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -50,7 +57,7 @@ class updater():
         jsonObjectInfo['version'] = version.strftime(self.dateFormat)
         j = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
         f = open(self.versionDataFile, 'w')
-        print >> f, j
+        print(j, file=f)
         f.close()
 
     def convertDateFromString(self, date_time):
@@ -79,7 +86,7 @@ class updater():
             self.save(lastPush)
 
     def getGithubData(self):
-        response = urllib2.urlopen(self.datUrl)
+        response = urlopen(self.datUrl)
         data = json.load(response)
         return data
 
@@ -88,8 +95,8 @@ class updater():
         return out
 
     def download_project_files(self):
-        print "downloading zip file to", self.base_dir
-        filedata = urllib2.urlopen(self.latestZip)
+        print("downloading zip file to", self.base_dir)
+        filedata = rlopen(self.latestZip)
         datatowrite = filedata.read()
         zipFile = os.path.join(self.base_dir, 'tbAnimToolsLatest.zip')
         with open(zipFile, 'wb') as f:

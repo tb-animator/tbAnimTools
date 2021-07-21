@@ -32,13 +32,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 from tb_UI import *
@@ -70,7 +70,7 @@ class PlayblastTool(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Playblast'
     hotkeyClass = hotkeys()
@@ -138,7 +138,5 @@ class PlayblastTool(toolAbstractFactory):
             range = self.funcs.getTimelineHighlightedRange()
         else:
             range = self.funcs.getTimelineRange()
-        print "pb range", range
-        print "file name to save", blast_name
         cmds.playblast(startTime=range[0], endTime=range[1], format=formats[ext],
                        clearCache=False, percent=75, filename=blast_name)

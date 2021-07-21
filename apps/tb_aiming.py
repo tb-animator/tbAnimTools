@@ -36,13 +36,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 import maya.cmds as cmds
@@ -82,7 +82,7 @@ class AimTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'AimTools'
     hotkeyClass = hotkeys()

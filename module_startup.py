@@ -43,12 +43,15 @@ class initialise(object):
     def load_everything(self):
         import tbtoolsInstaller
         tbtoolsInstaller.module_maker().install()
-        self.check_for_updates()
+        try:
+            self.check_for_updates()
+        except:
+            pass
 
         import apps.tb_optionVars as tbo
         import apps.tb_keyCommands as tb_hotKeys
-        reload(tbo)
-        reload(tb_hotKeys)
+        #reload(tbo)
+        #reload(tb_hotKeys)
 
         keyLoader = tb_hotKeys.tbToolLoader()
         keyLoader.loadAllCommands()

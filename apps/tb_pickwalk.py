@@ -22,6 +22,7 @@
 
 *******************************************************************************
 '''
+from __future__ import print_function
 import pymel.core as pm
 import maya.mel as mel
 import pymel.core.datatypes as dt
@@ -33,27 +34,36 @@ import json
 from Abstract import *
 from tb_UI import *
 
+getStylesheet = getqss.getStyleSheet()
+
 ToolTip_ctrlClickSelect = 'ctrl + click to select control in scene'
 ToolTip_destinationPicker = 'ctrl + click to set from sceme selection' \
                             '\n\tMultiple objects will be added as a new contextual destination. \nshift + click to select currently highlighted destination'
 ToolTip_DestinationCtrlClickSet = 'ctrl + click to load destination info'
+ToolTip_QuickLeftRight = 'Quick add looping left/right pickwalk'
+ToolTip_DownUp = 'Quick add down/up pickwalk, last control ends on self'
+ToolTip_DownMulti = 'Quick add down from one object to many (e.g. Hand to Finger controls)\n First selection is the control, others are the destination'
+ToolTip_UpMulti = 'Quick add up from many to one (e.g. Finger controls to hand)\n Last control is the destination'
+ToolTip_AddRigToMap = 'Select a map from the pickwalk map list to assign a rig file to it'
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 walkDirections = ['up', 'down', 'left', 'right']
 skipDirections = ['upSkip', 'downSkip', 'leftSkip', 'rightSkip']
 
+lockedIcon = 'nodeGrapherLocked.png'
+unlockedIcon = 'nodeGrapherUnlocked.png'
 btnWidth = 80
 
 
@@ -115,7 +125,7 @@ class Pickwalk(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Pickwalk'
     hotkeyClass = None
@@ -136,7 +146,7 @@ class Pickwalk(toolAbstractFactory):
                           'right': 'pickRight',
                           }
 
-    picwalkAttributeNames = {'up': [walkDirectionNames['up'],
+    pickwalkAttributeNames = {'up': [walkDirectionNames['up'],
                                     '_pickwalk_up',
                                     'cgTkPickWalkup',
                                     'zooWalkup'],
@@ -148,11 +158,11 @@ class Pickwalk(toolAbstractFactory):
                                       '_pickwalk_left',
                                       'cgTkPickWalkleft',
                                       'zooWalkleft'],
-                             'right': [walkDirectionNames['right'],
+                              'right': [walkDirectionNames['right'],
                                        '_pickwalk_right',
                                        'cgTkPickWalkright',
                                        'zooWalkright'],
-                             }
+                              }
     melCommands = {'up': 'pickWalkUp',
                    'down': 'pickWalkDown',
                    'left': 'pickWalkLeft',
@@ -196,7 +206,7 @@ class Pickwalk(toolAbstractFactory):
 
     def optionUI(self):
         super(Pickwalk, self).optionUI()
-        #self.widget.setGeometry(600, 100, 1000, 900)
+        # self.widget.setGeometry(600, 100, 1000, 900)
         openLibrary = QPushButton('Open Pickwalk library')
         openLibrary.clicked.connect(self.openLibrary)
         self.layout.addWidget(openLibrary)
@@ -383,7 +393,7 @@ class Pickwalk(toolAbstractFactory):
             if not userAttrs:
                 self.walkStandard(direction)
                 return
-            pickAttributes = [i for i in self.picwalkAttributeNames[direction] if i in userAttrs]
+            pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
             if not pickAttributes:
                 # didn't find any custom pickwalk attributes, use the regular walk
                 self.walkStandard(direction)
@@ -391,7 +401,7 @@ class Pickwalk(toolAbstractFactory):
 
             found = False
 
-            for walkAttribute in self.picwalkAttributeNames[direction]:
+            for walkAttribute in self.pickwalkAttributeNames[direction]:
                 if not found:
                     if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
                         returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
@@ -429,8 +439,12 @@ class Pickwalk(toolAbstractFactory):
                         self.walkStandard(direction)
                     return False
             return returnedControls
-
-
+        userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
+        if userAttrs:
+            pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
+            if pickAttributes:
+                # exit and return to standard pickwalk ( bit of repeated code but whatever for now )
+                return returnedControls
         elif refName not in self.walkDataLibrary.ignoredRigs:
             self.queryWalkOnNewRig(refName)
         return returnedControls
@@ -494,13 +508,13 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        print 'assignNewRigNewMap', rigName
+        print ('assignNewRigNewMap', rigName)
         win = pickwalkMainWindow()
         win.show()
         # TODO this is a bit ugly as it opens the save as windows window, nice to avoid that as you have to save
         # TODO the pickwalk map in the save folder anyway
         newMap = win.saveAsLibrary()
-        print 'new map', newMap
+        print ('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
         self.getAllPickwalkMaps()
@@ -525,9 +539,9 @@ class WalkDataLibrary(object):
                 values.remove(rigName)
         if rigName in self.ignoredRigs:
             self.ignoredRigs.remove(rigName)
-        print self.rigMapDict
+        #print (self.rigMapDict)
         self.rigMapDict[mapName].append(rigName)
-        print self.rigMapDict
+        #print (self.rigMapDict)
 
     def ignoreRig(self, rigName):
         for key, values in self.rigMapDict.items():
@@ -544,12 +558,15 @@ class WalkDataLibrary(object):
         self.toJson()
         fileName = os.path.join(filePath)
         j = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
-        f = open(fileName, 'w')
-        print >> f, j
-        f.close()
+        #f = open(fileName, 'w')
+
+        with open(fileName, 'w') as f:
+            print(j, file=f)
+
         self.createFileToRigMapping()
 
     def load(self, filepath):
+        print ('load', filepath)
         jsonObjectInfo = json.load(open(filepath))
         self.rigMapDict = jsonObjectInfo['rigMapDict']
         self.ignoredRigs = jsonObjectInfo['ignoredRigs']
@@ -604,7 +621,7 @@ class WalkData(object):
         f.close()
 
     def setLastUsedIndex(self, node):
-        print 'setLastUsedIndex', node
+        #print ('setLastUsedIndex', node)
         for key, value in self.destinations.items():
             if node in value.destination:
                 self.destinations[key]._lastIndex = value.destination.index(node)
@@ -748,11 +765,12 @@ class standardPickButton(QPushButton):
     pressedSignal = Signal(str)
     direction = str()
 
-    def __init__(self, label=str, direction=str, icon=str(), rotation=0, *args, **kwargs):
+    def __init__(self, label=str, direction=str, icon=str(), fixedWidth=False, width=64, rotation=0, *args, **kwargs):
         QPushButton.__init__(self, *args, **kwargs)
         self.setText(label)
         self.direction = direction
-
+        if fixedWidth:
+            self.setFixedWidth(width)
         upRotate = QTransform().rotate(rotation)
         pixmap = QPixmap(':/{}'.format(icon)).transformed(upRotate)
         icon = QIcon(pixmap)
@@ -762,57 +780,147 @@ class standardPickButton(QPushButton):
         self.clicked.connect(partial(self.pressedSignal.emit, self.direction))
 
 
+class DirectionPickButton(QWidget):
+    pressedSignal = Signal(str, str)
+    conditionPressedSignal = Signal(str, str)
+    direction = str()
+
+    def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False,
+                 rotation=0,
+                 *args, **kwargs):
+        QWidget.__init__(self, *args, **kwargs)
+        self.mainWindow = mainWindow
+        self.direction = direction
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.mainLayout)
+        self.label = QLabel(direction)
+        self.label.setFixedWidth(64)
+        self.label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+        self.lineEdit = QLineEdit()
+        self.button = standardPickButton(label='from sel', direction=direction, icon=icon,
+                                         rotation=rotation, width=32, fixedWidth=False)
+        self.contextButton = QPushButton('< from destination list')
+        self.mainLayout.addWidget(self.label)
+        self.mainLayout.addWidget(self.lineEdit)
+        self.mainLayout.addWidget(self.button)
+        self.mainLayout.addWidget(self.contextButton)
+
+        self.button.clicked.connect(partial(self.pressedSignal.emit,
+                                            self.lineEdit.text(),
+                                            self.direction,
+                                            ))
+        self.contextButton.clicked.connect(partial(self.conditionPressedSignal.emit,
+                                                   self.lineEdit.text(),
+                                                   self.direction,
+                                                   ))
+        self.label.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+        self.button.clicked.connect(self.pickControl)
+        self.contextButton.clicked.connect(self.pickDestination)
+
+    def pickControl(self):
+        sel = pm.ls(selection=True, type='transform')
+        if not sel:
+            lbl = ''
+        if len(sel) > 1:
+            pm.warning('need to make this support auto creation of contexts')
+            lbl = ''
+        else:
+            lbl = sel[0].stripNamespace()
+        self.lineEdit.setText(lbl)
+
+    def pickDestination(self):
+        self.lineEdit.setText(self.mainWindow.currentDestination)
+
+
+class ChainPickButton(QWidget):
+    pressedSignal = Signal(bool, bool)
+    direction = str()
+
+    def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False, width=32,
+                 noOption=False,
+                 rotation=0,
+                 *args, **kwargs):
+        QWidget.__init__(self, *args, **kwargs)
+        self.mainWindow = mainWindow
+        self.loop = loop
+        self.direction = direction
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.mainLayout)
+        self.button = standardPickButton(label=label, direction=direction, icon=icon, fixedWidth=fixedWidth, width=width,
+                                         rotation=rotation)
+
+        self.loopCB = LoopCBWidget(loop=loop, label='loop')
+        self.endOnSelfCB = LoopCBWidget(loop=endOnSelf, label='end on self')
+        self.mainLayout.addWidget(self.button)
+        if not noOption:
+            self.mainLayout.addWidget(self.loopCB)
+            self.mainLayout.addWidget(self.endOnSelfCB)
+        else:
+            self.mainLayout.addStretch()
+        self.button.clicked.connect(partial(self.pressedSignal.emit,
+                                            self.loopCB.checkbox.isChecked(),
+                                            self.endOnSelfCB.checkbox.isChecked(),
+                                            ))
+
+
+class lockButton(QPushButton):
+    pressedSignal = Signal(bool)
+
+    def __init__(self, icon=str(), icon2=str(), *args, **kwargs):
+        QPushButton.__init__(self, *args, **kwargs)
+        self.lockedIcon = QIcon(QPixmap(':/{}'.format(icon)))
+        self.unlockedIcon = QIcon(QPixmap(':/{}'.format(icon2)))
+        self.setText('')
+        self.setFixedWidth(32)
+        self.setCheckable(True)
+        self.setIconType()
+        self.clicked.connect(self.toggle)
+
+    def setIconType(self):
+        self.setIcon(self.lockedIcon if self.isChecked() else self.unlockedIcon)
+
+    def toggle(self):
+        self.setIconType()
+        self.pressedSignal.emit(self.isChecked())
+
+
 class pickObjectWidget(QWidget):
     setActiveObjectSignal = Signal(str)
     modeChangedSignal = Signal(bool)
+    lockChangedSignal = Signal(bool)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, mainWindow, *args, **kwargs):
         super(pickObjectWidget, self).__init__()
-        self.mainLayout = QVBoxLayout()
+        self.mainWindow = mainWindow
+        self.mainLayout = QHBoxLayout()
         self.infoLayout = QHBoxLayout()
 
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
+        self.lockBtn = lockButton(icon=lockedIcon, icon2=unlockedIcon)
 
         self.ObjLabel = QLabel('Object ::')
         self.ObjLabel.setFixedWidth(btnWidth)
         self.currentObjLabel = QLabel('None')
-        self.centre = QPushButton('Pick Object')
-        self.modeBtn = QPushButton('Walk')
-        self.modeBtn.setCheckable(True)
-        self.modeBtn.setStyleSheet("""
-                                    QPushButton{background:#228B22 ;color: white;} 
-                                    QPushButton::checked{background:#ffa500;color: black;}
-                                """)
         self.mainLayout.addLayout(self.infoLayout)
         self.infoLayout.addWidget(self.ObjLabel)
         self.infoLayout.addWidget(self.currentObjLabel)
-        self.mainLayout.addWidget(self.centre)
+        # self.mainLayout.addWidget(self.centre)
+        self.mainLayout.addWidget(self.lockBtn)
         # self.mainLayout.addWidget(self.modeBtn)
 
-        self.centre.clicked.connect(self.setActiveObject)
-        self.modeBtn.clicked.connect(self.sendModeChangedSignal)
-        self.changeState()
-
-    def changeState(self):
-        # if button is checked
-        if self.modeBtn.isChecked():
-            self.modeBtn.setText('Skip')
-        else:
-            self.modeBtn.setText('Walk')
+        self.lockBtn.pressedSignal.connect(self.lockButtonPress)
 
     @Slot()
-    def setActiveObject(self):
-        sel = pm.ls(selection=True, type='transform')
-        if not sel:
-            pm.warning('No objects selected')
-            self.setActiveObjectSignal.emit(str())
-            self.activeObject = None
-            self.currentObjLabel.setText("None")
-            return
-        self.setActiveObjectSignal.emit(str(sel[0]))
-        self.activeObject = sel[0]
-        self.currentObjLabel.setText(sel[0].stripNamespace())
+    def lockButtonPress(self, data):
+        self.lockChangedSignal.emit(data)
 
     @Slot()
     def sendModeChangedSignal(self):
@@ -822,16 +930,23 @@ class pickObjectWidget(QWidget):
 
 class pickDirectionWidget(QFrame):
     setActiveObjectSignal = Signal()  # in case the main ui needs to keep track?
+    upDownSignal = Signal()  # in case the main ui needs to keep track?
+    leftRightSignal = Signal()  # in case the main ui needs to keep track?
+    downMultiSignal = Signal()  # in case the main ui needs to keep track?
+    upMultiSignal = Signal()  # in case the main ui needs to keep track?
+    setLockStateSignal = Signal(bool)
     directionPressedObjectSignal = Signal(str)  # in case the main ui needs to keep track?
-
+    applyButtonPressedSignal = Signal(str, str, str, str, str)
     loopChanged = Signal(bool)
     reciprocateChanged = Signal(bool)
     endOnSelfChanged = Signal(bool)
     activeObject = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, mainWindow, *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
+        self.mainWindow = mainWindow
         self.mode = False
+        self.lockState = False
         # self.setFrameStyle(QFrame.Panel | QFrame.Raised)\
 
         self.setStyleSheet("QFrame {"
@@ -842,18 +957,33 @@ class pickDirectionWidget(QFrame):
                            )
 
         # self.setTitle("Pickwalk")
-        self.setMaximumWidth(290)
+        self.setMaximumWidth(420)
         self.mainLayout = QVBoxLayout()
-        self.leftLayout = QHBoxLayout()
-        self.gridLayout = QGridLayout()
-        self.gridLayout.setSpacing(4)
-        self.mainLayout.setSpacing(4)
 
+        self.mainLayout.setSpacing(4)
+        self.setContentsMargins(2, 2, 2, 2)
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
+        self.title = QLabel('Basic Pickwalk Setup')
+        self.title.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.subtitle = QLabel('Quick Add Multiple Pickwalks')
+        self.subtitle.setStyleSheet("QLabel {"
+                                    "border-width: 0;"
+                                    "border-radius: 4;"
+                                    "border-style: solid;"
+                                    "border-color: #222222;"
+                                    "font-weight: bold; font-size: 12px;}"
+                                    )
+        self.mainLayout.addWidget(self.title)
 
-        self.objectWidget = pickObjectWidget()
-        self.objectWidget.setStyleSheet(getqss.getStyleSheet())
+        self.objectWidget = pickObjectWidget(self.mainWindow)
+        self.objectWidget.setStyleSheet(getStylesheet)
         self.objectWidget.setStyleSheet("QFrame {"
                                         "border-width: 0;"
                                         "border-radius: 0;"
@@ -862,33 +992,68 @@ class pickDirectionWidget(QFrame):
                                         )
         self.objectWidget.setActiveObjectSignal.connect(self.setActiveObject)
         self.objectWidget.modeChangedSignal.connect(self.modeChanged)
+        self.objectWidget.lockChangedSignal.connect(self.lockChanged)
 
-        self.upBtn = standardPickButton(label='', direction='up', icon='timeend.png', rotation=90)
-        self.downBtn = standardPickButton(label='', direction='down', icon='timeend.png', rotation=270)
-        self.leftBtn = standardPickButton(label='', direction='left', icon='timeend.png', rotation=0)
-        self.rightBtn = standardPickButton(label='', direction='right', icon='timeend.png', rotation=180)
+        '''
+        syncOn.png
 
-        self.chainOptionWidget = pickChainWidget()
-        self.chainOptionWidget.setStyleSheet("QFrame {"
-                                             "border-width: 0;"
-                                             "border-radius: 0;"
-                                             "border-style: solid;"
-                                             "border-color: #222222}"
-                                             )
-        self.chainOptionWidget.loopChanged.connect(self.sendloopChangedSignal)
-        self.chainOptionWidget.reciprocateChanged.connect(self.sendreciprocateChangedSignal)
-        self.chainOptionWidget.endOnSelfChanged.connect(self.sendEndOnSelfChangedSignal)
+        '''
+        self.quickLeftRight = ChainPickButton(self.mainWindow, label='Quick Left/Right', direction='Left/Right',
+                                              icon='syncOn.png',
+                                              fixedWidth=True,
+                                              width=150,
+                                              rotation=0, loop=True)
 
-        self.gridLayout.addWidget(self.upBtn, 0, 2)
+        self.quickLeftRight.setToolTip(ToolTip_QuickLeftRight)
+        self.quickUpDown = ChainPickButton(self.mainWindow, label='Quick Down/Up', direction='Left/Right',
+                                           icon='syncOn.png',
+                                           fixedWidth=True,
+                                           width=150,
+                                           rotation=90, loop=False)
+        self.quickUpDown.setToolTip(ToolTip_DownUp)
+        self.quickDownMulti = ChainPickButton(self.mainWindow, label='Quick Down To Many', direction='DownMult',
+                                              icon='camera.png',
+                                              fixedWidth=True,
+                                              noOption=True,
+                                              width=150,
+                                              rotation=180, loop=False)
+        self.quickDownMulti.setToolTip(ToolTip_DownMulti)
+        self.quickUpMulti = ChainPickButton(self.mainWindow, label='Quick Up From Many', direction='Left/Right',
+                                            icon='camera.png',
+                                            fixedWidth=True,
+                                            noOption=True,
+                                            width=150,
+                                            rotation=180, loop=False)
+        self.quickUpMulti.setToolTip(ToolTip_UpMulti)
+        self.upBtn = DirectionPickButton(self.mainWindow, label='Up', direction='up', icon='timeend.png', rotation=90)
+        self.downBtn = DirectionPickButton(self.mainWindow, label='Down', direction='down', icon='timeend.png',
+                                           rotation=270)
+        self.leftBtn = DirectionPickButton(self.mainWindow, label='Left', direction='left', icon='timeend.png',
+                                           rotation=0)
+        self.rightBtn = DirectionPickButton(self.mainWindow, label='Right', direction='right', icon='timeend.png',
+                                            rotation=180)
 
-        self.gridLayout.addWidget(self.downBtn, 4, 2)
-        self.gridLayout.addWidget(self.leftBtn, 2, 0)
-        self.gridLayout.addWidget(self.rightBtn, 2, 4)
+        self.applyButton = QPushButton('Apply')
+        self.applyButton.clicked.connect(self.applyData)
 
-        self.mainLayout.addLayout(self.leftLayout)
-        self.leftLayout.addWidget(self.objectWidget)
-        self.leftLayout.addLayout(self.gridLayout)
-        self.mainLayout.addWidget(self.chainOptionWidget)
+        self.quickLeftRight.pressedSignal.connect(self.inputSignal_quickLeftRight)
+        self.quickUpDown.pressedSignal.connect(self.inputSignal_quickUpDown)
+        self.quickDownMulti.pressedSignal.connect(self.inputSignal_quickDownMulti)
+        self.quickUpMulti.pressedSignal.connect(self.inputSignal_quickUpMulti)
+
+        self.mainLayout.addWidget(self.objectWidget)
+        # self.dirHLayout.addWidget(self.chainOptionWidget)
+        self.mainLayout.addWidget(self.upBtn)
+        self.mainLayout.addWidget(self.downBtn)
+        self.mainLayout.addWidget(self.leftBtn)
+        self.mainLayout.addWidget(self.rightBtn)
+        self.mainLayout.addWidget(self.applyButton)
+        self.mainLayout.addWidget(self.subtitle)
+
+        self.mainLayout.addWidget(self.quickLeftRight)
+        self.mainLayout.addWidget(self.quickUpDown)
+        self.mainLayout.addWidget(self.quickDownMulti)
+        self.mainLayout.addWidget(self.quickUpMulti)
 
         self.allButtons = [
             self.upBtn,
@@ -900,9 +1065,60 @@ class pickDirectionWidget(QFrame):
             # self.leftSkipBtn,
             # self.rightSkipBtn,
         ]
+        '''
         for btn in self.allButtons:
             btn.pressedSignal.connect(self.inputSignal_pickDirection)
-            btn.setFixedWidth(32)
+        '''
+
+    def applyData(self):
+        self.mainWindow.currentDestination = self.objectWidget.currentObjLabel.text()
+        self.mainWindow.currentTargetUp = self.upBtn.lineEdit.text()
+        self.mainWindow.currentTargetDown = self.downBtn.lineEdit.text()
+        self.mainWindow.currentTargetLeft = self.leftBtn.lineEdit.text()
+        self.mainWindow.currentTargetRight = self.rightBtn.lineEdit.text()
+        self.applyButtonPressedSignal.emit(self.objectWidget.currentObjLabel.text(),
+                                           self.upBtn.lineEdit.text(),
+                                           self.downBtn.lineEdit.text(),
+                                           self.leftBtn.lineEdit.text(),
+                                           self.rightBtn.lineEdit.text()
+                                           )
+
+    def displayCurrentData(self, data):
+        sel = pm.ls(selection=True, type='transform')
+        #print ('sel', sel)
+        if not sel:
+            self.clear()
+            return
+        self.objectWidget.currentObjLabel.setText(sel[0].stripNamespace())
+        walkData = data.objectDict.get(sel[0].stripNamespace(), str())
+        if walkData:
+            if walkData.up:
+                self.setWidgetText(self.upBtn.lineEdit, walkData.up)
+            if walkData.down:
+                self.setWidgetText(self.downBtn.lineEdit, walkData.down)
+            if walkData.left:
+                self.setWidgetText(self.leftBtn.lineEdit, walkData.left)
+            if walkData.right:
+                self.setWidgetText(self.rightBtn.lineEdit, walkData.right)
+        else:
+            self.clear(obj=False)
+
+    def setWidgetText(self, widget, value):
+        if value.lower() == 'none':
+            value = str()
+        widget.setText(value)
+
+    def clear(self, obj=True):
+        if obj: self.objectWidget.currentObjLabel.setText('None')
+        self.upBtn.lineEdit.setText('')
+        self.downBtn.lineEdit.setText('')
+        self.leftBtn.lineEdit.setText('')
+        self.rightBtn.lineEdit.setText('')
+
+    @Slot()
+    def lockChanged(self, data):
+        self.lockState = data
+        self.setLockStateSignal.emit(data)
 
     @Slot()
     def modeChanged(self, data):
@@ -918,6 +1134,22 @@ class pickDirectionWidget(QFrame):
         self.directionPressedObjectSignal.emit(direction)
 
     @Slot()
+    def inputSignal_quickLeftRight(self, *args):
+        self.leftRightSignal.emit()
+
+    @Slot()
+    def inputSignal_quickUpDown(self, *args):
+        self.upDownSignal.emit()
+
+    @Slot()
+    def inputSignal_quickDownMulti(self, *args):
+        self.downMultiSignal.emit()
+
+    @Slot()
+    def inputSignal_quickUpMulti(self, *args):
+        self.upMultiSignal.emit()
+
+    @Slot()
     def sendloopChangedSignal(self, data):
         self.loopChanged.emit(data)
 
@@ -930,6 +1162,194 @@ class pickDirectionWidget(QFrame):
         self.endOnSelfChanged.emit(data)
 
 
+class pickContextDirectionWidget(QFrame):
+    setActiveObjectSignal = Signal()  # in case the main ui needs to keep track?
+    upDownSignal = Signal()  # in case the main ui needs to keep track?
+    leftRightSignal = Signal()  # in case the main ui needs to keep track?
+    setLockStateSignal = Signal(bool)
+    directionPressedObjectSignal = Signal(str, str, str)  # in case the main ui needs to keep track?
+
+    activeObject = None
+
+    def __init__(self, *args, **kwargs):
+        QFrame.__init__(self, *args, **kwargs)
+        self.mode = False
+        self.lockState = False
+        self.activeObject = ''
+        self.activeDestination = ''
+        # self.setFrameStyle(QFrame.Panel | QFrame.Raised)\
+
+        self.setStyleSheet("QFrame {"
+                           "border-width: 2;"
+                           "border-radius: 4;"
+                           "border-style: solid;"
+                           "border-color: #222222}"
+                           )
+
+        # self.setTitle("Pickwalk")
+        self.setMaximumWidth(420)
+        self.mainLayout = QVBoxLayout()
+        self.midLayout = QHBoxLayout()
+        self.dirHLayout = QHBoxLayout()
+        self.dirMidLayout = QVBoxLayout()
+
+        self.leftLayout = QVBoxLayout()
+        self.gridLayout = QGridLayout()
+        self.gridLayout.setSpacing(4)
+        self.mainLayout.setSpacing(4)
+
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
+        self.title = QLabel('Context Pickwalk Assignment')
+        self.title.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.mainLayout.addWidget(self.title)
+
+        self.upBtn = standardPickButton(label='', direction='up', fixedWidth=True, icon='timeend.png', rotation=90)
+        self.downBtn = standardPickButton(label='', direction='down', fixedWidth=True, icon='timeend.png', rotation=270)
+        self.leftBtn = standardPickButton(label='', direction='left', fixedWidth=True, icon='timeend.png', rotation=0)
+        self.rightBtn = standardPickButton(label='', direction='right', fixedWidth=True, icon='timeend.png',
+                                           rotation=180)
+
+        self.ObjLabel = QLabel('Object ::')
+        self.ObjLabel.setFixedWidth(btnWidth)
+        self.currentObjLabel = QLabel('None')
+
+        self.destLabel = QLabel('Destination ::')
+        self.destLabel.setFixedWidth(btnWidth)
+        self.currentDestLabel = QLabel('None')
+        self.objLayout = QHBoxLayout()
+        self.destLayout = QHBoxLayout()
+
+        self.stylesheetFix(self.ObjLabel)
+        self.stylesheetFix(self.currentObjLabel)
+        self.stylesheetFix(self.destLabel)
+        self.stylesheetFix(self.currentDestLabel)
+
+        self.mainLayout.addLayout(self.objLayout)
+        self.mainLayout.addLayout(self.destLayout)
+        self.objLayout.addWidget(self.ObjLabel)
+        self.objLayout.addWidget(self.currentObjLabel)
+        self.destLayout.addWidget(self.destLabel)
+        self.destLayout.addWidget(self.currentDestLabel)
+        self.mainLayout.addLayout(self.leftLayout)
+        self.leftLayout.addLayout(self.dirHLayout)
+
+        self.dirHLayout.addWidget(self.leftBtn)
+        self.dirMidLayout.addWidget(self.upBtn)
+        self.dirMidLayout.addWidget(self.downBtn)
+        self.dirHLayout.addLayout(self.dirMidLayout)
+        self.dirHLayout.addWidget(self.rightBtn)
+
+        self.allButtons = [
+            self.upBtn,
+            self.downBtn,
+            self.leftBtn,
+            self.rightBtn,
+            # self.upSkipBtn,
+            # self.downSkipBtn,
+            # self.leftSkipBtn,
+            # self.rightSkipBtn,
+        ]
+        for btn in self.allButtons:
+            btn.pressedSignal.connect(self.inputSignal_pickDirection)
+            btn.setFixedWidth(32)
+
+    def stylesheetFix(self, widget):
+        widget.setStyleSheet("QLabel {"
+                             "border-width: 0;"
+                             "border-radius: 4;"
+                             "border-style: solid;"
+                             "border-color: #222222}"
+                             )
+
+    @Slot()
+    def lockChanged(self, data):
+        self.lockState = data
+        self.setLockStateSignal.emit(data)
+
+    @Slot()
+    def modeChanged(self, data):
+        self.mode = data
+
+    def setActiveObject(self):
+        sel = pm.ls(selection=True, type='transform')
+        if not sel:
+            # pm.warning('No objects selected')
+            self.currentObjLabel.setText("None")
+            return
+        if len(sel) > 1:
+            return
+        else:
+            lbl = sel[0].stripNamespace()
+            self.activeObject = lbl
+            self.currentObjLabel.setText(lbl)
+
+    def setActiveDestination(self, data):
+        #print ('setActiveDestination', data)
+        self.activeDestination = data
+        self.currentDestLabel.setText(data)
+
+    @Slot()
+    def inputSignal_pickDirection(self, direction):
+        direction = '{0}{1}'.format(direction, {True: 'Skip', False: ''}[self.mode])
+        if not self.activeObject:
+            return pm.warning('No current object')
+        if not self.activeDestination:
+            return pm.warning('No current object')
+        self.directionPressedObjectSignal.emit(direction, self.activeObject, self.activeDestination)
+
+    @Slot()
+    def inputSignal_quickLeftRight(self):
+        self.leftRightSignal.emit()
+
+    @Slot()
+    def inputSignal_quickUpDown(self):
+        self.upDownSignal.emit()
+
+    @Slot()
+    def sendloopChangedSignal(self, data):
+        self.loopChanged.emit(data)
+
+    @Slot()
+    def sendreciprocateChangedSignal(self, data):
+        self.reciprocateChanged.emit(data)
+
+    @Slot()
+    def sendEndOnSelfChangedSignal(self, data):
+        self.endOnSelfChanged.emit(data)
+
+
+class LoopCBWidget(QFrame):
+    loopChanged = Signal(bool)
+
+    def __init__(self, loop=False, label=str, *args, **kwargs):
+        QFrame.__init__(self, *args, **kwargs)
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
+        self.checkbox = QCheckBox(label)
+        self.checkbox.setChecked(loop)
+        self.mainLayout.addWidget(self.checkbox)
+
+        self.checkbox.clicked.connect(self.sendloopChangedSignal)
+        self.setStyleSheet("QFrame {"
+                           "border-width: 0;"
+                           "border-radius: 0;"
+                           "border-style: solid;"
+                           "border-color: #222222}"
+                           )
+
+    @Slot()
+    def sendloopChangedSignal(self):
+        self.loopChanged.emit(self.checkbox.isChecked())
+
+
 class pickChainWidget(QFrame):
     loopChanged = Signal(bool)
     reciprocateChanged = Signal(bool)
@@ -937,13 +1357,14 @@ class pickChainWidget(QFrame):
 
     def __init__(self, *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
-        self.mainLayout = QHBoxLayout()
+        self.mainLayout = QVBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.loop = QCheckBox('loop')
         self.reciprocate = QCheckBox('reciprocate')
         self.endOnSelf = QCheckBox('end on self')
         # self.reciprocate.setChecked(True)
+        self.reciprocate.setChecked(True)
 
         self.mainLayout.addWidget(self.loop)
         self.mainLayout.addWidget(self.reciprocate)
@@ -952,6 +1373,14 @@ class pickChainWidget(QFrame):
         self.loop.clicked.connect(self.sendloopChangedSignal)
         self.reciprocate.clicked.connect(self.sendreciprocateChangedSignal)
         self.endOnSelf.clicked.connect(self.sendendOnSelfChangedSignal)
+
+        self.sendreciprocateChangedSignal()
+        self.setStyleSheet("QFrame {"
+                           "border-width: 0;"
+                           "border-radius: 0;"
+                           "border-style: solid;"
+                           "border-color: #222222}"
+                           )
 
     @Slot()
     def sendloopChangedSignal(self):
@@ -1362,19 +1791,20 @@ class QTreeSingleViewWidget(QFrame):
 
 class DestinationListWidget(QFrame):
     pressedSignal = Signal(str)
+    selectedSignal = Signal(str)
     applySignal = Signal(str)
 
     def __init__(self, CLS=None, label='BLANK'):
         super(DestinationListWidget, self).__init__()
         self.CLS = CLS
-        self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setMinimumWidth(120)
         self.setMaximumWidth(200)
         # self.width = 300
-        self.setLayout(self.layout)
+        self.setLayout(self.mainLayout)
         self.topLayout = QVBoxLayout()
-        self.layout.addLayout(self.topLayout)
+        self.mainLayout.addLayout(self.topLayout)
         self.label = QLabel(label)
         self.applyButton = QPushButton('Replace selection')
         self.applyButton.clicked.connect(self.applyToSelected)
@@ -1444,8 +1874,9 @@ class DestinationListWidget(QFrame):
         self.toolTypeScrollArea = QScrollArea()
         self.toolTypeScrollArea.setWidget(self.treeView)
         self.toolTypeScrollArea.setWidgetResizable(True)
-        self.layout.addWidget(self.toolTypeScrollArea)
-        self.layout.addWidget(self.applyButton)
+        self.mainLayout.addWidget(self.toolTypeScrollArea)
+        self.mainLayout.addWidget(self.applyButton)
+
         # self.layout.addStretch(1)
         # self.toolTypeScrollArea.setFixedWidth(148)
         # self.updateCategoryList()
@@ -1482,6 +1913,8 @@ class DestinationListWidget(QFrame):
         # print item.text(
         if modifiers == Qt.ControlModifier:
             self.pressedSignal.emit(item.text())
+        else:
+            self.selectedSignal.emit(item.text())
 
     def applyToSelected(self):
         index = self.treeView.selectedIndexes()[0]
@@ -1506,7 +1939,7 @@ class DestinationWidget(QWidget):
         self.pickButton = QPushButton('Pick')
         self.addDestinationBtn = QPushButton('+')
         self.removeDestinationBtn = QPushButton('-')
-        self.addFromDestinationBtn = QPushButton('Pick Destinations')
+        self.addFromDestinationBtn = QPushButton('From Destinations')
         self.spinBox = QDoubleSpinBox()
         # self.label.setFixedWidth(60)
         # self.spinBox.setFixedWidth(200)
@@ -1578,10 +2011,10 @@ class DestinationWidget(QWidget):
     def addFromDestinationPressed(self):
         currentItems = self.currentItems()
         resultItems = self.currentItems()
-        # print 'before', currentItems
+
         self.listwidget.clear()
-        resultItems.append(self.mainListItem)
-        # print 'after', resultItems
+        resultItems.extend(self.mainListItem)
+
         self.listwidget.addItems(resultItems)
         self.sendUpdateSignal()
 
@@ -1603,10 +2036,11 @@ class contextPickwalkWidget(QFrame):
 
     def __init__(self, *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
-        self.setMaximumWidth(290)
+        self.setMaximumWidth(420)
         self.setMaximumHeight(320)
         # self.setTitle("Context pickwalks")
         self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet("QFrame {"
                            "border-width: 2;"
                            "border-radius: 4;"
@@ -1615,7 +2049,14 @@ class contextPickwalkWidget(QFrame):
                            )
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
-
+        self.title = QLabel('Context pickwalk Creation')
+        self.title.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
         self.nameWidget = labelledLineEdit(text='Name', hasButton=True, buttonLabel='From Sel', obj=True)
         self.conditionAttrWidget = labelledLineEdit(text='Attribute', hasButton=True,
                                                     buttonLabel='From CB')
@@ -1624,6 +2065,9 @@ class contextPickwalkWidget(QFrame):
         self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
         self.altDestinationsWidget = DestinationWidget(label='Alt Destinations')
         self.altDestinationsWidget.updatedSignal.connect(self.inputSignal_altDestinationsUpdated)
+
+        self.mainLayout.addWidget(self.title)
+
         self.mainLayout.addWidget(self.nameWidget)
         self.mainLayout.addWidget(self.conditionAttrWidget)
         self.mainLayout.addWidget(self.conditionWidget)
@@ -1659,20 +2103,19 @@ class contextPickwalkWidget(QFrame):
         self.nameWidget.lineEdit.setText(item)
 
     def inputSignal_destinationsUpdated(self, items):
-        print 'inputSignal_destinationsPicked,', items
-        pass
+        print ('inputSignal_destinationsPicked,', items)
 
     def inputSignal_altDestinationsUpdated(self, items):
-        print 'inputSignal_altDestinationsPicked,', items
+        print ('inputSignal_altDestinationsPicked,', items)
 
     def inputSignal_nameChanged(self, name):
-        print 'inputSignal_nameChanged,', name
+        print ('inputSignal_nameChanged,', name)
 
     def inputSignal_attributehanged(self, attribute):
-        print 'inputSignal_namgeChanged,', attribute
+        print ('inputSignal_namgeChanged,', attribute)
 
     def inputSignal_conditionhanged(self, value):
-        print 'inputSignal_conditionhanged,', value
+        print ('inputSignal_conditionhanged,', value)
 
 
 class mirrorPickwalkWidget(QFrame):
@@ -1684,9 +2127,12 @@ class mirrorPickwalkWidget(QFrame):
 
     def __init__(self, *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
-        self.setMaximumWidth(290)
-        self.mainLayout = QHBoxLayout()
-        self.setStyleSheet(getqss.getStyleSheet())
+        self.setMaximumWidth(420)
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+
+        self.layout = QHBoxLayout()
+        # self.setStyleSheet(getqss.getStyleSheet())
         self.setStyleSheet("QFrame {"
                            "border-width: 2;"
                            "border-radius: 4;"
@@ -1694,8 +2140,19 @@ class mirrorPickwalkWidget(QFrame):
                            "border-color: #222222}"
                            )
 
-        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.mainLayout)
+        self.title = QLabel('Mirror Selected Controls')
+        self.title.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.mainLayout.addWidget(self.title)
+        self.mainLayout.addLayout(self.layout)
+
         self.fromLabel = QLabel('Sides')
 
         self.fromLabel.setStyleSheet("QFrame {"
@@ -1708,10 +2165,10 @@ class mirrorPickwalkWidget(QFrame):
         self.toInput = QLineEdit(self.toInputOption)
         self.mirrorBtn = QPushButton('Mirror selection')
         self.mirrorBtn.clicked.connect(self.sendMirrorSignal)
-        self.mainLayout.addWidget(self.fromLabel)
-        self.mainLayout.addWidget(self.fromInput)
-        self.mainLayout.addWidget(self.toInput)
-        self.mainLayout.addWidget(self.mirrorBtn)
+        self.layout.addWidget(self.fromLabel)
+        self.layout.addWidget(self.fromInput)
+        self.layout.addWidget(self.toInput)
+        self.layout.addWidget(self.mirrorBtn)
 
         self.fromLabel.setFixedWidth(48)
         # self.mainLayout.addStretch(1)
@@ -1728,10 +2185,10 @@ class mirrorPickwalkWidget(QFrame):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
 
     def fromChanged(self, lineEdit):
-        print 'fromChanged', lineEdit
+        print ('fromChanged', lineEdit)
 
     def toChanged(self, lineEdit):
-        print 'toChanged', lineEdit
+        print ('toChanged', lineEdit)
 
     @Slot()
     def sendChangedSignal(self):
@@ -1762,6 +2219,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.setMinimumWidth(400)
         self.setMinimumHeight(400)
         self.walkDataLibrary = WalkDataLibrary()
+
         self.defaultPickwalkDir = pm.optionVar.get('pickwalkDir',
                                                    os.path.join(os.path.normpath(os.path.dirname(__file__)),
                                                                 'pickwalkData'))
@@ -1798,6 +2256,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         edit_menu = menu.addMenu('&File')
 
         self.addReferenceButton = QPushButton('Add Rig To Map')
+        self.addReferenceButton.setToolTip(ToolTip_AddRigToMap)
         self.addReferenceButton.clicked.connect(self.addRigToMap)
         self.removeeferenceButton = QPushButton('Remove Rig From Map')
         self.removeeferenceButton.clicked.connect(self.removeRigFromMap)
@@ -1911,9 +2370,10 @@ class pickwalkMainWindow(QMainWindow):
     endOnSelf = False
 
     activeObject = None
-    title ='tbPickwwalkSetup'
+    title = 'tbPickwwalkSetup'
+
     def __init__(self):
-        super(pickwalkMainWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(pickwalkMainWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.defaultDir = pm.optionVar.get('pickwalkDir',
                                            os.path.join(os.path.normpath(os.path.dirname(__file__)), 'pickwalkData'))
@@ -1926,22 +2386,37 @@ class pickwalkMainWindow(QMainWindow):
         # setup stylesheet
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle('tbPickwwalkSetup')
+        self.titleLabel = QLabel('No current template')
+        self.lockState = False
+
+        self.hiddenLayout = QHBoxLayout()
+
+        self.currentControl = None
+        self.currentDestination = None
+        self.currentTargetUp = None
+        self.currentTargetDown = None
+        self.currentTargetLeft = None
+        self.currentTargetRight = None
 
         main_widget = QWidget()
 
         self.setCentralWidget(main_widget)
 
+        self.superLayout = QVBoxLayout()
         self.main_layout = QHBoxLayout()
         self.left_layout = QHBoxLayout()
         self.left_layout.addLayout(self.left_layout)
 
         self.right_layout = QVBoxLayout()
+        self.superLayout.addWidget(self.titleLabel)
+        self.superLayout.addLayout(self.main_layout)
         self.main_layout.addLayout(self.left_layout)
         self.main_layout.addLayout(self.right_layout)
-        main_widget.setLayout(self.main_layout)
+        main_widget.setLayout(self.superLayout)
 
         menu = self.menuBar()
         edit_menu = menu.addMenu('&File')
+        view_menu = menu.addMenu('&View')
 
         add_action = QAction('Add new library', self)
         add_action.setShortcut('Ctrl+N')
@@ -1981,19 +2456,44 @@ class pickwalkMainWindow(QMainWindow):
         open_action.triggered.connect(self.openDataFolder)
         edit_menu.addAction(open_action)
 
-        self.mainPickWidget = pickDirectionWidget()
+        '''
+        nodeGrapherModeSimple.svg
+        nodeGrapherModeConnected.svg
+        nodeGrapherModeAll.svg
+        '''
+        simple_action = QAction('Simple mode', self)
+        simple_action.triggered.connect(self.setSimpleMode)
+        simple_action.setShortcut('Ctrl+1')
+        simple_action.setIcon(QIcon(QPixmap(':/{}'.format('nodeGrapherModeSimple.svg'))))
+        view_menu.addAction(simple_action)
+
+        medium_action = QAction('Context mode', self)
+        medium_action.triggered.connect(self.setMediumMode)
+        medium_action.setShortcut('Ctrl+2')
+        medium_action.setIcon(QIcon(QPixmap(':/{}'.format('nodeGrapherModeConnected.svg'))))
+        view_menu.addAction(medium_action)
+
+        full_action = QAction('Full mode', self)
+        full_action.triggered.connect(self.setDetailMode)
+        full_action.setShortcut('Ctrl+3')
+        full_action.setIcon(QIcon(QPixmap(':/{}'.format('nodeGrapherModeAll.svg'))))
+        view_menu.addAction(full_action)
+
+        self.mainPickWidget = pickDirectionWidget(self)
+        # self.contextPickWidget = pickContextDirectionWidget()
         self.controlListWidget = ControlListWidget(CLS=self.pickwalkCreator, label='Controls ::')
         self.destinationListWidget = DestinationListWidget(CLS=self.pickwalkCreator, label='Destinations')
         self.mirrorWidget = mirrorPickwalkWidget()
         self.contextWidget = contextPickwalkWidget()
 
         self.right_layout.addWidget(self.mainPickWidget)
-        self.right_layout.addWidget(self.mirrorWidget)
+        # self.right_layout.addWidget(self.contextPickWidget)
         self.right_layout.addWidget(self.contextWidget)
-        self.right_layout.addStretch()
+        self.right_layout.addWidget(self.mirrorWidget)
+        # self.right_layout.addStretch()
         # self.left_layout.addStretch(0)
-        self.left_layout.addWidget(self.controlListWidget)
-        self.left_layout.addWidget(self.destinationListWidget)
+        self.main_layout.addWidget(self.destinationListWidget)
+        self.main_layout.addWidget(self.controlListWidget)
 
         # dummy = QVBoxLayout()
         # self.right_layout.addLayout(dummy)
@@ -2003,18 +2503,63 @@ class pickwalkMainWindow(QMainWindow):
         self.controlListWidget.newConditionDestinationSignal.connect(self.inputSignal_conditionDirFromControlTreeView)
         self.controlListWidget.getFromRigSignal.connect(self.inputSignal_getFromRig)
         self.destinationListWidget.applySignal.connect(self.inputSignal_applyDestinationToCurrent)
+        self.destinationListWidget.selectedSignal.connect(self.inputSignal_selectConditionalDestination)
         self.destinationListWidget.pressedSignal.connect(self.inputSignal_displayConditionalDestination)
         self.destinationListWidget.pressedSignal.connect(
             self.contextWidget.destinationsWidget.recieveMainDestinationClicked)
         self.destinationListWidget.pressedSignal.connect(
             self.contextWidget.altDestinationsWidget.recieveMainDestinationClicked)
+        # self.contextPickWidget.directionPressedObjectSignal.connect(self.inputSignal_setConditionalDestination)
         self.mainPickWidget.setActiveObjectSignal.connect(self.inputSignal_activeObjectSet)
+        self.mainPickWidget.applyButtonPressedSignal.connect(self.inputSignal_applyPickwalk)
+
+        self.mainPickWidget.upDownSignal.connect(self.inputSignal_quickUpDown)
+        self.mainPickWidget.leftRightSignal.connect(self.inputSignal_quickLeftRight)
+        self.mainPickWidget.downMultiSignal.connect(self.inputSignal_quickDownToMulti)
+        self.mainPickWidget.upMultiSignal.connect(self.inputSignal_quickUpFromMulti)
+
+        self.mainPickWidget.setLockStateSignal.connect(self.setLockState)
         self.mainPickWidget.directionPressedObjectSignal.connect(self.addPickwalk)
         self.mainPickWidget.loopChanged.connect(self.inputSignal_loopChanged)
         self.mainPickWidget.reciprocateChanged.connect(self.inputSignal_reciprocateChanged)
         self.mainPickWidget.endOnSelfChanged.connect(self.inputSignal_endOnSelfChanged)
         self.contextWidget.destinationAdded.connect(self.inputSignal_destinationAdded)
         self.mirrorWidget.mirrorPressed.connect(self.inputSignal_mirrorSelection)
+
+        self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
+
+        self.setSimpleMode()
+
+    def closeEvent(self, event):
+        msg = QMessageBox()
+        msg.setStyleSheet(getqss.getStyleSheet())
+        msg.setIcon(QMessageBox.Warning)
+
+        msg.setText("Overwrite existing data?")
+        msg.setWindowTitle("Existing file warning")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+
+        quit_msg = "You may have unsaved changes, are you sure want to close"
+        reply = QMessageBox.question(self, 'Message',
+                                           quit_msg, QMessageBox.Yes, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            # Clean up the script job stuff prior to closing the dialog.
+            cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
+            super(pickwalkMainWindow, self).closeEvent(event)
+            event.accept()
+        else:
+            event.ignore()
+
+
+
+
+    def onSelectionChange(self):
+        print ('onSelectionChange')
+        if not self.lockState:
+            self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData)
+
+        # self.contextPickWidget.setActiveObject()
 
     def browseToFile(self):
         fname = QFileDialog.getOpenFileName(self, 'Open file',
@@ -2026,32 +2571,50 @@ class pickwalkMainWindow(QMainWindow):
         self.pickwalkCreator = PickwalkCreator()
         self.refreshUI()
         self.setWindowTitle('tbPickwwalkSetup :: untitled')
+        self.titleLabel.setText('current template :: untitled')
 
-    def loadLibraryForCurrent(self):
-        # TODO - implement this to look at the main walk library and open the
-        # TODO - correct map file
-        #
+    def getCurrentRig(self):
         refName = None
+        mapName = None
         fname = None
         sel = cmds.ls(sl=True)
+
         if sel:
             refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
             if refState:
                 # if it is referenced, check against pickwalk library entries
                 refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+            else:
+                # might just be working in the rig file itself
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         else:
-            # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+
         if refName in Pickwalk().walkDataLibrary._fileToMapDict.keys():
             mapName = Pickwalk().walkDataLibrary._fileToMapDict[refName]
-            fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName +'.json')
+            fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName + '.json')
+        return fname
+
+    def loadLibraryForCurrent(self):
+        # TODO - implement this to look at the main walk library and open the
+        # TODO - correct map file
+        #
+        fname = self.getCurrentRig()
         if not fname:
             fname = self.browseToFile()
         if not fname:
             return None
+
         self.pickwalkCreator.load(fname)
         self.refreshUI()
-        self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
+
+        self.setTitleLabel(fname)
+
+    def setTitleLabel(self, fname):
+        if isinstance(fname, list):
+            fname = fname[0]
+        lbl = os.path.normpath(fname).split('\\')[-1]
+        self.titleLabel.setText('current template :: ' + lbl)
 
     def loadLibrary(self):
         fname = self.browseToFile()
@@ -2060,7 +2623,9 @@ class pickwalkMainWindow(QMainWindow):
         self.pickwalkCreator.walkData = WalkData()
         self.pickwalkCreator.load(fname)
         self.refreshUI()
-        self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
+        print ('loadLibrary', fname)
+        # self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
+        self.setTitleLabel(fname)
 
     def appendLibrary(self):
         fname = self.browseToFile()
@@ -2114,7 +2679,7 @@ class pickwalkMainWindow(QMainWindow):
     def refreshUI(self):
         self.controlListWidget.CLS = self.pickwalkCreator
         self.destinationListWidget.CLS = self.pickwalkCreator
-
+        self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData)
         self.updateTreeView()
 
     def keyPressEvent(self, event):
@@ -2129,11 +2694,13 @@ class pickwalkMainWindow(QMainWindow):
         for s in sel:
             self.pickwalkCreator.replaceDestination(original=s.split(':')[-1], new=item)
 
+    def inputSignal_selectConditionalDestination(self, item):
+        self.currentDestination = item
+
     def inputSignal_displayConditionalDestination(self, item):
         self.contextWidget.populate(item, self.pickwalkCreator.walkData.destinations[item])
 
     def inputSignal_conditionDirFromControlTreeView(self, item):
-        # print 'inputSignal_conditionDirFromControlTreeView', item.control, item.direction
         index = self.destinationListWidget.treeView.selectedIndexes()[0]
         if not index:
             return
@@ -2161,6 +2728,89 @@ class pickwalkMainWindow(QMainWindow):
             self.pickwalkCreator.setControlDestination(control,
                                                        direction=direction,
                                                        destination=destination[0].split(':')[-1])
+
+    def setLockState(self, bool):
+        self.lockState = bool
+
+    def inputSignal_quickUpFromMulti(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if len(sel) > 1:
+            pm.warning('inputSignal_quickUpFromMulti')
+            control = sel[-1].split(':')[-1]
+            targets = [s.split(':')[-1] for s in sel[:-1]]
+            for s in targets:
+                self.pickwalkCreator.setControlDestination(s,
+                                                           direction='up',
+                                                           destination=control)
+            self.updateTreeView()
+            return
+
+    def inputSignal_quickDownToMulti(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if len(sel) > 1:
+            pm.warning('inputSignal_quickDownToMulti')
+            control = sel[0].split(':')[-1]
+            targets = [s.split(':')[-1] for s in sel[1:]]
+            name = control + '_' + targets[0] + '_mult'
+            self.pickwalkCreator.addDestination(name=name,
+                                                destination=targets,
+                                                destinationAlt=list(),
+                                                conditionAttribute=str(),
+                                                conditionValue= 0.5)
+            self.pickwalkCreator.setControlDestination(control,
+                                                       direction='down',
+                                                       destination=name)
+            self.updateTreeView()
+            return
+
+    def inputSignal_quickLeftRight(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if len(sel) > 1:
+            pm.warning('inputSignal_quickLeftRight')
+            self.pickwalkCreator.addPickwalkChain(controls=sel,
+                                                  direction='left',
+                                                  loop=True,
+                                                  reciprocate=True,
+                                                  endOnSelf=False)
+            self.updateTreeView()
+            return
+
+    def inputSignal_quickUpDown(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if len(sel) > 1:
+            pm.warning('inputSignal_quickUpDown')
+            self.pickwalkCreator.addPickwalkChain(controls=sel,
+                                                  direction='down',
+                                                  loop=False,
+                                                  reciprocate=True,
+                                                  endOnSelf=True)
+            self.updateTreeView()
+            return
+
+    @Slot()
+    def inputSignal_setConditionalDestination(self, direction, control, destination):
+        print ('inputSignal_setConditionalDestination', direction, control, destination)
+        self.pickwalkCreator.setControlDestination(control,
+                                                   direction=direction,
+                                                   destination=destination)
+        self.updateTreeView()
+        return
+
+    @Slot()
+    def inputSignal_applyPickwalk(self, control, up, down, left, right):
+        self.pickwalkCreator.setControlDestination(control,
+                                                   direction='up',
+                                                   destination=up)
+        self.pickwalkCreator.setControlDestination(control,
+                                                   direction='down',
+                                                   destination=down)
+        self.pickwalkCreator.setControlDestination(control,
+                                                   direction='left',
+                                                   destination=left)
+        self.pickwalkCreator.setControlDestination(control,
+                                                   direction='right',
+                                                   destination=right)
+        self.updateTreeView()
 
     def inputSignal_activeObjectSet(self):
         sel = cmds.ls(sl=True)
@@ -2190,7 +2840,7 @@ class pickwalkMainWindow(QMainWindow):
         self.endOnSelf = state
 
     def inputSignal_mirrorSelection(self, sideA, sideB):
-        print 'inputSignal_mirrorSelection', sideA, sideB
+        print ('inputSignal_mirrorSelection', sideA, sideB)
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return pm.warning('No selection')
@@ -2199,7 +2849,7 @@ class pickwalkMainWindow(QMainWindow):
         self.updateTreeView()
 
     def inputSignal_destinationAdded(self, input):
-        # print 'inputSignal_destinationAdded', input
+        print ('inputSignal_destinationAdded', input)
         self.pickwalkCreator.addDestination(name=input.get('name', 'defaultName'),
                                             destination=input.get('destination', list()),
                                             destinationAlt=input.get('destinationAlt', list()),
@@ -2213,10 +2863,36 @@ class pickwalkMainWindow(QMainWindow):
         self.refreshUI()
 
     def addPickwalk(self, direction):
+        print ('addPickwalk', self.lockState)
         sel = cmds.ls(selection=True, type='transform')
         # print direction, sel
         if not sel:
             return pm.warning('No selection')
+        if self.lockState:
+            print ('main object is locked', self.activeObject)
+            if not self.activeObject:
+                return pm.warning('Unable to add single destination with no active object')
+            # there is an active (locked object)
+            if len(sel) > 1:
+                # multiple objects, quick set up destination
+                self.pickwalkCreator.addDestination(name=sel[0].split(':')[-1] + '_in',
+                                                    destination=[x.split(':')[-1] for x in sel],
+                                                    destinationAlt=list(),
+                                                    conditionAttribute=str(),
+                                                    conditionValue=0.5)
+                self.pickwalkCreator.setControlDestination(self.activeObject,
+                                                           direction=direction,
+                                                           destination=sel[0].split(':')[-1] + '_in')
+            else:
+                # single object, add as direct target
+                self.pickwalkCreator.setControlDestination(self.activeObject,
+                                                           direction=direction,
+                                                           destination=sel[0].split(':')[-1])
+
+            self.inputSignal_dirFromControlTreeView(self.activeObject, direction, sel)
+            self.updateTreeView()
+            return
+
         if len(sel) > 1:
             pm.warning('Adding chain style')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
@@ -2240,6 +2916,59 @@ class pickwalkMainWindow(QMainWindow):
     def openDataFolder(self):
         os.startfile(self.defaultDir)
 
+    def setSimpleMode(self):
+        self.mainPickWidget.setVisible(True)
+        # self.contextPickWidget.setVisible(False)
+        self.controlListWidget.setVisible(False)
+        self.destinationListWidget.setVisible(False)
+        self.mirrorWidget.setVisible(True)
+        self.contextWidget.setVisible(False)
+
+        self.mainPickWidget.upBtn.contextButton.hide()
+        self.mainPickWidget.downBtn.contextButton.hide()
+        self.mainPickWidget.leftBtn.contextButton.hide()
+        self.mainPickWidget.rightBtn.contextButton.hide()
+
+        self.update()
+        self.resize(self.width() * 0.5, self.height() * 0.5)
+        self.adjustSize()
+
+    def setMediumMode(self):
+        # self.mainPickWidget.setVisible(False)
+        # self.contextPickWidget.setVisible(True)
+        self.destinationListWidget.setVisible(True)
+        self.destinationListWidget.applyButton.setVisible(False)
+        self.controlListWidget.setVisible(False)
+        self.mirrorWidget.setVisible(True)
+        self.contextWidget.setVisible(True)
+
+        self.mainPickWidget.upBtn.contextButton.show()
+        self.mainPickWidget.downBtn.contextButton.show()
+        self.mainPickWidget.leftBtn.contextButton.show()
+        self.mainPickWidget.rightBtn.contextButton.show()
+
+        self.update()
+        self.resize(self.width() * 0.5, self.height() * 0.5)
+        self.adjustSize()
+
+    def setDetailMode(self):
+        self.mainPickWidget.setVisible(True)
+        # self.contextPickWidget.setVisible(True)
+        self.controlListWidget.setVisible(True)
+        self.destinationListWidget.setVisible(True)
+        self.destinationListWidget.applyButton.setVisible(True)
+        self.mirrorWidget.setVisible(True)
+        self.contextWidget.setVisible(True)
+
+        self.mainPickWidget.upBtn.contextButton.show()
+        self.mainPickWidget.downBtn.contextButton.show()
+        self.mainPickWidget.leftBtn.contextButton.show()
+        self.mainPickWidget.rightBtn.contextButton.show()
+
+        self.update()
+        self.resize(self.width() * 0.5, self.height() * 0.5)
+        self.adjustSize()
+
 
 class PickwalkCreator(object):
     destKey = '_dest'
@@ -2249,6 +2978,10 @@ class PickwalkCreator(object):
                       'down': 'down',
                       'left': 'right',
                       'right': 'left'}
+    reciprocalDirectionsDict = {'up': 'down',
+                                'down': 'up',
+                                'left': 'right',
+                                'right': 'left'}
 
     def __init__(self, namespace=str()):
         self.namespace = namespace
@@ -2291,15 +3024,15 @@ class PickwalkCreator(object):
         :param item:
         :return:
         """
-        #print 'sides', sideList
+        # print 'sides', sideList
         for key, walkDirection in self.walkData.objectDict.items():
             mirrorDir = dict()
-            #print key, item
+            # print key, item
             if key == item:
                 if not self.validForMirror(key, sideList):
-                    #print 'not valid for mirror'
+                    # print 'not valid for mirror'
                     continue
-                #print 'need to mirror', key
+                # print 'need to mirror', key
                 for dir, value in walkDirection.__dict__.items():
                     found = False
                     if not value:
@@ -2307,21 +3040,21 @@ class PickwalkCreator(object):
                         mirrorDir[dir] = None
                         continue
                     if value in self.walkData.destinations.keys():
-                        #print dir, 'is condition - not made this bit yet'
+                        # print dir, 'is condition - not made this bit yet'
                         # recusrively mirror any destination info found here
                         self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
                         # add the mirror key to the destination list, mirror it
                     mirrorDir[dir] = self.getMirrorName(value, sideList)
 
-                #print 'mirrorDir', mirrorDir
+                # print 'mirrorDir', mirrorDir
                 mirrorKey = self.getMirrorName(key, sideList)
 
                 for dKey, dValue in mirrorDir.items():
-                    #print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
+                    # print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
                     self.setControlDestination(mirrorKey,
                                                direction=dKey,
                                                destination=dValue)
-                    #print self.walkData.objectDict[mirrorKey].__dict__
+                    # print self.walkData.objectDict[mirrorKey].__dict__
                 pass
 
     def mirrorWalkDestination(self, destinationKey=str(), sideList=list(), processed=list()):
@@ -2333,8 +3066,8 @@ class PickwalkCreator(object):
         :param processed:
         :return:
         """
-        print 'mirrorWalkDestination', processed
-        print self.walkData.destinations[destinationKey].__dict__
+        print ('mirrorWalkDestination', processed)
+        print (self.walkData.destinations[destinationKey].__dict__)
         if destinationKey in processed:
             return processed
         mirrorDestination = None
@@ -2452,7 +3185,7 @@ class PickwalkCreator(object):
             for index, value in enumerate(reciprocalIndexes):
                 if value is not None:
                     self.setControlDestination(controls[index],
-                                               direction=self.directionsDict[direction],
+                                               direction=self.reciprocalDirectionsDict[direction],
                                                destination=infoNodes[value])
 
     def getNodeInfoFromRig(self, control):
@@ -2464,12 +3197,12 @@ class PickwalkCreator(object):
         """
         controlName = control.split(':')[-1]
         self.addControl(controlName)
-        #print 'controlName', controlName
+        # print 'controlName', controlName
         userAttrs = cmds.listAttr(control, userDefined=True)
         if not userAttrs:
             return
         userAttrs = set(userAttrs)
-        for direction, values in Pickwalk().picwalkAttributeNames.items():
+        for direction, values in Pickwalk().pickwalkAttributeNames.items():
             # print dir, set(values)
             matching = set(values) & userAttrs
             # print 'matching', matching
@@ -2480,7 +3213,7 @@ class PickwalkCreator(object):
                     destination = cmds.listConnections(control + '.' + m, source=True, destination=False)
                 elif attrType == 'string':
                     destination = cmds.getAttr(control + '.' + m)
-                #print control, m, attrType, destination
+                # print control, m, attrType, destination
                 if destination:
                     if isinstance(destination, list):
                         if len(destination) > 1:

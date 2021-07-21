@@ -31,13 +31,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 import maya.cmds as cmds
 import maya.mel as mel
@@ -75,7 +75,7 @@ class timeDragger(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'timeDragger'
     hotkeyClass = None
@@ -150,8 +150,8 @@ class timeDragger(toolAbstractFactory):
 
     def drag(self, state):
         self.update_options()
-        print self.get_previous_ctx()
-        print "state", state
+        print (self.get_previous_ctx())
+        print ("state", state)
         cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=not state)
         if state:
             mel.eval('storeLastAction("restoreLastContext ' + self.get_previous_ctx() + '")')
@@ -178,7 +178,7 @@ class timeDragger(toolAbstractFactory):
     def warn(self):
         self.failsafe = None
         msg = "you pressed some weird combination of alt or maybe the windows key"
-        print msg
+        print (msg)
         self.funcs.errorMessage(prefix='Warning',
                       message=' : %s' % msg,
                       position='botRight'
@@ -193,7 +193,7 @@ class timeDragger(toolAbstractFactory):
                 pass
             self.step = pm.optionVar.get(self.step_var, 1)
             self.even_only = pm.optionVar.get(self.step_optionVar, True)
-            print "step even", self.even_only
+            print ("step even", self.even_only)
             cmds.setToolTo(self.step_ctx)
         else:
             mel.eval('invokeLastAction')
@@ -228,6 +228,6 @@ class timeDragger(toolAbstractFactory):
         return pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.drag, False)])
 
     def info(self):
-        print "toggle background :", self.toggle_background
-        print "background state  :", self.background_state
-        print "previous tool     :", self.previous_tool
+        print ("toggle background :", self.toggle_background)
+        print ("background state  :", self.background_state)
+        print ("previous tool     :", self.previous_tool)

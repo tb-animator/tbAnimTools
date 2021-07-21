@@ -34,13 +34,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 from contextlib import contextmanager
 import maya.OpenMaya as om
@@ -174,6 +174,47 @@ class functions(object):
         shape.overrideRGBColors.set(True)
         shape.overrideColorRGB.set(color)
         return control
+
+    def getSetColour(self, ref, control):
+        """
+        Copies the colour override from ref to control
+        :param ref:
+        :param control:
+        :return:
+        """
+        node = pm.PyNode(ref)
+        control = pm.PyNode(control)
+        refObj = node
+        overrideState = node.overrideEnabled.get()
+        if not overrideState:
+            shape = node.getShape()
+            overrideState = shape.overrideEnabled.get()
+            if overrideState:
+                refObj = shape
+        control.overrideEnabled.set(True)
+        control.overrideRGBColors.set(refObj.overrideRGBColors.get())
+        control.overrideColorRGB.set(refObj.overrideColorRGB.get())
+        control.overrideColor.set(refObj.overrideColor.get())
+
+    def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
+        print ('addPickwalk', control, direction)
+        walkDirectionNames = {'up': ['pickUp', 'pickDown'],
+                              'down': ['pickDown', 'pickUp'],
+                              'left': ['pickLeft', 'pickRight'],
+                              'right': ['pickRight', 'pickLeft']
+                              }
+
+        attrName, reverseName = walkDirectionNames.get(direction, None)
+        if not attrName:
+            return pm.warning('Bad attribute name for pickwalk - direction %s' % direction)
+        if not pm.attributeQuery(attrName, node=control, exists=True):
+            pm.addAttr(control, ln=attrName, at='message')
+        pm.connectAttr(destination + '.message', control + '.' + attrName, force=True)
+        if not reverse:
+            return
+        if not pm.attributeQuery(reverseName, node=destination, exists=True):
+            pm.addAttr(destination, ln=reverseName, at='message')
+        pm.connectAttr(control + '.message', destination + '.' + reverseName, force=True)
 
     @staticmethod
     def filter_modelEditors(editors):
@@ -359,7 +400,7 @@ class functions(object):
                 pm.keyTangent(curve, edit=True, lock=False, time=(e, e),
                               outAngle=tangent[state], inAngle=tangent[not state])
         else:
-            print "no anim curves found"
+            print ("no anim curves found")
 
     def getChannels(self, *arg):
         # TODO make this work with assets
@@ -368,9 +409,9 @@ class functions(object):
                                  selectedMainAttributes=True)
         if chList:
             for channel in chList:
-                print channel
+                print (channel)
         else:
-            print "no channels selected"
+            print ("no channels selected")
         return chList
 
     def filterChannels(self):
@@ -508,6 +549,20 @@ class functions(object):
                     returnAttributes.append(at)
         return returnAttributes
 
+    def lockTransform(self, nodes, translate=True, rotate=True, scale=True):
+        attrNames = ['X', 'Y', 'Z']
+        if not isinstance(nodes, list): nodes = [nodes]
+        for n in nodes:
+            if translate:
+                for a in attrNames:
+                    pm.setAttr(n + '.translate' + a, lock=True, keyable=False, channelBox=False)
+            if rotate:
+                for a in attrNames:
+                    pm.setAttr(n + '.rotate' + a, lock=True, keyable=False, channelBox=False)
+            if scale:
+                for a in attrNames:
+                    pm.setAttr(n + '.scale' + a, lock=True, keyable=False, channelBox=False)
+
     @staticmethod
     def getAvailableTranslates(node):
         return [attr.lower() for attr in ['translateX', 'translateY', 'translateZ'] if
@@ -558,13 +613,13 @@ class functions(object):
 
     @staticmethod
     def getMainWindow():
-        return wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget)
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
 
     @staticmethod
     def getWidgetAtCursor():
         view = omUI.M3dView()
         omUI.M3dView.getM3dViewFromModelPanel('modelPanel4', view)
-        viewWidget = wrapInstance(long(view.widget()), QWidget)
+        viewWidget = wrapInstance(int(view.widget()), QWidget)
         return viewWidget
 
     def getGraphEditorState(self):
@@ -692,10 +747,10 @@ class functions(object):
             # For every layer other than the base animation layer, we can just use
             # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
             # broken in Python, so we have to use MEL.
-            print 'getPlugsFromLayer', nodeAttr
+            print ('getPlugsFromLayer', nodeAttr)
             cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
-            print blendNode, 'blendNode'
+            print (blendNode, 'blendNode')
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
             history = cmds.listHistory(blendNode)
             firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
@@ -721,7 +776,7 @@ class functions(object):
         return False
 
     def drawOrb(self, scale=1.0):
-        print [dt.Vector(x) * scale * self.unit_conversion() for x in orbPointList]
+        # print [dt.Vector(x) * scale * self.unit_conversion() for x in orbPointList]
         curve = cmds.curve(degree=1,
                            knot=orbKnotList,
                            point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in orbPointList])

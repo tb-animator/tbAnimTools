@@ -78,7 +78,7 @@ class ClassFinder(object):
         '''
         self.tools = dict()
         for cls in toolClasses:
-            print 'instancing tool', cls, cls.toolName
+            print ('instancing tool', cls, cls.toolName)
             self.tools[cls.toolName] = cls()
         self.loadedClasses['hotkeys'] = hotkeyClasses
 
@@ -110,4 +110,4 @@ class ClassFinder(object):
             self.animLayerScriptJob = pm.scriptJob(event=('aninLayerRebuild', self.colourAnimLayers))
 
     def colourAnimLayers(self):
-        print 'colourAnimLayers'
+        print ('colourAnimLayers')

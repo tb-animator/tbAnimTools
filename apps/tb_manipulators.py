@@ -32,13 +32,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -85,7 +85,7 @@ class Manipulators(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Manipulators'
     hotkeyClass = hotkeys()
@@ -236,7 +236,7 @@ class Manipulators(toolAbstractFactory):
                         pm.setAttr(plug, lock=False)
 
                     if pm.getAttr(plug):
-                        print plug
+                        print (plug)
                         pm.setAttr(plug, value)
 
                     if locked:

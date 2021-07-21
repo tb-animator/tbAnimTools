@@ -12,6 +12,7 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
             'sliders': '%s_Sliders' % tbAnimTools,
             'pickwalk': '%s_Pickwalk' % tbAnimTools,
             'constraints': '%s_Constraints' % tbAnimTools,
+            'footpath': '%s_FootPath' % tbAnimTools,
             }
 simpleBakeToOverride = ['bake current selection to an override layer']
 quickCreateAdditiveLayer = ['create a new additive layer, selection is', 'added to the layer']

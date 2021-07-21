@@ -12,7 +12,6 @@ import maya.OpenMayaUI as omUI
 qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
 
 def getStyleSheet():
-    print qssFile
     stream = QFile(qssFile)
     if stream.open(QFile.ReadOnly):
         st = str(stream.readAll())
@@ -25,13 +24,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 class module_maker():
@@ -91,7 +90,7 @@ class module_maker():
 
         for paths in self.maya_plugin_paths:
             out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
-        print 'make_module_data', out_lines
+        print ('make_module_data', out_lines)
         return out_lines
 
     def write_module_file(self):
@@ -109,7 +108,6 @@ class module_maker():
             return False
 
     def read_module_file(self):
-        print 'read_module_file'
         existingVersions = list()
         if os.path.isfile(self.module_path()):
             f = open(self.module_path(), 'r')
@@ -119,27 +117,22 @@ class module_maker():
             for lineIndex, line in enumerate(self.current_module_data):
                 if line.startswith('+ PLATFORM'):
                     # finding a new block
-                    print 'found', line
                     existingVersions.append(line)
                 if 'PLATFORM:%s' % self.win_versions and 'MAYAVERSION:%s' % self.maya_version in line:
                     match = True
-                    #self.current_module_data[lineIndex] = self.make_module_path_data()
 
-        print 'existingVersions', existingVersions
         self.out_lines = list()
         self.out_lines.extend(self.make_core_module_data())
-        print 'self.out_lines', self.out_lines
         for version in existingVersions:
-            print 'existing version', version
             self.out_lines.extend(self.make_module_data(version))
 
         if not match:
             # create a new entry
-            print 'making new entry'
             self.out_lines.extend(self.make_module_data(self.make_module_path_data()))
-        print 'FINAL\n'
+        '''
         for line in self.out_lines:
             print line
+        '''
         self.current_module_data = self.out_lines
 
     def replace_path(self, fileName, path, newpath):
@@ -155,11 +148,8 @@ class module_maker():
 
     def check_module_file(self):
         # file doesn't exist yet so create one
-        print 'checking module file'
-
         if not os.path.isfile(self.module_path()):
             self.firstInstall = True
-            print self.module_path(), 'not found, creating it'
             f = open(str(self.module_path()), 'a+')  # open file in append mode
             f.writelines('')
             f.close()
@@ -170,12 +160,9 @@ class module_maker():
             return True
 
     def make_module_folder(self):
-        print 'make_module_folder'
         if not os.path.isdir(self.maya_module_dir()):
-            print "making new maya module folder"
             os.mkdir(self.maya_module_dir())
         else:
-            print "setting module folder to writeable"
             os.chmod(self.maya_module_dir(), stat.S_IWRITE)
 
     def install(self):
@@ -271,7 +258,6 @@ class ResultWindow(QDialog):
         #self.win.show()
 
     def openHotkeyWindow(self, *args):
-        print 'openHotkeyWindow'
         mel.eval("hotkeyEditorWindow")
 
     def openOptionWindow(self, *args):

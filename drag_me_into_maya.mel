@@ -2,15 +2,14 @@ global proc module_installer()
 {
 	string $filePath = `whatIs module_installer`;
 	string $installer = "tbtoolsInstaller.py";
-	print ($filePath);
+
 	$filePath = `substitute "Mel procedure found in: " $filePath ""`;
 	$filePath = `substitute "drag_me_into_maya.mel" $filePath  ""`;
-	
-	print ($filePath + "\n");
-	string $exec_cmd = "execfile (\""+ $filePath + $installer + "\")";
-	
-	print ($exec_cmd + "\n");
-	python($exec_cmd);
+
+    string $exec_cmd =("exec(open(\"" + $filePath + $installer + "\").read())");
+
+    print ($exec_cmd + "\n");
+    python($exec_cmd);
 	
 }
 

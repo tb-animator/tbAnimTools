@@ -1,3 +1,4 @@
+from __future__ import print_function
 import abc
 import re
 import os
@@ -9,13 +10,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 # maya module imports
 import maya.cmds as cmds
@@ -23,8 +24,11 @@ from apps.tb_functions import functions
 import tb_helpStrings
 from apps.tb_UI import *
 
-class hotKeyAbstractFactory(object):
-    __metaclass__ = abc.ABCMeta
+# compatible with Python 2 *and* 3:
+ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
+
+class hotKeyAbstractFactory(ABC):
+    #__metaclass__ = abc.ABCMeta
     category = 'tbtools'
     commandList = list()
     helpStrings = tb_helpStrings
@@ -90,8 +94,8 @@ class hotKeyAbstractFactory(object):
             return cmd
 
 
-class toolAbstractFactory(object):
-    __metaclass__ = abc.ABCMeta
+class toolAbstractFactory(ABC):
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'baseTool'
 
@@ -143,9 +147,12 @@ class toolAbstractFactory(object):
         self.initData()
         self.toJson()
         j = json.dumps(self.classData, indent=4, separators=(',', ': '))
-        f = open(self.dataFile, 'w')
-        print >> f, j
-        f.close()
+        #f = open(self.dataFile, 'w')
+
+        with open(self.dataFile, 'w') as f:
+            print(j, file=f)
+
+        #f.close()
 
     def loadData(self):
         self.initData()

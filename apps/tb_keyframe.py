@@ -35,13 +35,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    from pysideuic import *
+    #from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    from pyside2uic import *
+    #from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -74,9 +74,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='setTangentsFlat',
                                      annotation='Sets your current key selection or timeline key to flat',
                                      category=self.category, command=['KeyModifiers.setTangentsFlat()']))
+        '''
         self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
                                      annotation='Toggle the collapsed state of the graph editor - if docked',
                                      category=self.category, command=['KeyModifiers.toggleDockedGraphEd()']))
+        '''
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
                                      category=self.category, command=['KeyModifiers.level()']))
@@ -94,7 +96,7 @@ class KeyModifiers(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    __metaclass__ = abc.ABCMeta
+    #__metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'KeyModifiers'
     hotkeyClass = hotkeys()
@@ -213,9 +215,6 @@ class KeyModifiers(toolAbstractFactory):
                             outTangentType=input,
                             time=timeRange)
             self.funcs.infoMessage(prefix="Tangent :: ", message=input)
-
-    def toggleDockedGraphEd(self):
-        self.funcs.toggleDockedGraphEd()
 
     def eulerFilterSelectedKeys(self):
         self.objects = cmds.ls(selection=True)

@@ -44,9 +44,9 @@ class optionVar_utils(object):
     def cycleOption(option_name="", full_list=[], current=int(), default=""):
         # get list from optionvar array
         optionVar_list = pm.optionVar.get(option_name, [default])
-        print 'optionlist', optionVar_list, current
-        print 'full_list', full_list
-        print 'rotateMode', pm.manipRotateContext('Rotate', query=True, mode=True)
+        print ('optionlist', optionVar_list, current)
+        print ('full_list', full_list)
+        print ('rotateMode', pm.manipRotateContext('Rotate', query=True, mode=True))
         if not optionVar_list:
             optionVar_list = [default]
         # find the current index in the full list
@@ -62,7 +62,7 @@ class optionVar_utils(object):
             name = optionVar_list[index % len(optionVar_list)]
 
         else:
-            print "current value not in option var list, set to first"
+            print ("current value not in option var list, set to first")
             name = optionVar_list[0]
         index = full_list.index(name)
         return index, name
@@ -71,7 +71,7 @@ class optionVar_utils(object):
 def set_default_values():
     if pm.optionVar.get('tb_firstRun', True):
         from tb_manipulators import Manipulators
-        print "setting up default option vars for first run"
+        print ("setting up default option vars for first run")
 
         pm.optionVar(intValue=(Manipulators().translate_optionVar + "_msg", 1))
         pm.optionVar(stringValue=(Manipulators().translate_messageVar + "_msg", 'topLeft'))
