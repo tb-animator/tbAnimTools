@@ -3234,7 +3234,12 @@ class PickwalkCreator(object):
         # TODO - move this entirely to the WalkData class?
         # print 'loading data', walkDataFile
         filter = False
-        jsonObjectInfo = json.load(open(walkDataFile))
+        try:
+            jsonObjectInfo = json.load(open(walkDataFile))
+        except ValueError:  # includes simplejson.decoder.JSONDecodeError
+            jsonData = '''{}'''
+            jsonObjectInfo = json.loads(jsonData)
+
 
         if len(controlFilter):
             # strip namespace
