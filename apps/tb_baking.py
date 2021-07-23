@@ -54,6 +54,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
                                      help=self.helpStrings.simpleBakeToOverride))
+        self.addCommand(self.tb_hkey(name='simpleBakeToBase',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.simpleBake()'],
+                                     help=self.helpStrings.simpleBakeToOverride))
+
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addAdditiveLayer()'],
@@ -185,7 +190,30 @@ class BakeTools(toolAbstractFactory):
                 pm.rename(newAnimLayer, 'OverrideBaked')
 
             self.removeContainersPostBake(preContainers)
-        self.funcs.select_layer(str(postBakeLayer))
+        self.funcs.select_layer(postBakeLayer)
+
+    def simpleBake(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        with self.funcs.keepSelection():
+            keyRange = self.funcs.get_all_layer_key_times(sel)
+            if not keyRange[0]:
+                keyRange = self.funcs.getTimelineRange()
+            pm.bakeResults(sel,
+                           time=(keyRange[0], keyRange[-1]),
+                           simulation=False,
+                           sampleBy=1,
+                           oversamplingRate=1,
+                           disableImplicitControl=True,
+                           preserveOutsideKeys=False,
+                           sparseAnimCurveBake=True,
+                           removeBakedAttributeFromLayer=False,
+                           removeBakedAnimFromLayer=False,
+                           bakeOnOverrideLayer=False,
+                           minimizeRotation=True,
+                           controlPoints=False,
+                           shape=False)
 
     def removeContainersPostBake(self, preContainers):
         if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):

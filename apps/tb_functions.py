@@ -197,7 +197,7 @@ class functions(object):
         control.overrideColor.set(refObj.overrideColor.get())
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
-        print ('addPickwalk', control, direction)
+        #print ('addPickwalk', control, direction)
         walkDirectionNames = {'up': ['pickUp', 'pickDown'],
                               'down': ['pickDown', 'pickUp'],
                               'left': ['pickLeft', 'pickRight'],
@@ -342,8 +342,8 @@ class functions(object):
         if not isinstance(layerName, list):
             layerName = [layerName]
         for layer in layerName:
-            cmds.animLayer(layer, edit=True, preferred=True)
-            cmds.animLayer(layer, edit=True, selected=True)
+            cmds.animLayer(str(layer), edit=True, preferred=True)
+            cmds.animLayer(str(layer), edit=True, selected=True)
 
     def get_all_layer_key_times(self, objects):
         layers = cmds.ls(type='animLayer')

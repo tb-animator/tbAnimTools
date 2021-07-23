@@ -36,13 +36,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 import maya.cmds as cmds
@@ -55,8 +55,7 @@ import sys
 import pymel.core as pm
 import pymel.core.datatypes as dt
 
-
-
+assetCommandName = 'aimToolAssetMenu'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -71,6 +70,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='aimToolsMMReleased',
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.closeMM()']))
+        self.addCommand(self.tb_hkey(name=assetCommandName,
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.assetRmbCommand()']))
 
         return self.commandList
 
@@ -82,7 +84,7 @@ class AimTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'AimTools'
     hotkeyClass = hotkeys()
@@ -99,6 +101,9 @@ class AimTools(toolAbstractFactory):
     lastUseData = dict()
     defaultData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
     defaultAimData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
+
+    mainAssetAttr = 'mainAsset'
+    controlMessageAttr = 'aimedControl'
 
     def __new__(cls):
         if AimTools.__instance is None:
@@ -262,10 +267,18 @@ class AimTools(toolAbstractFactory):
             self.constraintControls(key)
 
     def aimToLocator(self, refName, name, target, data):
+        asset = self.createAsset(name=name + '_asset')
         aimAxis, upAxis = self.getAimAxis(data)
 
         up = self.funcs.tempControl(name=name, suffix='upLoc', scale=data.get('scale', 1.0))
         aim = self.funcs.tempControl(name=name, suffix='fwdLoc', scale=data.get('scale', 1.0))
+
+        pm.addAttr(up, ln=self.mainAssetAttr, at='message')
+        pm.addAttr(aim, ln=self.mainAssetAttr, at='message')
+        pm.addAttr(asset, ln=self.controlMessageAttr, at='message')
+        pm.connectAttr(asset + '.message', up + '.' + self.mainAssetAttr)
+        pm.connectAttr(asset + '.message', aim + '.' + self.mainAssetAttr)
+        pm.connectAttr(target + '.message', asset + '.' + self.controlMessageAttr)
 
         self.locators.extend([str(up), str(aim)])
         self.controlInfo[target] = [str(aim), aimAxis, str(up), upAxis]
@@ -279,10 +292,10 @@ class AimTools(toolAbstractFactory):
 
         self.constraints.append(cmds.parentConstraint(target, str(aim),
                                                       maintainOffset=True,
-                                                      skipRotate=('x', 'y', 'z')))
+                                                      skipRotate=('x', 'y', 'z'))[0])
         self.constraints.append(cmds.parentConstraint(target, str(up),
                                                       maintainOffset=True,
-                                                      skipRotate=('x', 'y', 'z')))
+                                                      skipRotate=('x', 'y', 'z'))[0])
 
         if refName not in self.foundControls.keys():
             self.foundControls[refName] = dict()
@@ -293,6 +306,15 @@ class AimTools(toolAbstractFactory):
                                              'distance': data['distance'],
                                              'scale': data.get('scale', 1.0)
                                              }
+
+        pm.container(asset, edit=True,
+                     includeHierarchyBelow=True,
+                     force=True,
+                     addNode=[up, aim])
+        pm.container(asset, edit=True,
+                     includeHierarchyBelow=True,
+                     force=True,
+                     addNode=self.constraints)
 
     def getAimAxis(self, data):
         flipVector = {True: -1.0, False: 1.0}  # make this data driven somehow?
@@ -417,6 +439,73 @@ class AimTools(toolAbstractFactory):
         vec = getLocalVecToWorldSpaceAPI(target, vec=axis, offset=targetPosMVector,
                                          mult=distance / self.funcs.unit_conversion())
         return vec
+
+    def createAsset(self, name, imageName=None):
+        asset = cmds.container(name=name,
+                               includeHierarchyBelow=False,
+                               includeTransform=True,
+                               )
+        if imageName:
+            pm.setAttr(asset + '.iconName', imageName, type="string")
+        cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
+        return asset
+
+    def assetRmbCommand(self):
+        panel = cmds.getPanel(underPointer=True)
+        parentMMenu = panel + 'ObjectPop'
+        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
+        sel = pm.ls(sl=True)
+        asset = pm.container(query=True, findContainer=sel[0])
+
+        # check asset message attribute
+        print ("asset", asset)
+
+        cmds.menuItem(label='Aim Tool', enable=False, boldFont=True, image='container.svg')
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Re bake to fixed distance', command=pm.Callback(self.rebakeCommand, asset))
+        cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete controls', command=pm.Callback(self.deletControlsCommand, asset))
+        cmds.menuItem(divider=True)
+
+    def rebakeCommand(self, asset):
+        print ("rebakeCommand", asset)
+        sel = cmds.ls(sl=True)
+        control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
+        locators = cmds.listConnections(asset + '.message')
+        temp = list()
+        constraints = list()
+        for loc in locators:
+            tmp = cmds.createNode('transform')
+            cmds.delete(cmds.pointConstraint(loc, tmp))
+            constraints.append(cmds.parentConstraint(control, tmp, maintainOffset=True, skipRotate=('x', 'y', 'z'))[0])
+            temp.append(tmp)
+
+        cmds.select(temp, replace=True)
+
+        mel.eval("simpleBakeToBase")
+        cmds.delete(constraints)
+        for index, loc in enumerate(locators):
+            pm.pointConstraint(temp[index], loc)
+
+        cmds.select(locators, replace=True)
+        mel.eval("simpleBakeToOverride")
+        cmds.delete(temp)
+        cmds.select(sel, replace=True)
+
+    def bakeOutCommand(self, asset):
+        print ("bakeOutCommand", asset)
+        control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
+        locators = cmds.listConnections(asset + '.message')
+        cmds.select(control, replace=True)
+        cmds.select(locators, add=True)
+
+        mel.eval("simpleBakeToOverride")
+        pm.delete(asset)
+        cmds.select(control)
+
+    def deletControlsCommand(self, asset):
+        print ("deletControlsCommand", asset)
+        pm.delete(asset)
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         refName = self.funcs.getRefName(controlName)
