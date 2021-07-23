@@ -264,6 +264,6 @@ class ResultWindow(QDialog):
         import tb_options as tbo
         tbo.showOptions()
 
-if __name__ == "__main__":
+def install():
     module_maker().install()
     installer().install()
