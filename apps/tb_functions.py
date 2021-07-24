@@ -34,13 +34,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 from contextlib import contextmanager
 import maya.OpenMaya as om
@@ -101,6 +101,16 @@ orbPointList = [[0.0, 25.0, 0.0],
 orbKnotList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
                39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]
+
+crossKnotList = [0, 1, 2, 3, 4, 5, 6, 7]
+crossPointList = [[-25, 0, 0],
+                  [25, 0, 0],
+                  [0, 0, 0],
+                  [0, 0, 25],
+                  [0, 0, -25],
+                  [0, 0, 0],
+                  [0, 25, 0],
+                  [0, -25, 0]]
 
 
 class functions(object):
@@ -165,8 +175,12 @@ class functions(object):
         loc.getShape().overrideColorRGB.set(color)
         return loc
 
-    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
-        control, shape = self.drawOrb(scale=scale)
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb'):
+        drawFunction = {
+            'orb': self.drawOrb,
+            'cross': self.drawCross,
+        }
+        control, shape = drawFunction.get(drawType)(scale=scale)
         control.rename(name + '_' + suffix)
 
         control.rotateOrder.set(3)
@@ -197,7 +211,7 @@ class functions(object):
         control.overrideColor.set(refObj.overrideColor.get())
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
-        #print ('addPickwalk', control, direction)
+        # print ('addPickwalk', control, direction)
         walkDirectionNames = {'up': ['pickUp', 'pickDown'],
                               'down': ['pickDown', 'pickUp'],
                               'left': ['pickLeft', 'pickRight'],
@@ -780,5 +794,12 @@ class functions(object):
         curve = cmds.curve(degree=1,
                            knot=orbKnotList,
                            point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in orbPointList])
+        curve = pm.PyNode(curve)
+        return curve, curve.getShape()
+
+    def drawCross(self, scale=1.0):
+        curve = cmds.curve(degree=1,
+                           knot=crossKnotList,
+                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
         curve = pm.PyNode(curve)
         return curve, curve.getShape()

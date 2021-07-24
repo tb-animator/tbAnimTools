@@ -36,15 +36,16 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
+assetCommandName = 'tempControlCommand'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -103,6 +104,9 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='constrain to objects with NO offset - post baked, constraint reversed',
                                      category=self.category, command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
+        self.addCommand(self.tb_hkey(name=assetCommandName,
+                                     annotation='right click menu for temp controls',
+                                     category=self.category, command=['BakeTools.assetRmbCommand()']))
 
         return self.commandList
 
@@ -114,7 +118,7 @@ class BakeTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'BakeTools'
     hotkeyClass = hotkeys()
@@ -125,6 +129,10 @@ class BakeTools(toolAbstractFactory):
 
     overrideLayerColour = 19
     additiveLayerColour = 18
+
+    crossSizeOption = 'tbBakeLocatorSize'
+    assetName = 'TempControls'
+    constraintTargetAttr = 'constraintTarget'
 
     def __new__(cls):
         if BakeTools.__instance is None:
@@ -147,8 +155,15 @@ class BakeTools(toolAbstractFactory):
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
         containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
                                                     self.quickBakeRemoveContainerOption)
+        crossSizeWidget = intFieldWidget(optionVar=self.crossSizeOption,
+                                         defaultValue=1.0,
+                                         label='Baked locator control size',
+                                         minimum=0.1, maximum=100, step=0.1)
+        crossSizeWidget.changedSignal.connect(self.updatePreview)
+
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
+        self.layout.addWidget(crossSizeWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -158,6 +173,20 @@ class BakeTools(toolAbstractFactory):
     """
     Functions
     """
+
+    def drawPreview(self):
+        self.funcs.tempControl(name='temp',
+                               suffix='Preview',
+                               scale=pm.optionVar.get(self.crossSizeOption, 1),
+                               drawType='cross')
+
+    def updatePreview(self, scale):
+        if not cmds.objExists('temp_Preview'):
+            self.drawPreview()
+
+        cmds.setAttr('temp_Preview.scaleX', scale)
+        cmds.setAttr('temp_Preview.scaleY', scale)
+        cmds.setAttr('temp_Preview.scaleZ', scale)
 
     def bake_to_override(self):
         sel = cmds.ls(sl=True)
@@ -232,10 +261,23 @@ class BakeTools(toolAbstractFactory):
         constraints = []
         if sel:
             for s in sel:
-                loc = self.funcs.tempLocator(name=s, suffix='baked')
+                # loc = self.funcs.tempLocator(name=s, suffix='baked')
+                ps = pm.PyNode(s)
+                ns = ps.namespace()
+                if not cmds.objExists(ns + self.assetName):
+                    self.createAsset(ns + self.assetName, imageName=None)
+                asset = ns + self.assetName
+                loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
+                                             scale=pm.optionVar.get(self.crossSizeOption, 1))
+                pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                 const = pm.parentConstraint(s, loc)
                 locs.append(loc)
                 constraints.append(const)
+                pm.container(asset, edit=True,
+                             includeHierarchyBelow=True,
+                             force=True,
+                             addNode=loc)
         if locs:
             preContainers = set(pm.ls(type='container'))
             pm.bakeResults(locs,
@@ -262,13 +304,45 @@ class BakeTools(toolAbstractFactory):
                     skipR = self.funcs.getAvailableRotates(cnt)
                     # print 'skipT', skipT
                     # print 'skipR', skipR
-                    pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                    constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
                                                                  False: [x.split('translate')[-1] for x in skipT]}[
                         orientOnly],
                                         skipRotate=[x.split('rotate')[-1] for x in skipR])
+                    pm.container(asset, edit=True,
+                                 includeHierarchyBelow=True,
+                                 force=True,
+                                 addNode=constraint)
         if select:
             pm.select(locs, replace=True)
         return locs
+
+    def createAsset(self, name, imageName=None):
+        asset = cmds.container(name=name,
+                               includeHierarchyBelow=False,
+                               includeTransform=True,
+                               )
+        if imageName:
+            pm.setAttr(asset + '.iconName', imageName, type="string")
+        cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
+        return asset
+
+    def assetRmbCommand(self):
+        panel = cmds.getPanel(underPointer=True)
+        parentMMenu = panel + 'ObjectPop'
+        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
+        sel = pm.ls(sl=True)
+        asset = pm.container(query=True, findContainer=sel[0])
+
+        # check asset message attribute
+        print ("asset", asset, sel)
+
+        cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Bake selected temp controls to layer', command=pm.Callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
+        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
+        cmds.menuItem(divider=True)
 
     def get_available_attrs(self, node):
         '''
@@ -285,6 +359,26 @@ class BakeTools(toolAbstractFactory):
                 lockedRotates.append(attr.lower())
 
         return lockedTranslates, lockedRotates
+
+    def bakeSelectedCommand(self, asset, sel):
+        print ('rebakeCommand', asset, sel)
+        targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
+        filteredTargets = [item for sublist in targets for item in sublist if item]
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+
+    def bakeAllCommand(self, asset, sel):
+        print ('bakeAllCommand', asset, sel)
+        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        print ('filteredTargets', filteredTargets)
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+        pm.delete(asset)
+
+    def deleteControlsCommand(self, asset, sel):
+        pm.delete(asset)
 
     def parentConst(self, constrainGroup=False, offset=True, postBake=False, postReverseConst=False):
         drivers = pm.ls(sl=True)

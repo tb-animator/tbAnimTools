@@ -105,10 +105,7 @@ class TrackingCamera(toolAbstractFactory):
 
     def swapToTrackingCamera(self):
         self.camera_target = cmds.ls(sl=True)
-        if self.trackerGrp is None:
-            self.createTrackingCamera()
-        if not cmds.objExists(self.trackerGrp):
-            self.createTrackingCamera()
+        self.createTrackingCamera()
         cam, camShape = self.getCurrentCamera()
         self.getCameraTransform(cam)
         self.setCameraTransform(self.trackerCam)
@@ -127,6 +124,10 @@ class TrackingCamera(toolAbstractFactory):
             cmds.lookThru(perspCameras[0])
 
     def createTrackingCamera(self):
+        """
+        create the tracking camera if needed
+        :return:
+        """
         with self.funcs.keepSelection():
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)
@@ -135,14 +136,19 @@ class TrackingCamera(toolAbstractFactory):
                 self.trackerCam = cmds.rename(self.trackerCam, 'tracker_cam')
             else:
                 self.trackerCam = 'tracker_cam'
-                constraints = cmds.listRelatives(self.trackerCam, children=True, type='constraint')
-                if constraints:
-                    cmds.delete(constraints)
             if not cmds.objExists("tracker_grp"):
                 self.trackerGrp = cmds.group(empty=True, world=True, name="tracker_grp")
-                cmds.parent(self.trackerCam, self.trackerGrp)
             else:
                 self.trackerGrp = "tracker_grp"
+            if cmds.listRelatives(self.trackerCam, parent=True)[0] != self.trackerGrp:
+                cmds.parent(self.trackerCam, self.trackerGrp)
+
+            constraints = cmds.listRelatives(self.trackerGrp, children=True, type='constraint')
+            if constraints: cmds.delete(constraints)
+            constraints = cmds.listRelatives(self.trackerCam, children=True, type='constraint')
+            if constraints: cmds.delete(constraints)
+
+
             if self.camera_target:
                 self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
             self.setCameraTransform(self.trackerCam)
@@ -156,8 +162,8 @@ class TrackingCamera(toolAbstractFactory):
                 return cmds.warning('unable to track tracking camera with tracking camera')
             if self.trackerGrp in self.camera_target:
                 return cmds.warning('unable to track tracking camera with tracking camera')
-            if not pm.objExists(self.trackerGrp):
-                self.createTrackingCamera()
+
+            self.createTrackingCamera()
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(cam)
             if self.constraint:

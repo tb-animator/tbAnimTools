@@ -10,13 +10,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 # maya module imports
 import maya.cmds as cmds
@@ -27,8 +27,9 @@ from apps.tb_UI import *
 # compatible with Python 2 *and* 3:
 ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
 
+
 class hotKeyAbstractFactory(ABC):
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     category = 'tbtools'
     commandList = list()
     helpStrings = tb_helpStrings
@@ -95,7 +96,7 @@ class hotKeyAbstractFactory(ABC):
 
 
 class toolAbstractFactory(ABC):
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'baseTool'
 
@@ -146,13 +147,16 @@ class toolAbstractFactory(ABC):
     def saveData(self):
         self.initData()
         self.toJson()
-        j = json.dumps(self.classData, indent=4, separators=(',', ': '))
-        #f = open(self.dataFile, 'w')
+        self.saveJsonFile(self.dataFile, self.classData)
 
-        with open(self.dataFile, 'w') as f:
-            print(j, file=f)
 
-        #f.close()
+    def saveJsonFile(self, filePath, data):
+        fileName = os.path.join(filePath)
+        jsonString = json.dumps(data, indent=4, separators=(',', ': '))
+        jsonFile = open(fileName, 'w')
+
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
     def loadData(self):
         self.initData()

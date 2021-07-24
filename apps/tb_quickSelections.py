@@ -323,11 +323,9 @@ class QuickSelectionTools(toolAbstractFactory):
             for qsets in self.get_sets():
                 out_data.append(qss_data_obj(qs_name=str(qsets), qs_objects=self.get_set_contents(qsets)))
                 setData[str(qsets)] = self.get_set_contents(qsets)
-            pickle.dump(out_data, open(save_file, "wb"))
-            j = json.dumps(setData, indent=4, separators=(',', ': '))
-            f = open(jsonFile, 'w')
-            print >> f, j
-            f.close()
+            #pickle.dump(out_data, open(save_file, "wb"))
+            self.saveJsonFile(jsonFile, setData)
+
 
     def load_qss_file(self, qss_name):
         """

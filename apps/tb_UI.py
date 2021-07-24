@@ -359,6 +359,31 @@ class PickListDialog(BaseDialog):
         self.assignSignal.emit(str(self.itemComboBox.currentText()), str(self.rigName))
         self.close()
 
+class PickObjectDialog(BaseDialog):
+    assignSignal = Signal(str)
+
+    def __init__(self, parent=None, title='title!!!?', text='what  what?'):
+        super(PickObjectDialog, self).__init__(parent=parent, title=title, text=text)
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.itemLabel = QLineEdit() # TODO add the inline button to this (from path tool)
+        self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(
+            'Pick path control from selection\nThis object will be used to generate your path.')
+        self.cle_action_pick.triggered.connect(self.pickObject)
+
+        self.layout.addWidget(self.itemLabel)
+
+        self.mainLayout.addWidget(self.buttonBox)
+
+    def pickObject(self):
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        self.itemLabel.setText(str(sel[0]))
 
 class PickwalkQueryWidget(QDialog):
     AssignNewRigSignal = Signal(str)
@@ -747,6 +772,8 @@ class intFieldWidget(QWidget):
     optionVar = None
     optionValue = 0
 
+    changedSignal = Signal(float)
+
     def __init__(self, optionVar=str(), defaultValue=int(), label=str(), minimum=0, maximum=1, step=0.1):
         QWidget.__init__(self)
         self.optionVar = optionVar
@@ -755,10 +782,10 @@ class intFieldWidget(QWidget):
 
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
-        self.layout.addStretch()
+
         label = QLabel(label)
 
-        self.spinBox = QSpinBox()
+        self.spinBox = QDoubleSpinBox()
         self.spinBox.setMaximum(maximum)
         self.spinBox.setMinimum(minimum)
         self.spinBox.setSingleStep(step)
@@ -766,9 +793,11 @@ class intFieldWidget(QWidget):
         self.layout.addWidget(label)
         self.layout.addWidget(self.spinBox)
         self.spinBox.valueChanged.connect(self.interactivechange)
+        self.layout.addStretch()
 
     def interactivechange(self, b):
         pm.optionVar[self.optionVar] = self.spinBox.value()
+        self.changedSignal.emit(self.spinBox.value())
 
 
 class radioGroupWidget(QWidget):

@@ -50,13 +50,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 walkDirections = ['up', 'down', 'left', 'right']
@@ -125,7 +125,7 @@ class Pickwalk(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Pickwalk'
     hotkeyClass = None
@@ -147,21 +147,21 @@ class Pickwalk(toolAbstractFactory):
                           }
 
     pickwalkAttributeNames = {'up': [walkDirectionNames['up'],
-                                    '_pickwalk_up',
-                                    'cgTkPickWalkup',
-                                    'zooWalkup'],
-                             'down': [walkDirectionNames['down'],
-                                      '_pickwalk_down',
-                                      'cgTkPickWalkdown',
-                                      'zooWalkdown'],
-                             'left': [walkDirectionNames['left'],
-                                      '_pickwalk_left',
-                                      'cgTkPickWalkleft',
-                                      'zooWalkleft'],
+                                     '_pickwalk_up',
+                                     'cgTkPickWalkup',
+                                     'zooWalkup'],
+                              'down': [walkDirectionNames['down'],
+                                       '_pickwalk_down',
+                                       'cgTkPickWalkdown',
+                                       'zooWalkdown'],
+                              'left': [walkDirectionNames['left'],
+                                       '_pickwalk_left',
+                                       'cgTkPickWalkleft',
+                                       'zooWalkleft'],
                               'right': [walkDirectionNames['right'],
-                                       '_pickwalk_right',
-                                       'cgTkPickWalkright',
-                                       'zooWalkright'],
+                                        '_pickwalk_right',
+                                        'cgTkPickWalkright',
+                                        'zooWalkright'],
                               }
     melCommands = {'up': 'pickWalkUp',
                    'down': 'pickWalkDown',
@@ -508,13 +508,13 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        print ('assignNewRigNewMap', rigName)
+        print('assignNewRigNewMap', rigName)
         win = pickwalkMainWindow()
         win.show()
         # TODO this is a bit ugly as it opens the save as windows window, nice to avoid that as you have to save
         # TODO the pickwalk map in the save folder anyway
         newMap = win.saveAsLibrary()
-        print ('new map', newMap)
+        print('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
         self.getAllPickwalkMaps()
@@ -539,9 +539,9 @@ class WalkDataLibrary(object):
                 values.remove(rigName)
         if rigName in self.ignoredRigs:
             self.ignoredRigs.remove(rigName)
-        #print (self.rigMapDict)
+        # print (self.rigMapDict)
         self.rigMapDict[mapName].append(rigName)
-        #print (self.rigMapDict)
+        # print (self.rigMapDict)
 
     def ignoreRig(self, rigName):
         for key, values in self.rigMapDict.items():
@@ -556,17 +556,18 @@ class WalkDataLibrary(object):
         """
         self.name = filePath.split('/')[-1].split('.')[0]
         self.toJson()
-        fileName = os.path.join(filePath)
-        j = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
-        #f = open(fileName, 'w')
 
-        with open(fileName, 'w') as f:
-            print(j, file=f)
+        fileName = os.path.join(filePath)
+        jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
+        jsonFile = open(fileName, 'w')
+
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
         self.createFileToRigMapping()
 
     def load(self, filepath):
-        print ('load', filepath)
+        print('load', filepath)
         jsonObjectInfo = json.load(open(filepath))
         self.rigMapDict = jsonObjectInfo['rigMapDict']
         self.ignoredRigs = jsonObjectInfo['ignoredRigs']
@@ -615,25 +616,28 @@ class WalkData(object):
         self.name = filePath.split('/')[-1].split('.')[0]
         self.toJson()
         fileName = os.path.join(filePath)
-        j = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
-        f = open(fileName, 'w')
-        print >> f, j
-        f.close()
+        jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
+        jsonFile = open(fileName, 'w')
+
+        jsonFile.write(jsonString)
+        jsonFile.close()
 
     def setLastUsedIndex(self, node):
-        #print ('setLastUsedIndex', node)
+        # print ('setLastUsedIndex', node)
         for key, value in self.destinations.items():
             if node in value.destination:
+                print('matching entry destination', node)
                 self.destinations[key]._lastIndex = value.destination.index(node)
             elif node in value.destinationAlt:
+                print('matching entry destinationAlt', node)
                 self.destinations[key]._lastIndex = value.destinationAlt.index(node)
 
     def walk(self, namespace=str(), node=str(), direction=str()):
-        # print 'walk', node, direction
         # do a check on walk for current object in any destination objects, set the appropriate index
         if node not in self.objectDict.keys():
             return None
         target = self.objectDict[node][direction]
+        self.setLastUsedIndex(node)
         if target in self.destinations.keys():
             # destination is a conditional destination
             # print ('destination is a conditional destination')
@@ -650,7 +654,6 @@ class WalkData(object):
                 target = self.destinations[target].destinationAlt[self.destinations[target]._lastIndex]
             else:
                 target = self.destinations[target].destination[self.destinations[target]._lastIndex]
-            self.setLastUsedIndex(target)
             return target
             # check for condition attr/object?
             # conditions met, pick alt/destination, use last used index
@@ -842,7 +845,8 @@ class ChainPickButton(QWidget):
     pressedSignal = Signal(bool, bool)
     direction = str()
 
-    def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False, width=32,
+    def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False,
+                 width=32,
                  noOption=False,
                  rotation=0,
                  *args, **kwargs):
@@ -853,7 +857,8 @@ class ChainPickButton(QWidget):
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.mainLayout)
-        self.button = standardPickButton(label=label, direction=direction, icon=icon, fixedWidth=fixedWidth, width=width,
+        self.button = standardPickButton(label=label, direction=direction, icon=icon, fixedWidth=fixedWidth,
+                                         width=width,
                                          rotation=rotation)
 
         self.loopCB = LoopCBWidget(loop=loop, label='loop')
@@ -1085,7 +1090,7 @@ class pickDirectionWidget(QFrame):
 
     def displayCurrentData(self, data):
         sel = pm.ls(selection=True, type='transform')
-        #print ('sel', sel)
+        # print ('sel', sel)
         if not sel:
             self.clear()
             return
@@ -1104,8 +1109,13 @@ class pickDirectionWidget(QFrame):
             self.clear(obj=False)
 
     def setWidgetText(self, widget, value):
-        if value.lower() == 'none':
+        print('setWidgetText', value)
+        if isinstance(value, tuple):
             value = str()
+        '''
+        if str(value).lower() == 'none':
+            value = str()
+        '''
         widget.setText(value)
 
     def clear(self, obj=True):
@@ -1291,7 +1301,7 @@ class pickContextDirectionWidget(QFrame):
             self.currentObjLabel.setText(lbl)
 
     def setActiveDestination(self, data):
-        #print ('setActiveDestination', data)
+        # print ('setActiveDestination', data)
         self.activeDestination = data
         self.currentDestLabel.setText(data)
 
@@ -2103,19 +2113,19 @@ class contextPickwalkWidget(QFrame):
         self.nameWidget.lineEdit.setText(item)
 
     def inputSignal_destinationsUpdated(self, items):
-        print ('inputSignal_destinationsPicked,', items)
+        print('inputSignal_destinationsPicked,', items)
 
     def inputSignal_altDestinationsUpdated(self, items):
-        print ('inputSignal_altDestinationsPicked,', items)
+        print('inputSignal_altDestinationsPicked,', items)
 
     def inputSignal_nameChanged(self, name):
-        print ('inputSignal_nameChanged,', name)
+        print('inputSignal_nameChanged,', name)
 
     def inputSignal_attributehanged(self, attribute):
-        print ('inputSignal_namgeChanged,', attribute)
+        print('inputSignal_namgeChanged,', attribute)
 
     def inputSignal_conditionhanged(self, value):
-        print ('inputSignal_conditionhanged,', value)
+        print('inputSignal_conditionhanged,', value)
 
 
 class mirrorPickwalkWidget(QFrame):
@@ -2185,10 +2195,10 @@ class mirrorPickwalkWidget(QFrame):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
 
     def fromChanged(self, lineEdit):
-        print ('fromChanged', lineEdit)
+        print('fromChanged', lineEdit)
 
     def toChanged(self, lineEdit):
-        print ('toChanged', lineEdit)
+        print('toChanged', lineEdit)
 
     @Slot()
     def sendChangedSignal(self):
@@ -2541,7 +2551,7 @@ class pickwalkMainWindow(QMainWindow):
 
         quit_msg = "You may have unsaved changes, are you sure want to close"
         reply = QMessageBox.question(self, 'Message',
-                                           quit_msg, QMessageBox.Yes, QMessageBox.No)
+                                     quit_msg, QMessageBox.Yes, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
             # Clean up the script job stuff prior to closing the dialog.
@@ -2551,11 +2561,8 @@ class pickwalkMainWindow(QMainWindow):
         else:
             event.ignore()
 
-
-
-
     def onSelectionChange(self):
-        print ('onSelectionChange')
+        print('onSelectionChange')
         if not self.lockState:
             self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData)
 
@@ -2623,7 +2630,7 @@ class pickwalkMainWindow(QMainWindow):
         self.pickwalkCreator.walkData = WalkData()
         self.pickwalkCreator.load(fname)
         self.refreshUI()
-        print ('loadLibrary', fname)
+        print('loadLibrary', fname)
         # self.setWindowTitle('tbPickwwalkSetup :: %s' % fname)
         self.setTitleLabel(fname)
 
@@ -2663,7 +2670,7 @@ class pickwalkMainWindow(QMainWindow):
                 return
         self.pickwalkCreator.walkData.save(save_filename[0])
         Pickwalk().loadWalkLibrary()
-        self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename)
+        self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename[0])
         return os.path.basename(save_filename[0])
 
     def overwriteQuery(self):
@@ -2735,7 +2742,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickUpFromMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            pm.warning('inputSignal_quickUpFromMulti')
+            # pm.warning('inputSignal_quickUpFromMulti')
             control = sel[-1].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[:-1]]
             for s in targets:
@@ -2748,7 +2755,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickDownToMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            pm.warning('inputSignal_quickDownToMulti')
+            # pm.warning('inputSignal_quickDownToMulti')
             control = sel[0].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[1:]]
             name = control + '_' + targets[0] + '_mult'
@@ -2756,7 +2763,7 @@ class pickwalkMainWindow(QMainWindow):
                                                 destination=targets,
                                                 destinationAlt=list(),
                                                 conditionAttribute=str(),
-                                                conditionValue= 0.5)
+                                                conditionValue=0.5)
             self.pickwalkCreator.setControlDestination(control,
                                                        direction='down',
                                                        destination=name)
@@ -2766,7 +2773,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickLeftRight(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            pm.warning('inputSignal_quickLeftRight')
+            # pm.warning('inputSignal_quickLeftRight')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='left',
                                                   loop=True,
@@ -2778,7 +2785,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickUpDown(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            pm.warning('inputSignal_quickUpDown')
+            # pm.warning('inputSignal_quickUpDown')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='down',
                                                   loop=False,
@@ -2789,7 +2796,7 @@ class pickwalkMainWindow(QMainWindow):
 
     @Slot()
     def inputSignal_setConditionalDestination(self, direction, control, destination):
-        print ('inputSignal_setConditionalDestination', direction, control, destination)
+        # print ('inputSignal_setConditionalDestination', direction, control, destination)
         self.pickwalkCreator.setControlDestination(control,
                                                    direction=direction,
                                                    destination=destination)
@@ -2840,7 +2847,7 @@ class pickwalkMainWindow(QMainWindow):
         self.endOnSelf = state
 
     def inputSignal_mirrorSelection(self, sideA, sideB):
-        print ('inputSignal_mirrorSelection', sideA, sideB)
+        # print ('inputSignal_mirrorSelection', sideA, sideB)
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return pm.warning('No selection')
@@ -2849,7 +2856,7 @@ class pickwalkMainWindow(QMainWindow):
         self.updateTreeView()
 
     def inputSignal_destinationAdded(self, input):
-        print ('inputSignal_destinationAdded', input)
+        # print('inputSignal_destinationAdded', input)
         self.pickwalkCreator.addDestination(name=input.get('name', 'defaultName'),
                                             destination=input.get('destination', list()),
                                             destinationAlt=input.get('destinationAlt', list()),
@@ -2863,13 +2870,13 @@ class pickwalkMainWindow(QMainWindow):
         self.refreshUI()
 
     def addPickwalk(self, direction):
-        print ('addPickwalk', self.lockState)
+        # print('addPickwalk', self.lockState)
         sel = cmds.ls(selection=True, type='transform')
         # print direction, sel
         if not sel:
             return pm.warning('No selection')
         if self.lockState:
-            print ('main object is locked', self.activeObject)
+            print('main object is locked', self.activeObject)
             if not self.activeObject:
                 return pm.warning('Unable to add single destination with no active object')
             # there is an active (locked object)
@@ -2894,7 +2901,7 @@ class pickwalkMainWindow(QMainWindow):
             return
 
         if len(sel) > 1:
-            pm.warning('Adding chain style')
+            # pm.warning('Adding chain style')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction=direction,
                                                   loop=self.loop,
@@ -2905,7 +2912,7 @@ class pickwalkMainWindow(QMainWindow):
 
         if not self.activeObject:
             return pm.warning('Unable to add single destination with no active object')
-        pm.warning('Adding single style')
+        # pm.warning('Adding single style')
         self.pickwalkCreator.setControlDestination(self.activeObject,
                                                    direction=direction,
                                                    destination=sel[0])
@@ -3066,8 +3073,8 @@ class PickwalkCreator(object):
         :param processed:
         :return:
         """
-        print ('mirrorWalkDestination', processed)
-        print (self.walkData.destinations[destinationKey].__dict__)
+        print('mirrorWalkDestination', processed)
+        print(self.walkData.destinations[destinationKey].__dict__)
         if destinationKey in processed:
             return processed
         mirrorDestination = None
@@ -3239,7 +3246,6 @@ class PickwalkCreator(object):
         except ValueError:  # includes simplejson.decoder.JSONDecodeError
             jsonData = '''{}'''
             jsonObjectInfo = json.loads(jsonData)
-
 
         if len(controlFilter):
             # strip namespace
