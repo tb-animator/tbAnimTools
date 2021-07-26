@@ -803,3 +803,10 @@ class functions(object):
                            point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
         curve = pm.PyNode(curve)
         return curve, curve.getShape()
+
+    def drawCross(self, scale=1.0):
+        curve = cmds.curve(degree=1,
+                           knot=crossKnotList,
+                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
+        curve = pm.PyNode(curve)
+        return curve, curve.getShape()

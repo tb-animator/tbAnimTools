@@ -343,6 +343,34 @@ class BakeTools(toolAbstractFactory):
         cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
         cmds.menuItem(divider=True)
 
+    def createAsset(self, name, imageName=None):
+        asset = cmds.container(name=name,
+                               includeHierarchyBelow=False,
+                               includeTransform=True,
+                               )
+        if imageName:
+            pm.setAttr(asset + '.iconName', imageName, type="string")
+        cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
+        return asset
+
+    def assetRmbCommand(self):
+        panel = cmds.getPanel(underPointer=True)
+        parentMMenu = panel + 'ObjectPop'
+        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
+        sel = pm.ls(sl=True)
+        asset = pm.container(query=True, findContainer=sel[0])
+
+        # check asset message attribute
+        print ("asset", asset, sel)
+
+        cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Bake selected temp controls to layer', command=pm.Callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
+        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
+        cmds.menuItem(divider=True)
+
     def get_available_attrs(self, node):
         '''
         returns 2 lists of attrs that are not available for constraining
@@ -371,6 +399,26 @@ class BakeTools(toolAbstractFactory):
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+        pm.delete(asset)
+
+    def deleteControlsCommand(self, asset, sel):
+        pm.delete(asset)
+
+    def bakeSelectedCommand(self, asset, sel):
+        print ('rebakeCommand', asset, sel)
+        targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
+        filteredTargets = [item for sublist in targets for item in sublist if item]
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+
+    def bakeAllCommand(self, asset, sel):
+        print ('bakeAllCommand', asset, sel)
+        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        print ('filteredTargets', filteredTargets)
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(asset)
