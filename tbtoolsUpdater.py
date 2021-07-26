@@ -57,8 +57,9 @@ class updater():
         jsonObjectInfo['version'] = version.strftime(self.dateFormat)
         j = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
         f = open(self.versionDataFile, 'w')
-        print(j, file=f)
+        f.write(j)
         f.close()
+
 
     def convertDateFromString(self, date_time):
         try:
