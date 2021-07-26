@@ -8,13 +8,9 @@ else:
 
 import json
 import datetime
-import shutil
-import os
-import pymel.core as pm
 import zipfile
 from distutils.dir_util import copy_tree
 
-import getStyleSheet as getqss
 from apps.tb_UI import *
 
 qtVersion = pm.about(qtVersion=True)
@@ -46,7 +42,7 @@ class updater():
         self.uiDateFormat = '%Y-%m-%d'
         self.timeFormat = '%H:%M'
         if not os.path.isfile(self.versionDataFile):
-            self.save((datetime.datetime.now() - datetime.timedelta(days=365)))
+            self.save((datetime.datetime.utcnow()))
         self.jsonProjectData = json.load(open(self.versionDataFile))
         self.currentVersion = self.convertDateFromString(self.jsonProjectData['version'])
 
@@ -71,7 +67,9 @@ class updater():
     def check_version(self):
         data = self.getGithubData()
         lastPush = datetime.datetime.strptime(data.get('pushed_at')[0:16], self.dateFormat)
+
         if lastPush > self.currentVersion:
+
             lastPushDay = lastPush.strftime(self.uiDateFormat)
             lastPushTime = lastPush.strftime(self.timeFormat)
 

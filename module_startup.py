@@ -31,6 +31,7 @@ import tbtoolsUpdater as upd
 
 class initialise(object):
     def check_for_updates(self):
+        print ('check_for_updates')
         updater = upd.updater()
         updater.check_version()
     '''
