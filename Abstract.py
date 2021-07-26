@@ -134,6 +134,10 @@ class toolAbstractFactory(ABC):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    @abc.abstractmethod
+    def drawMenuBar(self):
+        return None
+
     def initData(self):
         self.dataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
         if not os.path.isdir(self.dataPath):

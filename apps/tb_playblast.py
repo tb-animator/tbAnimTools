@@ -115,6 +115,9 @@ class PlayblastTool(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'showUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def make_playblast(self, ext="mov"):
         # TODO - mp4 support
         formats = {"mov": "qt", "avi": "avi"}

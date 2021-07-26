@@ -378,12 +378,14 @@ class PickObjectDialog(BaseDialog):
         self.layout.addWidget(self.itemLabel)
 
         self.mainLayout.addWidget(self.buttonBox)
+        self.show()
 
     def pickObject(self):
         sel = pm.ls(sl=True)
         if not sel:
             return
         self.itemLabel.setText(str(sel[0]))
+        self.assignSignal.emit(str(sel[0]))
 
 class PickwalkQueryWidget(QDialog):
     AssignNewRigSignal = Signal(str)
@@ -596,6 +598,117 @@ class TextInputWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
+class ObjectInputWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(str)
+    oldPos = None
+
+    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
+        super(ObjectInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setStyleSheet(getqss.getStyleSheet())
+
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFixedSize(300, 64)
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel(title)
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel(label)
+        self.lineEdit = QLineEdit()
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(
+            'Pick path control from selection\nThis object will replace your current path.')
+        self.lineEdit.setPlaceholderText(default)
+        self.cle_action_pick.triggered.connect(self.pickObject)
+
+        self.saveButton = QPushButton(buttonText)
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        # layout.addWidget(btnSetFolder)
+
+        mainLayout.addWidget(self.titleText)
+        mainLayout.addLayout(layout)
+        layout.addWidget(self.text)
+        layout.addWidget(self.lineEdit)
+        layout.addWidget(self.saveButton)
+
+        self.saveButton.clicked.connect(self.acceptedFunction)
+
+        self.setLayout(mainLayout)
+        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.show()
+        self.lineEdit.setFocus()
+        self.setStyleSheet(
+            "TextInputWidget { "
+            "border-radius: 8;"
+            "}"
+        )
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def pickObject(self):
+        print ('pickObject')
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        shape = sel[0].getShape()
+        if not shape:
+            return
+        if pm.nodeType(shape) == "nurbsCurve":
+            self.lineEdit.setText(str(sel[0]))
+
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.text())
+        self.close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.acceptedFunction()
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(ObjectInputWidget, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
 
 class promptWidget(QWidget):
     saveSignal = Signal(str)

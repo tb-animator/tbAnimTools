@@ -132,6 +132,9 @@ class QuickSelectionTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def initData(self):
         super(QuickSelectionTools, self).initData()
         self.quickSelectFolderDefault = os.path.join(self.dataPath, self.quickSelectFolder)

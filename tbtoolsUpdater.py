@@ -96,7 +96,7 @@ class updater():
 
     def download_project_files(self):
         print("downloading zip file to", self.base_dir)
-        filedata = rlopen(self.latestZip)
+        filedata = urlopen(self.latestZip)
         datatowrite = filedata.read()
         zipFile = os.path.join(self.base_dir, 'tbAnimToolsLatest.zip')
         with open(zipFile, 'wb') as f:
@@ -118,5 +118,3 @@ class updater():
                          fade=False)
         pm.optionVar(intValue=("inViewMessageEnable", message_state))
 
-    def CopyFolder(in_fold, out_fold):
-        copy_tree(in_fold, out_fold)

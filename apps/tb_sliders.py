@@ -119,6 +119,9 @@ class slideTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def pickInbetweenClass(self):
         # TODO - don't pick the slider class like this, pick it in init for UI
         selectedKeys = cmds.keyframe(query=True, selected=True)
@@ -1309,6 +1312,7 @@ class sliderWidget(QWidget):
         self.show()
         self.arrangeUI()
         # self.updateTweenClass()
+
 
     def startDrag(self, button):
         print ('starting new drag on button!!', button)

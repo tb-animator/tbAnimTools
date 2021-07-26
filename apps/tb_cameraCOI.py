@@ -210,6 +210,9 @@ class CameraPivot(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def reset_tumble(self, *args):
         pivot = [0, 0, 0]
         self.update_tumble_pivots(pivot)

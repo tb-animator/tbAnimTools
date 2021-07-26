@@ -117,6 +117,9 @@ class timeline(toolAbstractFactory):
         # cached range
         self.cached_range = self.recall_range()
 
+    def drawMenuBar(self):
+        return None
+
     def skip(self, mode=-1):
         amount = pm.optionVar.get('tb_skip', 5)
         pm.currentTime(int(amount * mode + pm.getCurrentTime()))

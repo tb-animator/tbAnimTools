@@ -33,6 +33,11 @@ else:
     #from pyside2uic import *
     from shiboken2 import wrapInstance
 
+
+def onMayaDroppedPythonFile(*args):
+    module_maker().install()
+    installer().install()
+
 class module_maker():
     def __init__(self):
         self.colours = {'red': "color:#F05A5A;",
@@ -263,6 +268,7 @@ class ResultWindow(QDialog):
     def openOptionWindow(self, *args):
         import tb_options as tbo
         tbo.showOptions()
+
 
 def install():
     module_maker().install()

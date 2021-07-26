@@ -123,6 +123,9 @@ class Playback(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def get_flip_frames(self):
         return pm.optionVar.get(self.flipFrame_opv, self.flipFrame_default)
 

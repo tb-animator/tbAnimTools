@@ -96,6 +96,9 @@ class isolator(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def toggle_isolate(self):
         '''
         import isolate as iso

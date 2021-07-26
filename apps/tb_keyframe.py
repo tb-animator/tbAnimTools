@@ -125,6 +125,9 @@ class KeyModifiers(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def filterChannels(self):
         self.funcs.filterChannels()
 

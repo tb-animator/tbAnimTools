@@ -170,6 +170,9 @@ class BakeTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     """
     Functions
     """
@@ -302,8 +305,6 @@ class BakeTools(toolAbstractFactory):
                 for cnt, loc in zip(sel, locs):
                     skipT = self.funcs.getAvailableTranslates(cnt)
                     skipR = self.funcs.getAvailableRotates(cnt)
-                    # print 'skipT', skipT
-                    # print 'skipR', skipR
                     constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
                                                                  False: [x.split('translate')[-1] for x in skipT]}[
                         orientOnly],
@@ -334,13 +335,11 @@ class BakeTools(toolAbstractFactory):
         asset = pm.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-        print ("asset", asset, sel)
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Bake selected temp controls to layer', command=pm.Callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
-        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
         cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
         cmds.menuItem(divider=True)
 
@@ -361,18 +360,17 @@ class BakeTools(toolAbstractFactory):
         return lockedTranslates, lockedRotates
 
     def bakeSelectedCommand(self, asset, sel):
-        print ('rebakeCommand', asset, sel)
-        targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
+        tempControls = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in tempControls]
         filteredTargets = [item for sublist in targets for item in sublist if item]
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
+        pm.delete(tempControls)
 
     def bakeAllCommand(self, asset, sel):
-        print ('bakeAllCommand', asset, sel)
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        print ('filteredTargets', filteredTargets)
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(asset)
@@ -483,15 +481,12 @@ class BakeTools(toolAbstractFactory):
         for layer in layers:
             colour = cmds.getAttr(layer + '.ghostColor') - 1
             col = cmds.colorIndex(colour, q=True)
-            # print layer, col
             pm.treeView('AnimLayerTabanimLayerEditor',
                         edit=True,
                         labelBackgroundColor=[layer,
                                               lerpFloat(col[0], 0.5, 0.5),
                                               lerpFloat(col[1], 0.5, 0.5),
                                               lerpFloat(col[2], 0.5, 0.5)])
-
-        # print 'colourAnimLayers'
 
     def counterLayerAnimation(self):
         """

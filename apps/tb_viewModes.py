@@ -210,6 +210,9 @@ class ViewModeTool(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def getCurrentFlags(self):
         panel = self.funcs.getModelPanel()
         flagDict = dict()

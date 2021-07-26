@@ -256,6 +256,9 @@ class Pickwalk(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def openLibrary(self):
         win = pickwalkRigAssignemtWindow()
         win.show()
@@ -3239,7 +3242,7 @@ class PickwalkCreator(object):
         :return:
         """
         # TODO - move this entirely to the WalkData class?
-        # print 'loading data', walkDataFile
+        print ('loading data', walkDataFile)
         filter = False
         try:
             jsonObjectInfo = json.load(open(walkDataFile))

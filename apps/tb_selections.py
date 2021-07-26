@@ -98,6 +98,9 @@ class SelectionTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     @staticmethod
     def select_all_non_referenced_curves():
         cmds.select([curve for curve in cmds.ls(type=["animCurveTL", "animCurveTU", "animCurveTA", "animCurveTT"]) if

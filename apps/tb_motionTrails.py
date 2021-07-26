@@ -97,6 +97,9 @@ class MotionTrails(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def createMotionPath(self):
         sel = cmds.ls(sl=True)
         if not sel:

@@ -100,8 +100,10 @@ class TrackingCamera(toolAbstractFactory):
         return super(TrackingCamera, self).optionUI()
 
     def showUI(self):
-
         return cmds.warning(self, 'optionUI', ' function not implemented')
+
+    def drawMenuBar(self):
+        return None
 
     def swapToTrackingCamera(self):
         self.camera_target = cmds.ls(sl=True)

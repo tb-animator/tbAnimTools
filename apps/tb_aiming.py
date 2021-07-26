@@ -159,6 +159,9 @@ class AimTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     def build_MM(self):
         cmds.menuItem(label='tbAimTools',
                       divider=0,

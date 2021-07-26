@@ -102,6 +102,9 @@ class SnapTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
+    def drawMenuBar(self):
+        return None
+
     @staticmethod
     def minus(vector1, vector2):
         # TODO use actual vectors
