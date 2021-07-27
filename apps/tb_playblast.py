@@ -115,7 +115,7 @@ class PlayblastTool(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'showUI', ' function not implemented')
 
-    def drawMenuBar(self):
+    def drawMenuBar(self, parentMenu):
         return None
 
     def make_playblast(self, ext="mov"):

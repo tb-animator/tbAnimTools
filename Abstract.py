@@ -135,7 +135,7 @@ class toolAbstractFactory(ABC):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     @abc.abstractmethod
-    def drawMenuBar(self):
+    def drawMenuBar(self, parentMenu):
         return None
 
     def initData(self):

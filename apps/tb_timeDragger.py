@@ -135,7 +135,7 @@ class timeDragger(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
-    def drawMenuBar(self):
+    def drawMenuBar(self, parentMenu):
         return None
 
     # in case you change the options mid session

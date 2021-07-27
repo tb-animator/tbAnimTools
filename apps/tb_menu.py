@@ -25,13 +25,14 @@
 import maya.mel as mel
 import pymel.core as pm
 import webbrowser
-
+from pluginLookup import ClassFinder
 
 class main_menu(object):
     def __init__(self):
         self.main_menu = "tbAnimTools"
 
     def build_menu(self):
+        tbtoolsCLS = ClassFinder()
         pm.setParent(pm.melGlobals['gMainWindow'])
         if pm.menu(self.main_menu, exists=True):
             pm.deleteUI(self.main_menu)
@@ -40,8 +41,10 @@ class main_menu(object):
         pm.menuItem(label="options", command=open_options, parent=self.main_menu)
         # pm.menuItem(label="download updates (experimental)",command=download_updates, parent=self.main_menu)
         editorMenu = pm.menuItem(label='editors', subMenu=True, parent=self.main_menu)
-        pm.menuItem(label='Pickwalk Creator', command='tbOpenPickwalkCreator', sourceType='mel', parent=editorMenu)
-        pm.menuItem(label='Pickwalk Library', command='tbOpenPickwalkLibrary', sourceType='mel', parent=editorMenu)
+        # find tools with UI, make list of tool keys?
+        for index, tool in enumerate(sorted(tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
+            if tbtoolsCLS.tools[tool] is not None:
+                tbtoolsCLS.tools[tool].drawMenuBar(editorMenu)
 
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="online help", command=open_anim_page, parent=self.main_menu)

@@ -117,7 +117,7 @@ class timeline(toolAbstractFactory):
         # cached range
         self.cached_range = self.recall_range()
 
-    def drawMenuBar(self):
+    def drawMenuBar(self, parentMenu):
         return None
 
     def skip(self, mode=-1):

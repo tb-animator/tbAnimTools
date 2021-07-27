@@ -119,7 +119,7 @@ class slideTools(toolAbstractFactory):
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
-    def drawMenuBar(self):
+    def drawMenuBar(self, parentMenu):
         return None
 
     def pickInbetweenClass(self):
