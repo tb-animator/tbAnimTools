@@ -67,8 +67,10 @@ class updater():
         self.dateFormat = '%Y-%m-%dT%H:%M'
         self.uiDateFormat = '%Y-%m-%d'
         self.timeFormat = '%H:%M'
+        self.data = self.getGithubData()
+        self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
         if not os.path.isfile(self.versionDataFile):
-            self.save((datetime.datetime.utcnow()))
+            self.save(self.lastPush)
         self.jsonProjectData = json.load(open(self.versionDataFile))
         self.currentVersion = self.convertDateFromString(self.jsonProjectData['version'])
 
@@ -91,13 +93,9 @@ class updater():
         return datetime_str
 
     def check_version(self):
-        data = self.getGithubData()
-        lastPush = datetime.datetime.strptime(data.get('pushed_at')[0:16], self.dateFormat)
-
-        if lastPush > self.currentVersion:
-
-            lastPushDay = lastPush.strftime(self.uiDateFormat)
-            lastPushTime = lastPush.strftime(self.timeFormat)
+        if self.lastPush > self.currentVersion:
+            lastPushDay = self.lastPush.strftime(self.uiDateFormat)
+            lastPushTime = self.lastPush.strftime(self.timeFormat)
 
             currentVersionDay = self.currentVersion.strftime(self.uiDateFormat)
             currentVersionTime = self.currentVersion.strftime(self.timeFormat)
@@ -108,7 +106,7 @@ class updater():
             if updateWin.exec_() != 1:
                 return
             self.download_project_files()
-            self.save(lastPush)
+            self.save(self.lastPush)
 
     def getGithubData(self):
         response = urlopen(self.datUrl)
