@@ -487,6 +487,7 @@ class BakeTools(toolAbstractFactory):
         newAnimLayer.ghostColor.set(suffix[mode][1])
         self.deselect_layers()
         newAnimLayer.selected.set(True)
+        newAnimLayer.preferred.set(True)
         newAnimLayer.scaleAccumulationMode.set(0)
         if not self.funcs.isTimelineHighlighted():
             return
