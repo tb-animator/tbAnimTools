@@ -1,3 +1,29 @@
+'''TB Animation Tools is a toolset for animators
+
+*******************************************************************************
+    License and Copyright
+    Copyright 2020-Tom Bailey
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    send issues/ requests to brimblashman@gmail.com
+    visit https://tbanimtools.blogspot.com/ for "more info"
+
+    usage
+
+
+*******************************************************************************
+'''
 import maya.mel as mel
 import maya.cmds as cmds
 import pymel.core as pm
@@ -33,6 +59,7 @@ else:
     #from pyside2uic import *
     from shiboken2 import wrapInstance
 
+from apps.tb_UI import *
 
 def onMayaDroppedPythonFile(*args):
     module_maker().install()
@@ -236,31 +263,28 @@ class installer():
         if self.appPath in sys.path:
             sys.path.remove(self.appPath)
 
-class ResultWindow(QDialog):
+class ResultWindow(BaseDialog):
     def __init__(self):
         super(ResultWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getStyleSheet())
-        layout = QVBoxLayout()
-
-        text = QLabel('tbAnimTools installation successful')
+        self.titleText.setText('tbAnimTools')
+        self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
+        self.infoText.setText('Installation Successful')
+        self.infoText.setAlignment(Qt.AlignCenter)
 
         openHotkeyWindowBtn = QPushButton("Open Hotkey Window")
         openHotkeyWindowBtn.clicked.connect(self.openHotkeyWindow)
         openOptionsWindowBtn = QPushButton("Open Options Window")
         openOptionsWindowBtn.clicked.connect(self.openOptionWindow)
-        btnBakePoseAdjustment = QPushButton("Close")
-        btnBakePoseAdjustment.clicked.connect(partial(self.close))
+        btnCloseWIndow = QPushButton("Close")
+        btnCloseWIndow.clicked.connect(partial(self.close))
 
-        # layout.addWidget(btnSetFolder)
-        layout.addWidget(text)
-        layout.addWidget(openHotkeyWindowBtn)
-        layout.addWidget(openOptionsWindowBtn)
+        self.layout.addWidget(openHotkeyWindowBtn)
+        self.layout.addWidget(openOptionsWindowBtn)
 
-        layout.addWidget(btnBakePoseAdjustment)
+        self.layout.addWidget(btnCloseWIndow)
+        self.setFixedSize(self.sizeHint())
 
-        self.setLayout(layout)
-
-        #self.win.show()
 
     def openHotkeyWindow(self, *args):
         mel.eval("hotkeyEditorWindow")
