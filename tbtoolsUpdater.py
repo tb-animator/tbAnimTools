@@ -93,6 +93,8 @@ class updater():
         return datetime_str
 
     def check_version(self):
+        print ('lastPush', self.lastPush)
+        print ('currentVersion', self.currentVersion)
         if self.lastPush > self.currentVersion:
             lastPushDay = self.lastPush.strftime(self.uiDateFormat)
             lastPushTime = self.lastPush.strftime(self.timeFormat)
