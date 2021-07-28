@@ -256,6 +256,8 @@ class QuickSelectionTools(toolAbstractFactory):
             self.save_qs(input, cmds.ls(sl=True))
 
     def save_qs(self, qs_name, selection):
+        qs_name = qs_name.split(':')[-1]
+        print ("save_qs", qs_name)
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
 
@@ -263,7 +265,10 @@ class QuickSelectionTools(toolAbstractFactory):
         existing_obj = self.existing_obj_in_list(selection)
         if existing_obj:
             cmds.select(existing_obj, replace=True)
-
+            newSetNamespace = pm.PyNode(existing_obj[0]).namespace()
+            if newSetNamespace:
+                qs_name = newSetNamespace + ':' + qs_name
+            print ("new namespace", newSetNamespace)
             if cmds.objExists(qs_name):
                 if cmds.nodeType(qs_name) == 'objectSet':
                     cmds.delete(qs_name)
@@ -277,6 +282,8 @@ class QuickSelectionTools(toolAbstractFactory):
         self.create_main_set()
 
     def save_qs_from_file(self, qs_name, selection):
+        print ("save_qs_from_file")
+        namespace_override = None
         def process_namespace():
             sel = pm.ls(selection=True)
             if sel:
@@ -332,24 +339,44 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def load_qss_file(self, qss_name):
         """
-        using pickle for some reason - TODO switch to json
         :param qss_name:
         :return:
         """
         file_name = os.path.join(self.quickSelectSavePath, qss_name)
-        loaded_data = pickle.load(open(file_name, "rb"))
-        for qs in loaded_data:
-            self.save_qs_from_file(qs.qs_name, qs.qs_objects)
+        rawJsonData = json.load(open(file_name))
+
+        for qs_name, qs_objects in rawJsonData.items():
+            self.save_qs_from_file(qs_name, qs_objects)
 
     def restore_qs_from_dir(self):
         qss_files = list()
         for qss_files in os.listdir(self.quickSelectSavePath):
-            if qss_files.endswith(".qss"):
+            if qss_files.endswith(".json"):
                 self.qss_files.append(qss_files)
 
     def openQssLoadWindow(self):
         win = LoadQuickSelectWindow()
         win.show()
+
+    def restore_legacy_files_from_dir(self):
+        all_qss_files = list()
+        for qss_files in os.listdir(self.quickSelectSavePath):
+            if qss_files.endswith(".qss"):
+                all_qss_files.append(qss_files)
+        return all_qss_files
+
+    def convertPickleToJson(self):
+        all_qss_files = self.restore_legacy_files_from_dir()
+        print all_qss_files
+        for qss in all_qss_files:
+            print qss
+            loaded_data = pickle.load(open(os.path.join(self.quickSelectFolderDefault, qss), "rb"))
+            jsonData = '''{}'''
+            setData = json.loads(jsonData)
+            for qs in loaded_data:
+                print qs.qs_name, qs.qs_objects
+                setData[str(qs.qs_name)] = qs.qs_objects
+            self.saveJsonFile(os.path.join(self.quickSelectFolderDefault, (qss.split('.')[0] + '.json')), setData)
 
 
 class qss_data_obj(object):
@@ -525,6 +552,11 @@ class LoadQuickSelectWindow(QMainWindow):
 
         menu = self.menuBar()
         edit_menu = menu.addMenu('&File')
+
+        add_action = QAction('Convert old format to json', self)
+        edit_menu.addAction(add_action)
+        add_action.triggered.connect(self.convertlegacy)
+
         self.qssScrollArea = QScrollArea()
         self.qssScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.qssScrollArea.setWidgetResizable(True)
@@ -543,6 +575,9 @@ class LoadQuickSelectWindow(QMainWindow):
 
     def namespaceModeChanged(self, i):
         self.QuickSelectionTools.namespace_mode = i
+
+    def convertlegacy(self):
+        self.QuickSelectionTools.convertPickleToJson()
 
     def loadQss(self, name):
         self.QuickSelectionTools.namespace_mode = self.namespaceWidget.namespaceModeOption.currentIndex()
