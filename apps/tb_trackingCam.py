@@ -119,6 +119,8 @@ class TrackingCamera(toolAbstractFactory):
 
     def swapToCamera(self, camera='persp'):
         perspCameras = [cam for cam in cmds.ls(cameras=True) if 'persp' in cam]
+        self.createTrackingCamera()
+
         if perspCameras:
             cam, camShape = self.getCurrentCamera()
             self.getCameraTransform(self.trackerCam)
@@ -142,7 +144,10 @@ class TrackingCamera(toolAbstractFactory):
                 self.trackerGrp = cmds.group(empty=True, world=True, name="tracker_grp")
             else:
                 self.trackerGrp = "tracker_grp"
-            if cmds.listRelatives(self.trackerCam, parent=True)[0] != self.trackerGrp:
+            trackingCameraParent = cmds.listRelatives(self.trackerCam, parent=True)
+            if not trackingCameraParent:
+                cmds.parent(self.trackerCam, self.trackerGrp)
+            elif trackingCameraParent[0] != self.trackerGrp:
                 cmds.parent(self.trackerCam, self.trackerGrp)
 
             constraints = cmds.listRelatives(self.trackerGrp, children=True, type='constraint')
