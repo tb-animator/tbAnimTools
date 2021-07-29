@@ -136,6 +136,8 @@ class Manipulators(toolAbstractFactory):
     defaultData = {'translate_modes': ['Object', 'Local', 'World'],
                    'rotate_modes': ['Local', 'World', 'Gimbal']}
 
+    modeData = defaultData
+
     def __new__(cls):
         if Manipulators.__instance is None:
             Manipulators.__instance = object.__new__(cls)
@@ -156,6 +158,12 @@ class Manipulators(toolAbstractFactory):
 
     def optionUI(self):
         super(Manipulators, self).optionUI()
+        infoText = QLabel()
+
+        infoText.setText(
+            '<P>Set the move/rotate modes that you like to use here.\n'
+            'The <b>cycle_rotation</b>, <b>cycle_translation</b> and <b>cycle_current_manipulator</b> commands will use these values.<P>\n')
+        infoText.setWordWrap(True)
         self.translateWidget = optionVarListWidget(label='Translate modes',
                                                    optionVar='translate_modes',
                                                    optionList=self.translate_modes,
@@ -164,6 +172,7 @@ class Manipulators(toolAbstractFactory):
                                                 optionVar='rotate_modes',
                                                 optionList=self.rotate_modes,
                                                 classData=self.modeData)
+        self.layout.addWidget(infoText)
         self.layout.addWidget(self.translateWidget)
         self.layout.addWidget(self.rotateWidget)
 
