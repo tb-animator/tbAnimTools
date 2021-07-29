@@ -67,6 +67,33 @@ class optionVar_utils(object):
         index = full_list.index(name)
         return index, name
 
+    @staticmethod
+    # list from option var
+    def cycleCurrentOption(optionVar_list="", full_list=[], current=str(), default=""):
+        # get list from optionvar array
+
+        print ('optionlist', optionVar_list, current)
+        print ('full_list', full_list)
+        print ('rotateMode', pm.manipRotateContext('Rotate', query=True, mode=True))
+        if not optionVar_list:
+            optionVar_list = [default]
+        # find the current index in the full list
+        if current < len(full_list):
+            current_name = full_list[current]
+        else:
+            current_name = full_list[0]
+
+        # check if the current name is in our option var list
+        if current_name in optionVar_list:
+            index = optionVar_list.index(current_name) + 1
+            # loop around the list
+            name = optionVar_list[index % len(optionVar_list)]
+
+        else:
+            print ("current value not in option var list, set to first")
+            name = optionVar_list[0]
+        index = full_list.index(name)
+        return index, name
 
 def set_default_values():
     if pm.optionVar.get('tb_firstRun', True):

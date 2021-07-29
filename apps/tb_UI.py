@@ -846,6 +846,50 @@ class optionVarBoolWidget(optionVarWidget):
     def sendChangedSignal(self):
         self.changedSignal.emit(self.checkBox.isChecked())
 
+class optionVarListWidget(optionVarWidget):
+    """
+    changing to use classdata instead of maya option vars
+    """
+    changedSignal = Signal(str, list)
+
+    def __init__(self, label=str(), optionVar=str(), optionList=list(), classData=dict()):
+        print ('optionVarListWidget')
+        QWidget.__init__(self)
+        self.optionVar = optionVar
+        self.layout = QHBoxLayout()
+        self.layout.setAlignment(Qt.AlignTop)
+        self.setLayout(self.layout)
+        self.labelText = QLabel(label)
+        self.labelText.setAlignment(Qt.AlignTop)
+        self.cbLayout = QGridLayout()
+        optionVarValues = classData.get(optionVar, list())
+        self.checkBoxes = list()
+        numColumns = 2
+        currentRow = 0
+        count = 0
+        for op in optionList:
+            checkBox = QCheckBox()
+            self.checkBoxes.append(checkBox)
+            checkBox.setText(op)
+            checkBox.setObjectName(optionVar + '_' + op)
+            checkBox.setChecked(op in optionVarValues)
+            self.cbLayout.addWidget(checkBox, count/2, count%numColumns)
+            count += 1
+        for cb in self.checkBoxes:
+
+            print cb.stateChanged.connect(self.checkBoxEdited)
+
+        self.layout.addWidget(self.labelText)
+        self.layout.addLayout(self.cbLayout)
+
+    def checkBoxEdited(self, *args):
+        activeValues = list()
+        for cb in self.checkBoxes:
+            if cb.isChecked():
+                activeValues.append(cb.text())
+        print activeValues
+
+        self.changedSignal.emit(self.optionVar, activeValues)
 
 class filePathWidget(QWidget):
     layout = None

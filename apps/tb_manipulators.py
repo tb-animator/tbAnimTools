@@ -32,13 +32,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -55,26 +55,30 @@ class hotkeys(hotKeyAbstractFactory):
 
         # manipulator tools
         cat = self.helpStrings.category.get('manipulators')
+
+        self.addCommand(self.tb_hkey(name='cycle_current_manipulator',
+                                     annotation='cycle the rotation mode',
+                                     category=cat,
+                                     command=['Manipulators.cycleCurrentManipulator()'],
+                                     help=self.helpStrings.cycleCurrentMode))
         self.addCommand(self.tb_hkey(name='cycle_rotation',
                                      annotation='cycle the rotation mode',
                                      category=cat,
-                                     command=[
-                                         'Manipulators.cycleRotation()']))
+                                     command=['Manipulators.cycleRotation()'],
+                                     help=self.helpStrings.cycleRotateMode))
         self.addCommand(self.tb_hkey(name='cycle_translation',
                                      annotation='cycle the translation mode',
                                      category=cat,
-                                     command=[
-                                         'Manipulators.cycleTranslation()']))
+                                     command=['Manipulators.cycleTranslation()'],
+                                     help=self.helpStrings.cycleTranslateMode))
         self.addCommand(self.tb_hkey(name='cycle_object_selection_mask',
                                      annotation='cycle the selection mask',
                                      category=cat,
-                                     command=[
-                                         'Manipulators.cycle_selection_mask()']))
+                                     command=['Manipulators.cycle_selection_mask()']))
         self.addCommand(self.tb_hkey(name='cycle_set_keyframe_type',
                                      annotation='cycle the setkey type',
                                      category=cat,
-                                     command=[
-                                         'Manipulators.cycle_key_type()']))
+                                     command=['Manipulators.cycle_key_type()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -85,7 +89,7 @@ class Manipulators(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Manipulators'
     hotkeyClass = hotkeys()
@@ -94,13 +98,27 @@ class Manipulators(toolAbstractFactory):
     # translation
     translate_modes = ['Object', 'Local', 'World', 'Normal',
                        'RotationAxis', 'LiveAxis', 'CustomAxis']
-    translate_optionVar = "tb_cycle_translation"
+    translate_modesDict = {'Object': 0,
+                           'Local': 1,
+                           'World': 2,
+                           'Normal': 3,
+                           'RotationAxis': 4,
+                           'LiveAxis': 5,
+                           'CustomAxis': 6}
+
+    translate_optionVar = "translate_modes"
     translate_messageVar = "tb_cycle_translation_msg_pos"
     translate_messageLabel = "message position"
 
     # rotation
-    rotate_modes = ['Local', 'World', 'Gimbal']
-    rotate_optionVar = "tb_cycle_rotation"
+    rotate_modes = ['Local', 'World', 'Gimbal', 'Custom axis', 'Component space']
+    rotate_modesDict = {'Local': 0,
+                        'World': 1,
+                        'Gimbal': 2,
+                        'Custom axis': 3,
+                        'Component space': 9}
+
+    rotate_optionVar = "rotate_modes"
     rotate_messageVar = "tb_cycle_rotation_msg_pos"
     rotate_messageLabel = "message position"
 
@@ -115,11 +133,16 @@ class Manipulators(toolAbstractFactory):
     key_messageVar = "tb_cycle_keytype_msg_pos"
     key_messageLabel = "message position"
 
+    defaultData = {'translate_modes': ['Object', 'Local', 'World'],
+                   'rotate_modes': ['Local', 'World', 'Gimbal']}
+
     def __new__(cls):
         if Manipulators.__instance is None:
             Manipulators.__instance = object.__new__(cls)
+            Manipulators.__instance.initData()
 
         Manipulators.__instance.val = cls.toolName
+        Manipulators.__instance.loadData()
         return Manipulators.__instance
 
     def __init__(self, **kwargs):
@@ -132,7 +155,21 @@ class Manipulators(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(Manipulators, self).optionUI()
+        super(Manipulators, self).optionUI()
+        self.translateWidget = optionVarListWidget(label='Translate modes',
+                                                   optionVar='translate_modes',
+                                                   optionList=self.translate_modes,
+                                                   classData=self.modeData)
+        self.rotateWidget = optionVarListWidget(label='Rotate modes',
+                                                optionVar='rotate_modes',
+                                                optionList=self.rotate_modes,
+                                                classData=self.modeData)
+        self.layout.addWidget(self.translateWidget)
+        self.layout.addWidget(self.rotateWidget)
+
+        self.translateWidget.changedSignal.connect(self.updateOptions)
+        self.rotateWidget.changedSignal.connect(self.updateOptions)
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -140,9 +177,40 @@ class Manipulators(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
+    def loadData(self):
+        super(Manipulators, self).loadData()
+        self.modeData = self.rawJsonData.get('modeData', self.defaultData)
+
+    def toJson(self):
+        jsonData = '''{}'''
+        self.classData = json.loads(jsonData)
+        self.classData['modeData'] = self.modeData
+
+    def updateOptions(self, key, values):
+        self.modeData[key] = values
+        self.saveData()
+
     def set_optionVars(self):
         if not pm.optionVar(exists=self.translate_optionVar):
             pass
+
+    def cycleCurrentManipulator(self):
+        currentCtx = pm.currentCtx()
+        ctxDict = {'RotateSuperContext': self.cycleRotation,
+                   'moveSuperContext': self.cycleTranslation,
+                   'selectSuperContext': self.cycle_selection_mask}
+        ctxDict.get(currentCtx, 'selectSuperContext')()
+
+    def cycleIndex(self, current, keyDict=dict(), user_modes=list(), default=str()):
+        currentMode = list(keyDict.keys())[list(keyDict.values()).index(current)]
+        if currentMode not in user_modes:
+            index = 0
+        else:
+            index = user_modes.index(currentMode) + 1
+        if index > len(user_modes):
+            index = 0
+        indexName = list(keyDict.keys())[list(keyDict.values()).index(index)]
+        return indexName, index
 
     def cycleRotation(self):
         '''
@@ -151,16 +219,15 @@ class Manipulators(toolAbstractFactory):
         # get the name of the move type
         cmds.RotateTool()
         rotateMode = cmds.manipRotateContext('Rotate', query=True, mode=True)
-        new_mode, new_name = tb_optionVars.optionVar_utils.cycleOption(option_name=self.rotate_optionVar,
-                                                                       full_list=self.rotate_modes,
-                                                                       current=rotateMode,
-                                                                       default='Local'
-                                                                       )
+        modeName, modeIndex = self.cycleIndex(current=rotateMode,
+                                              keyDict=self.rotate_modesDict,
+                                              user_modes=self.modeData[self.rotate_optionVar],
+                                              default='Local')
 
-        pm.manipRotateContext('Rotate', edit=True, mode=new_mode)
+        pm.manipRotateContext('Rotate', edit=True, mode=modeIndex)
         if pm.optionVar.get(self.rotate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='rotate',
-                                   message=' : %s' % new_name,
+                                   message=' : %s' % modeName,
                                    position=pm.optionVar.get(self.rotate_messageVar, 'topLeft')
                                    )
 
@@ -176,18 +243,17 @@ class Manipulators(toolAbstractFactory):
         6 - Custom Axis Orientation
         """
         cmds.MoveTool()
-        move_mode = cmds.manipMoveContext('Move', query=True, mode=True)
-        # get the name of the move type
-        new_mode, new_name = tb_optionVars.optionVar_utils.cycleOption(option_name=self.translate_optionVar,
-                                                                       full_list=self.translate_modes,
-                                                                       current=move_mode,
-                                                                       default='World'
-                                                                       )
+        moveMode = cmds.manipMoveContext('Move', query=True, mode=True)
 
-        pm.manipMoveContext('Move', edit=True, mode=new_mode)
+        modeName, modeIndex = self.cycleIndex(current=moveMode,
+                                              keyDict=self.translate_modesDict,
+                                              user_modes=self.modeData[self.translate_optionVar],
+                                              default='World')
+
+        pm.manipMoveContext('Move', edit=True, mode=modeIndex)
         if pm.optionVar.get(self.translate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='translate',
-                                   message=' : %s' % new_name,
+                                   message=' : %s' % modeName,
                                    position=pm.optionVar.get(self.translate_messageVar, 'topLeft')
                                    )
 

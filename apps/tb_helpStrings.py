@@ -24,6 +24,10 @@ counterAnimLayer = ['creates an additive layer which will counter',
                     'layer that fully counter animates the selected layer.']
 bakeToLocator = ['bake current selection to world space locators']
 
+cycleTranslateMode = ['Cycle the translate manipulator mode', 'between user defined modes']
+cycleRotateMode = ['Cycle the rotate manipulator mode ', 'between user defined modes']
+cycleCurrentMode = ['Cycle the current manipulator mode', ' between user defined modes']
+
 OpenPickwalkCreator = ['Open the pickwalk creation UI']
 OpenPickwalkLibrary = ['Open the pickwalk map assignment UI']
 createMotionTrail = ['Creates a motion trail set to the current timeline',
