@@ -215,9 +215,7 @@ class Manipulators(toolAbstractFactory):
         if currentMode not in user_modes:
             index = 0
         else:
-            index = user_modes.index(currentMode) + 1
-        if index > len(user_modes):
-            index = 0
+            index = (user_modes.index(currentMode) + 1) % (len(user_modes))
         indexName = list(keyDict.keys())[list(keyDict.values()).index(index)]
         return indexName, index
 
@@ -253,7 +251,6 @@ class Manipulators(toolAbstractFactory):
         """
         cmds.MoveTool()
         moveMode = cmds.manipMoveContext('Move', query=True, mode=True)
-
         modeName, modeIndex = self.cycleIndex(current=moveMode,
                                               keyDict=self.translate_modesDict,
                                               user_modes=self.modeData[self.translate_optionVar],
