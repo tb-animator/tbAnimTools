@@ -32,6 +32,32 @@ import math
 from Abstract import *
 from tb_UI import *
 
+import maya.api.OpenMaya as OpenMaya
+import maya.OpenMaya as om
+
+xAx = om.MVector.xAxis
+yAx = om.MVector.yAxis
+zAx = om.MVector.zAxis
+rad_to_deg = 57.2958
+axisMapping = {
+    0: xAx,
+    1: yAx,
+    2: zAx
+}
+kRotateOrderMapping = {
+    'xyz': om.MEulerRotation.kXYZ,
+    'yzx': om.MEulerRotation.kYZX,
+    'zxy': om.MEulerRotation.kZXY,
+    'xzy': om.MEulerRotation.kXZY,
+    'yxz': om.MEulerRotation.kYXZ,
+    'zyx': om.MEulerRotation.kZYX,
+    '0': om.MEulerRotation.kXYZ,
+    '1': om.MEulerRotation.kYZX,
+    '2': om.MEulerRotation.kZXY,
+    '3': om.MEulerRotation.kXZY,
+    '4': om.MEulerRotation.kYXZ,
+    '5': om.MEulerRotation.kZYX
+}
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -50,12 +76,8 @@ import maya.api.OpenMaya as OpenMaya
 
 import maya.OpenMaya as om
 
-import math
-import sys
-import pymel.core as pm
-import pymel.core.datatypes as dt
-
 assetCommandName = 'aimToolAssetMenu'
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -70,6 +92,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='aimToolsMMReleased',
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.closeMM()']))
+
+        self.addCommand(self.tb_hkey(name='aimAtTempControl',
+                                     annotation='Creates a new control at your selection, position it then deselect to bake it out',
+                                     category=self.category, command=['AimTools.createLocatorAtControl()']))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.assetRmbCommand()']))
@@ -533,6 +559,196 @@ class AimTools(toolAbstractFactory):
         self.classData = json.loads(jsonData)
         self.classData['aimData'] = self.aimData
         self.classData['defaultAimData'] = self.defaultAimData
+
+    """
+    Hacky stuff for aim at locator
+    """
+
+    def createLocatorAtControl(self):
+        sel = pm.ls(selection=True)
+
+        if not sel:
+            return
+
+        control = sel[0]
+        aimLocator = self.funcs.tempControl(name=sel[0], suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
+                                            drawType='orb')
+
+        pm.delete(pm.orientConstraint(control, aimLocator))
+        pm.delete(pm.pointConstraint(control, aimLocator))
+
+        #cmds.setToolTo(cmds.currentCtx())
+        cmds.MoveTool()
+        #cmds.ctxEditMode()
+        scriptJob = cmds.scriptJob(runOnce=True,
+                                   killWithScene=True,
+                                   event=("SelectionChanged", pm.Callback(self.bakeTempAim, control, aimLocator)))
+
+
+    def bakeTempAim(self, control, aimLocator):
+        print 'bakeTempAim', control, aimLocator
+        pm.parentConstraint(control, aimLocator, maintainOffset=True)
+        keyTimes = self.funcs.get_object_key_times(str(control))
+
+        min_key = min(keyTimes)
+        max_key = max(keyTimes)
+
+        pm.bakeResults(aimLocator,
+                       attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
+                       bakeOnOverrideLayer=True,
+                       simulation=False,
+                       minimizeRotation=False,
+                       time=(min_key, max_key))
+
+        self.constrainAimToTarget(str(control), str(aimLocator))
+
+    def constrainTargetToControl(self, control, target):
+        keyTimes = self.funcs.get_object_key_times(control)
+
+        min_key = min(keyTimes)
+        max_key = max(keyTimes)
+
+        constraint = pm.parentConstraint(control, target, maintainOffset=True)
+        pm.bakeResults(target,
+                       attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
+                       simulation=False,
+                       minimizeRotation=False,
+                       time=(min_key, max_key))
+        pm.delete(constraint)
+
+    # make another version, don't use the follicle, just dupe the control rotation and get the vertex location
+
+    # select vertex then control
+    # or
+    # select target control then control
+    # bake out vertex/target to object
+    # aim closest axis towards target
+
+    # createLinkedLocator()
+
+    def getLocalVector(self, node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
+        animNode = self.getDagNode(node)
+        matrix = animNode.inclusiveMatrix()
+        vec = ((vec * matrix).normal() * mult) + offset
+        return dt.Vector(vec.x, vec.y, vec.z)
+
+    def getWorldSpaceVectorOffset(self, control, target, vec=om.MVector.yAxis):
+        controlNode = self.getDagNode(control)
+        controlMatrix = controlNode.inclusiveMatrix()
+        targetNode = self.getDagNode(target)
+        targetMatrix = targetNode.inclusiveMatrix()
+
+        # multMatrix =  * targetMatrix
+        vec = ((vec * controlMatrix) * targetMatrix.inverse()).normal()
+        print 'hey look', dt.Vector(vec.x, vec.y, vec.z)
+        return dt.Vector(vec.x, vec.y, vec.z)
+
+    def getDagNode(self, node):
+        selList = om.MSelectionList()
+        selList.add(node)
+        nodeDagPath = om.MDagPath()
+        selList.getDagPath(0, nodeDagPath)
+        return nodeDagPath
+
+    def constrainAimToTarget(self, control, target):
+        print('constrainAimToTarget', control, target)
+        locatorPos = dt.Vector(pm.xform(target, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        controlPos = dt.Vector(pm.xform(control, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        aimVec = (locatorPos - controlPos).normal()
+
+        xVec = self.getLocalVector(str(target), vec=om.MVector.xAxis)
+        yVec = self.getLocalVector(str(target), vec=om.MVector.yAxis)
+        zVec = self.getLocalVector(str(target), vec=om.MVector.zAxis)
+
+        print 'xVec', xVec
+        print 'yVec', yVec
+        print 'zVec', zVec
+
+        xDot = aimVec * xVec.normal()
+        yDot = aimVec * yVec.normal()
+        zDot = aimVec * zVec.normal()
+
+        xDot = aimVec * om.MVector.xAxis
+        yDot = aimVec * om.MVector.yAxis
+        zDot = aimVec * om.MVector.zAxis
+
+        print 'xDot', xDot
+        print 'yDot', yDot
+        print 'zDot', zDot
+        dotList = [xDot, yDot, zDot]
+        axisList = [abs(xDot), abs(yDot), abs(zDot)]
+        axisVecList = [xVec, yVec, zVec]
+        localAxisVecList = [dt.Vector(1, 0, 0), dt.Vector(0, 1, 0), dt.Vector(0, 0, 1)]
+        aimAxisIndex = axisList.index(max(axisList))
+        upXxisIndex = axisList.index(min(axisList))
+        axisNames = ['X', 'Y', 'Z']
+        # aimVector = round(dotList[axisIndex]) * axisVecList[axisIndex]
+
+        aimVector = self.getVectorToTarget(target, control)
+        upVector = aimVec ^ (aimVec ^ localAxisVecList[upXxisIndex])
+        upVector = localAxisVecList[upXxisIndex]
+        print 'aim axis', axisNames[aimAxisIndex], aimVector
+        print 'up axis', axisNames[upXxisIndex], upVector
+        worldUpVector = self.getWorldSpaceVectorOffset(control, target, vec=axisMapping[upXxisIndex])
+        aimConstraint = pm.aimConstraint(target, control,
+                                         # aimVector=round(dotList[axisIndex]) * axisVecList[axisIndex],
+                                         aimVector=aimVector,
+                                         worldUpObject=target,
+                                         worldUpVector=worldUpVector,
+                                         upVector=upVector,
+                                         worldUpType='objectRotation',
+                                         maintainOffset=False)
+
+    def getMatrix(self, node):
+        '''
+        Gets the world matrix of an object based on name.
+        '''
+        # Selection list object and MObject for our matrix
+        selection = om2.MSelectionList()
+        matrixObject = om2.MObject()
+
+        # Adding object
+        selection.add(node)
+
+        # New api is nice since it will just return an MObject instead of taking two arguments.
+        MObjectA = selection.getDependNode(0)
+
+        # Dependency node so we can get the worldMatrix attribute
+        fnThisNode = om2.MFnDependencyNode(MObjectA)
+
+        # Get it's world matrix plug
+        worldMatrixAttr = fnThisNode.attribute("worldMatrix")
+
+        # Getting mPlug by plugging in our MObject and attribute
+        matrixPlug = om2.MPlug(MObjectA, worldMatrixAttr)
+        matrixPlug = matrixPlug.elementByLogicalIndex(0)
+
+        # Get matrix plug as MObject so we can get it's data.
+        matrixObject = matrixPlug.asMObject()
+
+        # Finally get the data
+        worldMatrixData = om2.MFnMatrixData(matrixObject)
+        worldMatrix = worldMatrixData.matrix()
+
+        return worldMatrix
+
+    def getVectorToTarget(self, control, target):
+        controlNode = self.getDagNode(control)
+        targetNode = self.getDagNode(target)
+
+        controlMatrix = controlNode.inclusiveMatrix()
+        controlMatrix = self.getMatrix(control)
+        targetMatrix = targetNode.inclusiveMatrix()
+        targetMatrix = self.getMatrix(target)
+
+        offset = controlMatrix * targetMatrix.inverse()
+        mTransformMtx = om2.MTransformationMatrix(offset)
+        trans = mTransformMtx.translation(om2.MSpace.kWorld)
+        return trans
 
 
 def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
