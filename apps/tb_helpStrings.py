@@ -1,5 +1,6 @@
 tbAnimTools = 'tbAnimTools'
 category = {'snap': '%s_Snaps' % tbAnimTools,
+            'spaceSwitch': '%s_SpaceSwitch' % tbAnimTools,
             'layers': '%s_AnimLayers' % tbAnimTools,
             'view': '%s_Viewport' % tbAnimTools,
             'timeline': '%s_TimeSlider' % tbAnimTools,

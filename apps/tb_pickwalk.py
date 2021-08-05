@@ -43,7 +43,7 @@ ToolTip_DestinationCtrlClickSet = 'ctrl + click to load destination info'
 ToolTip_QuickLeftRight = 'Quick add looping left/right pickwalk'
 ToolTip_DownUp = 'Quick add down/up pickwalk, last control ends on self'
 ToolTip_DownMulti = 'Quick add down from one object to many (e.g. Hand to Finger controls)\n First selection is the control, others are the destination'
-ToolTip_UpMulti = 'Quick add up from many to one (e.g. Finger controls to hand)\n Last control is the destination'
+ToolTip_UpMulti = 'Quick add up from many to one (e.g. Finger controls to hand)\n First control is the destination'
 ToolTip_AddRigToMap = 'Select a map from the pickwalk map list to assign a rig file to it'
 
 qtVersion = pm.about(qtVersion=True)
@@ -115,6 +115,40 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['Pickwalk.walkRightAdd()']))
 
+        self.addCommand(self.tb_hkey(name='tbPickwalkUpCreate',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('up', condition=False)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkDownCreate',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('down', condition=False)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkLeftCreate',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('left', condition=False)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkRightCreate',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('right', condition=False)"]))
+
+        self.addCommand(self.tb_hkey(name='tbPickwalkUpCreateCondition',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('up', condition=True)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkDownCreateCondition',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('down', condition=True)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkLeftCreateCondition',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('left', condition=True)"]))
+        self.addCommand(self.tb_hkey(name='tbPickwalkRightCreateCondition',
+                                     annotation='Create a new pickwalk, raise the ui if needed',
+                                     category=self.category,
+                                     command=["Pickwalk.walkCreate('right', condition=True)"]))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -179,6 +213,17 @@ class Pickwalk(toolAbstractFactory):
                         'left': 'tbPickwalkLeftAdd',
                         'right': 'tbPickwalkRightAdd',
                         }
+
+    walkCreateHotkeyMap = {'up': 'tbPickwalkUpCreate',
+                        'down': 'tbPickwalkDownCreate',
+                        'left': 'tbPickwalkLeftCreate',
+                        'right': 'tbPickwalkRighCreate',
+                        }
+    walkCreateConditionHotkeyMap = {'up': 'tbPickwalkUpCreateCondition',
+                        'down': 'tbPickwalkDownCreateCondition',
+                        'left': 'tbPickwalkLeftCreateCondition',
+                        'right': 'tbPickwalkRightCreateCondition',
+                        }
     WASDwalkHotkeyMap = {'w': 'tbPickwalkUp',
                          's': 'tbPickwalkDown',
                          'a': 'tbPickwalkLeft',
@@ -240,6 +285,22 @@ class Pickwalk(toolAbstractFactory):
         self.layout.addLayout(layout)
 
         layout = QHBoxLayout()
+        ctrlArrowLabel = QLabel('Ctrl arrow keys for pickwalk creation')
+        assignArrowHotkeys = QPushButton('Assign ctrl + arrow keys')
+        assignArrowHotkeys.clicked.connect(self.assignCtrlArrowHotkeys)
+        layout.addWidget(assignArrowHotkeys)
+        layout.addWidget(ctrlArrowLabel)
+        self.layout.addLayout(layout)
+
+        layout = QHBoxLayout()
+        ctrlShiftrrowLabel = QLabel('Ctrl shift arrow keys for conditional pickwalk creation')
+        assignArrowHotkeys = QPushButton('Assign ctrl + shift + arrow keys')
+        assignArrowHotkeys.clicked.connect(self.assignCtrlShiftArrowHotkeys)
+        layout.addWidget(assignArrowHotkeys)
+        layout.addWidget(ctrlShiftrrowLabel)
+        self.layout.addLayout(layout)
+
+        layout = QHBoxLayout()
         revertArrowLabel = QLabel('Revert Arrow keys to default')
         revertArrowHotkeys = QPushButton('Revert')
         revertArrowHotkeys.clicked.connect(self.revertArrowHotkeys)
@@ -277,6 +338,18 @@ class Pickwalk(toolAbstractFactory):
                         name=command + 'NameCommand')
 
     def assignShiftArrowHotkeys(self):
+        for direction, command in self.walkAddHotkeyMap.items():
+            cmds.hotkey(keyShortcut=direction,
+                        shiftModifier=True,
+                        name=command + 'NameCommand')
+
+    def assignCtrlArrowHotkeys(self):
+        for direction, command in self.walkAddHotkeyMap.items():
+            cmds.hotkey(keyShortcut=direction,
+                        shiftModifier=True,
+                        name=command + 'NameCommand')
+
+    def assignCtrlShiftArrowHotkeys(self):
         for direction, command in self.walkAddHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
@@ -365,24 +438,68 @@ class Pickwalk(toolAbstractFactory):
             if conns:
                 return conns[0]
 
+    def walkCreate(self, direction=str(), condition=False):
+        sel = cmds.ls(sl=True, type='transform')
+        returnedControls = list()
+        if not sel:
+            return
+        if direction not in self.walkDirectionNames.keys():
+            return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
+
+        pickwalkWindow = pickwalkMainWindow()
+        pickwalkWindow.loadLibraryForCurrent()
+        creator = pickwalkWindow.pickwalkCreator
+        if not condition:
+            if len(sel) == 1:
+                sel.append(sel[0])
+            if len(sel) == 2:
+                # 2 objects - create single direction pickwalk
+                creator.setControlDestination(sel[0],
+                                              direction=direction,
+                                              destination=sel[1])
+                if direction == 'left' or direction == 'right':
+                    # if left or right, create the reverse
+                    creator.setControlDestination(sel[1],
+                                                  direction=creator.directionsDict[direction],
+                                                  destination=sel[0])
+            elif len(sel) > 2:
+                # add all objects in a chain
+                creator.addPickwalkChain(
+                    controls=sel,
+                    direction=direction,
+                    loop=direction == 'left' or direction == 'right',
+                    reciprocate=True,
+                    endOnSelf=direction == 'down')
+        else:
+            if len(sel) == 1 or len(sel) == 2:
+                print ('conditional stuff, UI coming soon')
+            else:
+                if direction == 'down':
+                    print(sel[0], 'down to', sel[1:])
+                    pickwalkWindow.inputSignal_quickDownToMulti()
+                elif direction == 'up':
+                    print (sel[1:], 'up to', sel[0])
+                    pickwalkWindow.inputSignal_quickUpFromMulti()
+
+        pickwalkWindow.saveLibrary()
+        pickwalkWindow.loadLibraryForCurrent()
+        self.loadWalkLibrary()
+        self.getAllPickwalkMaps()
+        self.initialiseWalkData()
+        return
+
     def pickwalk(self, direction=str, add=False):
         sel = pm.ls(sl=True, type='transform')
         returnedControls = list()
         if not sel:
             self.walkStandard(direction)
             return
+
         walkObject = sel[-1]
         if direction not in self.walkDirectionNames.keys():
             return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
-        refName = None
-        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
-        if refState:
-            # if it is referenced, check against pickwalk library entries
-            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
-        else:
-            # might just be working in the rig file itself
-            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        refName = self.getRefName(walkObject)
         if refName:
             # print 'query against pickwalk library'
             returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
@@ -424,6 +541,17 @@ class Pickwalk(toolAbstractFactory):
             cmds.select([str(s) for s in sel] + returnedControls, replace=True)
             return
         cmds.select(returnedControls, replace=True)
+
+    def getRefName(self, walkObject):
+        refName = None
+        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
+        if refState:
+            # if it is referenced, check against pickwalk library entries
+            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
+        else:
+            # might just be working in the rig file itself
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        return refName
 
     def dataDrivenWalk(self, direction, refName, walkObject):
         returnedControls = list()
@@ -488,6 +616,18 @@ class Pickwalk(toolAbstractFactory):
 
     def walkRightAdd(self):
         self.pickwalk(direction='right', add=True)
+
+    def walkUpCreate(self):
+        self.walkCreate(direction='up')
+
+    def walkDownCreate(self):
+        self.walkCreate(direction='down')
+
+    def walkLeftCreate(self):
+        self.walkCreate(direction='left')
+
+    def walkRightCreate(self):
+        self.walkCreate(direction='right')
 
     def assignNewRigExistingMap(self, rigName):
         # print 'load a dialog to assign one of the existing maps'
@@ -571,7 +711,7 @@ class WalkDataLibrary(object):
         self.createFileToRigMapping()
 
     def load(self, filepath):
-        print('load', filepath)
+        # print('load', filepath)
         jsonObjectInfo = json.load(open(filepath))
         self.rigMapDict = jsonObjectInfo['rigMapDict']
         self.ignoredRigs = jsonObjectInfo['ignoredRigs']
@@ -1113,7 +1253,7 @@ class pickDirectionWidget(QFrame):
             self.clear(obj=False)
 
     def setWidgetText(self, widget, value):
-        print('setWidgetText', value)
+        # print('setWidgetText', value)
         if isinstance(value, tuple):
             value = str()
         '''
@@ -1941,12 +2081,29 @@ class DestinationListWidget(QFrame):
         # print 'new value', item.text()
 
 
+class tempPickWidget(QWidget):
+
+    def __init__(self, *args, **kwargs):
+        QWidget.__init__(self, *args, **kwargs)
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+        self.lineEdit = QLineEdit()
+        self.layout.addWidget(self.lineEdit)
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"),
+                                                       QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip('Placeholder')
+        self.cle_action_pick.triggered.connect(self.chooseControl)
+
+    def chooseControl(self):
+        print('chooseControl')
+
+
 class DestinationWidget(QWidget):
     updatedSignal = Signal(list)
 
     def __init__(self, label='BLANK'):
         super(DestinationWidget, self).__init__()
-        self.mainListItem = list()
+        self.mainListItem = str()
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.label = QLabel(label)
@@ -2027,7 +2184,7 @@ class DestinationWidget(QWidget):
         resultItems = self.currentItems()
 
         self.listwidget.clear()
-        resultItems.extend(self.mainListItem)
+        resultItems.append(self.mainListItem)
 
         self.listwidget.addItems(resultItems)
         self.sendUpdateSignal()
@@ -2052,6 +2209,100 @@ class contextPickwalkWidget(QFrame):
         QFrame.__init__(self, *args, **kwargs)
         self.setMaximumWidth(420)
         self.setMaximumHeight(320)
+        # self.setTitle("Context pickwalks")
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.setStyleSheet("QFrame {"
+                           "border-width: 2;"
+                           "border-radius: 4;"
+                           "border-style: solid;"
+                           "border-color: #222222}"
+                           )
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
+        self.title = QLabel('Context pickwalk Creation')
+        self.title.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.nameWidget = labelledLineEdit(text='Name', hasButton=True, buttonLabel='From Sel', obj=True)
+        self.conditionAttrWidget = labelledLineEdit(text='Attribute', hasButton=True,
+                                                    buttonLabel='From CB')
+        self.conditionWidget = labelledDoubleSpinBox('Condition')
+        self.destinationsWidget = DestinationWidget(label='Destinations')
+        self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
+        self.altDestinationsWidget = DestinationWidget(label='Alt Destinations')
+        self.altDestinationsWidget.updatedSignal.connect(self.inputSignal_altDestinationsUpdated)
+
+        self.mainLayout.addWidget(self.title)
+
+        self.mainLayout.addWidget(self.nameWidget)
+        self.mainLayout.addWidget(self.conditionAttrWidget)
+        self.mainLayout.addWidget(self.conditionWidget)
+
+        self.splitLayout = QHBoxLayout()
+        self.mainLayout.addLayout(self.splitLayout)
+        self.splitLayout.addWidget(self.destinationsWidget)
+        self.splitLayout.addWidget(self.altDestinationsWidget)
+
+        self.newButton = QPushButton('Add/Update Conditional Destination')
+        self.newButton.clicked.connect(self.outputSignal_newDestinationCreated)
+        self.mainLayout.addWidget(self.newButton)
+        # self.nameWidget.editedSignal.connect(self.inputSignal_nameChanged)
+        self.conditionAttrWidget.editedSignal.connect(self.inputSignal_attributehanged)
+        self.conditionWidget.editedSignal.connect(self.inputSignal_conditionhanged)
+
+    def outputSignal_newDestinationCreated(self):
+        # print 'outputSignal_newDestinationCreated'
+        outData = dict()
+        outData['destination'] = self.destinationsWidget.currentItems()
+        outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
+        outData['conditionAttribute'] = self.conditionAttrWidget.lineEdit.text()
+        outData['conditionValue'] = self.conditionWidget.spinBox.value()
+        outData['name'] = self.nameWidget.lineEdit.text()
+        self.destinationAdded.emit(outData)
+
+    def populate(self, item, destinationData):
+        # print destinationData
+        self.destinationsWidget.refreshUI(destinationData.destination)
+        self.altDestinationsWidget.refreshUI(destinationData.destinationAlt)
+        self.conditionAttrWidget.lineEdit.setText(destinationData.conditionAttribute)
+        self.conditionWidget.spinBox.setValue(destinationData.conditionValue)
+        self.nameWidget.lineEdit.setText(item)
+
+    def inputSignal_destinationsUpdated(self, items):
+        print('inputSignal_destinationsPicked,', items)
+
+    def inputSignal_altDestinationsUpdated(self, items):
+        print('inputSignal_altDestinationsPicked,', items)
+
+    def inputSignal_nameChanged(self, name):
+        print('inputSignal_nameChanged,', name)
+
+    def inputSignal_attributehanged(self, attribute):
+        print('inputSignal_namgeChanged,', attribute)
+
+    def inputSignal_conditionhanged(self, value):
+        print('inputSignal_conditionhanged,', value)
+
+
+class PickwalkPopup(BaseDialog):
+    destinationAdded = Signal(dict)
+    changed = Signal(str)
+
+    def __init__(self, direction=str(), *args, **kwargs):
+        super(PickwalkPopup, self).__init__()
+        self.pickwalkCLS = Pickwalk()
+        self.walkDataLibrary = self.pickwalkCLS.loadWalkLibrary()
+        self.initialSelection = cmds.ls(sl=True)
+        refName = self.pickwalkCLS.getRefName(self.initialSelection[0])
+        mapName = None
+        if refName in self.walkDataLibrary._fileToMapDict.keys():
+            mapName = self.walkDataLibrary._fileToMapDict[refName]
+        print('mapName', mapName)
         # self.setTitle("Context pickwalks")
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -2394,6 +2645,7 @@ class pickwalkMainWindow(QMainWindow):
         if not os.path.isdir(self.defaultDir):
             os.mkdir(self.defaultDir)
 
+        self.pickwalkCreator = PickwalkCreator()
         self.pickwalkCreator = PickwalkCreator()
         self.resize(948, self.height())
         # Main Widgets
@@ -2747,8 +2999,8 @@ class pickwalkMainWindow(QMainWindow):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
             # pm.warning('inputSignal_quickUpFromMulti')
-            control = sel[-1].split(':')[-1]
-            targets = [s.split(':')[-1] for s in sel[:-1]]
+            control = sel[0].split(':')[-1]
+            targets = [s.split(':')[-1] for s in sel[1:]]
             for s in targets:
                 self.pickwalkCreator.setControlDestination(s,
                                                            direction='up',
@@ -3243,7 +3495,7 @@ class PickwalkCreator(object):
         :return:
         """
         # TODO - move this entirely to the WalkData class?
-        print ('loading data', walkDataFile)
+        # print('loading data', walkDataFile)
         filter = False
         try:
             jsonObjectInfo = json.load(open(walkDataFile))
