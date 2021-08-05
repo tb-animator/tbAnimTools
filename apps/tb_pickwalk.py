@@ -346,17 +346,19 @@ class Pickwalk(toolAbstractFactory):
     def assignCtrlArrowHotkeys(self):
         for direction, command in self.walkAddHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
-                        shiftModifier=True,
+                        shiftModifier=False,
+                        ctrltModifier=True,
                         name=command + 'NameCommand')
 
     def assignCtrlShiftArrowHotkeys(self):
-        for direction, command in self.walkAddHotkeyMap.items():
+        for direction, command in self.walkCreateHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
+                        ctrltModifier=True,
                         name=command + 'NameCommand')
 
     def assignWASDHotkeys(self):
-        for direction, command in self.WASDwalkHotkeyMap.items():
+        for direction, command in self.walkCreateConditionHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
                         altModifier=True,
@@ -1026,10 +1028,10 @@ class lockButton(QPushButton):
         QPushButton.__init__(self, *args, **kwargs)
         self.lockedIcon = QIcon(QPixmap(':/{}'.format(icon)))
         self.unlockedIcon = QIcon(QPixmap(':/{}'.format(icon2)))
-        self.setText('')
-        self.setFixedWidth(32)
-        self.setCheckable(True)
-        self.setIconType()
+        self.setText('Pick')
+        self.setFixedWidth(64)
+        #self.setCheckable(True)
+        #self.setIconType()
         self.clicked.connect(self.toggle)
 
     def setIconType(self):
@@ -1053,7 +1055,7 @@ class pickObjectWidget(QWidget):
 
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
-        self.lockBtn = lockButton(icon=lockedIcon, icon2=unlockedIcon)
+        self.pickBtn = lockButton(icon=lockedIcon, icon2=unlockedIcon)
 
         self.ObjLabel = QLabel('Object ::')
         self.ObjLabel.setFixedWidth(btnWidth)
@@ -1062,18 +1064,19 @@ class pickObjectWidget(QWidget):
         self.infoLayout.addWidget(self.ObjLabel)
         self.infoLayout.addWidget(self.currentObjLabel)
         # self.mainLayout.addWidget(self.centre)
-        self.mainLayout.addWidget(self.lockBtn)
+        self.mainLayout.addWidget(self.pickBtn)
         # self.mainLayout.addWidget(self.modeBtn)
 
-        self.lockBtn.pressedSignal.connect(self.lockButtonPress)
+        self.pickBtn.pressedSignal.connect(self.pickButtonPress)
 
     @Slot()
-    def lockButtonPress(self, data):
-        self.lockChangedSignal.emit(data)
+    def pickButtonPress(self, data):
+        self.setActiveObjectSignal.emit(data)
 
     @Slot()
     def sendModeChangedSignal(self):
-        self.modeChangedSignal.emit(self.modeBtn.isChecked())
+        #self.modeChangedSignal.emit(self.modeBtn.isChecked())
+        self.modeChangedSignal.emit(True)
         self.changeState()
 
 
@@ -2792,7 +2795,7 @@ class pickwalkMainWindow(QMainWindow):
         self.contextWidget.destinationAdded.connect(self.inputSignal_destinationAdded)
         self.mirrorWidget.mirrorPressed.connect(self.inputSignal_mirrorSelection)
 
-        self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
+        #self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
 
         self.setSimpleMode()
 
@@ -2811,7 +2814,7 @@ class pickwalkMainWindow(QMainWindow):
 
         if reply == QMessageBox.Yes:
             # Clean up the script job stuff prior to closing the dialog.
-            cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
+            #cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
             super(pickwalkMainWindow, self).closeEvent(event)
             event.accept()
         else:
@@ -3392,6 +3395,7 @@ class PickwalkCreator(object):
                               destination=str()):
         # add control entry in case it is not already there
         self.addControl(control)
+        destination = destination.split(':')[-1]
         if destination in self.walkData.destinations.keys():
             self.walkData.objectDict[control][direction] = destination
         else:
