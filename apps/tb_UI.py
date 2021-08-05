@@ -31,13 +31,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 import getStyleSheet as getqss
 import os
@@ -359,6 +359,7 @@ class PickListDialog(BaseDialog):
         self.assignSignal.emit(str(self.itemComboBox.currentText()), str(self.rigName))
         self.close()
 
+
 class PickObjectDialog(BaseDialog):
     assignSignal = Signal(str)
 
@@ -369,7 +370,7 @@ class PickObjectDialog(BaseDialog):
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
-        self.itemLabel = QLineEdit() # TODO add the inline button to this (from path tool)
+        self.itemLabel = QLineEdit()  # TODO add the inline button to this (from path tool)
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(
             'Pick path control from selection\nThis object will be used to generate your path.')
@@ -386,6 +387,7 @@ class PickObjectDialog(BaseDialog):
             return
         self.itemLabel.setText(str(sel[0]))
         self.assignSignal.emit(str(sel[0]))
+
 
 class PickwalkQueryWidget(QDialog):
     AssignNewRigSignal = Signal(str)
@@ -598,6 +600,7 @@ class TextInputWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
+
 class ObjectInputWidget(QWidget):
     """
     Simple prompt with text input
@@ -676,7 +679,6 @@ class ObjectInputWidget(QWidget):
         qp.end()
 
     def pickObject(self):
-        print ('pickObject')
         sel = pm.ls(sl=True)
         if not sel:
             return
@@ -709,6 +711,7 @@ class ObjectInputWidget(QWidget):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
 
 class promptWidget(QWidget):
     saveSignal = Signal(str)
@@ -778,7 +781,6 @@ class promptWidget(QWidget):
         self.close()
 
     def keyPressEvent(self, event):
-        print("That's a press!")
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
@@ -846,6 +848,7 @@ class optionVarBoolWidget(optionVarWidget):
     def sendChangedSignal(self):
         self.changedSignal.emit(self.checkBox.isChecked())
 
+
 class optionVarListWidget(optionVarWidget):
     """
     changing to use classdata instead of maya option vars
@@ -853,7 +856,6 @@ class optionVarListWidget(optionVarWidget):
     changedSignal = Signal(str, list)
 
     def __init__(self, label=str(), optionVar=str(), optionList=list(), classData=dict()):
-        print ('optionVarListWidget')
         QWidget.__init__(self)
         self.optionVar = optionVar
         self.layout = QHBoxLayout()
@@ -873,11 +875,8 @@ class optionVarListWidget(optionVarWidget):
             checkBox.setText(op)
             checkBox.setObjectName(optionVar + '_' + op)
             checkBox.setChecked(op in optionVarValues)
-            self.cbLayout.addWidget(checkBox, count/2, count%numColumns)
+            self.cbLayout.addWidget(checkBox, count / 2, count % numColumns)
             count += 1
-        for cb in self.checkBoxes:
-
-            print cb.stateChanged.connect(self.checkBoxEdited)
 
         self.layout.addWidget(self.labelText)
         self.layout.addLayout(self.cbLayout)
@@ -887,9 +886,9 @@ class optionVarListWidget(optionVarWidget):
         for cb in self.checkBoxes:
             if cb.isChecked():
                 activeValues.append(cb.text())
-        print activeValues
 
         self.changedSignal.emit(self.optionVar, activeValues)
+
 
 class filePathWidget(QWidget):
     layout = None
@@ -1057,31 +1056,6 @@ class LicenseWin(BaseDialog):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
-    '''
-    def mouseMoveEvent(self, event):
-        print 'mousePressEvent', self.leftClick
-        if self.leftClick:
-            self.move(event.globalPos().x(), event.globalPos().y() )
-        super(LicenseWin, self).mouseMoveEvent(event)
-        return False
-
-    def mousePressEvent(self, event):
-        print 'mousePressEvent', event.button()
-        if event.button() == Qt.LeftButton:
-            global X, Y
-            X = event.pos().x()
-            Y = event.pos().y()
-            self.leftClick = True
-        super(LicenseWin, self).mousePressEvent(event)
-        return False
-
-    def mouseReleaseEvent(self, event):
-        self.leftClick = False
-        print 'mouseReleaseEvent' , self.leftClick
-        super(LicenseWin, self).mouseReleaseEvent(event)
-        return False
-    '''
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
@@ -1093,6 +1067,7 @@ class LicenseWin(BaseDialog):
     def cancel(self):
         self.close()
 
+
 class PickObjectDialog(BaseDialog):
     assignSignal = Signal(str)
 
@@ -1103,7 +1078,7 @@ class PickObjectDialog(BaseDialog):
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
-        self.itemLabel = QLineEdit() # TODO add the inline button to this (from path tool)
+        self.itemLabel = QLineEdit()  # TODO add the inline button to this (from path tool)
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(
             'Pick path control from selection\nThis object will be used to generate your path.')
@@ -1118,6 +1093,7 @@ class PickObjectDialog(BaseDialog):
         if not sel:
             return
         self.itemLabel.setText(str(sel[0]))
+
 
 class TextInputDialog(BaseDialog):
     leftClick = False
@@ -1179,6 +1155,7 @@ class TextInputDialog(BaseDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(TextInputDialog, self).keyPressEvent(event)
+
 
 class TextOptionInputDialog(BaseDialog):
     leftClick = False
@@ -1259,6 +1236,7 @@ class TextOptionInputDialog(BaseDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(TextOptionInputDialog, self).keyPressEvent(event)
+
 
 class UpdateWin(BaseDialog):
     ActivateSignal = Signal(str, str)
