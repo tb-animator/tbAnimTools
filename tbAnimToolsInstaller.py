@@ -100,7 +100,7 @@ QPushButton:hover
 class tbAnimToolsInstaller(QDialog):
     oldPos = None
 
-    def __init__(self, parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget)):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(tbAnimToolsInstaller, self).__init__(parent=parent)
         self.datUrl = 'https://api.github.com/repos/tb-animator/tbAnimTools'
         self.master_url = 'https://raw.githubusercontent.com/tb-animator/tbtools/master/'
@@ -221,7 +221,7 @@ class tbAnimToolsInstaller(QDialog):
                                           fileMode=3)
         if not self.installPath:
             return
-        self.installPath = self.installPath[0]
+        self.installPath = os.path.join(self.installPath[0], self.subFolder)
         self.pathLineEdit.setText(self.installPath)
 
     def installTools(self):
