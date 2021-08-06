@@ -257,7 +257,6 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def save_qs(self, qs_name, selection):
         qs_name = qs_name.split(':')[-1]
-        print ("save_qs", qs_name)
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
 
@@ -268,7 +267,6 @@ class QuickSelectionTools(toolAbstractFactory):
             newSetNamespace = pm.PyNode(existing_obj[0]).namespace()
             if newSetNamespace:
                 qs_name = newSetNamespace + ':' + qs_name
-            print ("new namespace", newSetNamespace)
             if cmds.objExists(qs_name):
                 if cmds.nodeType(qs_name) == 'objectSet':
                     cmds.delete(qs_name)
@@ -282,7 +280,6 @@ class QuickSelectionTools(toolAbstractFactory):
         self.create_main_set()
 
     def save_qs_from_file(self, qs_name, selection):
-        print ("save_qs_from_file")
         namespace_override = None
         def process_namespace():
             sel = pm.ls(selection=True)
@@ -367,14 +364,11 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def convertPickleToJson(self):
         all_qss_files = self.restore_legacy_files_from_dir()
-        print all_qss_files
         for qss in all_qss_files:
-            print qss
             loaded_data = pickle.load(open(os.path.join(self.quickSelectFolderDefault, qss), "rb"))
             jsonData = '''{}'''
             setData = json.loads(jsonData)
             for qs in loaded_data:
-                print qs.qs_name, qs.qs_objects
                 setData[str(qs.qs_name)] = qs.qs_objects
             self.saveJsonFile(os.path.join(self.quickSelectFolderDefault, (qss.split('.')[0] + '.json')), setData)
 
