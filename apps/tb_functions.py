@@ -184,6 +184,9 @@ class functions(object):
         control.rename(name + '_' + suffix)
 
         control.rotateOrder.set(3)
+        control.scaleX.set(keyable=False, channelBox=True)
+        control.scaleY.set(keyable=False, channelBox=True)
+        control.scaleZ.set(keyable=False, channelBox=True)
         shape.overrideEnabled.set(True)
         shape.overrideRGBColors.set(True)
         shape.overrideColorRGB.set(color)
@@ -579,17 +582,17 @@ class functions(object):
 
     @staticmethod
     def getAvailableTranslates(node):
-        return [attr.lower() for attr in ['translateX', 'translateY', 'translateZ'] if
+        return [attr.lower()[-1] for attr in ['translateX', 'translateY', 'translateZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
 
     @staticmethod
     def getAvailableRotates(node):
-        return [attr.lower() for attr in ['rotateX', 'rotateY', 'rotateZ'] if
+        return [attr.lower()[-1] for attr in ['rotateX', 'rotateY', 'rotateZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
 
     @staticmethod
     def getAvailableScales(node):
-        return [attr.lower() for attr in ['scaleX', 'scaleY', 'scaleZ'] if
+        return [attr.lower()[-1] for attr in ['scaleX', 'scaleY', 'scaleZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
 
     # this disables the default maya inview messages (which are pointless after a while)

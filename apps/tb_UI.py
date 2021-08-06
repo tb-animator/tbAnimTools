@@ -509,7 +509,7 @@ class TextInputWidget(QWidget):
     oldPos = None
 
     def __init__(self, title=str, label=str, buttonText=str, default=str):
-        super(TextInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(TextInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(1.0)
@@ -609,7 +609,7 @@ class ObjectInputWidget(QWidget):
     oldPos = None
 
     def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
-        super(ObjectInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(ObjectInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(1.0)
@@ -717,7 +717,7 @@ class promptWidget(QWidget):
     saveSignal = Signal(str)
 
     def __init__(self, title=str(), text=str(), defaultInput=str(), buttonText=str()):
-        super(promptWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(promptWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(0.9)
@@ -785,6 +785,21 @@ class promptWidget(QWidget):
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
 
+class subHeader(QLabel):
+    def __init__(self, label=str()):
+        super(subHeader, self).__init__()
+        self.setText(label)
+        self.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+class infoLabel(QLabel):
+    def __init__(self, textLines=list()):
+        super(infoLabel, self).__init__()
+        text = str()
+        for line in textLines:
+            text += line + '\n'
+        self.setText(text)
+        self.setWordWrap(True)
 
 class optionWidget(QWidget):
     def __init__(self, label=str):

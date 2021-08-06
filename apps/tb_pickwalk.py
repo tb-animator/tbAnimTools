@@ -867,7 +867,7 @@ pickwalkWorkspaceControlName = 'pwWorkspaceControl'
 
 
 def getMainWindow():
-    return wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget)
+    return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
 
 
 def workspaceScript(*args):
@@ -2482,7 +2482,7 @@ class mirrorPickwalkWidget(QFrame):
 class pickwalkRigAssignemtWindow(QMainWindow):
 
     def __init__(self):
-        super(pickwalkRigAssignemtWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(pickwalkRigAssignemtWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.setMinimumWidth(400)
         self.setMinimumHeight(400)

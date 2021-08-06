@@ -93,7 +93,7 @@ class mainOptionWindow(QMainWindow):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
         self.win.setWindowTitle('tbAnimTools - option')
-        self.win.setMinimumWidth(650)
+        self.win.setMinimumWidth(700)
         #self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
 
@@ -128,6 +128,7 @@ class mainOptionWindow(QMainWindow):
                 self.toolOptionStack.addWidget(self.tbtoolsCLS.tools[tool].optionUI())
 
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
+        self.resize(self.sizeHint())
 
     def displayToolOptions(self, index):
         self.toolOptionStack.setCurrentIndex(index)

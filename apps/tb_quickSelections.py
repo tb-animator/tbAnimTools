@@ -394,7 +394,7 @@ class saveQssWidget(QWidget):
     saveSignal = Signal(str)
 
     def __init__(self):
-        super(TextInputWidget, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(TextInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
         self.setStyleSheet(
             "QDialog { "
@@ -528,7 +528,7 @@ class NamespaceWidget(QWidget):
 
 class LoadQuickSelectWindow(QMainWindow):
     def __init__(self):
-        super(LoadQuickSelectWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(LoadQuickSelectWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.setMinimumWidth(300)
         # self.setMinimumHeight(400)

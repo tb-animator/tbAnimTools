@@ -47,6 +47,7 @@ else:
 
 assetCommandName = 'tempControlCommand'
 
+
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
@@ -199,7 +200,7 @@ class BakeTools(toolAbstractFactory):
             preContainers = set(pm.ls(type='container'))
             preBakeLayers = pm.ls(type='animLayer')
             keyRange = self.funcs.get_all_layer_key_times(sel)
-            if not keyRange:
+            if not keyRange or keyRange[0] == None:
                 keyRange = self.funcs.getTimelineRange()
 
             pm.bakeResults(sel,
@@ -306,9 +307,10 @@ class BakeTools(toolAbstractFactory):
                     skipT = self.funcs.getAvailableTranslates(cnt)
                     skipR = self.funcs.getAvailableRotates(cnt)
                     constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                 False: [x.split('translate')[-1] for x in skipT]}[
+                                                                              False: [x.split('translate')[-1] for x in
+                                                                                      skipT]}[
                         orientOnly],
-                                        skipRotate=[x.split('rotate')[-1] for x in skipR])
+                                                     skipRotate=[x.split('rotate')[-1] for x in skipR])
                     pm.container(asset, edit=True,
                                  includeHierarchyBelow=True,
                                  force=True,
@@ -338,7 +340,8 @@ class BakeTools(toolAbstractFactory):
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
-        cmds.menuItem(label='Bake selected temp controls to layer', command=pm.Callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake selected temp controls to layer',
+                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
         cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
         cmds.menuItem(divider=True)
@@ -365,7 +368,8 @@ class BakeTools(toolAbstractFactory):
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
-        cmds.menuItem(label='Bake selected temp controls to layer', command=pm.Callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake selected temp controls to layer',
+                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
         # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
         cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
@@ -437,6 +441,7 @@ class BakeTools(toolAbstractFactory):
                 pm.warning("trying to constrain object's parent, but it is parented to the world")
             else:
                 target = target.getParent()
+
         pm.parentConstraint(drivers, target,
                             skipTranslate=self.funcs.getAvailableTranslates(target),
                             skipRotate=self.funcs.getAvailableRotates(target),

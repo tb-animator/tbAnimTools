@@ -265,7 +265,7 @@ class installer():
 
 class ResultWindow(BaseDialog):
     def __init__(self):
-        super(ResultWindow, self).__init__(parent=wrapInstance(long(omUI.MQtUtil.mainWindow()), QWidget))
+        super(ResultWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getStyleSheet())
         self.titleText.setText('tbAnimTools')
         self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
