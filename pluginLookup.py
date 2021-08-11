@@ -70,15 +70,10 @@ class ClassFinder(object):
         self.allClasses.extend(self.allProClasses)
         hotkeyClasses = [cls for cls in self.allClasses if cls.__base__ == hotKeyAbstractFactory]
         toolClasses = [cls for cls in self.allClasses if cls.__base__ == toolAbstractFactory]
-        #print 'toolClasses'
-        '''
-        for t in toolClasses:
-            print '\t', t
-        print '\n\n'
-        '''
+
         self.tools = dict()
         for cls in toolClasses:
-            print ('instancing tool', cls, cls.toolName)
+            #print ('instancing tool', cls, cls.toolName)
             self.tools[cls.toolName] = cls()
         self.loadedClasses['hotkeys'] = hotkeyClasses
 

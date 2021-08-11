@@ -38,7 +38,7 @@ class main_menu(object):
             pm.deleteUI(self.main_menu)
         self.main_menu = pm.menu("tbAnimTools", label="tbAnimTools", tearOff=True)
 
-        pm.menuItem(label="options", command=open_options, parent=self.main_menu)
+        pm.menuItem(label="Options", command=open_options, image='hotkeySetSettings.png', parent=self.main_menu)
         # pm.menuItem(label="download updates (experimental)",command=download_updates, parent=self.main_menu)
         editorMenu = pm.menuItem(label='editors', subMenu=True, parent=self.main_menu)
         # find tools with UI, make list of tool keys?
@@ -47,7 +47,8 @@ class main_menu(object):
                 tbtoolsCLS.tools[tool].drawMenuBar(editorMenu)
 
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
-        pm.menuItem(label="online help", command=open_anim_page, parent=self.main_menu)
+        pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
+        pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
 
 
 def make_ui():
@@ -57,6 +58,9 @@ def make_ui():
 def open_options(*args):
     import tb_options as tbo
     tbo.showOptions()
+
+def open_discord_link(*args):
+    webbrowser.open('https://discord.gg/yxfP8rVS')
 
 
 def open_anim_page(*args):

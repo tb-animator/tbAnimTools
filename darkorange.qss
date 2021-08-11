@@ -1,3 +1,11 @@
+QWidget#promptWidget
+{
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #323232, stop 0.1: #373737, stop: 1 #323232);
+    border-style: solid;
+    border: 1px solid #1e1e1e;
+    border-radius: 5;
+}
+
 QToolTip
 {
      border: 1px solid black;
@@ -82,14 +90,7 @@ QWidget:focus
     /*border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);*/
 }
 
-QLineEdit
-{
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0 #646464, stop: 1 #5d5d5d);
-    padding: 1px;
-    border-style: solid;
-    border: 1px solid #1e1e1e;
-    border-radius: 5;
-}
+
 
 QLabel
 {
@@ -467,10 +468,13 @@ QCheckBox::indicator:disabled, QRadioButton::indicator:disabled
     border: 1px solid #444;
 }
 
-QWidget#promptWidget
+
+
+QLineEdit
 {
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #323232, stop 0.1: #373737, stop: 1 #323232);
-    "border-style: solid;"
-    "border: 1px solid #1e1e1e;"
-    "border-radius: 5;"
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0 #646464, stop: 1 #5d5d5d);
+    padding: 1px;
+    border-style: solid;
+    border: 1px solid #1e1e1e;
+    border-radius: 5;
 }

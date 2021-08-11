@@ -22,7 +22,6 @@
 
 *******************************************************************************
 '''
-from __future__ import print_function
 import pymel.core as pm
 import maya.mel as mel
 import pymel.core.datatypes as dt
@@ -65,6 +64,455 @@ skipDirections = ['upSkip', 'downSkip', 'leftSkip', 'rightSkip']
 lockedIcon = 'nodeGrapherLocked.png'
 unlockedIcon = 'nodeGrapherUnlocked.png'
 btnWidth = 80
+
+
+class WalkData(object):
+    """
+    Stores all information about pickwalking
+    """
+
+    def __init__(self):
+        self.name = None
+        self._filePath = None
+        self.objectDict = dict()
+        self.destinations = dict()
+        self.jsonObjectInfo = dict()
+        self.categoryKeys = dict()
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
+    def toJson(self):
+        jsonData = '''{}'''
+        self.jsonObjectInfo = json.loads(jsonData)
+        self.jsonObjectInfo['destinations'] = {key: value.toJson() for key, value in self.destinations.items()}
+        self.jsonObjectInfo['objectDict'] = {key.split(':')[-1]: value.toJson() for key, value in
+                                             self.objectDict.items()}
+        self.jsonObjectInfo['categoryKeys'] = {key: value for key, value in self.categoryKeys.items()}
+
+    def save(self, filePath):
+        """
+
+        :return:
+        """
+        # print filePath
+        self._filePath = filePath
+        self.name = filePath.split('/')[-1].split('.')[0]
+        self.toJson()
+        fileName = os.path.join(filePath)
+        jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
+        jsonFile = open(fileName, 'w')
+
+        jsonFile.write(jsonString)
+        jsonFile.close()
+
+    def setLastUsedIndex(self, node):
+        # print ('setLastUsedIndex', node)
+        for key, value in self.destinations.items():
+            if node in value.destination:
+                #print('matching entry destination', node)
+                self.destinations[key]._lastIndex = value.destination.index(node)
+            elif node in value.destinationAlt:
+                #print('matching entry destinationAlt', node)
+                self.destinations[key]._lastIndex = value.destinationAlt.index(node)
+
+    def walk(self, namespace=str(), node=str(), direction=str()):
+        # do a check on walk for current object in any destination objects, set the appropriate index
+        if node not in self.objectDict.keys():
+            return None
+        target = self.objectDict[node][direction]
+        self.setLastUsedIndex(node)
+        if target in self.destinations.keys():
+            # destination is a conditional destination
+            # print ('destination is a conditional destination')
+            # print 'namespace', namespace
+            # print self.destinations[target]
+            # print self.destinations[target].__dict__
+            conditionTest = False
+            if self.destinations[target].conditionAttribute:
+                # print self.destinations[target].conditionAttribute
+                conditionTest = cmds.getAttr(namespace + self.destinations[target].conditionAttribute) >= \
+                                self.destinations[target].conditionValue
+                # print 'conditionTest', conditionTest
+            if conditionTest:
+                target = self.destinations[target].destinationAlt[self.destinations[target]._lastIndex]
+            else:
+                target = self.destinations[target].destination[self.destinations[target]._lastIndex]
+            return target
+            # check for condition attr/object?
+            # conditions met, pick alt/destination, use last used index
+            pass
+        else:
+            # destination is an object
+            return target
+        return None
+
+
+class PickwalkCreator(object):
+    destKey = '_dest'
+
+    ''' Acceptable directions as keys, opposite direction as value for mirroring'''
+    directionsDict = {'up': 'up',
+                      'down': 'down',
+                      'left': 'right',
+                      'right': 'left'}
+    reciprocalDirectionsDict = {'up': 'down',
+                                'down': 'up',
+                                'left': 'right',
+                                'right': 'left'}
+
+    def __init__(self, namespace=str()):
+        self.namespace = namespace
+
+        self.walkData = WalkData()
+        self._processedMirrorDestinations = list()  # used when mirroring to prevent looping of recursive function?
+
+    def validForMirror(self, input, sideList):
+        for s in sideList:
+            if s in input:
+                return True
+        return False
+
+    def getMirrorName(self, input, sideList):
+        for s in sideList:
+            if s in input:
+                return input.replace(s, sideList[not sideList.index(s)])
+        return input
+
+    def addControl(self, control):
+        control = control.split(':')[-1]
+        if control not in self.walkData.objectDict.keys():
+            self.walkData.objectDict[control] = WalkDirectionDict()
+
+    def addDestination(self,
+                       name=str(),
+                       destination=list(),
+                       destinationAlt=list(),
+                       conditionAttribute=str(),
+                       conditionValue=0.5):
+        self.walkData.destinations[name] = WalkDatinationInfo(destination=destination,
+                                                              destinationAlt=destinationAlt,
+                                                              conditionAttribute=conditionAttribute,
+                                                              conditionValue=conditionValue)
+
+    def mirror(self, item, sideList=list()):
+        """
+        duplicates input and mirrors side info
+        if any destinations are conditional, build those as well
+        :param item:
+        :return:
+        """
+        # print 'sides', sideList
+        for key, walkDirection in self.walkData.objectDict.items():
+            mirrorDir = dict()
+            # print key, item
+            if key == item:
+                if not self.validForMirror(key, sideList):
+                    # print 'not valid for mirror'
+                    continue
+                # print 'need to mirror', key
+                for dir, value in walkDirection.__dict__.items():
+                    found = False
+                    if not value:
+                        # print dir, 'is empty'
+                        mirrorDir[dir] = None
+                        continue
+                    if value in self.walkData.destinations.keys():
+                        # print dir, 'is condition - not made this bit yet'
+                        # recusrively mirror any destination info found here
+                        self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
+                        # add the mirror key to the destination list, mirror it
+                    mirrorDir[dir] = self.getMirrorName(value, sideList)
+
+                # print 'mirrorDir', mirrorDir
+                mirrorKey = self.getMirrorName(key, sideList)
+
+                for dKey, dValue in mirrorDir.items():
+                    # print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
+                    self.setControlDestination(mirrorKey,
+                                               direction=dKey,
+                                               destination=dValue)
+                    # print self.walkData.objectDict[mirrorKey].__dict__
+                pass
+
+    def mirrorWalkDestination(self, destinationKey=str(), sideList=list(), processed=list()):
+        """
+        Mirror all the entries in the destination, the the entries are also destinations,
+        recursively edit them, hopefully don't get into a loop....
+        :param destinationKey:
+        :param sideList:
+        :param processed:
+        :return:
+        """
+        #print('mirrorWalkDestination', processed)
+        #print(self.walkData.destinations[destinationKey].__dict__)
+        if destinationKey in processed:
+            return processed
+        mirrorDestination = None
+        mirrorDestinationAlt = None
+        mirrorConditionValue = None
+        mirrorConditionAttribute = None
+        if not self.validForMirror(destinationKey, sideList):
+            return processed
+        else:
+            mirrorDestinationKey = self.getMirrorName(destinationKey, sideList)
+        if mirrorDestinationKey in processed:
+            return processed
+        if self.walkData.destinations[destinationKey].conditionValue:
+            mirrorConditionValue = self.walkData.destinations[destinationKey].conditionValue
+        if self.walkData.destinations[destinationKey].conditionAttribute:
+            mirrorConditionAttribute = self.getMirrorName(
+                self.walkData.destinations[destinationKey].conditionAttribute,
+                sideList)
+        if self.walkData.destinations[destinationKey].destination:
+            mirrorDestination = [self.getMirrorName(x, sideList) for x in
+                                 self.walkData.destinations[destinationKey].destination]
+
+        if self.walkData.destinations[destinationKey].destinationAlt:
+            mirrorDestinationAlt = [self.getMirrorName(x, sideList) for x in
+                                    self.walkData.destinations[destinationKey].destinationAlt]
+
+        self.addDestination(
+            name=mirrorDestinationKey,
+            destination=mirrorDestination,
+            destinationAlt=mirrorDestinationAlt,
+            conditionAttribute=mirrorConditionAttribute,
+            conditionValue=mirrorConditionValue)
+        processed.append(mirrorDestinationKey)
+        processed.append(destinationKey)
+        for destination in self.walkData.destinations[destinationKey].destination:
+            if destination in self.walkData.destinations.keys():
+                processed = self.mirrorWalkDestination(destinationKey=destination, sideList=sideList,
+                                                       processed=processed)
+        for altDestination in self.walkData.destinations[destinationKey].destinationAlt:
+            if altDestination in self.walkData.destinations.keys():
+                processed = self.mirrorWalkDestination(destinationKey=altDestination, sideList=sideList,
+                                                       processed=processed)
+        return processed
+
+    def replaceDestination(self, original=str, new=str):
+        """
+        replaces all occurrences of original with new
+        :param original:
+        :param new:
+        :return:
+        """
+        for walkDirection in self.walkData.objectDict.values():
+            for dir, value in walkDirection.__dict__.items():
+                # print 'dir', dir, 'value', value, 'o', original, 'n', new
+                if value == original:
+                    walkDirection.__dict__[dir] = new
+
+    def setControlDestination(self, control,
+                              direction=str(),
+                              destination=str()):
+        # add control entry in case it is not already there
+        self.addControl(control)
+        destination = destination.split(':')[-1]
+        if destination in self.walkData.destinations.keys():
+            self.walkData.objectDict[control][direction] = destination
+        else:
+            # destination is probably one object, just set it as a string
+            # print 'simple destination, object only', control, direction, destination
+            self.walkData.objectDict[control][direction] = destination
+
+    def addPickwalkChain(self,
+                         controls=list(),
+                         direction=str(),
+                         loop=False,
+                         reciprocate=True,
+                         endOnSelf=False):
+        if not controls:
+            return cmds.error('no nodes defined for walk')
+        if not isinstance(controls, list):
+            controls = [controls]
+        controls = [c.split(':')[-1] for c in controls]
+        reciprocalIndexes = [None] * len(controls)
+        destinationIndexes = [None] * len(controls)
+        # print destinationIndexes
+        # get the corresponding walk indexes
+        for index, value in enumerate(controls):
+            # if this is the last index, pick to loop or not
+            if index == (len(controls) - 1):
+                if loop:
+                    # print 'loop', index, (index + 1) % len(nodes)
+                    destinationIndexes[index] = (index + 1) % len(controls)
+
+                elif endOnSelf:
+                    # not looping so set the node to end at this object
+                    destinationIndexes[index] = index
+            else:
+                # print 'meh', index, index + 1
+                destinationIndexes[index] = index + 1
+            # get reciprocal indexes
+            if index == 0:
+                if loop:
+                    reciprocalIndexes[index] = len(controls) - 1
+            else:
+                reciprocalIndexes[index] = index - 1
+
+        infoNodes = [None] * len(controls)
+        for index, value in enumerate(controls):
+            infoNodes[index] = value
+
+        for index, value in enumerate(controls):
+            # get the next index and connect it up to this if reciprocating
+            if destinationIndexes[index] is not None:
+                self.setControlDestination(value,
+                                           direction=direction,
+                                           destination=infoNodes[destinationIndexes[index]])
+        if reciprocate:
+            for index, value in enumerate(reciprocalIndexes):
+                if value is not None:
+                    self.setControlDestination(controls[index],
+                                               direction=self.reciprocalDirectionsDict[direction],
+                                               destination=infoNodes[value])
+
+    def getNodeInfoFromRig(self, control):
+        """
+        Used to grab info from existing message/string attributes on a rig and dump them
+        into the walk data
+        :param control:
+        :return:
+        """
+        controlName = control.split(':')[-1]
+        self.addControl(controlName)
+        # print 'controlName', controlName
+        userAttrs = cmds.listAttr(control, userDefined=True)
+        if not userAttrs:
+            return
+        userAttrs = set(userAttrs)
+        for direction, values in Pickwalk().pickwalkAttributeNames.items():
+            # print dir, set(values)
+            matching = set(values) & userAttrs
+            # print 'matching', matching
+            for m in matching:
+                attrType = cmds.getAttr(control + '.' + m, type=True)
+                destination = None
+                if attrType == 'message':
+                    destination = cmds.listConnections(control + '.' + m, source=True, destination=False)
+                elif attrType == 'string':
+                    destination = cmds.getAttr(control + '.' + m)
+                # print control, m, attrType, destination
+                if destination:
+                    if isinstance(destination, list):
+                        if len(destination) > 1:
+                            self.addDestination(
+                                name=controlName + '_in',
+                                destination=[d.split(':')[-1] for d in destination])
+                            continue
+                        else:
+                            destination = destination[0]
+                    self.walkData.objectDict[controlName][direction] = destination.split(':')[-1]
+
+    """ multi object modes etc, called from popups and ui """
+
+    def quickUpFromMulti(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if not sel:
+            return pm.warning('No objects selected')
+        if len(sel) > 1:
+            # pm.warning('inputSignal_quickUpFromMulti')
+            control = sel[0].split(':')[-1]
+            targets = [s.split(':')[-1] for s in sel[1:]]
+            for s in targets:
+                self.setControlDestination(s,
+                                           direction='up',
+                                           destination=control)
+
+    def quickDownToMulti(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if not sel:
+            return pm.warning('No objects selected')
+        if len(sel) > 1:
+            # pm.warning('inputSignal_quickDownToMulti')
+            control = sel[0].split(':')[-1]
+            targets = [s.split(':')[-1] for s in sel[1:]]
+            name = control + '_' + targets[0] + '_mult'
+            self.addDestination(name=name,
+                                destination=targets,
+                                destinationAlt=list(),
+                                conditionAttribute=str(),
+                                conditionValue=0.5)
+            self.setControlDestination(control,
+                                       direction='down',
+                                       destination=name)
+            return
+
+    def quickLeftRight(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if not sel:
+            return pm.warning('No objects selected')
+        if len(sel) > 1:
+            # pm.warning('inputSignal_quickLeftRight')
+            self.addPickwalkChain(controls=sel,
+                                  direction='left',
+                                  loop=True,
+                                  reciprocate=True,
+                                  endOnSelf=False)
+            return
+
+    def quickUpDown(self):
+        sel = cmds.ls(selection=True, type='transform')
+        if not sel:
+            return pm.warning('No objects selected')
+        if len(sel) > 1:
+            # pm.warning('inputSignal_quickUpDown')
+            self.addPickwalkChain(controls=sel,
+                                  direction='down',
+                                  loop=False,
+                                  reciprocate=True,
+                                  endOnSelf=True)
+            return
+
+    def load(self, walkDataFile, controlFilter=list()):
+        """
+        Load the walk data file and rebuild the walk info
+        :param walkDataFile:
+        :return:
+        """
+        # TODO - move this entirely to the WalkData class?
+        # print('loading data', walkDataFile)
+        filter = False
+        try:
+            jsonObjectInfo = json.load(open(walkDataFile))
+        except ValueError:  # includes simplejson.decoder.JSONDecodeError
+            jsonData = '''{}'''
+            jsonObjectInfo = json.loads(jsonData)
+
+        if len(controlFilter):
+            # strip namespace
+            controlFilter = [c.split(':')[-1] for c in controlFilter]
+            allDestinations = list()
+            for key, value in jsonObjectInfo['objectDict'].items():
+                if key not in controlFilter:
+                    jsonObjectInfo['objectDict'].pop(key)
+                allDestinations.append(value)
+            for key, destination in jsonObjectInfo['destinations'].items():
+                if key not in allDestinations:
+                    jsonObjectInfo['destinations'].pop(key)
+        # self.walkData.destinations = jsonObjectInfo['destinations']
+        for key, destination in jsonObjectInfo['destinations'].items():
+            self.addDestination(name=key,
+                                destination=destination['destination'],
+                                destinationAlt=destination['destinationAlt'],
+                                conditionAttribute=destination['conditionAttribute'],
+                                conditionValue=destination['conditionValue'])
+        # self.walkData.destinations = dict()
+        # print 'objectDict', jsonObjectInfo['objectDict'].keys()
+
+        for key, value in jsonObjectInfo['objectDict'].items():
+            self.addControl(key)
+            # print key, value, type(value)
+            for dKey, dValue in value.items():
+                self.setControlDestination(key,
+                                           direction=dKey,
+                                           destination=dValue)
+
+        self.walkData._filePath = walkDataFile
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -215,20 +663,22 @@ class Pickwalk(toolAbstractFactory):
                         }
 
     walkCreateHotkeyMap = {'up': 'tbPickwalkUpCreate',
-                        'down': 'tbPickwalkDownCreate',
-                        'left': 'tbPickwalkLeftCreate',
-                        'right': 'tbPickwalkRighCreate',
-                        }
+                           'down': 'tbPickwalkDownCreate',
+                           'left': 'tbPickwalkLeftCreate',
+                           'right': 'tbPickwalkRighCreate',
+                           }
     walkCreateConditionHotkeyMap = {'up': 'tbPickwalkUpCreateCondition',
-                        'down': 'tbPickwalkDownCreateCondition',
-                        'left': 'tbPickwalkLeftCreateCondition',
-                        'right': 'tbPickwalkRightCreateCondition',
-                        }
+                                    'down': 'tbPickwalkDownCreateCondition',
+                                    'left': 'tbPickwalkLeftCreateCondition',
+                                    'right': 'tbPickwalkRightCreateCondition',
+                                    }
     WASDwalkHotkeyMap = {'w': 'tbPickwalkUp',
                          's': 'tbPickwalkDown',
                          'a': 'tbPickwalkLeft',
                          'd': 'tbPickwalkRight',
                          }
+
+    pickwalkCreator = PickwalkCreator()
 
     def __new__(cls):
         if Pickwalk.__instance is None:
@@ -448,25 +898,24 @@ class Pickwalk(toolAbstractFactory):
         if direction not in self.walkDirectionNames.keys():
             return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
-        pickwalkWindow = pickwalkMainWindow()
-        pickwalkWindow.loadLibraryForCurrent()
-        creator = pickwalkWindow.pickwalkCreator
+        self.loadLibraryForCurrent()
+
         if not condition:
             if len(sel) == 1:
                 sel.append(sel[0])
             if len(sel) == 2:
                 # 2 objects - create single direction pickwalk
-                creator.setControlDestination(sel[0],
-                                              direction=direction,
-                                              destination=sel[1])
+                self.pickwalkCreator.setControlDestination(sel[0],
+                                                           direction=direction,
+                                                           destination=sel[1])
                 if direction == 'left' or direction == 'right':
                     # if left or right, create the reverse
-                    creator.setControlDestination(sel[1],
-                                                  direction=creator.directionsDict[direction],
-                                                  destination=sel[0])
+                    self.pickwalkCreator.setControlDestination(sel[1],
+                                                               direction=self.pickwalkCreator.directionsDict[direction],
+                                                               destination=sel[0])
             elif len(sel) > 2:
                 # add all objects in a chain
-                creator.addPickwalkChain(
+                self.pickwalkCreator.addPickwalkChain(
                     controls=sel,
                     direction=direction,
                     loop=direction == 'left' or direction == 'right',
@@ -474,17 +923,18 @@ class Pickwalk(toolAbstractFactory):
                     endOnSelf=direction == 'down')
         else:
             if len(sel) == 1 or len(sel) == 2:
-                print ('conditional stuff, UI coming soon')
+                dlg = PickwalkPopup()
+                dlg.show()
             else:
                 if direction == 'down':
-                    print(sel[0], 'down to', sel[1:])
-                    pickwalkWindow.inputSignal_quickDownToMulti()
+                    #print(sel[0], 'down to', sel[1:])
+                    self.pickwalkCreator.quickDownToMulti()
                 elif direction == 'up':
-                    print (sel[1:], 'up to', sel[0])
-                    pickwalkWindow.inputSignal_quickUpFromMulti()
+                    #print(sel[1:], 'up to', sel[0])
+                    self.pickwalkCreator.quickUpFromMulti()
 
-        pickwalkWindow.saveLibrary()
-        pickwalkWindow.loadLibraryForCurrent()
+        self.saveLibrary()
+        self.loadLibraryForCurrent()
         self.loadWalkLibrary()
         self.getAllPickwalkMaps()
         self.initialiseWalkData()
@@ -557,21 +1007,33 @@ class Pickwalk(toolAbstractFactory):
 
     def dataDrivenWalk(self, direction, refName, walkObject):
         returnedControls = list()
+        walkObjectStripped = walkObject.stripNamespace()
+        walkObjectNS = walkObject.namespace()
         if refName in self.walkDataLibrary._fileToMapDict.keys():
             mapName = self.walkDataLibrary._fileToMapDict[refName]
             # print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
-            result = self.pickwalkData[mapName].walk(namespace=walkObject.namespace(),
-                                                     node=walkObject.stripNamespace(),
+            result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
+                                                     node=walkObjectStripped,
                                                      direction=direction)
-            if result:
-                # print 'data walk result', result
-                if cmds.objExists(walkObject.namespace() + result):
-                    # print 'final result', walkObject.namespace() + result
-                    returnedControls.append(walkObject.namespace() + result)
-                else:
-                    if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
-                        self.walkStandard(direction)
-                    return False
+            if result is u'(None,)':
+                #print('query new destination')
+                self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
+                return False
+            if result is None:
+                #print('query new destination')
+                self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
+                return False
+
+            #print('data walk result', result)
+            if cmds.objExists(walkObjectNS + result):
+                # print 'final result', walkObject.namespace() + result
+                returnedControls.append(walkObjectNS + result)
+            else:
+                self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
+                if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
+                    self.walkStandard(direction)
+                    return
+                return False
             return returnedControls
         userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         if userAttrs:
@@ -582,6 +1044,36 @@ class Pickwalk(toolAbstractFactory):
         elif refName not in self.walkDataLibrary.ignoredRigs:
             self.queryWalkOnNewRig(refName)
         return returnedControls
+
+    def pickNewDestination(self, direction, namespace, walkObject):
+        prompt = PickWalkObjectDialog(direction, namespace, walkObject, parent=getMainWindow(),
+                                      title='No destination found',
+                                      text=str("Pick new control for {control} {dir}").format(control=walkObject,
+                                                                                              dir=direction))
+        prompt.assignSignal.connect(self.assignNewDestinationFromWalk)
+        prompt.conditionSignal.connect(self.assignNewConditionFromWalk)
+        prompt.show()
+
+    def assignNewConditionFromWalk(self, direction, namespace, walkObject, destination):
+        #print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
+        cmds.select(namespace + ':' + walkObject, replace=True)
+        self.loadLibraryForCurrent()
+        dlg = PickwalkPopup(control=walkObject, destination=destination)
+        dlg.show()
+
+    def assignNewDestinationFromWalk(self, direction, namespace, walkObject, destination):
+        #print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
+        cmds.select(namespace + ':' + walkObject, replace=True)
+        self.loadLibraryForCurrent()
+        # TODO - make this work with the incoming list
+        self.pickwalkCreator.setControlDestination(walkObject,
+                                                   direction=direction,
+                                                   destination=destination[0])
+        self.saveLibrary()
+        self.loadLibraryForCurrent()
+        self.loadWalkLibrary()
+        self.getAllPickwalkMaps()
+        self.initialiseWalkData()
 
     def queryWalkOnNewRig(self, refName):
         # print 'not ignored, must be new, query user to add/assign/ignore it'
@@ -654,16 +1146,94 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        print('assignNewRigNewMap', rigName)
+        #print('assignNewRigNewMap', rigName)
         win = pickwalkMainWindow()
         win.show()
         # TODO this is a bit ugly as it opens the save as windows window, nice to avoid that as you have to save
         # TODO the pickwalk map in the save folder anyway
         newMap = win.saveAsLibrary()
-        print('new map', newMap)
+        #print('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
         self.getAllPickwalkMaps()
+
+    """
+    Functions moved from mainwindow to here
+    """
+
+    def getCurrentRig(self):
+        refName = None
+        mapName = None
+        fname = None
+        sel = cmds.ls(sl=True)
+
+        if sel:
+            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            if refState:
+                # if it is referenced, check against pickwalk library entries
+                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+            else:
+                # might just be working in the rig file itself
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        else:
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+
+        if refName in self.walkDataLibrary._fileToMapDict.keys():
+            mapName = self.walkDataLibrary._fileToMapDict[refName]
+            fname = os.path.join(self.defaultPickwalkDir, mapName + '.json')
+        return fname
+
+    def loadLibraryForCurrent(self):
+        # TODO - implement this to look at the main walk library and open the
+        # TODO - correct map file
+        #
+        fname = self.getCurrentRig()
+        if not fname:
+            fname = self.browseToFile()
+        if not fname:
+            return None
+
+        self.pickwalkCreator.load(fname)
+
+    def browseToFile(self):
+        fname = QFileDialog.getOpenFileName(self, 'Open file',
+                                            cmds.workspace(q=True, directory=True),
+                                            "Maya files (*.ma *.mb)")
+        return fname[0] or None
+
+    def saveLibrary(self):
+        if not self.pickwalkCreator.walkData._filePath:
+            self.saveAsLibrary()
+            return
+        self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
+        self.pickwalkCreator.load(self.pickwalkCreator.walkData._filePath)
+        self.loadWalkLibrary()
+        self.getAllPickwalkMaps()
+
+    def saveAsLibrary(self):
+        save_filename = QFileDialog.getSaveFileName(self,
+                                                    "Save file as",
+                                                    self.defaultDir,
+                                                    "Pickwalk files (*.json)")
+        if not save_filename:
+            return
+        if os.path.isfile(save_filename[0]):
+            if self.overwriteQuery().exec_() != 1024:
+                return
+        self.pickwalkCreator.walkData.save(save_filename[0])
+        self.loadWalkLibrary()
+
+        return os.path.basename(save_filename[0])
+
+    def overwriteQuery(self):
+        msg = QMessageBox()
+        msg.setStyleSheet(getqss.getStyleSheet())
+        msg.setIcon(QMessageBox.Warning)
+
+        msg.setText("Overwrite existing data?")
+        msg.setWindowTitle("Existing file warning")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        return msg
 
 
 class WalkDataLibrary(object):
@@ -725,91 +1295,6 @@ class WalkDataLibrary(object):
                 self._fileToMapDict[v] = key
 
 
-class WalkData(object):
-    """
-    Stores all information about pickwalking
-    """
-
-    def __init__(self):
-        self.name = None
-        self._filePath = None
-        self.objectDict = dict()
-        self.destinations = dict()
-        self.jsonObjectInfo = dict()
-        self.categoryKeys = dict()
-
-    def __setitem__(self, key, value):
-        self.__dict__[key] = value
-
-    def __getitem__(self, key):
-        return self.__dict__[key]
-
-    def toJson(self):
-        jsonData = '''{}'''
-        self.jsonObjectInfo = json.loads(jsonData)
-        self.jsonObjectInfo['destinations'] = {key: value.toJson() for key, value in self.destinations.items()}
-        self.jsonObjectInfo['objectDict'] = {key.split(':')[-1]: value.toJson() for key, value in
-                                             self.objectDict.items()}
-        self.jsonObjectInfo['categoryKeys'] = {key: value for key, value in self.categoryKeys.items()}
-
-    def save(self, filePath):
-        """
-
-        :return:
-        """
-        # print filePath
-        self._filePath = filePath
-        self.name = filePath.split('/')[-1].split('.')[0]
-        self.toJson()
-        fileName = os.path.join(filePath)
-        jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
-        jsonFile = open(fileName, 'w')
-
-        jsonFile.write(jsonString)
-        jsonFile.close()
-
-    def setLastUsedIndex(self, node):
-        # print ('setLastUsedIndex', node)
-        for key, value in self.destinations.items():
-            if node in value.destination:
-                print('matching entry destination', node)
-                self.destinations[key]._lastIndex = value.destination.index(node)
-            elif node in value.destinationAlt:
-                print('matching entry destinationAlt', node)
-                self.destinations[key]._lastIndex = value.destinationAlt.index(node)
-
-    def walk(self, namespace=str(), node=str(), direction=str()):
-        # do a check on walk for current object in any destination objects, set the appropriate index
-        if node not in self.objectDict.keys():
-            return None
-        target = self.objectDict[node][direction]
-        self.setLastUsedIndex(node)
-        if target in self.destinations.keys():
-            # destination is a conditional destination
-            # print ('destination is a conditional destination')
-            # print 'namespace', namespace
-            # print self.destinations[target]
-            # print self.destinations[target].__dict__
-            conditionTest = False
-            if self.destinations[target].conditionAttribute:
-                # print self.destinations[target].conditionAttribute
-                conditionTest = cmds.getAttr(namespace + self.destinations[target].conditionAttribute) >= \
-                                self.destinations[target].conditionValue
-                # print 'conditionTest', conditionTest
-            if conditionTest:
-                target = self.destinations[target].destinationAlt[self.destinations[target]._lastIndex]
-            else:
-                target = self.destinations[target].destination[self.destinations[target]._lastIndex]
-            return target
-            # check for condition attr/object?
-            # conditions met, pick alt/destination, use last used index
-            pass
-        else:
-            # destination is an object
-            return target
-        return None
-
-
 class WalkDirectionDict(object):
     """
     Dictionary of walk directions, entries will be walkDatinationInfo() or str()
@@ -831,6 +1316,10 @@ class WalkDirectionDict(object):
         return self.__dict__[key]
 
     def toJson(self):
+        for key, value in self.__dict__.items():
+            # print ('WalkDirectionDict', key, value)
+            if value == u'(None,)':
+                value = None
         return {key: str(value).split(':')[-1] for key, value in self.__dict__.items()}
 
 
@@ -1030,8 +1519,8 @@ class lockButton(QPushButton):
         self.unlockedIcon = QIcon(QPixmap(':/{}'.format(icon2)))
         self.setText('Pick')
         self.setFixedWidth(64)
-        #self.setCheckable(True)
-        #self.setIconType()
+        # self.setCheckable(True)
+        # self.setIconType()
         self.clicked.connect(self.toggle)
 
     def setIconType(self):
@@ -1047,9 +1536,8 @@ class pickObjectWidget(QWidget):
     modeChangedSignal = Signal(bool)
     lockChangedSignal = Signal(bool)
 
-    def __init__(self, mainWindow, *args, **kwargs):
-        super(pickObjectWidget, self).__init__()
-        self.mainWindow = mainWindow
+    def __init__(self, *args, **kwargs):
+        super(pickObjectWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.mainLayout = QHBoxLayout()
         self.infoLayout = QHBoxLayout()
 
@@ -1075,7 +1563,7 @@ class pickObjectWidget(QWidget):
 
     @Slot()
     def sendModeChangedSignal(self):
-        #self.modeChangedSignal.emit(self.modeBtn.isChecked())
+        # self.modeChangedSignal.emit(self.modeBtn.isChecked())
         self.modeChangedSignal.emit(True)
         self.changeState()
 
@@ -1603,32 +2091,76 @@ class labelledLineEdit(QWidget):
         self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
 
-class labelledDoubleSpinBox(QWidget):
-    editedSignal = Signal(float)
+class LineEdit(QWidget):
+    label = None
+    lineEdit = None
+    editedSignal = Signal(str)
 
-    def __init__(self, text=str, ):
-        super(labelledDoubleSpinBox, self).__init__()
+    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
+        super(LineEdit, self).__init__()
+
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.layout)
         self.label = QLabel(text)
-        self.spinBox = QDoubleSpinBox()
-        self.label.setFixedWidth(60)
-        # self.spinBox.setFixedWidth(200)
-        self.spinBox.setValue(0.5)
-        self.spinBox.setSingleStep(0.1)
-
-        self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
+        self.lineEdit = QLineEdit()
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(tooltip)
+        self.lineEdit.setPlaceholderText(placeholderTest)
+        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
 
         self.layout.addWidget(self.label)
-        self.layout.addWidget(self.spinBox)
-        self.layout.addStretch()
+        self.layout.addWidget(self.lineEdit)
+        self.label.setFixedWidth(60)
+
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
                                  "border-radius: 0;"
                                  "border-style: solid;"
                                  "border-color: #222222}"
                                  )
+
+    @Slot()
+    def sendtextChangedSignal(self):
+        self.editedSignal.emit(self.lineEdit.text())
+
+
+class labelledDoubleSpinBox(QWidget):
+    editedSignal = Signal(float)
+
+    def __init__(self, text=str, helpLine=None, labelWidth=60):
+        super(labelledDoubleSpinBox, self).__init__()
+        self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.layout)
+        self.label = QLabel(text)
+        self.spinBox = QDoubleSpinBox()
+        # self.label.setFixedWidth(60)
+        # self.spinBox.setFixedWidth(200)
+        self.spinBox.setValue(0.5)
+        self.spinBox.setSingleStep(0.1)
+        self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.spinBox)
+
+        self.label.setFixedWidth(labelWidth)
+        self.label.setStyleSheet("QFrame {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+        if helpLine:
+            self.help = QLabel(helpLine)
+            self.layout.addWidget(self.help)
+            self.help.setStyleSheet("QFrame {"
+                                    "border-width: 0;"
+                                    "border-radius: 0;"
+                                    "border-style: solid;"
+                                    "border-color: #222222}"
+                                    )
+            self.layout.addStretch()
 
     @Slot()
     def sendValueChangedSignal(self):
@@ -2098,7 +2630,8 @@ class tempPickWidget(QWidget):
         self.cle_action_pick.triggered.connect(self.chooseControl)
 
     def chooseControl(self):
-        print('chooseControl')
+        pass
+        # print('chooseControl')
 
 
 class DestinationWidget(QWidget):
@@ -2160,6 +2693,114 @@ class DestinationWidget(QWidget):
 
     def pickButtonPressed(self):
         sel = pm.ls(selection=True, type='transform')
+        self.listwidget.clear()
+        if sel:
+            items = [s.stripNamespace() for s in sel]
+            self.listwidget.addItems(items)
+        self.sendUpdateSignal()
+
+    def addButtonPressed(self):
+        sel = pm.ls(selection=True, type='transform')
+        if not sel:
+            return
+        items = [s.stripNamespace() for s in sel]
+        currentItems = self.currentItems()
+        resultItems = self.currentItems()
+        # print 'before', currentItems
+        self.listwidget.clear()
+        for i in items:
+            if i not in currentItems:
+                resultItems.append(i)
+        # print 'after', resultItems
+        self.listwidget.addItems(resultItems)
+        self.sendUpdateSignal()
+
+    def addFromDestinationPressed(self):
+        currentItems = self.currentItems()
+        resultItems = self.currentItems()
+
+        self.listwidget.clear()
+        resultItems.append(self.mainListItem)
+
+        self.listwidget.addItems(resultItems)
+        self.sendUpdateSignal()
+
+    def removeButtonPressed(self):
+        listItems = self.listwidget.selectedItems()
+        if not listItems: return
+        for item in listItems:
+            self.listwidget.takeItem(self.listwidget.row(item))
+        self.sendUpdateSignal()
+
+    def refreshUI(self, targets):
+        self.listwidget.clear()
+        self.listwidget.addItems(targets)
+
+
+class MiniDestinationWidget(QWidget):
+    updatedSignal = Signal(list)
+
+    def __init__(self, label='BLANK'):
+        super(MiniDestinationWidget, self).__init__()
+        # self.setFixedWidth(140)
+        self.setMaximumWidth(160)
+        self.setMaximumHeight(150)
+        self.mainListItem = str()
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+        self.label = QLabel(label)
+        self.pickButton = QPushButton('Pick')
+        self.addDestinationBtn = QPushButton('+')
+        self.removeDestinationBtn = QPushButton('-')
+        self.addFromDestinationBtn = QPushButton('From Existing Condition')
+        self.spinBox = QDoubleSpinBox()
+        # self.label.setFixedWidth(60)
+        # self.spinBox.setFixedWidth(200)
+        # self.spinBox.setValue(0.5)
+        # self.spinBox.setSingleStep(0.1)
+
+        # self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
+
+        self.layout.addWidget(self.label)
+        # self.layout.addWidget(self.spinBox)
+        self.layout.addStretch()
+        self.label.setStyleSheet("QFrame {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+        self.listwidget = QListWidget()
+        self.layout.addWidget(self.listwidget)
+
+        self.subLayout = QHBoxLayout()
+        self.subLayout.addWidget(self.pickButton)
+        # self.subLayout.addWidget(self.addDestinationBtn)
+        # self.subLayout.addWidget(self.removeDestinationBtn)
+        # self.subLayout.addWidget(self.addFromDestinationBtn)
+
+        self.layout.addLayout(self.subLayout)
+
+        self.pickButton.clicked.connect(self.pickButtonPressed)
+        self.addDestinationBtn.clicked.connect(self.addButtonPressed)
+        self.removeDestinationBtn.clicked.connect(self.removeButtonPressed)
+        self.addFromDestinationBtn.clicked.connect(self.addFromDestinationPressed)
+
+    def currentItems(self):
+        return [self.listwidget.item(x).text() for x in range(self.listwidget.count())]
+
+    def recieveMainDestinationClicked(self, item):
+        self.mainListItem = item
+
+    @Slot()
+    def sendUpdateSignal(self):
+        self.updatedSignal.emit(self.currentItems())
+
+    def pickButtonPressed(self, override=None):
+        if not override:
+            sel = pm.ls(selection=True, type='transform')
+        else:
+            sel = override
         self.listwidget.clear()
         if sel:
             items = [s.stripNamespace() for s in sel]
@@ -2296,47 +2937,59 @@ class PickwalkPopup(BaseDialog):
     destinationAdded = Signal(dict)
     changed = Signal(str)
 
-    def __init__(self, direction=str(), *args, **kwargs):
-        super(PickwalkPopup, self).__init__()
-        self.pickwalkCLS = Pickwalk()
-        self.walkDataLibrary = self.pickwalkCLS.loadWalkLibrary()
-        self.initialSelection = cmds.ls(sl=True)
-        refName = self.pickwalkCLS.getRefName(self.initialSelection[0])
-        mapName = None
-        if refName in self.walkDataLibrary._fileToMapDict.keys():
-            mapName = self.walkDataLibrary._fileToMapDict[refName]
-        print('mapName', mapName)
-        # self.setTitle("Context pickwalks")
-        self.mainLayout = QVBoxLayout()
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+    def __init__(self, control=None, destination=None, *args, **kwargs):
+        super(PickwalkPopup, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                                            title='Context pickwalk Creation')
+        # TODO - move these functions out of the window and into Pickwalk()
+        self.control = control
+        self.destination = destination
+        self.pickwalk = Pickwalk()
+        self.pickwalkWindow = pickwalkMainWindow()
+        self.pickwalk.loadLibraryForCurrent()
+        self.creator = self.pickwalk.pickwalkCreator
+
+        print('mapName', self.creator.walkData._filePath)
+
         self.setStyleSheet("QFrame {"
                            "border-width: 2;"
                            "border-radius: 4;"
                            "border-style: solid;"
                            "border-color: #222222}"
                            )
-        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
         self.setLayout(self.mainLayout)
-        self.title = QLabel('Context pickwalk Creation')
-        self.title.setStyleSheet("QLabel {"
-                                 "border-width: 0;"
-                                 "border-radius: 4;"
-                                 "border-style: solid;"
-                                 "border-color: #222222;"
-                                 "font-weight: bold; font-size: 12px;}"
-                                 )
-        self.nameWidget = labelledLineEdit(text='Name', hasButton=True, buttonLabel='From Sel', obj=True)
-        self.conditionAttrWidget = labelledLineEdit(text='Attribute', hasButton=True,
-                                                    buttonLabel='From CB')
-        self.conditionWidget = labelledDoubleSpinBox('Condition')
-        self.destinationsWidget = DestinationWidget(label='Destinations')
+
+        self.titleText.setStyleSheet("QLabel {"
+                                     "border-width: 0;"
+                                     "border-radius: 4;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "font-weight: bold; font-size: 12px;}"
+                                     )
+
+        'Condition Name'
+        self.controlWidget = LineEdit(text='Control', tooltip='Pick the control to walk from.',
+                                      placeholderTest='pick control')
+        self.controlWidget.cle_action_pick.triggered.connect(self.pickControl)
+
+        '''
+        self.nameWidget = LineEdit(text='Name', tooltip='Pick name from selected object.',
+                                   placeholderTest='enter condition name')
+        self.nameWidget.cle_action_pick.triggered.connect(self.pickObject)
+        '''
+        self.conditionAttrWidget = LineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
+                                            placeholderTest='enter condition attribute')
+        self.conditionAttrWidget.cle_action_pick.triggered.connect(self.pickAttribute)
+
+        self.conditionWidget = labelledDoubleSpinBox(text='Value',
+                                                     helpLine='value > this, use alt destination')
+        self.destinationsWidget = MiniDestinationWidget(label='Destinations')
         self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
-        self.altDestinationsWidget = DestinationWidget(label='Alt Destinations')
+        self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations')
         self.altDestinationsWidget.updatedSignal.connect(self.inputSignal_altDestinationsUpdated)
 
-        self.mainLayout.addWidget(self.title)
-
-        self.mainLayout.addWidget(self.nameWidget)
+        self.mainLayout.addWidget(self.controlWidget)
+        # self.mainLayout.addWidget(self.nameWidget)
         self.mainLayout.addWidget(self.conditionAttrWidget)
         self.mainLayout.addWidget(self.conditionWidget)
 
@@ -2345,22 +2998,88 @@ class PickwalkPopup(BaseDialog):
         self.splitLayout.addWidget(self.destinationsWidget)
         self.splitLayout.addWidget(self.altDestinationsWidget)
 
-        self.newButton = QPushButton('Add/Update Conditional Destination')
-        self.newButton.clicked.connect(self.outputSignal_newDestinationCreated)
-        self.mainLayout.addWidget(self.newButton)
-        # self.nameWidget.editedSignal.connect(self.inputSignal_nameChanged)
-        self.conditionAttrWidget.editedSignal.connect(self.inputSignal_attributehanged)
+        self.upBtn = standardPickButton(label='Up',
+                                        direction='up',
+                                        icon='timeend.png',
+                                        rotation=90,
+                                        fixedWidth=False,
+                                        width=48)
+        self.downBtn = standardPickButton(label='Down',
+                                          direction='down',
+                                          icon='timeend.png',
+                                          rotation=270,
+                                          fixedWidth=False,
+                                          width=48)
+        self.leftBtn = standardPickButton(label='Left',
+                                          direction='left',
+                                          icon='timeend.png',
+                                          rotation=0,
+                                          fixedWidth=False,
+                                          width=48)
+        self.rightBtn = standardPickButton(label='Right',
+                                           direction='right',
+                                           icon='timeend.png',
+                                           rotation=180,
+                                           fixedWidth=False,
+                                           width=48)
+
+        applyLabel = QLabel('Walk Direction')
+        applyLabel.setAlignment(Qt.AlignCenter)
+        applyLabel.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.mainLayout.addWidget(applyLabel)
+        self.directionLayout = QHBoxLayout()
+        self.directionLayout.addWidget(self.upBtn)
+        self.directionLayout.addWidget(self.downBtn)
+        self.directionLayout.addWidget(self.leftBtn)
+        self.directionLayout.addWidget(self.rightBtn)
+        self.mainLayout.addLayout(self.directionLayout)
         self.conditionWidget.editedSignal.connect(self.inputSignal_conditionhanged)
+
+        self.upBtn.pressedSignal.connect(self.addWalk)
+        self.downBtn.pressedSignal.connect(self.addWalk)
+        self.leftBtn.pressedSignal.connect(self.addWalk)
+        self.rightBtn.pressedSignal.connect(self.addWalk)
+
+        self.setFixedSize(self.sizeHint())
+        self.pickControl(self.control)
+        if self.destination:
+            if not isinstance(self.destination, list):
+                self.destination = [self.destination]
+            self.destinationsWidget.pickButtonPressed(self.destination)
+        self.setStyleSheet(getqss.getStyleSheet())
+
+    def pickControl(self, control=None, *args):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return pm.warning('no object selected')
+        controlString = sel[0].split(':')[-1]
+        if len(sel) > 1:
+            controlString += '...'
+        self.controlWidget.lineEdit.setText(controlString)
+        self.controls = [s.split(':')[-1] for s in sel]
+
+    def pickObject(self, *args):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            pm.warning('no object selected')
+        self.nameWidget.lineEdit.setText(sel[0].split(':')[-1] + '_in')
+
+    def pickAttribute(self, *args):
+        channels = mel.eval('selectedChannelBoxPlugs')
+        if not channels:
+            return pm.warning('no channel selected')
+        self.conditionAttrWidget.lineEdit.setText(channels[0].split(':')[-1])
 
     def outputSignal_newDestinationCreated(self):
         # print 'outputSignal_newDestinationCreated'
-        outData = dict()
-        outData['destination'] = self.destinationsWidget.currentItems()
-        outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
-        outData['conditionAttribute'] = self.conditionAttrWidget.lineEdit.text()
-        outData['conditionValue'] = self.conditionWidget.spinBox.value()
-        outData['name'] = self.nameWidget.lineEdit.text()
-        self.destinationAdded.emit(outData)
+        pass
+        # self.destinationAdded.emit(outData)
 
     def populate(self, item, destinationData):
         # print destinationData
@@ -2384,6 +3103,39 @@ class PickwalkPopup(BaseDialog):
 
     def inputSignal_conditionhanged(self, value):
         print('inputSignal_conditionhanged,', value)
+
+    def addWalk(self, direction=str()):
+        # print('addWalk', direction)
+        outData = dict()
+        if not self.destinationsWidget.currentItems():
+            return pm.warning('No destinations')
+        if not self.altDestinationsWidget.currentItems():
+            return pm.warning('No alt destinations')
+        if not self.conditionAttrWidget.lineEdit.text():
+            return pm.warning('No valid attribute')
+        outData['destination'] = self.destinationsWidget.currentItems()
+        outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
+        outData['conditionAttribute'] = self.conditionAttrWidget.lineEdit.text()
+        outData['conditionValue'] = self.conditionWidget.spinBox.value()
+        outData['name'] = self.controlWidget.lineEdit.text() + '__' + direction
+        # print(outData)
+
+        self.creator.addDestination(name=outData['name'],
+                                    destination=outData['destination'],
+                                    destinationAlt=outData['destinationAlt'],
+                                    conditionAttribute=outData['conditionAttribute'],
+                                    conditionValue=outData['conditionValue'])
+        for control in self.controls:
+            # print('setControlDestination for control::', control)
+            self.creator.setControlDestination(control,
+                                               direction=direction,
+                                               destination=outData['name'])
+
+        self.pickwalkWindow.saveLibrary()
+        self.pickwalkWindow.loadLibraryForCurrent()
+        self.pickwalk.loadWalkLibrary()
+        self.pickwalk.getAllPickwalkMaps()
+        self.pickwalk.initialiseWalkData()
 
 
 class mirrorPickwalkWidget(QFrame):
@@ -2453,10 +3205,13 @@ class mirrorPickwalkWidget(QFrame):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
 
     def fromChanged(self, lineEdit):
-        print('fromChanged', lineEdit)
+        pass
+
+        #print('fromChanged', lineEdit)
 
     def toChanged(self, lineEdit):
-        print('toChanged', lineEdit)
+        pass
+        #print('toChanged', lineEdit)
 
     @Slot()
     def sendChangedSignal(self):
@@ -2482,7 +3237,8 @@ class mirrorPickwalkWidget(QFrame):
 class pickwalkRigAssignemtWindow(QMainWindow):
 
     def __init__(self):
-        super(pickwalkRigAssignemtWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(pickwalkRigAssignemtWindow, self).__init__(
+            parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.setMinimumWidth(400)
         self.setMinimumHeight(400)
@@ -2644,7 +3400,8 @@ class pickwalkMainWindow(QMainWindow):
         super(pickwalkMainWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.defaultDir = pm.optionVar.get('pickwalkDir',
-                                           os.path.join(os.path.normpath(os.path.dirname(__file__)), 'pickwalkData'))
+                                           os.path.join(os.path.normpath(os.path.dirname(__file__)),
+                                                        'pickwalkData'))
         if not os.path.isdir(self.defaultDir):
             os.mkdir(self.defaultDir)
 
@@ -2769,7 +3526,8 @@ class pickwalkMainWindow(QMainWindow):
         # self.left_layout.addStretch()
         # connect events
         self.controlListWidget.newDestinationSignal.connect(self.inputSignal_dirFromControlTreeView)
-        self.controlListWidget.newConditionDestinationSignal.connect(self.inputSignal_conditionDirFromControlTreeView)
+        self.controlListWidget.newConditionDestinationSignal.connect(
+            self.inputSignal_conditionDirFromControlTreeView)
         self.controlListWidget.getFromRigSignal.connect(self.inputSignal_getFromRig)
         self.destinationListWidget.applySignal.connect(self.inputSignal_applyDestinationToCurrent)
         self.destinationListWidget.selectedSignal.connect(self.inputSignal_selectConditionalDestination)
@@ -2795,7 +3553,7 @@ class pickwalkMainWindow(QMainWindow):
         self.contextWidget.destinationAdded.connect(self.inputSignal_destinationAdded)
         self.mirrorWidget.mirrorPressed.connect(self.inputSignal_mirrorSelection)
 
-        #self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
+        # self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
 
         self.setSimpleMode()
 
@@ -2814,14 +3572,14 @@ class pickwalkMainWindow(QMainWindow):
 
         if reply == QMessageBox.Yes:
             # Clean up the script job stuff prior to closing the dialog.
-            #cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
+            # cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
             super(pickwalkMainWindow, self).closeEvent(event)
             event.accept()
         else:
             event.ignore()
 
     def onSelectionChange(self):
-        print('onSelectionChange')
+        # print('onSelectionChange')
         if not self.lockState:
             self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData)
 
@@ -2908,29 +3666,13 @@ class pickwalkMainWindow(QMainWindow):
         self.refreshUI()
 
     def saveLibrary(self):
-        if not self.pickwalkCreator.walkData._filePath:
-            self.saveAsLibrary()
-            return
-        self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
-        self.pickwalkCreator.load(self.pickwalkCreator.walkData._filePath)
+        Pickwalk().saveLibrary()
         self.refreshUI()
-        Pickwalk().loadWalkLibrary()
-        Pickwalk().getAllPickwalkMaps()
 
     def saveAsLibrary(self):
-        save_filename = QFileDialog.getSaveFileName(self,
-                                                    "Save file as",
-                                                    self.defaultDir,
-                                                    "Pickwalk files (*.json)")
-        if not save_filename:
-            return
-        if os.path.isfile(save_filename[0]):
-            if self.overwriteQuery().exec_() != 1024:
-                return
-        self.pickwalkCreator.walkData.save(save_filename[0])
-        Pickwalk().loadWalkLibrary()
-        self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename[0])
-        return os.path.basename(save_filename[0])
+        save_filename = Pickwalk().saveAsLibrary()
+        self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename)
+        return os.path.basename(save_filename)
 
     def overwriteQuery(self):
         msg = QMessageBox()
@@ -3135,7 +3877,7 @@ class pickwalkMainWindow(QMainWindow):
         if not sel:
             return pm.warning('No selection')
         if self.lockState:
-            print('main object is locked', self.activeObject)
+            # print('main object is locked', self.activeObject)
             if not self.activeObject:
                 return pm.warning('Unable to add single destination with no active object')
             # there is an active (locked object)
@@ -3236,304 +3978,48 @@ class pickwalkMainWindow(QMainWindow):
         self.adjustSize()
 
 
-class PickwalkCreator(object):
-    destKey = '_dest'
+class PickWalkObjectDialog(BaseDialog):
+    assignSignal = Signal(str, str, str, list)
+    conditionSignal = Signal(str, str, str, list)
 
-    ''' Acceptable directions as keys, opposite direction as value for mirroring'''
-    directionsDict = {'up': 'up',
-                      'down': 'down',
-                      'left': 'right',
-                      'right': 'left'}
-    reciprocalDirectionsDict = {'up': 'down',
-                                'down': 'up',
-                                'left': 'right',
-                                'right': 'left'}
-
-    def __init__(self, namespace=str()):
+    def __init__(self, direction, namespace, walkObject, parent=None, title='title', text='test', altText='alt text'):
+        super(PickWalkObjectDialog, self).__init__(parent=parent, title=title, text=text)
+        self.direction = direction
         self.namespace = namespace
+        self.walkObject = walkObject
+        self.result = str()
+        self.setFixedWidth(260)
+        self.buttonBox = QDialogButtonBox()
+        conditionButton = self.buttonBox.addButton("Add Condition", QDialogButtonBox.ActionRole)
+        self.buttonBox.addButton("Add Basic", QDialogButtonBox.AcceptRole)
+        self.buttonBox.addButton("Cancel", QDialogButtonBox.RejectRole)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
 
-        self.walkData = WalkData()
-        self._processedMirrorDestinations = list()  # used when mirroring to prevent looping of recursive function?
+        conditionButton.clicked.connect(lambda: self.makeCondition())
+        self.infoLabel = QLabel(altText)
+        self.itemLabel = QLineEdit()  # TODO add the inline button to this (from path tool)
+        self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(
+            'Pick path control from selection\nThis object will be used to generate your path.')
+        self.cle_action_pick.triggered.connect(self.pickObject)
 
-    def validForMirror(self, input, sideList):
-        for s in sideList:
-            if s in input:
-                return True
-        return False
+        # self.layout.addWidget(self.infoLabel)
+        self.layout.addWidget(self.itemLabel)
 
-    def getMirrorName(self, input, sideList):
-        for s in sideList:
-            if s in input:
-                return input.replace(s, sideList[not sideList.index(s)])
-        return input
+        self.mainLayout.addWidget(self.buttonBox)
 
-    def addControl(self, control):
-        control = control.split(':')[-1]
-        if control not in self.walkData.objectDict.keys():
-            self.walkData.objectDict[control] = WalkDirectionDict()
+    def makeCondition(self):
+        self.conditionSignal.emit(self.direction, self.namespace, self.walkObject, self.result)
+        self.close()
 
-    def addDestination(self,
-                       name=str(),
-                       destination=list(),
-                       destinationAlt=list(),
-                       conditionAttribute=str(),
-                       conditionValue=0.5):
-        self.walkData.destinations[name] = WalkDatinationInfo(destination=destination,
-                                                              destinationAlt=destinationAlt,
-                                                              conditionAttribute=conditionAttribute,
-                                                              conditionValue=conditionValue)
-
-    def mirror(self, item, sideList=list()):
-        """
-        duplicates input and mirrors side info
-        if any destinations are conditional, build those as well
-        :param item:
-        :return:
-        """
-        # print 'sides', sideList
-        for key, walkDirection in self.walkData.objectDict.items():
-            mirrorDir = dict()
-            # print key, item
-            if key == item:
-                if not self.validForMirror(key, sideList):
-                    # print 'not valid for mirror'
-                    continue
-                # print 'need to mirror', key
-                for dir, value in walkDirection.__dict__.items():
-                    found = False
-                    if not value:
-                        # print dir, 'is empty'
-                        mirrorDir[dir] = None
-                        continue
-                    if value in self.walkData.destinations.keys():
-                        # print dir, 'is condition - not made this bit yet'
-                        # recusrively mirror any destination info found here
-                        self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
-                        # add the mirror key to the destination list, mirror it
-                    mirrorDir[dir] = self.getMirrorName(value, sideList)
-
-                # print 'mirrorDir', mirrorDir
-                mirrorKey = self.getMirrorName(key, sideList)
-
-                for dKey, dValue in mirrorDir.items():
-                    # print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
-                    self.setControlDestination(mirrorKey,
-                                               direction=dKey,
-                                               destination=dValue)
-                    # print self.walkData.objectDict[mirrorKey].__dict__
-                pass
-
-    def mirrorWalkDestination(self, destinationKey=str(), sideList=list(), processed=list()):
-        """
-        Mirror all the entries in the destination, the the entries are also destinations,
-        recursively edit them, hopefully don't get into a loop....
-        :param destinationKey:
-        :param sideList:
-        :param processed:
-        :return:
-        """
-        print('mirrorWalkDestination', processed)
-        print(self.walkData.destinations[destinationKey].__dict__)
-        if destinationKey in processed:
-            return processed
-        mirrorDestination = None
-        mirrorDestinationAlt = None
-        mirrorConditionValue = None
-        mirrorConditionAttribute = None
-        if not self.validForMirror(destinationKey, sideList):
-            return processed
-        else:
-            mirrorDestinationKey = self.getMirrorName(destinationKey, sideList)
-        if mirrorDestinationKey in processed:
-            return processed
-        if self.walkData.destinations[destinationKey].conditionValue:
-            mirrorConditionValue = self.walkData.destinations[destinationKey].conditionValue
-        if self.walkData.destinations[destinationKey].conditionAttribute:
-            mirrorConditionAttribute = self.getMirrorName(self.walkData.destinations[destinationKey].conditionAttribute,
-                                                          sideList)
-        if self.walkData.destinations[destinationKey].destination:
-            mirrorDestination = [self.getMirrorName(x, sideList) for x in
-                                 self.walkData.destinations[destinationKey].destination]
-
-        if self.walkData.destinations[destinationKey].destinationAlt:
-            mirrorDestinationAlt = [self.getMirrorName(x, sideList) for x in
-                                    self.walkData.destinations[destinationKey].destinationAlt]
-
-        self.addDestination(
-            name=mirrorDestinationKey,
-            destination=mirrorDestination,
-            destinationAlt=mirrorDestinationAlt,
-            conditionAttribute=mirrorConditionAttribute,
-            conditionValue=mirrorConditionValue)
-        processed.append(mirrorDestinationKey)
-        processed.append(destinationKey)
-        for destination in self.walkData.destinations[destinationKey].destination:
-            if destination in self.walkData.destinations.keys():
-                processed = self.mirrorWalkDestination(destinationKey=destination, sideList=sideList,
-                                                       processed=processed)
-        for altDestination in self.walkData.destinations[destinationKey].destinationAlt:
-            if altDestination in self.walkData.destinations.keys():
-                processed = self.mirrorWalkDestination(destinationKey=altDestination, sideList=sideList,
-                                                       processed=processed)
-        return processed
-
-    def replaceDestination(self, original=str, new=str):
-        """
-        replaces all occurrences of original with new
-        :param original:
-        :param new:
-        :return:
-        """
-        for walkDirection in self.walkData.objectDict.values():
-            for dir, value in walkDirection.__dict__.items():
-                # print 'dir', dir, 'value', value, 'o', original, 'n', new
-                if value == original:
-                    walkDirection.__dict__[dir] = new
-
-    def setControlDestination(self, control,
-                              direction=str(),
-                              destination=str()):
-        # add control entry in case it is not already there
-        self.addControl(control)
-        destination = destination.split(':')[-1]
-        if destination in self.walkData.destinations.keys():
-            self.walkData.objectDict[control][direction] = destination
-        else:
-            # destination is probably one object, just set it as a string
-            # print 'simple destination, object only', control, direction, destination
-            self.walkData.objectDict[control][direction] = destination
-
-    def addPickwalkChain(self,
-                         controls=list(),
-                         direction=str(),
-                         loop=False,
-                         reciprocate=True,
-                         endOnSelf=False):
-        if not controls:
-            return cmds.error('no nodes defined for walk')
-        if not isinstance(controls, list):
-            controls = [controls]
-        controls = [c.split(':')[-1] for c in controls]
-        reciprocalIndexes = [None] * len(controls)
-        destinationIndexes = [None] * len(controls)
-        # print destinationIndexes
-        # get the corresponding walk indexes
-        for index, value in enumerate(controls):
-            # if this is the last index, pick to loop or not
-            if index == (len(controls) - 1):
-                if loop:
-                    # print 'loop', index, (index + 1) % len(nodes)
-                    destinationIndexes[index] = (index + 1) % len(controls)
-
-                elif endOnSelf:
-                    # not looping so set the node to end at this object
-                    destinationIndexes[index] = index
-            else:
-                # print 'meh', index, index + 1
-                destinationIndexes[index] = index + 1
-            # get reciprocal indexes
-            if index == 0:
-                if loop:
-                    reciprocalIndexes[index] = len(controls) - 1
-            else:
-                reciprocalIndexes[index] = index - 1
-
-        infoNodes = [None] * len(controls)
-        for index, value in enumerate(controls):
-            infoNodes[index] = value
-
-        for index, value in enumerate(controls):
-            # get the next index and connect it up to this if reciprocating
-            if destinationIndexes[index] is not None:
-                self.setControlDestination(value,
-                                           direction=direction,
-                                           destination=infoNodes[destinationIndexes[index]])
-        if reciprocate:
-            for index, value in enumerate(reciprocalIndexes):
-                if value is not None:
-                    self.setControlDestination(controls[index],
-                                               direction=self.reciprocalDirectionsDict[direction],
-                                               destination=infoNodes[value])
-
-    def getNodeInfoFromRig(self, control):
-        """
-        Used to grab info from existing message/string attributes on a rig and dump them
-        into the walk data
-        :param control:
-        :return:
-        """
-        controlName = control.split(':')[-1]
-        self.addControl(controlName)
-        # print 'controlName', controlName
-        userAttrs = cmds.listAttr(control, userDefined=True)
-        if not userAttrs:
+    def pickObject(self):
+        sel = pm.ls(sl=True)
+        if not sel:
             return
-        userAttrs = set(userAttrs)
-        for direction, values in Pickwalk().pickwalkAttributeNames.items():
-            # print dir, set(values)
-            matching = set(values) & userAttrs
-            # print 'matching', matching
-            for m in matching:
-                attrType = cmds.getAttr(control + '.' + m, type=True)
-                destination = None
-                if attrType == 'message':
-                    destination = cmds.listConnections(control + '.' + m, source=True, destination=False)
-                elif attrType == 'string':
-                    destination = cmds.getAttr(control + '.' + m)
-                # print control, m, attrType, destination
-                if destination:
-                    if isinstance(destination, list):
-                        if len(destination) > 1:
-                            self.addDestination(
-                                name=controlName + '_in',
-                                destination=[d.split(':')[-1] for d in destination])
-                            continue
-                        else:
-                            destination = destination[0]
-                    self.walkData.objectDict[controlName][direction] = destination.split(':')[-1]
+        self.itemLabel.setText(str(sel[0]))
+        self.result = sel
 
-    def load(self, walkDataFile, controlFilter=list()):
-        """
-        Load the walk data file and rebuild the walk info
-        :param walkDataFile:
-        :return:
-        """
-        # TODO - move this entirely to the WalkData class?
-        # print('loading data', walkDataFile)
-        filter = False
-        try:
-            jsonObjectInfo = json.load(open(walkDataFile))
-        except ValueError:  # includes simplejson.decoder.JSONDecodeError
-            jsonData = '''{}'''
-            jsonObjectInfo = json.loads(jsonData)
-
-        if len(controlFilter):
-            # strip namespace
-            controlFilter = [c.split(':')[-1] for c in controlFilter]
-            allDestinations = list()
-            for key, value in jsonObjectInfo['objectDict'].items():
-                if key not in controlFilter:
-                    jsonObjectInfo['objectDict'].pop(key)
-                allDestinations.append(value)
-            for key, destination in jsonObjectInfo['destinations'].items():
-                if key not in allDestinations:
-                    jsonObjectInfo['destinations'].pop(key)
-        # self.walkData.destinations = jsonObjectInfo['destinations']
-        for key, destination in jsonObjectInfo['destinations'].items():
-            self.addDestination(name=key,
-                                destination=destination['destination'],
-                                destinationAlt=destination['destinationAlt'],
-                                conditionAttribute=destination['conditionAttribute'],
-                                conditionValue=destination['conditionValue'])
-        # self.walkData.destinations = dict()
-        # print 'objectDict', jsonObjectInfo['objectDict'].keys()
-
-        for key, value in jsonObjectInfo['objectDict'].items():
-            self.addControl(key)
-            # print key, value, type(value)
-            for dKey, dValue in value.items():
-                self.setControlDestination(key,
-                                           direction=dKey,
-                                           destination=dValue)
-
-        self.walkData._filePath = walkDataFile
+    def accept(self):
+        self.assignSignal.emit(self.direction, self.namespace, self.walkObject, self.result)
+        super(PickWalkObjectDialog, self).accept()

@@ -70,8 +70,7 @@ class CustomDialog(QDialog):
 class BaseDialog(QDialog):
     oldPos = None
 
-    def __init__(self, parent=None, title='title?', text='message?'
-                 ):
+    def __init__(self, parent=None, title='', text=''):
         super(BaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
@@ -87,16 +86,14 @@ class BaseDialog(QDialog):
         self.setFixedSize(400, 120)
         self.mainLayout = QVBoxLayout()
         self.layout = QVBoxLayout()
-
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel(text)
-        self.infoText.setStyleSheet(self.stylesheet)
-
         self.mainLayout.addWidget(self.titleText)
-        self.mainLayout.addLayout(self.layout)
+        self.infoText.setStyleSheet(self.stylesheet)
         self.layout.addWidget(self.infoText)
 
+        self.mainLayout.addLayout(self.layout)
         self.setLayout(self.mainLayout)
 
     def paintEvent(self, event):
@@ -786,6 +783,9 @@ class promptWidget(QWidget):
         return super(promptWidget, self).keyPressEvent(event)
 
 class subHeader(QLabel):
+    """
+    label with wordwrap
+    """
     def __init__(self, label=str()):
         super(subHeader, self).__init__()
         self.setText(label)
@@ -1088,7 +1088,7 @@ class PickObjectDialog(BaseDialog):
 
     def __init__(self, parent=None, title='title!!!?', text='what  what?'):
         super(PickObjectDialog, self).__init__(parent=parent, title=title, text=text)
-
+        self.setFixedWidth(200)
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)

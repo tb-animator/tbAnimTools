@@ -420,15 +420,12 @@ class functions(object):
             print ("no anim curves found")
 
     def getChannels(self, *arg):
-        # TODO make this work with assets
         chList = cmds.channelBox(self.getChannelBoxName(),
                                  query=True,
                                  selectedMainAttributes=True)
-        if chList:
-            for channel in chList:
-                print (channel)
-        else:
-            print ("no channels selected")
+        plugs = mel.eval("selectedChannelBoxPlugs")
+        # strip out object names and return attibutes
+        chList = list(set([x.split('.')[-1] for x in plugs]))
         return chList
 
     def filterChannels(self):
