@@ -113,10 +113,10 @@ class WalkData(object):
         # print ('setLastUsedIndex', node)
         for key, value in self.destinations.items():
             if node in value.destination:
-                #print('matching entry destination', node)
+                # print('matching entry destination', node)
                 self.destinations[key]._lastIndex = value.destination.index(node)
             elif node in value.destinationAlt:
-                #print('matching entry destinationAlt', node)
+                # print('matching entry destinationAlt', node)
                 self.destinations[key]._lastIndex = value.destinationAlt.index(node)
 
     def walk(self, namespace=str(), node=str(), direction=str()):
@@ -247,8 +247,8 @@ class PickwalkCreator(object):
         :param processed:
         :return:
         """
-        #print('mirrorWalkDestination', processed)
-        #print(self.walkData.destinations[destinationKey].__dict__)
+        # print('mirrorWalkDestination', processed)
+        # print(self.walkData.destinations[destinationKey].__dict__)
         if destinationKey in processed:
             return processed
         mirrorDestination = None
@@ -310,6 +310,7 @@ class PickwalkCreator(object):
                               direction=str(),
                               destination=str()):
         # add control entry in case it is not already there
+        control = str(control).split(':')[-1]
         self.addControl(control)
         destination = destination.split(':')[-1]
         if destination in self.walkData.destinations.keys():
@@ -610,6 +611,10 @@ class Pickwalk(toolAbstractFactory):
     # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'Pickwalk'
+    libraryName = 'pickwalkLibraryData'
+    subfolder = 'pickwalkData'
+    dataPath = None
+    defaultPickwalkDir = None
     hotkeyClass = None
     funcs = None
 
@@ -685,6 +690,7 @@ class Pickwalk(toolAbstractFactory):
             Pickwalk.__instance = object.__new__(cls)
 
         Pickwalk.__instance.val = cls.toolName
+        Pickwalk.__instance.initData()
         Pickwalk.__instance.loadWalkLibrary()
         Pickwalk.__instance.getAllPickwalkMaps()
         Pickwalk.__instance.initialiseWalkData()
@@ -693,6 +699,13 @@ class Pickwalk(toolAbstractFactory):
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
+        self.initData()
+
+    def initData(self):
+        super(Pickwalk, self).initData()
+        self.defaultPickwalkDir = os.path.normpath(os.path.join(self.dataPath, self.subfolder))
+        if not os.path.isdir(self.defaultPickwalkDir):
+            os.mkdir(self.defaultPickwalkDir)
 
     """
     Declare an interface for operations that create abstract product
@@ -815,19 +828,12 @@ class Pickwalk(toolAbstractFactory):
                         name=command + 'NameCommand')
 
     def loadWalkLibrary(self):
-        self.defaultPickwalkDir = pm.optionVar.get('pickwalkDir',
-                                                   os.path.join(os.path.normpath(os.path.dirname(__file__)),
-                                                                'pickwalkData'))
-        if not os.path.isdir(self.defaultPickwalkDir):
-            os.mkdir(self.defaultPickwalkDir)
-        self.libraryFile = pm.optionVar.get('pickwalkLibrary', 'pickwalkLibraryData.json')
-        # print 'library file',  self.libraryFile
+        self.libraryFile = self.libraryName + '.json'
         self.libraryFilePath = os.path.join(self.defaultPickwalkDir, self.libraryFile)
 
         if not os.path.isfile(self.libraryFilePath):
             self.walkDataLibrary = WalkDataLibrary()
             self.walkDataLibrary.save(self.libraryFilePath)
-            pm.optionVar['pickwalkLibrary'] = self.libraryFile
         else:
             self.walkDataLibrary = WalkDataLibrary()
             self.walkDataLibrary.load(self.libraryFilePath)
@@ -927,10 +933,10 @@ class Pickwalk(toolAbstractFactory):
                 dlg.show()
             else:
                 if direction == 'down':
-                    #print(sel[0], 'down to', sel[1:])
+                    # print(sel[0], 'down to', sel[1:])
                     self.pickwalkCreator.quickDownToMulti()
                 elif direction == 'up':
-                    #print(sel[1:], 'up to', sel[0])
+                    # print(sel[1:], 'up to', sel[0])
                     self.pickwalkCreator.quickUpFromMulti()
 
         self.saveLibrary()
@@ -1009,6 +1015,7 @@ class Pickwalk(toolAbstractFactory):
         returnedControls = list()
         walkObjectStripped = walkObject.stripNamespace()
         walkObjectNS = walkObject.namespace()
+        userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         if refName in self.walkDataLibrary._fileToMapDict.keys():
             mapName = self.walkDataLibrary._fileToMapDict[refName]
             # print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
@@ -1016,15 +1023,15 @@ class Pickwalk(toolAbstractFactory):
                                                      node=walkObjectStripped,
                                                      direction=direction)
             if result is u'(None,)':
-                #print('query new destination')
+                # print('query new destination')
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
             if result is None:
-                #print('query new destination')
+                # print('query new destination')
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
 
-            #print('data walk result', result)
+            # print('data walk result', result)
             if cmds.objExists(walkObjectNS + result):
                 # print 'final result', walkObject.namespace() + result
                 returnedControls.append(walkObjectNS + result)
@@ -1035,14 +1042,14 @@ class Pickwalk(toolAbstractFactory):
                     return
                 return False
             return returnedControls
-        userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
-        if userAttrs:
+        elif refName not in self.walkDataLibrary.ignoredRigs:
+            self.queryWalkOnNewRig(refName)
+        elif userAttrs:
             pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
             if pickAttributes:
                 # exit and return to standard pickwalk ( bit of repeated code but whatever for now )
+                print ('Attribute driven pickwalk found', pickAttributes)
                 return returnedControls
-        elif refName not in self.walkDataLibrary.ignoredRigs:
-            self.queryWalkOnNewRig(refName)
         return returnedControls
 
     def pickNewDestination(self, direction, namespace, walkObject):
@@ -1055,14 +1062,14 @@ class Pickwalk(toolAbstractFactory):
         prompt.show()
 
     def assignNewConditionFromWalk(self, direction, namespace, walkObject, destination):
-        #print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
+        # print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
         cmds.select(namespace + ':' + walkObject, replace=True)
         self.loadLibraryForCurrent()
         dlg = PickwalkPopup(control=walkObject, destination=destination)
         dlg.show()
 
     def assignNewDestinationFromWalk(self, direction, namespace, walkObject, destination):
-        #print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
+        # print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
         cmds.select(namespace + ':' + walkObject, replace=True)
         self.loadLibraryForCurrent()
         # TODO - make this work with the incoming list
@@ -1146,16 +1153,17 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        #print('assignNewRigNewMap', rigName)
+        # print('assignNewRigNewMap', rigName)
         win = pickwalkMainWindow()
         win.show()
         # TODO this is a bit ugly as it opens the save as windows window, nice to avoid that as you have to save
         # TODO the pickwalk map in the save folder anyway
         newMap = win.saveAsLibrary()
-        #print('new map', newMap)
+        # print('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
         self.walkDataLibrary.save(self.libraryFilePath)
         self.getAllPickwalkMaps()
+        win.loadLibraryForCurrent()
 
     """
     Functions moved from mainwindow to here
@@ -1196,9 +1204,9 @@ class Pickwalk(toolAbstractFactory):
         self.pickwalkCreator.load(fname)
 
     def browseToFile(self):
-        fname = QFileDialog.getOpenFileName(self, 'Open file',
+        fname = QFileDialog.getOpenFileName(QWidget(), 'Open file',
                                             cmds.workspace(q=True, directory=True),
-                                            "Maya files (*.ma *.mb)")
+                                            "Pickwalk files (*.json)")
         return fname[0] or None
 
     def saveLibrary(self):
@@ -1211,9 +1219,9 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def saveAsLibrary(self):
-        save_filename = QFileDialog.getSaveFileName(self,
+        save_filename = QFileDialog.getSaveFileName(QWidget(),
                                                     "Save file as",
-                                                    self.defaultDir,
+                                                    self.defaultPickwalkDir,
                                                     "Pickwalk files (*.json)")
         if not save_filename:
             return
@@ -3207,11 +3215,11 @@ class mirrorPickwalkWidget(QFrame):
     def fromChanged(self, lineEdit):
         pass
 
-        #print('fromChanged', lineEdit)
+        # print('fromChanged', lineEdit)
 
     def toChanged(self, lineEdit):
         pass
-        #print('toChanged', lineEdit)
+        # print('toChanged', lineEdit)
 
     @Slot()
     def sendChangedSignal(self):
@@ -3244,9 +3252,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.setMinimumHeight(400)
         self.walkDataLibrary = WalkDataLibrary()
 
-        self.defaultPickwalkDir = pm.optionVar.get('pickwalkDir',
-                                                   os.path.join(os.path.normpath(os.path.dirname(__file__)),
-                                                                'pickwalkData'))
+        self.defaultPickwalkDir = Pickwalk().defaultPickwalkDir
         if not os.path.isdir(self.defaultPickwalkDir):
             os.mkdir(self.defaultPickwalkDir)
         self.libraryFile = pm.optionVar.get('pickwalkLibrary', 'pickwalkLibraryData.json')
@@ -3587,7 +3593,7 @@ class pickwalkMainWindow(QMainWindow):
 
     def browseToFile(self):
         fname = QFileDialog.getOpenFileName(self, 'Open file',
-                                            self.defaultDir,
+                                            Pickwalk().defaultPickwalkDir,
                                             "Pickwalk files (*.json)")
         return fname[0] or None
 
