@@ -736,6 +736,24 @@ class functions(object):
 
         return True
 
+    def getLowerLayerPlugs(self, nodeAttr, animLayer):
+        if animLayer == cmds.animLayer(q=True, root=True):
+            return None, None
+        else:
+            blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
+            if not blendNode:
+                return None, None
+            blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
+            history = cmds.listHistory(blendNode)
+            firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
+            basePlug = firstAnimBlendNode + '.inputA'
+            layerPlug = firstAnimBlendNode + '.inputB'
+            if cmds.nodeType(blendNode) == 'animBlendNodeAdditiveRotation':
+                basePlug += nodeAttr[-1]
+                layerPlug += nodeAttr[-1]
+            return basePlug, layerPlug
+        return None, None
+
     def getPlugsFromLayer(self, nodeAttr, animLayer):
         """ Find the animBlendNode plug corresponding to the given node, attribute,
         and animation layer.

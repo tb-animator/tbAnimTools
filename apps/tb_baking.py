@@ -567,7 +567,7 @@ class BakeTools(toolAbstractFactory):
             return cmds.warning('driver control does not appear to have any keys in the selected layer')
         resultLayer = pm.animLayer(animLayer[0] + '_Counter')
         pm.setAttr(resultLayer + '.scaleAccumulationMode', 0)
-        pm.animLayer(resultLayer, edit=True, parent=animLayer[0])
+        pm.animLayer(resultLayer, edit=True, override=True, parent=animLayer[0])
         allAttrs = list()
         for target in targets:
             translates = self.funcs.getAvailableTranslates(target)
@@ -583,7 +583,9 @@ class BakeTools(toolAbstractFactory):
         locators = self.bake_to_locator(sel=targets, constrain=True, select=False)
         # restore the animation layer
         pm.animLayer(animLayer[0], edit=True, mute=False)
+
         # bake out the result values
+
         preContainers = set(pm.ls(type='container'))
         pm.bakeResults(allAttrs,
                        time=(keyRange[0], keyRange[-1]),
@@ -596,9 +598,23 @@ class BakeTools(toolAbstractFactory):
                        sparseAnimCurveBake=True,
                        removeBakedAttributeFromLayer=False,
                        removeBakedAnimFromLayer=False,
-                       bakeOnOverrideLayer=False,
+                       bakeOnOverrideLayer=True,
                        minimizeRotation=True,
                        controlPoints=False,
                        shape=False)
         pm.delete(locators)
         self.removeContainersPostBake(preContainers)
+
+        for v in allAttrs:
+            layerValues = []
+            baseplug, layerplug = self.funcs.getLowerLayerPlugs(v, resultLayer)
+            animRange = int(keyRange[-1] - keyRange[0] + 1)
+            for x in range(0, animRange):
+                baseVal = cmds.getAttr(baseplug, time=keyRange[0] + x)
+                layerVal = cmds.getAttr(layerplug, time=keyRange[0] + x)
+                delta = layerVal - baseVal
+                layerValues.append(delta)
+
+            for x in range(0, animRange):
+                cmds.setKeyframe(layerplug, time=keyRange[0] + x, value=layerValues[x])
+        pm.animLayer(resultLayer, edit=True, override=False)
