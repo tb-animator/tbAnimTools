@@ -44,6 +44,8 @@ else:
     from shiboken2 import wrapInstance
 from contextlib import contextmanager
 import maya.OpenMaya as om
+import maya.api.OpenMayaAnim as oma2
+import maya.api.OpenMaya as om2
 
 orbPointList = [[0.0, 25.0, 0.0],
                 [0.0, 23.097, 9.567074999999999],
@@ -736,6 +738,58 @@ class functions(object):
 
         return True
 
+    def extractAnimationLayers(self, nodes):
+        cmds.select(nodes, replace=True)
+        extracted_layers = []
+        if not cmds.animLayer(query=True, affectedLayers=True):
+            return list()
+
+        layers_to_extract = [layer for layer in cmds.animLayer(query=True, affectedLayers=True) if
+                             str(layer) != 'BaseAnimation']
+        for layer in layers_to_extract:
+            # skip muted layers during bakedown
+            if not cmds.animLayer(layer, query=True, mute=True):
+                print ('layer:', layer)
+                exLayer = cmds.animLayer(layer + '_extracted', copyNoAnimation=layer, moveLayerAfter=layer)
+                attributes = cmds.animLayer(layer, query=True, attribute=True)
+                for attr in attributes:
+                    keep = False
+                    for n in nodes:
+                        if mel.eval("plugNode {0}".format(attr)) == n:
+                            keep = True
+                            break
+                    if not keep:
+                        cmds.animLayer(exLayer, edit=True, removeAttribute=attr)
+
+                cmds.animLayer(exLayer, edit=True, override=cmds.animLayer(layer, query=True, override=True))
+                cmds.animLayer(exLayer, edit=True, passthrough=cmds.animLayer(layer, query=True, passthrough=True))
+                cmds.animLayer(exLayer, edit=True, mute=cmds.animLayer(layer, query=True, mute=True))
+
+                cmds.setAttr(exLayer + '.rotationAccumulationMode', cmds.getAttr(layer + '.rotationAccumulationMode'))
+
+                cmds.animLayer(exLayer, edit=True, extractAnimation=layer)
+
+                # copy layer weight curve
+                weight_plug = cmds.listConnections(layer + '.weight', plugs=True, source=True, destination=False)
+                if weight_plug:
+                    cmds.connectAttr(weight_plug[0], exLayer + '.weight')
+                if not cmds.animLayer(layer, query=True, attribute=True):
+                    cmds.delete(layer)
+                extracted_layers.append(str(exLayer))
+        return extracted_layers
+
+    def merge_layers(self, layers):
+        # takes a string list of layers and merges them down
+        layers.insert(0, 'BaseAnimation')
+        layerString = ""
+        for layer in layers:
+            layerString += '"' + layer + '" ,'
+        layerString = '{ %s }' % layerString[:-1]
+
+        pm.optionVar['bakeSimulationByTime'] = 1
+        pm.optionVar['animLayerMergeSmartFidelity'] = 1
+        mel.eval('animLayerMerge( %s )' % layerString)
+
     def getLowerLayerPlugs(self, nodeAttr, animLayer):
         if animLayer == cmds.animLayer(q=True, root=True):
             return None, None
@@ -828,3 +882,56 @@ class functions(object):
                            point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
         curve = pm.PyNode(curve)
         return curve, curve.getShape()
+
+    @staticmethod
+    def getMDagPath(node):
+        selList = om2.MSelectionList()
+        selList.add(node)
+        return selList.getDagPath(0)
+
+    @staticmethod
+    def getMObject(node):
+        selList = om2.MSelectionList()
+        selList.add(node)
+        return selList.getDependNode(0)
+
+    @staticmethod
+    def getMFnCurveFromPlug(plug):
+        omslist = om2.MSelectionList()
+        omslist.add(plug)
+        mplug = omslist.getPlug(0)
+        mcurve = oma2.MFnAnimCurve(mplug)
+
+        return mplug, mcurve
+
+    @staticmethod
+    def getMfnCurveValues(mfnCurve, mTimeArray):
+        return [mfnCurve.evaluate(m) for m in mTimeArray]
+
+    def omGetPlugsFromLayer(self, layer, layerAttributes):
+        MPlugDict = dict()
+        MFnCurveDict = dict()
+        for attribute in layerAttributes:
+            plugName = self.getPlugsFromLayer(attribute, layer)
+            if not plugName:
+                continue
+            mObj, mfnCurve = self.getMFnCurveFromPlug(plugName)
+            if not mObj:
+                continue
+            if not mfnCurve:
+                continue
+            MPlugDict[attribute] = mObj
+            MFnCurveDict[attribute] = mfnCurve
+        return MPlugDict, MFnCurveDict
+
+    def createMTimeArray(self, initialFrame, count):
+        mTimeArray = om2.MTimeArray(count, om2.MTime())
+        for x in xrange(count):
+            mTimeArray[x] = om2.MTime(initialFrame + x, om2.MTime.uiUnit())
+        return mTimeArray
+
+    def createMTimePairArray(self, initialFrame, finalFrame):
+        mTimeArray = om2.MTimeArray(2, om2.MTime())
+        mTimeArray[0] = initialFrame
+        mTimeArray[1] = finalFrame
+        return mTimeArray

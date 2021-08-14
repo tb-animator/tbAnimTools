@@ -26,6 +26,7 @@ import pymel.core as pm
 import maya.mel as mel
 import maya.cmds as cmds
 import maya.api.OpenMaya as om2
+import maya.api.OpenMayaAnim as oma2
 import pymel.core.datatypes as dt
 import math
 from Abstract import *
@@ -52,6 +53,11 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
         self.setCategory(self.helpStrings.category.get('layers'))
+
+        self.addCommand(self.tb_hkey(name='additiveExtractSelection',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.additiveExtractSelection()']
+                                     ))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
@@ -364,7 +370,7 @@ class BakeTools(toolAbstractFactory):
         asset = pm.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-        print ("asset", asset, sel)
+        #print ("asset", asset, sel)
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
@@ -411,18 +417,18 @@ class BakeTools(toolAbstractFactory):
         pm.delete(asset)
 
     def bakeSelectedCommand(self, asset, sel):
-        print ('rebakeCommand', asset, sel)
+        #print ('rebakeCommand', asset, sel)
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
         filteredTargets = [item for sublist in targets for item in sublist if item]
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
 
     def bakeAllCommand(self, asset, sel):
-        print ('bakeAllCommand', asset, sel)
+        #print ('bakeAllCommand', asset, sel)
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        print ('filteredTargets', filteredTargets)
+        #print ('filteredTargets', filteredTargets)
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(asset)
@@ -462,16 +468,20 @@ class BakeTools(toolAbstractFactory):
             if 'blendParent' in str(attr):
                 pm.deleteAttr(node, at=attr)
 
-    def quickBake(self, node):
+    def quickBake(self, node, startTime=None, endTime=None, deleteConstraints=True):
+        if not startTime:
+            startTime = pm.playbackOptions(query=True, minTime=True)
+        if not endTime:
+            endTime = pm.playbackOptions(query=True, maxTime=True)
         pm.bakeResults(node,
                        simulation=False,
                        disableImplicitControl=False,
-                       time=[pm.playbackOptions(query=True, minTime=True),
-                             pm.playbackOptions(query=True, maxTime=True)],
+                       time=[startTime,
+                             endTime],
                        sampleBy=1)
-
-        pm.delete(node.listRelatives(type='constraint'))
-        self.clearBlendAttrs(node)
+        if deleteConstraints:
+            pm.delete(node.listRelatives(type='constraint'))
+            self.clearBlendAttrs(node)
 
     def addOverrideLayer(self):
         self.add_layer(mode=True)
@@ -618,3 +628,110 @@ class BakeTools(toolAbstractFactory):
             for x in range(0, animRange):
                 cmds.setKeyframe(layerplug, time=keyRange[0] + x, value=layerValues[x])
         pm.animLayer(resultLayer, edit=True, override=False)
+
+    def additiveExtractSelection(self):
+        #print ('additiveExtractSelection')
+        sel = cmds.ls(sl=True)
+        if sel:
+            self.additiveExtract(sel)
+
+    def additiveExtract(self, nodes):
+        """
+        TODO - fix bad calculation on non-zero start time
+        :param nodes:
+        :return:
+        """
+        keyRange = self.funcs.getTimelineHighlightedRange()
+        if keyRange[0] == keyRange[1]:
+            keyRange = self.funcs.getTimelineRange()
+        overrideLayer = cmds.animLayer('AdditiveBase', override=True)
+
+        cmds.bakeResults(nodes,
+                         time=(keyRange[0], keyRange[-1]),
+                         destinationLayer=overrideLayer,
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=True,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+        additiveLayer = cmds.animLayer('AdditiveExtract', copy=overrideLayer, parent=overrideLayer)
+        cmds.animLayer(additiveLayer, edit=True, override=False)
+        cmds.setAttr(additiveLayer + '.scaleAccumulationMode', 0)
+
+        attributes = cmds.animLayer(overrideLayer, query=True, attribute=True)
+        for attr in attributes:
+            if 'visibility' in attr.split('.')[-1]:
+                cmds.animLayer(additiveLayer, edit=True, removeAttribute=attr)
+        layeredPlugs = list()
+        basePlugs = list()
+        baseLayerMPlugs, baseLayerMFnAnimCurves = self.funcs.omGetPlugsFromLayer(str(overrideLayer), attributes)
+        additiveLayerMPlugs, additiveMFnAnimCurves = self.funcs.omGetPlugsFromLayer(str(additiveLayer), attributes)
+        # print (baseLayerMFnAnimCurves)
+        overrideValues = dict()
+        additiveValues = dict()
+        additiveMTimeArray = None
+        overrideMTimeArray = None
+
+        for attr, curve in baseLayerMFnAnimCurves.items():
+            # print (attr, curve.numKeys)
+            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
+
+            # print (keyTimes)
+            keyValues = [curve.value(key) for key in xrange(curve.numKeys)]
+            # print (keyValues)
+            initialVal = keyValues[0]
+            finalVal = keyValues[-1]
+            keyRange = keyTimes[-1] - keyTimes[0]
+            # print (initialVal, finalVal, keyRange)
+            blendedValues = []
+            for index, key in enumerate(keyTimes):
+                alpha = key.value / keyRange.value
+                progress = ((finalVal - initialVal) * alpha) + initialVal
+                blendedValues.append(progress - keyValues[index])
+            additiveValues[attr] = blendedValues
+            overrideValues[attr] = [initialVal, finalVal]
+            if not additiveMTimeArray:
+                additiveMTimeArray = self.funcs.createMTimeArray(keyTimes[0].value,
+                                                                 int(keyTimes[-1].value) - int(keyTimes[0].value) + 1)
+                overrideMTimeArray = self.funcs.createMTimePairArray(keyTimes[0], keyTimes[-1])
+        dg = om2.MDGModifier()
+        for key, mcurve in additiveMFnAnimCurves.items():
+            sources = additiveLayerMPlugs[key].connectedTo(True, False)
+            for i in xrange(len(sources)):
+                dg.disconnect(sources[i], additiveLayerMPlugs[key])
+
+            dg.doIt()
+
+            adjustedCurve = oma2.MFnAnimCurve(additiveLayerMPlugs[key])
+            adjustedCurve.create(additiveLayerMPlugs[key], additiveMFnAnimCurves[key].animCurveType, dg)
+
+            adjustedCurve.addKeys(additiveMTimeArray,
+                                  additiveValues[key],
+                                  oma2.MFnAnimCurve.kTangentGlobal,
+                                  oma2.MFnAnimCurve.kTangentGlobal)
+            dg.doIt()
+
+            sources = baseLayerMPlugs[key].connectedTo(True, False)
+            for i in xrange(len(sources)):
+                dg.disconnect(sources[i], baseLayerMPlugs[key])
+
+            dg.doIt()
+
+            adjustedCurve = oma2.MFnAnimCurve(baseLayerMPlugs[key])
+            adjustedCurve.create(baseLayerMPlugs[key], baseLayerMFnAnimCurves[key].animCurveType, dg)
+
+            adjustedCurve.addKeys(overrideMTimeArray,
+                                  overrideValues[key],
+                                  oma2.MFnAnimCurve.kTangentGlobal,
+                                  oma2.MFnAnimCurve.kTangentGlobal)
+            dg.doIt()
+            # layeredPlugs.append(layerPlug)
+            # basePlugs.append(basePlug)
+        return
