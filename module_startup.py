@@ -33,7 +33,7 @@ class initialise(object):
     def check_for_updates(self):
 
         print ('check_for_updates')
-        if not pm.optionVar.get('tbUpdateType', 0) == 2:
+        if not pm.optionVar.get('tbUpdateType', -1) == 2:
             updater = upd.updater()
             updater.check_version()
     '''

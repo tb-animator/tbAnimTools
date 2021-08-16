@@ -63,6 +63,7 @@ print data2[0]['tag_name'] - should be latest release
 
 class updater():
     def __init__(self):
+        self.updateTypes = ['Latest Stable', 'Latest untested', 'None']
         self.datUrl = 'https://api.github.com/repos/tb-animator/tbAnimTools'
         self.master_url = 'https://raw.githubusercontent.com/tb-animator/tbtools/master/'
         self.latestZip = 'https://github.com/tb-animator/tbAnimTools/archive/refs/heads/main.zip'
@@ -86,8 +87,23 @@ class updater():
             self.jsonProjectData.get('release', self.jsonProjectData.get('version', self.lastPush)))
         self.lastUpdateType = self.jsonProjectData.get('lastUpdateType', 'release')
 
-        self.updateType = pm.optionVar.get('tbUpdateType', 0)
+        self.updateType = pm.optionVar.get('tbUpdateType', -1)
         pm.optionVar['tbUpdateType'] = self.updateType
+
+        if self.updateType == -1:
+            # open update type dialog
+            prompt = PickListDialog(title='tbAnimTools Update settings', text='Please choose your update type',
+                                    itemList=self.updateTypes,
+                                    rigName='')
+            prompt.titleText.setStyleSheet("font-weight: bold; font-size: 14px;");
+            prompt.assignSignal.connect(self.assignUpdateType)
+            if prompt.exec_():
+                pass
+            else:
+                pass
+
+    def assignUpdateType(self, mode, blank):
+        pm.optionVar['tbUpdateType'] = self.updateTypes.index(mode)
 
     def save(self, version, release):
         jsonData = '''{}'''
