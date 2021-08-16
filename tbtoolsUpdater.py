@@ -146,7 +146,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.releaseZip)
-                self.save(self.lastPush)
+                self.save(self.lastPush,  self.latestRelease)
 
         elif self.updateType == 1:
             print('lastPush', self.lastPush)
@@ -164,7 +164,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.latestZip)
-                self.save(self.lastPush)
+                self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):
         response = urlopen(self.datUrl)
