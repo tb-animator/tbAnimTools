@@ -777,11 +777,9 @@ class BakeTools(toolAbstractFactory):
                          minimizeRotation=True,
                          controlPoints=False,
                          shape=False)
-
+        attrs = cmds.animLayer(resultLayer, query=True, attribute=True)
         if base:
             # copy anim from result layer to base
-            attrs = cmds.animLayer(resultLayer, query=True, attribute=True)
-
             for attr in attrs:
                 layerCurve = cmds.animLayer(resultLayer, query=True, findCurveForPlug=attr)
                 baseCurve = cmds.animLayer(rootLayer, query=True, findCurveForPlug=attr)
