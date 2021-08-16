@@ -762,8 +762,11 @@ class BakeTools(toolAbstractFactory):
             return cmds.warning('Objects do not appear to be in any animation layers')
 
         resultLayer = cmds.animLayer(override=True)
+        keyRange = self.funcs.get_all_layer_key_times(selection)
+        if not keyRange or keyRange[0] == None:
+            keyRange = self.funcs.getTimelineRange()
         cmds.bakeResults(cmds.ls(sl=True),
-                         time=(30, 65),
+                         time=(keyRange[0], keyRange[-1]),
                          destinationLayer=resultLayer,
                          simulation=False,
                          sampleBy=1,
@@ -794,6 +797,7 @@ class BakeTools(toolAbstractFactory):
 
                 if not baseCurve:
                     baseCurve = [attr]
+                    # might need to add some flags here to match timing...
                 cmds.copyKey(layerCurve[0], option="curve")
                 cmds.pasteKey(baseCurve[0], option='replace')
             # delete result layer
