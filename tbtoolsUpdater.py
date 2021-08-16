@@ -27,6 +27,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
+
 if sys.version_info >= (2, 8):
     from urllib.request import *
 else:
@@ -43,14 +44,21 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
+
+"""
+response = urlopen(data['releases_url'].split('{')[0])
+data2 = json.load(response)
+print data2[0]['tag_name'] - should be latest release
+# TODO swap everyone to release update, show ui telling them
+"""
 
 
 class updater():
@@ -69,21 +77,29 @@ class updater():
         self.timeFormat = '%H:%M'
         self.data = self.getGithubData()
         self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
+        self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
         if not os.path.isfile(self.versionDataFile):
-            self.save(self.lastPush)
+            self.save(self.lastPush, self.latestRelease)
         self.jsonProjectData = json.load(open(self.versionDataFile))
-        self.currentVersion = self.convertDateFromString(self.jsonProjectData['version'])
+        self.currentVersion = self.convertDateFromString(self.jsonProjectData.get('version', self.lastPush))
+        self.currentRelease = self.convertDateFromString(
+            self.jsonProjectData.get('release', self.jsonProjectData.get('version', self.lastPush)))
+        self.lastUpdateType = self.jsonProjectData.get('lastUpdateType', 'release')
 
-    def save(self, version):
+        self.updateType = pm.optionVar.get('tbUpdateType', 0)
+        pm.optionVar['tbUpdateType'] = self.updateType
+
+    def save(self, version, release):
         jsonData = '''{}'''
         jsonObjectInfo = json.loads(jsonData)
 
         jsonObjectInfo['version'] = version.strftime(self.dateFormat)
+        jsonObjectInfo['release'] = release.strftime(self.dateFormat)
+        jsonObjectInfo['lastUpdateType'] = self.lastUpdateType
         j = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
         f = open(self.versionDataFile, 'w')
         f.write(j)
         f.close()
-
 
     def convertDateFromString(self, date_time):
         try:
@@ -93,35 +109,80 @@ class updater():
         return datetime_str
 
     def check_version(self):
-        print ('lastPush', self.lastPush)
-        print ('currentVersion', self.currentVersion)
-        if self.lastPush > self.currentVersion:
-            lastPushDay = self.lastPush.strftime(self.uiDateFormat)
-            lastPushTime = self.lastPush.strftime(self.timeFormat)
+        if self.updateType == 0:
+            print('Check for latest stable version')
+            print('lastPush', self.lastPush)
+            print('currentVersion', self.currentVersion)
+            print('currentRelease', self.currentRelease)
+            print('latestRelease', self.latestRelease)
+            if self.latestRelease > self.currentRelease:
+                lastPushDay = self.latestRelease.strftime(self.uiDateFormat)
+                lastPushTime = self.latestRelease.strftime(self.timeFormat)
 
-            currentVersionDay = self.currentVersion.strftime(self.uiDateFormat)
-            currentVersionTime = self.currentVersion.strftime(self.timeFormat)
+                currentVersionDay = self.currentRelease.strftime(self.uiDateFormat)
+                currentVersionTime = self.currentRelease.strftime(self.timeFormat)
 
-            updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
-                                  oldVersion=currentVersionDay + ' ' + currentVersionTime,
-                                  updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
-            if updateWin.exec_() != 1:
-                return
-            self.download_project_files()
-            self.save(self.lastPush)
+                updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
+                                      oldVersion=currentVersionDay + ' ' + currentVersionTime,
+                                      title='tbAnimTools Update - {0}?'.format(self.latestTag),
+                                      updateText='Looks like there is a newer release version of tbAnimTools available. Would you like to update to {0}?'.format(
+                                          self.latestTag))
+                if updateWin.exec_() != 1:
+                    return
+                self.download_project_files(self.releaseZip)
+                self.save(self.lastPush)
+
+        elif self.updateType == 1:
+            print('lastPush', self.lastPush)
+            print('currentVersion', self.currentVersion)
+            if self.lastPush > self.currentVersion:
+                lastPushDay = self.lastPush.strftime(self.uiDateFormat)
+                lastPushTime = self.lastPush.strftime(self.timeFormat)
+
+                currentVersionDay = self.currentVersion.strftime(self.uiDateFormat)
+                currentVersionTime = self.currentVersion.strftime(self.timeFormat)
+
+                updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
+                                      oldVersion=currentVersionDay + ' ' + currentVersionTime,
+                                      updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
+                if updateWin.exec_() != 1:
+                    return
+                self.download_project_files(self.latestZip)
+                self.save(self.lastPush)
 
     def getGithubData(self):
         response = urlopen(self.datUrl)
         data = json.load(response)
         return data
 
+    def getLatestReleaseVersion(self):
+        releasesUrl = self.data['releases_url'].split('{/id}')[0]
+        response = urlopen(releasesUrl)
+        data = json.load(response)
+
+        releases = {}
+        zipFiles = {}
+        for release in data:
+            creationDate = (release['created_at'])
+            tag = (release['name'])
+            zipFile = release['zipball_url']
+            releaseDate = datetime.datetime.strptime(creationDate[0:16], self.dateFormat)
+            releases[releaseDate] = tag
+            zipFiles[releaseDate] = zipFile
+
+        latestRelease = max(releases.keys())
+        latestZip = zipFiles[latestRelease]
+        latestTag = releases[latestRelease]
+        latestRelease = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
+        return latestRelease, latestTag, latestZip
+
     def get_url_dir(self, dir):
         out = dir.replace(self.base_dir, self.master_url).replace("\\", "/")
         return out
 
-    def download_project_files(self):
+    def download_project_files(self, zipLocation):
         print("downloading zip file to", self.base_dir)
-        filedata = urlopen(self.latestZip)
+        filedata = urlopen(zipLocation)
         datatowrite = filedata.read()
         zipFile = os.path.join(self.base_dir, 'tbAnimToolsLatest.zip')
         with open(zipFile, 'wb') as f:
@@ -142,4 +203,3 @@ class updater():
                          fadeOutTime=10.0,
                          fade=False)
         pm.optionVar(intValue=("inViewMessageEnable", message_state))
-

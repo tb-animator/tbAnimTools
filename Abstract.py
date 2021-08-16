@@ -153,7 +153,6 @@ class toolAbstractFactory(ABC):
         self.toJson()
         self.saveJsonFile(self.dataFile, self.classData)
 
-
     def saveJsonFile(self, filePath, data):
         fileName = os.path.join(filePath)
         jsonString = json.dumps(data, indent=4, separators=(',', ': '))

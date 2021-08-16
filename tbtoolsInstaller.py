@@ -161,10 +161,7 @@ class module_maker():
         if not match:
             # create a new entry
             self.out_lines.extend(self.make_module_data(self.make_module_path_data()))
-        '''
-        for line in self.out_lines:
-            print line
-        '''
+
         self.current_module_data = self.out_lines
 
     def replace_path(self, fileName, path, newpath):

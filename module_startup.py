@@ -31,9 +31,11 @@ import tbtoolsUpdater as upd
 
 class initialise(object):
     def check_for_updates(self):
+
         print ('check_for_updates')
-        updater = upd.updater()
-        updater.check_version()
+        if not pm.optionVar.get('tbUpdateType', 0) == 2:
+            updater = upd.updater()
+            updater.check_version()
     '''
     def loadRMB(self, *args):
         try:
@@ -46,8 +48,8 @@ class initialise(object):
         tbtoolsInstaller.module_maker().install()
         try:
             self.check_for_updates()
-        except:
-            pass
+        except Exception as e:
+            pm.error(e)
 
         import apps.tb_optionVars as tbo
         import apps.tb_keyCommands as tb_hotKeys

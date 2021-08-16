@@ -54,6 +54,15 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
         self.setCategory(self.helpStrings.category.get('layers'))
 
+        self.addCommand(self.tb_hkey(name='quickMergeSelectionToNew',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.quickMergeSelectionToNew()'],
+                                     help=self.helpStrings.simpleBakeToOverride))
+        self.addCommand(self.tb_hkey(name='quickMergeSelectionToBase',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.quickMergeSelectionToBase()'],
+                                     help=self.helpStrings.quickMergeSelectionToBase
+                                     ))
         self.addCommand(self.tb_hkey(name='additiveExtractSelection',
                                      annotation='',
                                      category=self.category, command=['BakeTools.additiveExtractSelection()']
@@ -630,7 +639,6 @@ class BakeTools(toolAbstractFactory):
         pm.animLayer(resultLayer, edit=True, override=False)
 
     def additiveExtractSelection(self):
-        #print ('additiveExtractSelection')
         sel = cmds.ls(sl=True)
         if sel:
             self.additiveExtract(sel)
@@ -735,3 +743,70 @@ class BakeTools(toolAbstractFactory):
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         return
+
+    def quickMergeSelectionToNew(self):
+        self.quickMergeSelection(base=False)
+
+    def quickMergeSelectionToBase(self):
+        self.quickMergeSelection(base=True)
+
+    def quickMergeSelection(self, base=True):
+        selection = cmds.ls(sl=True)
+        if not selection:
+            return cmds.warning('No objects selected')
+        allLayers = cmds.ls(type='animLayer')
+        rootLayer = cmds.animLayer(query=True, root=True)
+        affectedLayers = cmds.animLayer(query=True, affectedLayers=True)
+        if rootLayer in affectedLayers: affectedLayers.remove(rootLayer)
+        if not affectedLayers:
+            return cmds.warning('Objects do not appear to be in any animation layers')
+
+        resultLayer = cmds.animLayer(override=True)
+        cmds.bakeResults(cmds.ls(sl=True),
+                         time=(30, 65),
+                         destinationLayer=resultLayer,
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=True,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+
+        if base:
+            # copy anim from result layer to base
+            attrs = cmds.animLayer(resultLayer, query=True, attribute=True)
+
+            for attr in attrs:
+                layerCurve = cmds.animLayer(resultLayer, query=True, findCurveForPlug=attr)
+                baseCurve = cmds.animLayer(rootLayer, query=True, findCurveForPlug=attr)
+                blendNode = cmds.listConnections(attr, type='animBlendNodeBase', s=True, d=False)[0]
+                history = cmds.listHistory(blendNode)
+                lastAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[-1]
+                if cmds.objectType(lastAnimBlendNode, isa='animBlendNodeAdditiveRotation'):
+                    letterXYZ = attr[-1]
+                    basePlug = '{0}.inputA{1}'.format(lastAnimBlendNode, letterXYZ.upper())
+                else:
+                    basePlug = '{0}.inputA'.format(lastAnimBlendNode)
+
+                if not baseCurve:
+                    baseCurve = [attr]
+                cmds.copyKey(layerCurve[0], option="curve")
+                cmds.pasteKey(baseCurve[0], option='replace')
+            # delete result layer
+            cmds.delete(resultLayer)
+        # delete empty layers
+        emptyLayers = list()
+        for layer in affectedLayers:
+            for attr in attrs:
+                cmds.animLayer(layer, edit=True, removeAttribute=attr)
+            if cmds.animLayer(layer, query=True, attribute=True):
+                continue
+            emptyLayers.append(layer)
+        if emptyLayers: cmds.delete(emptyLayers)
+

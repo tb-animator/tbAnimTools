@@ -27,9 +27,12 @@ import pymel.core as pm
 import webbrowser
 from pluginLookup import ClassFinder
 
+
 class main_menu(object):
     def __init__(self):
         self.main_menu = "tbAnimTools"
+        self.updateMenuItems = []
+        self.updateImageDict = {True: 'recycle_green.png', False: 'empty.png'}
 
     def build_menu(self):
         tbtoolsCLS = ClassFinder()
@@ -46,10 +49,43 @@ class main_menu(object):
             if tbtoolsCLS.tools[tool] is not None:
                 tbtoolsCLS.tools[tool].drawMenuBar(editorMenu)
 
+        self.drawUpdateMenu()
+
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
         pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
 
+    def drawUpdateMenu(self):
+        updateMode = pm.optionVar.get('tbUpdateType', 0)
+
+        updateMenu = pm.menuItem(label='Startup Update modes', subMenu=True, parent=self.main_menu)
+        pm.radioMenuItemCollection()
+        menu = pm.menuItem(label="Update To Stable Releases", radioButton=updateMode == 0,
+                           command=pm.Callback(self.setUpdateMode, 0),
+                           parent=updateMenu)
+        self.updateMenuItems.append(menu)
+        menu = pm.menuItem(label="Update To Latest", radioButton=updateMode == 1,
+                           command=pm.Callback(self.setUpdateMode, 1),
+                           parent=updateMenu)
+        self.updateMenuItems.append(menu)
+        menu = pm.menuItem(label="Update Manually", radioButton=updateMode == 2,
+                           command=pm.Callback(self.setUpdateMode, 2), parent=updateMenu)
+        menu = pm.menuItem(label="Check For Updates",
+                           command=pm.Callback(self.downloadUpdate), parent=updateMenu)
+        self.updateMenuItems.append(menu)
+
+    def setUpdateMode(self, mode):
+        print ('setUpdateMode', mode)
+        pm.optionVar['tbUpdateType'] = mode
+        updateMode = pm.optionVar.get('tbUpdateType', 0)
+        '''
+        for index, menu in enumerate(self.updateMenuItems):
+            print (menu, self.updateImageDict[updateMode == index])
+            pm.menuItem(menu, edit=True, radioButton=updateMode == index)
+        '''
+
+    def downloadUpdate(self):
+        print ('downloadUpdate')
 
 def make_ui():
     main_menu().build_menu()
@@ -58,6 +94,7 @@ def make_ui():
 def open_options(*args):
     import tb_options as tbo
     tbo.showOptions()
+
 
 def open_discord_link(*args):
     webbrowser.open('https://discord.gg/yxfP8rVS')

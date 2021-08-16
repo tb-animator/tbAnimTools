@@ -15,6 +15,8 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
             'constraints': '%s_Constraints' % tbAnimTools,
             'footpath': '%s_FootPath' % tbAnimTools,
             }
+quickMergeSelectionToNew = ['Fast bake currently selected objects to a new layer']
+quickMergeSelectionToBase = ['Fast bake currently selected objects to the base layer']
 simpleBakeToOverride = ['bake current selection to an override layer']
 quickCreateAdditiveLayer = ['create a new additive layer, selection is', 'added to the layer']
 quickCreateOverrideLayer = ['create a new override layer, selection is', 'added to the layer']

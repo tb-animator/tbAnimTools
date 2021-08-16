@@ -29,7 +29,6 @@ import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
 import pymel.core.datatypes as dt
-
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -46,6 +45,7 @@ from contextlib import contextmanager
 import maya.OpenMaya as om
 import maya.api.OpenMayaAnim as oma2
 import maya.api.OpenMaya as om2
+import maya.OpenMayaUI as omui
 
 orbPointList = [[0.0, 25.0, 0.0],
                 [0.0, 23.097, 9.567074999999999],
@@ -935,3 +935,32 @@ class functions(object):
         mTimeArray[0] = initialFrame
         mTimeArray[1] = finalFrame
         return mTimeArray
+
+
+    """
+    UI gubbinz
+    """
+    @staticmethod
+    def findUI(name):
+        allUI = cmds.lsUI(controls=True)
+        matching = [x for x in allUI if name == x]
+        return matching[-1]
+
+    @staticmethod
+    def getParentLayout(uiElement):
+        UIType = cmds.objectTypeUI(uiElement)
+        UIParent = mel.eval(UIType + " -query -parent " + uiElement)
+        return UIParent
+
+    @staticmethod
+    def getWidgetPointer(name):
+        ptr = omui.MQtUtil.findControl(findUI(name))
+        if ptr:
+            return ptr
+
+    @staticmethod
+    def addButton(form, uiElement, newButton):
+        cmds.formLayout(form, e=True, attachForm=(newButton, 'top', 1))
+        cmds.formLayout(form, e=True, attachNone=(newButton, 'left'))
+        cmds.formLayout(form, e=True, attachNone=(newButton, 'bottom'))
+        cmds.formLayout(form, e=True, attachControl=(newButton, 'right', 1, form + '|' + uiElement))
