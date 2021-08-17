@@ -1391,3 +1391,4 @@ class UpdateWin(BaseDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
+

@@ -753,7 +753,7 @@ class BakeTools(toolAbstractFactory):
 
             blendedValues = []
             for index, key in enumerate(keyTimes):
-                blendedValues.append(additiveKeyValues[index] - baseKeyValues[index])
+                blendedValues.append(baseKeyValues[index] - additiveKeyValues[index])
             additiveValues[attr] = blendedValues
             overrideValues[attr] = [initialVal, finalVal]
             if not additiveMTimeArray:

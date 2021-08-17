@@ -79,6 +79,7 @@ class MotionTrails(toolAbstractFactory):
     trailPostFramesOption = 'tbMotrailPostFramesOption'
     trailThicknessOption = 'tbMotrailThicknessOption'
     trailframeMarkerSizesOption = 'tbMotrailframeMarkerSizesOption'
+    showframeMarkerSizesOption = 'tbMotrailshowFrameMarkerSizesOption'
 
     def __new__(cls):
         if MotionTrails.__instance is None:
@@ -101,16 +102,19 @@ class MotionTrails(toolAbstractFactory):
         infoText = QLabel()
         infoText.setText('Motion trail display settings')
         infoText.setWordWrap(True)
+        fadeLayout = QHBoxLayout()
+        markerLayout = QHBoxLayout()
+
         trailFadeFramesWidget = intFieldWidget(optionVar=self.trailFadeFramesOption,
-                                               defaultValue=1.0,
+                                               defaultValue=5,
                                                label='Fade Frames',
                                                minimum=0, maximum=100, step=1)
         trailPreFramesWidget = intFieldWidget(optionVar=self.trailPreFramesOption,
-                                              defaultValue=1.0,
+                                              defaultValue=15,
                                               label='Pre Frames',
                                               minimum=0, maximum=100, step=1)
         trailPostFramesWidget = intFieldWidget(optionVar=self.trailPostFramesOption,
-                                               defaultValue=1.0,
+                                               defaultValue=15,
                                                label='Post frames',
                                                minimum=0, maximum=100, step=1)
         trailThicknessWidget = intFieldWidget(optionVar=self.trailThicknessOption,
@@ -118,17 +122,22 @@ class MotionTrails(toolAbstractFactory):
                                               label='Thickness',
                                               minimum=1, maximum=10, step=1)
         trailframeMarkerSizesWidget = intFieldWidget(optionVar=self.trailframeMarkerSizesOption,
-                                              defaultValue=1.0,
-                                              label='Thickness',
-                                              minimum=1, maximum=10, step=1)
+                                                     defaultValue=0,
+                                                     label='Marker Size',
+                                                     minimum=1, maximum=10, step=1)
+        showTicksOptionWidget = optionVarBoolWidget('Show frame markers',
+                                                    self.showframeMarkerSizesOption)
 
         self.layout.addWidget(infoText)
 
-        self.layout.addWidget(trailFadeFramesWidget)
-        self.layout.addWidget(trailPreFramesWidget)
-        self.layout.addWidget(trailPostFramesWidget)
-        self.layout.addWidget(trailThicknessWidget)
-        self.layout.addWidget(trailframeMarkerSizesWidget)
+        self.layout.addLayout(fadeLayout)
+        self.layout.addLayout(markerLayout)
+        fadeLayout.addWidget(trailFadeFramesWidget)
+        fadeLayout.addWidget(trailPreFramesWidget)
+        fadeLayout.addWidget(trailPostFramesWidget)
+        markerLayout.addWidget(trailThicknessWidget)
+        markerLayout.addWidget(trailframeMarkerSizesWidget)
+        markerLayout.addWidget(showTicksOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 

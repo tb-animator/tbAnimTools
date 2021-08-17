@@ -28,6 +28,8 @@ import maya.cmds as cmds
 from Abstract import *
 import maya.OpenMayaUI as omui
 
+
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -77,7 +79,7 @@ class LayerEditor(toolAbstractFactory):
     hasAppliedUI = False
 
     useCustomUIOption = 'tUseCustomLayerEditor'
-
+    buttonSize = 18
     def __new__(cls):
         if LayerEditor.__instance is None:
             LayerEditor.__instance = object.__new__(cls)
@@ -140,6 +142,12 @@ class LayerEditor(toolAbstractFactory):
         self.animLayerWeightSlider = animLayerTabWidgets[9]
         self.animLayerWeightButton = animLayerTabWidgets[10]
 
+        # extra buttons
+        self.mergeLayersDownButton = self.customButton(icon='moveButtonDown.png',
+                                                       toolTip='Fast Merge all Layers')
+        self.additiveExtractButton = self.customButton(icon='teAdditive.png',
+                                                       toolTip='Additive Extract Selected Layer')
+
         # modify cursor style
         self.animLayerWeightSlider.setCursor(QCursor(Qt.SplitHCursor))
 
@@ -158,18 +166,25 @@ class LayerEditor(toolAbstractFactory):
         # widget to wrap the top buttons
         topButtonWidget = QWidget()
         topButtonLayout = QHBoxLayout()
+        topButtonLeftLayout = QHBoxLayout()
+        topButtonRightLayout = QHBoxLayout()
+        topButtonLayout.addLayout(topButtonLeftLayout)
+        topButtonLayout.addStretch()
+        topButtonLayout.addLayout(topButtonRightLayout)
         topButtonLayout.setContentsMargins(0, 0, 0, 0)
         topButtonLayout.setSpacing(0)
         topButtonWidget.setLayout(topButtonLayout)
 
-        topButtonLayout.addWidget(self.zeroKeyAnimLayerButton)
-        topButtonLayout.addWidget(self.zeroWeightAnimLayerButton)
-        topButtonLayout.addWidget(self.fullWeightAnimLayerButton)
-        topButtonLayout.addStretch()
-        topButtonLayout.addWidget(self.moveLayerUpButton)
-        topButtonLayout.addWidget(self.moveLayerDownButton)
-        topButtonLayout.addWidget(self.emptyAnimLayerButton)
-        topButtonLayout.addWidget(self.selectedAnimLayerButton)
+        topButtonLeftLayout.addWidget(self.zeroKeyAnimLayerButton)
+        topButtonLeftLayout.addWidget(self.zeroWeightAnimLayerButton)
+        topButtonLeftLayout.addWidget(self.fullWeightAnimLayerButton)
+
+        topButtonRightLayout.addWidget(self.additiveExtractButton)
+        topButtonRightLayout.addWidget(self.mergeLayersDownButton)
+        topButtonRightLayout.addWidget(self.moveLayerUpButton)
+        topButtonRightLayout.addWidget(self.moveLayerDownButton)
+        topButtonRightLayout.addWidget(self.emptyAnimLayerButton)
+        topButtonRightLayout.addWidget(self.selectedAnimLayerButton)
         weightSliderWidget = QWidget()
         weightSliderLayout = QHBoxLayout()
         weightSliderLayout.setContentsMargins(0, 0, 0, 0)
@@ -181,6 +196,7 @@ class LayerEditor(toolAbstractFactory):
         weightSliderLayout.addWidget(self.animLayerWeightSlider)
         weightSliderLayout.addWidget(self.animLayerWeightButton)
         self.curveButton = QPushButton('C')
+        self.curveButton.setToolTip('Select the layer weight curve')
         weightSliderLayout.addWidget(self.curveButton)
 
         mainLayout.addWidget(topButtonWidget)
@@ -198,9 +214,9 @@ class LayerEditor(toolAbstractFactory):
         weightSliderWidget.setStyleSheet(self.styleSheet)
         self.weightLabel.setStyleSheet("background-color: rgba(255, 255, 255, 0);")
 
-        animLayerTabWidgets[0].setFixedSize(buttonSize, buttonSize)
-        animLayerTabWidgets[1].setFixedSize(buttonSize, buttonSize)
-        animLayerTabWidgets[2].setFixedSize(buttonSize, buttonSize)
+        self.zeroKeyAnimLayerButton.setFixedSize(buttonSize, buttonSize)
+        self.zeroWeightAnimLayerButton.setFixedSize(buttonSize, buttonSize)
+        self.fullWeightAnimLayerButton.setFixedSize(buttonSize, buttonSize)
         self.moveLayerUpButton.setFixedSize(buttonSize, buttonSize)
         self.moveLayerDownButton.setFixedSize(buttonSize, buttonSize)
         self.emptyAnimLayerButton.setFixedSize(buttonSize, buttonSize)
@@ -222,14 +238,29 @@ class LayerEditor(toolAbstractFactory):
         self.animLayerWeightSlider.sliderReleased.connect(self.weightSliderReleasedCommand)
         self.animLayerWeightButton.setIcon(QIcon(""))
         self.animLayerWeightButton.setText('K')
-        self.curveButton.setFixedSize(18, 18)
-        self.curveButton.clicked.connect(self.curveButtonCommand)
-        self.animLayerWeightButton.setFixedSize(18, 18)
+        self.curveButton.setFixedSize(self.buttonSize, self.buttonSize)
+        self.animLayerWeightButton.setFixedSize(self.buttonSize, self.buttonSize)
 
         animLayerLayout.deleteLater()
         self.curveButton.setEnabled(False)
         self.addAnimLayerUpdateScriptJob()
+
+        # connections
+        self.curveButton.clicked.connect(self.curveButtonCommand)
+        self.mergeLayersDownButton.clicked.connect(self.fastMergeAllButtonCommmand)
+        self.additiveExtractButton.clicked.connect(self.additiveExtractButtonCommmand)
+
         self.hasAppliedUI = True
+
+    def customButton(self, icon='', toolTip=''):
+        button = QPushButton()
+        button.setIcon(QIcon(":/{0}".format(icon)))
+        button.setFixedSize(self.buttonSize, self.buttonSize)
+        button.setFlat(True)
+        button.setToolTip(toolTip)
+        button.setStyleSheet("background-color: transparent;border: 0px")
+        button.setStyleSheet(self.styleSheet)
+        return button
 
     def addAnimLayerUpdateScriptJob(self):
         self.scriptJob = cmds.scriptJob(compressUndo=True,
@@ -251,6 +282,12 @@ class LayerEditor(toolAbstractFactory):
 
     def toggleWeightButtons(self, state):
         self.curveButton.setEnabled(state)
+
+    def additiveExtractButtonCommmand(self):
+        mel.eval('additiveExtractSelection')
+
+    def fastMergeAllButtonCommmand(self):
+        mel.eval('quickMergeAllLayers')
 
     def curveButtonCommand(self):
         weightCurves = list()
@@ -293,7 +330,7 @@ class LayerEditor(toolAbstractFactory):
         if cmds.undoInfo(query=True, stateWithoutFlush=True):
             cmds.undoInfo(stateWithoutFlush=False)
             self.refreshHack()
-
+            cmds.undoInfo(stateWithoutFlush=True)
         cmds.floatField('AnimLayerTabWeightField', edit=True, value=value)
         self.setLayerWeightNoRefresh(layers, value)
 
