@@ -684,6 +684,29 @@ class functions(object):
         # cleanup
         om.MGlobal.setActiveSelectionList(sel)
 
+    @contextmanager
+    def suspendUpdate(self):
+        self.suspendSkinning()
+
+        yield
+
+        self.resumeSkinning()
+
+    def suspendSkinning(self):
+        allSkins = cmds.ls(type='skinCluster')
+        for skin in allSkins:
+            cmds.setAttr(skin + '.frozen', 1)
+            cmds.setAttr(skin + '.nodeState', 1)
+
+        cmds.refresh(su=True)
+
+    def resumeSkinning(self):
+        allSkins = cmds.ls(type='skinCluster')
+        for skin in allSkins:
+            cmds.setAttr(skin + '.frozen', 0)
+            cmds.setAttr(skin + '.nodeState', 0)
+
+        cmds.refresh(su=False)
     @staticmethod
     def unit_conversion():
         conversion = {'mm': 0.1, 'cm': 1.0, 'm': 100.0, 'in': 2.54, 'ft': 30.48, 'yd': 91.44}

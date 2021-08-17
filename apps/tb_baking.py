@@ -53,7 +53,10 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
         self.setCategory(self.helpStrings.category.get('layers'))
-
+        self.addCommand(self.tb_hkey(name='quickMergeAllLayers',
+                                     annotation='Merges all layers',
+                                     category=self.category, command=['BakeTools.quickMergeAllLayers()'],
+                                     help=self.helpStrings.simpleBakeToOverride))
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToNew',
                                      annotation='',
                                      category=self.category, command=['BakeTools.quickMergeSelectionToNew()'],
@@ -894,6 +897,48 @@ class BakeTools(toolAbstractFactory):
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         return
+
+    def quickMergeAllLayers(self):
+        with self.funcs.suspendUpdate():
+            allLayers = cmds.ls(type='animLayer')
+            rootLayer = cmds.animLayer(query=True, root=True)
+
+            allAttrs = list()
+            allNodes = list()
+            for layer in allLayers:
+                attrs = cmds.animLayer(layer, query=True, attribute=True)
+                if not attrs:
+                    continue
+                for attr in attrs:
+                    if attr not in allAttrs:
+                        allAttrs.append(attr)
+                    node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
+                    if node not in allNodes:
+                        allNodes.append(node)
+
+            allLayers.remove(rootLayer)
+
+            keyRange = self.funcs.get_all_layer_key_times(allNodes)
+            if not keyRange or keyRange[0] == None:
+                keyRange = self.funcs.getTimelineRange()
+
+            cmds.bakeResults(allAttrs,
+                             time=(keyRange[0], keyRange[-1]),
+                             # destinationLayer=rootLayer,
+                             simulation=True,
+                             sampleBy=1,
+                             oversamplingRate=1,
+                             disableImplicitControl=True,
+                             preserveOutsideKeys=False,
+                             sparseAnimCurveBake=True,
+                             removeBakedAttributeFromLayer=True,
+                             removeBakedAnimFromLayer=True,
+                             # bakeOnOverrideLayer=False,
+                             minimizeRotation=True,
+                             controlPoints=False,
+                             shape=False)
+
+            cmds.delete(allLayers)
 
     def quickMergeSelectionToNew(self):
         self.quickMergeSelection(base=False)
