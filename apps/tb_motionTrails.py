@@ -160,10 +160,21 @@ class MotionTrails(toolAbstractFactory):
                 mel.eval("addToIsolation")
 
     def removeMotionTrail(self):
+        motionTrailNodes = ['motionTrailShape', 'motionTrail1Handle', 'motionTrail']
         sel = cmds.ls(sl=True)
         if not sel:
             return
         for s in sel:
-            motionTrail = cmds.listConnections(s, type='motionTrail')
-            if motionTrail:
-                cmds.delete(motionTrail)
+            messageConnection = cmds.listConnections(s + '.message', source=False, destination=True, plugs=False)
+            nodesToRemove = list()
+            for m in messageConnection:
+                childNodes = cmds.listRelatives(m, children=True)
+                if childNodes:
+                    for c in childNodes:
+                        if cmds.nodeType(c) in motionTrailNodes:
+                            nodesToRemove.append(m)
+                if cmds.nodeType(m) in motionTrailNodes:
+                    nodesToRemove.append(m)
+
+            if nodesToRemove:
+                cmds.delete(nodesToRemove)
