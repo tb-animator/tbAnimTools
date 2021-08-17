@@ -23,7 +23,7 @@
 *******************************************************************************
 '''
 import pymel.core as pm
-
+import maya.mel as mel
 import maya.OpenMayaUI as omUI
 import pymel.core as pm
 
@@ -937,6 +937,69 @@ class filePathWidget(QWidget):
             self.path = selected_directory
             self.pathLineEdit.setText(self.path)
 
+class ChannelSelectLineEdit(QWidget):
+    label = None
+    lineEdit = None
+    editedSignal = Signal(str)
+
+    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
+        super(ChannelSelectLineEdit, self).__init__()
+
+        self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.layout)
+        self.label = QLabel(text)
+        self.lineEdit = QLineEdit()
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(tooltip)
+        self.cle_action_pick.triggered.connect(self.pickChannel)
+        self.lineEdit.setPlaceholderText(placeholderTest)
+        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.lineEdit)
+        self.label.setFixedWidth(60)
+
+        self.label.setStyleSheet("QFrame {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+    def pickChannel(self, *args):
+        channels = mel.eval('selectedChannelBoxPlugs')
+        if not channels:
+            return pm.warning('no channel selected')
+        self.lineEdit.setText(channels[0].split(':')[-1])
+
+    @Slot()
+    def sendtextChangedSignal(self):
+        self.editedSignal.emit(self.lineEdit.text())
+
+class ObjectSelectLineEdit(QWidget):
+    pickedSignal = Signal(str)
+
+    def __init__(self, label=str(), hint=str(), labelWidth=60, lineEditWidth=120):
+        QWidget.__init__(self)
+        self.mainLayout = QHBoxLayout()
+        self.setLayout(self.mainLayout)
+        self.label = QLabel(label)
+        self.label.setFixedWidth(labelWidth)
+        self.itemLabel = QLineEdit()
+        self.itemLabel.setFixedWidth(lineEditWidth)
+        self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(hint)
+        self.cle_action_pick.triggered.connect(self.pickObject)
+
+        self.mainLayout.addWidget(self.label)
+        self.mainLayout.addWidget(self.itemLabel)
+
+    def pickObject(self):
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        self.itemLabel.setText(str(sel[0]))
+        self.pickedSignal.emit(str(sel[0]))
 
 class intFieldWidget(QWidget):
     layout = None
@@ -960,6 +1023,8 @@ class intFieldWidget(QWidget):
         self.spinBox.setMaximum(maximum)
         self.spinBox.setMinimum(minimum)
         self.spinBox.setSingleStep(step)
+        if step == 1:
+            self.spinBox.setDecimals(0)
         self.spinBox.setProperty("value", self.optionValue)
         self.layout.addWidget(label)
         self.layout.addWidget(self.spinBox)

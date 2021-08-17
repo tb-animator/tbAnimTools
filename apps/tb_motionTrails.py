@@ -35,13 +35,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -51,11 +51,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',
-                                     category=self.category, command=['MotionTrails.createMotionPath()'],
+                                     category=self.category, command=['MotionTrails.createMotionTrail()'],
                                      help=self.helpStrings.createMotionTrail))
         self.addCommand(self.tb_hkey(name='removeMotionTrail',
                                      annotation='',
-                                     category=self.category, command=['MotionTrails.removeMotionPath()'],
+                                     category=self.category, command=['MotionTrails.removeMotionTrail()'],
                                      help=self.helpStrings.removeMotionTrail))
 
         return self.commandList
@@ -68,11 +68,17 @@ class MotionTrails(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'MotionTrails'
     hotkeyClass = hotkeys()
     funcs = functions()
+
+    trailFadeFramesOption = 'tbMotrailFadeFramesOption'
+    trailPreFramesOption = 'tbMotrailPreFramesOption'
+    trailPostFramesOption = 'tbMotrailPostFramesOption'
+    trailThicknessOption = 'tbMotrailThicknessOption'
+    trailframeMarkerSizesOption = 'tbMotrailframeMarkerSizesOption'
 
     def __new__(cls):
         if MotionTrails.__instance is None:
@@ -92,6 +98,38 @@ class MotionTrails(toolAbstractFactory):
 
     def optionUI(self):
         super(MotionTrails, self).optionUI()
+        infoText = QLabel()
+        infoText.setText('Motion trail display settings')
+        infoText.setWordWrap(True)
+        trailFadeFramesWidget = intFieldWidget(optionVar=self.trailFadeFramesOption,
+                                               defaultValue=1.0,
+                                               label='Fade Frames',
+                                               minimum=0, maximum=100, step=1)
+        trailPreFramesWidget = intFieldWidget(optionVar=self.trailPreFramesOption,
+                                              defaultValue=1.0,
+                                              label='Pre Frames',
+                                              minimum=0, maximum=100, step=1)
+        trailPostFramesWidget = intFieldWidget(optionVar=self.trailPostFramesOption,
+                                               defaultValue=1.0,
+                                               label='Post frames',
+                                               minimum=0, maximum=100, step=1)
+        trailThicknessWidget = intFieldWidget(optionVar=self.trailThicknessOption,
+                                              defaultValue=1.0,
+                                              label='Thickness',
+                                              minimum=1, maximum=10, step=1)
+        trailframeMarkerSizesWidget = intFieldWidget(optionVar=self.trailframeMarkerSizesOption,
+                                              defaultValue=1.0,
+                                              label='Thickness',
+                                              minimum=1, maximum=10, step=1)
+
+        self.layout.addWidget(infoText)
+
+        self.layout.addWidget(trailFadeFramesWidget)
+        self.layout.addWidget(trailPreFramesWidget)
+        self.layout.addWidget(trailPostFramesWidget)
+        self.layout.addWidget(trailThicknessWidget)
+        self.layout.addWidget(trailframeMarkerSizesWidget)
+        self.layout.addStretch()
         return self.optionWidget
 
     def showUI(self):
@@ -100,7 +138,7 @@ class MotionTrails(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
-    def createMotionPath(self):
+    def createMotionTrail(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -112,10 +150,16 @@ class MotionTrails(toolAbstractFactory):
                                         increment=1,
                                         startTime=self.funcs.getTimelineMin(),
                                         endTime=self.funcs.getTimelineMax())
+                cmds.setAttr(moTrail[0] + '.showFrameMarkers', 1)
+                cmds.setAttr(moTrail[0] + '.trailThickness', pm.optionVar.get(self.trailThicknessOption, 1))
+                cmds.setAttr(moTrail[0] + '.fadeInoutFrames', pm.optionVar.get(self.trailFadeFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.preFrame', pm.optionVar.get(self.trailPreFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.postFrame', pm.optionVar.get(self.trailPostFramesOption, 0))
+
                 cmds.select(moTrail, replace=True)
                 mel.eval("addToIsolation")
 
-    def removeMotionPath(self):
+    def removeMotionTrail(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return

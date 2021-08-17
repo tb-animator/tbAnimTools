@@ -63,6 +63,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category, command=['BakeTools.quickMergeSelectionToBase()'],
                                      help=self.helpStrings.quickMergeSelectionToBase
                                      ))
+
+        self.addCommand(self.tb_hkey(name='bakeConstraintToAdditive',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bakeConstraintToAdditiveSelection()']
+                                     ))
         self.addCommand(self.tb_hkey(name='additiveExtractSelection',
                                      annotation='',
                                      category=self.category, command=['BakeTools.additiveExtractSelection()']
@@ -642,6 +647,152 @@ class BakeTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if sel:
             self.additiveExtract(sel)
+
+    def bakeConstraintToAdditiveSelection(self):
+        sel = cmds.ls(sl=True)
+        if sel:
+            self.bakeConstraintToAdditive(sel)
+
+    def bakeConstraintToAdditive(self, selection):
+        """
+        Bakes out controls with constraints to an additive layer.
+        :param selection:
+        :return:
+        """
+        if not selection:
+            return cmds.warning('No objects selected')
+
+        constraints = [cmds.listConnections(s, type='constraint') for s in selection]
+        filteredConstraints = list(set([item for sublist in constraints for item in sublist if item]))
+        if not filteredConstraints:
+            return cmds.warning('No constraints found')
+
+        additiveLayer = cmds.animLayer('AdditiveExtract', override=True)
+
+        keyRange = self.funcs.get_all_layer_key_times(selection)
+        cmds.bakeResults(selection,
+                         time=(keyRange[0], keyRange[-1]),
+                         destinationLayer=additiveLayer,
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=False,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=True,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+
+        nodesToRemove = list()
+        for s in selection:
+            constraints = cmds.listRelatives(s, type='constraint')
+            if not constraints:
+                continue
+            for c in constraints:
+                connections = cmds.listConnections(c, type='transform')
+                if connections:
+                    for con in connections:
+                        if con in selection:
+                            continue
+                        if con not in nodesToRemove:
+                            nodesToRemove.append(con)
+        for c in nodesToRemove:
+            if cmds.objExists(c): cmds.delete(nodesToRemove)
+
+        cmds.animLayer(additiveLayer, edit=True, mute=True, lock=True)
+
+        cmds.currentTime(cmds.currentTime(query=True))
+
+        overrideLayer = cmds.animLayer('ConstraintBase', override=True)
+        cmds.bakeResults(selection,
+                         time=(keyRange[0], keyRange[-1]),
+                         destinationLayer=overrideLayer,
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=False,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=True,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+
+        cmds.animLayer(additiveLayer, edit=True, mute=False, lock=False)
+        cmds.animLayer(additiveLayer, edit=True, override=False)
+        cmds.setAttr(additiveLayer + '.scaleAccumulationMode', 0)
+
+        cmds.currentTime(cmds.currentTime(query=True))
+
+        attributes = cmds.animLayer(overrideLayer, query=True, attribute=True)
+
+        baseLayerMPlugs, baseLayerMFnAnimCurves = self.funcs.omGetPlugsFromLayer(str(overrideLayer), attributes)
+        additiveLayerMPlugs, additiveMFnAnimCurves = self.funcs.omGetPlugsFromLayer(str(additiveLayer), attributes)
+
+        overrideValues = dict()
+        additiveValues = dict()
+        additiveMTimeArray = None
+        overrideMTimeArray = None
+
+        for attr, curve in baseLayerMFnAnimCurves.items():
+            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
+
+            baseKeyValues = [curve.value(key) for key in xrange(curve.numKeys)]
+            additiveKeyValues = [additiveMFnAnimCurves[attr].value(key) for key in xrange(curve.numKeys)]
+
+            initialVal = baseKeyValues[0]
+            finalVal = baseKeyValues[-1]
+
+            blendedValues = []
+            for index, key in enumerate(keyTimes):
+                blendedValues.append(additiveKeyValues[index] - baseKeyValues[index])
+            additiveValues[attr] = blendedValues
+            overrideValues[attr] = [initialVal, finalVal]
+            if not additiveMTimeArray:
+                additiveMTimeArray = self.funcs.createMTimeArray(keyTimes[0].value,
+                                                                 int(keyTimes[-1].value) - int(keyTimes[0].value) + 1)
+                overrideMTimeArray = self.funcs.createMTimePairArray(keyTimes[0], keyTimes[-1])
+        dg = om2.MDGModifier()
+        for key, mcurve in additiveMFnAnimCurves.items():
+            sources = additiveLayerMPlugs[key].connectedTo(True, False)
+            for i in xrange(len(sources)):
+                dg.disconnect(sources[i], additiveLayerMPlugs[key])
+
+            dg.doIt()
+
+            adjustedCurve = oma2.MFnAnimCurve(additiveLayerMPlugs[key])
+            adjustedCurve.create(additiveLayerMPlugs[key], additiveMFnAnimCurves[key].animCurveType, dg)
+
+            adjustedCurve.addKeys(additiveMTimeArray,
+                                  additiveValues[key],
+                                  oma2.MFnAnimCurve.kTangentGlobal,
+                                  oma2.MFnAnimCurve.kTangentGlobal)
+            dg.doIt()
+
+            sources = baseLayerMPlugs[key].connectedTo(True, False)
+            for i in xrange(len(sources)):
+                dg.disconnect(sources[i], baseLayerMPlugs[key])
+
+            dg.doIt()
+
+            adjustedCurve = oma2.MFnAnimCurve(baseLayerMPlugs[key])
+            adjustedCurve.create(baseLayerMPlugs[key], baseLayerMFnAnimCurves[key].animCurveType, dg)
+
+            adjustedCurve.addKeys(overrideMTimeArray,
+                                  overrideValues[key],
+                                  oma2.MFnAnimCurve.kTangentGlobal,
+                                  oma2.MFnAnimCurve.kTangentGlobal)
+            dg.doIt()
+
+        for attr in attributes:
+            if 'visibility' in attr.split('.')[-1]:
+                cmds.animLayer(additiveLayer, edit=True, removeAttribute=attr)
+        cmds.delete(overrideLayer)
 
     def additiveExtract(self, nodes):
         """
