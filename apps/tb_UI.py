@@ -498,6 +498,83 @@ class PickwalkQueryWidget(QDialog):
         return super(PickwalkQueryWidget, self).keyPressEvent(event)
 
 
+class QTreeSingleViewWidget(QFrame):
+    pressedSignal = Signal(str)
+
+    def __init__(self, CLS=None, label='BLANK'):
+        super(QTreeSingleViewWidget, self).__init__()
+        self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        # self.setMinimumWidth(120)
+        # self.setMaximumWidth(200)
+        # self.width = 300
+        self.setLayout(self.layout)
+        self.topLayout = QVBoxLayout()
+        self.layout.addLayout(self.topLayout)
+        self.label = QLabel(label)
+        self.filterLineEdit = QLineEdit()
+        self.filterLineEdit.setClearButtonEnabled(True)
+        self.filterLineEdit.addAction(QIcon(":/resources/search.ico"), QLineEdit.LeadingPosition)
+        self.filterLineEdit.setPlaceholderText("Search...")
+
+        self.topLayout.addWidget(self.label)
+        self.topLayout.addWidget(self.filterLineEdit)
+
+        self.listView = QListView()
+
+        self.proxyModel = QSortFilterProxyModel()
+        self.proxyModel.setDynamicSortFilter(True)
+        self.model = QStandardItemModel()
+
+        self.proxyModel.setSourceModel(self.model)
+        self.listView.setModel(self.proxyModel)
+        self.listView.clicked.connect(self.itemClicked)
+        self.model.itemChanged.connect(self.itemChanged)
+        self.filterLineEdit.textChanged.connect(self.filterRegExpChanged)
+
+        self.listView.setSelectionBehavior(QAbstractItemView.SelectItems)
+
+        self.listView.setSizeAdjustPolicy(QListWidget.AdjustToContents)
+        self.toolTypeScrollArea = QScrollArea()
+        self.toolTypeScrollArea.setWidget(self.listView)
+        self.toolTypeScrollArea.setWidgetResizable(True)
+        self.layout.addWidget(self.toolTypeScrollArea)
+
+    @Slot()
+    def sendValueChangedSignal(self):
+        self.pressedSignal.emit(list())
+
+    def appendItem(self, i):
+        item = QStandardItem(i)
+        self.model.appendRow(item)
+
+    def removeItem(self, item):
+        for item in self.model.findItems(item):
+            self.model.removeRow(item.row())
+
+    def updateView(self, items):
+        self.model.clear()
+        self.listView.blockSignals(True)
+        for i in items:
+            self.appendItem(i)
+        self.listView.blockSignals(False)
+
+    def filterRegExpChanged(self, value):
+        regExp = QRegExp(value)
+        self.proxyModel.setFilterRegExp(regExp)
+
+    def itemClicked(self, index):
+        modifiers = QApplication.keyboardModifiers()
+        # print 'itemClicked', index
+        item = self.model.itemFromIndex(self.proxyModel.mapToSource(index))
+        self.pressedSignal.emit(item.text())
+
+    def itemChanged(self, item):
+        pass
+        # print 'old value', item.destination
+        # print 'new value', item.text()
+
+
 class TextInputWidget(QWidget):
     """
     Simple prompt with text input
@@ -505,8 +582,9 @@ class TextInputWidget(QWidget):
     acceptedSignal = Signal(str)
     oldPos = None
 
-    def __init__(self, title=str, label=str, buttonText=str, default=str):
-        super(TextInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+    def __init__(self, title=str, label=str, buttonText=str, default=str,
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+        super(TextInputWidget, self).__init__(parent=parent)
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(1.0)
@@ -782,15 +860,18 @@ class promptWidget(QWidget):
             self.close()
         return super(promptWidget, self).keyPressEvent(event)
 
+
 class subHeader(QLabel):
     """
     label with wordwrap
     """
+
     def __init__(self, label=str()):
         super(subHeader, self).__init__()
         self.setText(label)
         self.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
 
 class infoLabel(QLabel):
     def __init__(self, textLines=list()):
@@ -800,6 +881,7 @@ class infoLabel(QLabel):
             text += line + '\n'
         self.setText(text)
         self.setWordWrap(True)
+
 
 class optionWidget(QWidget):
     def __init__(self, label=str):
@@ -937,17 +1019,19 @@ class filePathWidget(QWidget):
             self.path = selected_directory
             self.pathLineEdit.setText(self.path)
 
+
 class ChannelSelectLineEdit(QWidget):
     label = None
     lineEdit = None
     editedSignal = Signal(str)
+    editedSignalKey = Signal(str, str)
 
-    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
+    def __init__(self, key=str(), text=str, tooltip=str(), placeholderTest=str()):
         super(ChannelSelectLineEdit, self).__init__()
-
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.layout)
+        self.key = key
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
         self.label = QLabel(text)
         self.lineEdit = QLineEdit()
         self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
@@ -956,8 +1040,8 @@ class ChannelSelectLineEdit(QWidget):
         self.lineEdit.setPlaceholderText(placeholderTest)
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
 
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.lineEdit)
+        self.mainLayout.addWidget(self.label)
+        self.mainLayout.addWidget(self.lineEdit)
         self.label.setFixedWidth(60)
 
         self.label.setStyleSheet("QFrame {"
@@ -966,6 +1050,7 @@ class ChannelSelectLineEdit(QWidget):
                                  "border-style: solid;"
                                  "border-color: #222222}"
                                  )
+
     def pickChannel(self, *args):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
@@ -975,13 +1060,18 @@ class ChannelSelectLineEdit(QWidget):
     @Slot()
     def sendtextChangedSignal(self):
         self.editedSignal.emit(self.lineEdit.text())
+        self.editedSignalKey.emit(self.key, self.lineEdit.text())
+
 
 class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
+    editedSignalKey = Signal(str, str)
 
-    def __init__(self, label=str(), hint=str(), labelWidth=60, lineEditWidth=120):
+    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=140):
         QWidget.__init__(self)
+        self.key = key
         self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.label = QLabel(label)
         self.label.setFixedWidth(labelWidth)
@@ -990,6 +1080,7 @@ class ObjectSelectLineEdit(QWidget):
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(hint)
         self.cle_action_pick.triggered.connect(self.pickObject)
+        self.itemLabel.textChanged.connect(self.textEdited)
 
         self.mainLayout.addWidget(self.label)
         self.mainLayout.addWidget(self.itemLabel)
@@ -1000,22 +1091,34 @@ class ObjectSelectLineEdit(QWidget):
             return
         self.itemLabel.setText(str(sel[0]))
         self.pickedSignal.emit(str(sel[0]))
+        #self.editedSignalKey.emit(self.key, str(sel[0]))
+
+    @Slot()
+    def textEdited(self):
+        self.editedSignalKey.emit(self.key, self.itemLabel.text())
+
 
 class intFieldWidget(QWidget):
-    layout = None
+    mainLayout = None
     optionVar = None
     optionValue = 0
 
     changedSignal = Signal(float)
+    editedSignalKey = Signal(str, float)
 
-    def __init__(self, optionVar=str(), defaultValue=int(), label=str(), minimum=0, maximum=1, step=0.1):
+    def __init__(self, key=str(), optionVar=None, defaultValue=int(), label=str(), minimum=0, maximum=1, step=0.1):
         QWidget.__init__(self)
+        self.key = key
+
         self.optionVar = optionVar
         self.defaultValue = defaultValue
-        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
-
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
+        if optionVar is not None:
+            self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        else:
+            self.optionValue = None
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
 
         label = QLabel(label)
 
@@ -1023,17 +1126,20 @@ class intFieldWidget(QWidget):
         self.spinBox.setMaximum(maximum)
         self.spinBox.setMinimum(minimum)
         self.spinBox.setSingleStep(step)
+        self.spinBox.setValue(defaultValue)
         if step == 1:
             self.spinBox.setDecimals(0)
         self.spinBox.setProperty("value", self.optionValue)
-        self.layout.addWidget(label)
-        self.layout.addWidget(self.spinBox)
+        self.mainLayout.addWidget(label)
+        self.mainLayout.addWidget(self.spinBox)
         self.spinBox.valueChanged.connect(self.interactivechange)
-        self.layout.addStretch()
+        self.mainLayout.addStretch()
 
     def interactivechange(self, b):
-        pm.optionVar[self.optionVar] = self.spinBox.value()
+        if self.optionVar is not None:
+            pm.optionVar[self.optionVar] = self.spinBox.value()
         self.changedSignal.emit(self.spinBox.value())
+        self.editedSignalKey.emit(self.key, self.spinBox.value())
 
 
 class radioGroupWidget(QWidget):
@@ -1391,4 +1497,3 @@ class UpdateWin(BaseDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
-

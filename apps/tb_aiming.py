@@ -505,16 +505,13 @@ class AimTools(toolAbstractFactory):
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Re bake to fixed distance', command=pm.Callback(self.rebakeCommand, asset))
         cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
-        cmds.menuItem(label='Delete controls', command=pm.Callback(self.deletControlsCommand, asset))
+        cmds.menuItem(label='Delete all controls', command=pm.Callback(self.deletControlsCommand, asset))
         cmds.menuItem(divider=True)
 
     def rebakeCommand(self, asset):
-        print ("rebakeCommand", asset)
         sel = cmds.ls(sl=True)
         control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
         locators = cmds.listConnections(asset + '.message')
-        print ('rebaking', locators)
-        print ('control', control)
         temp = list()
         constraints = list()
         for loc in locators:
@@ -536,7 +533,6 @@ class AimTools(toolAbstractFactory):
         cmds.select(sel, replace=True)
 
     def bakeOutCommand(self, asset):
-        print ("bakeOutCommand", asset)
         control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
         locators = cmds.listConnections(asset + '.message')
         cmds.select(control, replace=True)
@@ -547,7 +543,6 @@ class AimTools(toolAbstractFactory):
         cmds.select(control)
 
     def deletControlsCommand(self, asset):
-        print ("deletControlsCommand", asset)
         pm.delete(asset)
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):

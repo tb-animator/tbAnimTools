@@ -366,7 +366,10 @@ class BakeTools(toolAbstractFactory):
         cmds.menuItem(label='Bake selected temp controls to layer',
                       command=pm.Callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
-        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Delete selected temp controls',
+                      command=pm.Callback(self.deleteSelectedControlsCommand, asset, sel))
+        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
     def createAsset(self, name, imageName=None):
@@ -387,7 +390,7 @@ class BakeTools(toolAbstractFactory):
         asset = pm.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-        #print ("asset", asset, sel)
+        # print ("asset", asset, sel)
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
@@ -430,22 +433,25 @@ class BakeTools(toolAbstractFactory):
         mel.eval("simpleBakeToOverride")
         pm.delete(asset)
 
+    def deleteSelectedControlsCommand(self, asset, sel):
+        pm.delete(sel)
+
     def deleteControlsCommand(self, asset, sel):
         pm.delete(asset)
 
     def bakeSelectedCommand(self, asset, sel):
-        #print ('rebakeCommand', asset, sel)
+        # print ('rebakeCommand', asset, sel)
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
         filteredTargets = [item for sublist in targets for item in sublist if item]
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
 
     def bakeAllCommand(self, asset, sel):
-        #print ('bakeAllCommand', asset, sel)
+        # print ('bakeAllCommand', asset, sel)
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        #print ('filteredTargets', filteredTargets)
+        # print ('filteredTargets', filteredTargets)
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(asset)
@@ -899,46 +905,52 @@ class BakeTools(toolAbstractFactory):
         return
 
     def quickMergeAllLayers(self):
-        with self.funcs.suspendUpdate():
-            allLayers = cmds.ls(type='animLayer')
-            rootLayer = cmds.animLayer(query=True, root=True)
+        try:
+            with self.funcs.suspendUpdate():
+                allLayers = cmds.ls(type='animLayer')
+                rootLayer = cmds.animLayer(query=True, root=True)
 
-            allAttrs = list()
-            allNodes = list()
-            for layer in allLayers:
-                attrs = cmds.animLayer(layer, query=True, attribute=True)
-                if not attrs:
-                    continue
-                for attr in attrs:
-                    if attr not in allAttrs:
-                        allAttrs.append(attr)
-                    node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
-                    if node not in allNodes:
-                        allNodes.append(node)
+                allAttrs = list()
+                allNodes = list()
+                for layer in allLayers:
+                    attrs = cmds.animLayer(layer, query=True, attribute=True)
+                    if not attrs:
+                        continue
+                    for attr in attrs:
+                        if attr not in allAttrs:
+                            allAttrs.append(attr)
+                        node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
+                        if node not in allNodes:
+                            allNodes.append(node)
 
-            allLayers.remove(rootLayer)
+                allLayers.remove(rootLayer)
+                if not allNodes:
+                    return cmds.warning('No controls found in layers, aborting')
+                if not allAttrs:
+                    return cmds.warning('No controls found in layers, aborting')
+                keyRange = self.funcs.get_all_layer_key_times(allNodes)
+                if not keyRange or keyRange[0] is None:
+                    keyRange = self.funcs.getTimelineRange()
 
-            keyRange = self.funcs.get_all_layer_key_times(allNodes)
-            if not keyRange or keyRange[0] == None:
-                keyRange = self.funcs.getTimelineRange()
+                cmds.bakeResults(allAttrs,
+                                 time=(keyRange[0], keyRange[-1]),
+                                 # destinationLayer=rootLayer,
+                                 simulation=True,
+                                 sampleBy=1,
+                                 oversamplingRate=1,
+                                 disableImplicitControl=True,
+                                 preserveOutsideKeys=False,
+                                 sparseAnimCurveBake=True,
+                                 removeBakedAttributeFromLayer=True,
+                                 removeBakedAnimFromLayer=True,
+                                 # bakeOnOverrideLayer=False,
+                                 minimizeRotation=True,
+                                 controlPoints=False,
+                                 shape=False)
 
-            cmds.bakeResults(allAttrs,
-                             time=(keyRange[0], keyRange[-1]),
-                             # destinationLayer=rootLayer,
-                             simulation=True,
-                             sampleBy=1,
-                             oversamplingRate=1,
-                             disableImplicitControl=True,
-                             preserveOutsideKeys=False,
-                             sparseAnimCurveBake=True,
-                             removeBakedAttributeFromLayer=True,
-                             removeBakedAnimFromLayer=True,
-                             # bakeOnOverrideLayer=False,
-                             minimizeRotation=True,
-                             controlPoints=False,
-                             shape=False)
-
-            cmds.delete(allLayers)
+                cmds.delete(allLayers)
+        except Exception as e:
+            self.funcs.resumeSkinning()
 
     def quickMergeSelectionToNew(self):
         self.quickMergeSelection(base=False)
@@ -1007,4 +1019,3 @@ class BakeTools(toolAbstractFactory):
                 continue
             emptyLayers.append(layer)
         if emptyLayers: cmds.delete(emptyLayers)
-

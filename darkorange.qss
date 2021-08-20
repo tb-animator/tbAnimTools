@@ -1,3 +1,20 @@
+QLineEdit:focus
+{
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #333333, stop: 0.2 #373737, stop: 0.8 #373737, stop: 1 #333333);
+    padding: 1px;
+    border-style: solid;
+    border: 1px solid #1e1e1e;
+    border-radius: 5;
+}
+
+QLineEdit
+{
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #333333, stop: 0.2 #373737, stop: 0.8 #373737, stop: 1 #333333);
+    padding: 1px;
+    border-style: solid;
+    border: 1px solid #1e1e1e;
+    border-radius: 5;
+}
 QWidget#promptWidget
 {
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #323232, stop 0.1: #373737, stop: 1 #323232);
@@ -114,6 +131,8 @@ QPushButton:pressed
 {
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
 }
+
+
 
 QComboBox
 {
@@ -277,6 +296,7 @@ QPlainTextEdit
 {
     background-color: #242424;
 }
+
 
 QHeaderView::section
 {
@@ -468,13 +488,3 @@ QCheckBox::indicator:disabled, QRadioButton::indicator:disabled
     border: 1px solid #444;
 }
 
-
-
-QLineEdit
-{
-    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0 #646464, stop: 1 #5d5d5d);
-    padding: 1px;
-    border-style: solid;
-    border: 1px solid #1e1e1e;
-    border-radius: 5;
-}

@@ -276,5 +276,7 @@ class SnapTools(toolAbstractFactory):
                                    event=("SelectionChanged", pm.Callback(self.bakeTempControl, sel, tempControl)))
 
     def bakeTempControl(self, controls, tempControl):
+        if not pm.objExists(tempControl):
+            return
         pm.setKeyframe(controls)
         pm.delete(tempControl)

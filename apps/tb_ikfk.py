@@ -1,0 +1,590 @@
+'''TB Animation Tools is a toolset for animators
+
+*******************************************************************************
+    License and Copyright
+    Copyright 2020-Tom Bailey
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    send issues/ requests to brimblashman@gmail.com
+    visit https://tbanimtools.blogspot.com/ for "stuff"
+
+
+*******************************************************************************
+'''
+import pymel.core as pm
+import maya.cmds as cmds
+import maya.api.OpenMaya as om2
+from Abstract import *
+from tb_UI import *
+
+qtVersion = pm.about(qtVersion=True)
+if int(qtVersion.split('.')[0]) < 5:
+    from PySide.QtGui import *
+    from PySide.QtCore import *
+    # from pysideuic import *
+    from shiboken import wrapInstance
+else:
+    from PySide2.QtWidgets import *
+    from PySide2.QtGui import *
+    from PySide2.QtCore import *
+    # from pyside2uic import *
+    from shiboken2 import wrapInstance
+__author__ = 'tom.bailey'
+
+
+class hotkeys(hotKeyAbstractFactory):
+    def createHotkeyCommands(self):
+        self.setCategory(self.helpStrings.category.get('ikfk'))
+        self.commandList = list()
+
+        return self.commandList
+
+    def assignHotkeys(self):
+        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+
+
+class IKFK(toolAbstractFactory):
+    """
+    Use this as a base for toolAbstractFactory classes
+    """
+    # __metaclass__ = abc.ABCMeta
+    __instance = None
+    toolName = 'IkFkTools'
+    hotkeyClass = hotkeys()
+    funcs = functions()
+    subfolder = 'ikfkData'
+
+    loadedIkFkData = dict()  # store loaded data per session to avoid accessing the disc all the time
+
+    def __new__(cls):
+        if IKFK.__instance is None:
+            IKFK.__instance = object.__new__(cls)
+            IKFK.__instance.initData()
+        IKFK.__instance.val = cls.toolName
+        return IKFK.__instance
+
+    def __init__(self, **kwargs):
+        self.hotkeyClass = hotkeys()
+        self.funcs = functions()
+
+    """
+    Declare an interface for operations that create abstract product
+    objects.
+    """
+
+    def initData(self):
+        super(IKFK, self).initData()
+        self.ikfkDir = os.path.normpath(os.path.join(self.dataPath, self.subfolder))
+        if not os.path.isdir(self.ikfkDir):
+            os.mkdir(self.ikfkDir)
+
+    def optionUI(self):
+        return super(IKFK, self).optionUI()
+
+    def showUI(self):
+        self.win = IKFK_SetupUI()
+        self.win.show()
+
+    def drawMenuBar(self, parentMenu):
+        return None
+
+    def getCurrentRig(self, sel=None):
+        refName = None
+        mapName = None
+        fname = None
+        if sel is None:
+            sel = cmds.ls(sl=True)
+        namespace = str()
+        if sel:
+            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            if refState:
+                # if it is referenced, check against pickwalk library entries
+                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+            else:
+                # might just be working in the rig file itself
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+            if ':' in sel[0]:
+                namespace = sel[0].split(':')[0]
+        else:
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+
+        return refName, namespace  # TODO - fix up data path etc
+
+    def saveRigFileIfNew(self, refname):
+        dataFile = os.path.join(self.ikfkDir, refname + '.json')
+        if not os.path.isfile(os.path.join(dataFile)):
+            print ('need to save',)
+            ikFkData = IkFkData()
+            data = ikFkData.toJson()
+            self.saveJsonFile(dataFile, json.loads(data))
+
+    def getIkFkOffsets(self, namespace, data):
+        print (namespace, data)
+        # set to FK
+        # get offsets between joints and fk controls
+        ikControlAttr = self.getControl(namespace, data.ikAttr)
+        cmds.setAttr(ikControlAttr, data.fkValue)
+        for j, c in zip(data.jointKeys, data.fkKeys):
+            control = self.getControl(namespace, data.__dict__[c])
+            joint = self.getControl(namespace, data.__dict__[j])
+            controlMMatrix = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, q=True))
+            jointMMatrix = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, q=True))
+            # print controlMMatrix, jointMMatrix
+            resultTFMatrix = om2.MTransformationMatrix(controlMMatrix * jointMMatrix.inverse())
+            resultMatrix = controlMMatrix * jointMMatrix.inverse()
+            print
+            # print resultTFMatrix.translation(om2.MSpace.kWorld)
+            data.fkControlOffsets[c] = [x for x in resultMatrix]
+        cmds.setAttr(ikControlAttr, data.ikValue)
+
+    def getControl(self, namespace, name):
+        if namespace:
+            return name + ':' + name
+        return name
+
+    def loadIkFkData(self, rigName):
+        ikFkData = IkFkData()
+        ikFkData.fromJson(os.path.join(IKFK().ikfkDir, rigName + '.json'))
+        return ikFkData
+
+    def splitSelectionToCharacters(self, sel):
+        """
+        Returns a dictionary for all characters found in the selection, namespace as key, controls as items
+        :param sel:
+        :return:
+        """
+        if not sel:
+            return
+
+        # split selection by character
+        namespaces = [x.split(':')[0] for x in sel if ':' in x]
+
+        characters = {k: list() for k in namespaces}
+        for s in sel:
+            splitString = s.split(':')
+            if len(splitString) == 1:
+                if ('') not in characters.keys():
+                    characters[''] = list()
+                characters[''].append(s)
+                continue
+            for ns in namespaces:
+                if splitString[0] == ns:
+                    characters[ns].append(s)
+                    continue
+        return characters
+
+    def loadDataForCharacters(self, characters):
+        namespaceToCharDict = dict()
+        for key, value in characters.items():
+            refname, namespace = self.getCurrentRig([value[0]])
+            namespaceToCharDict[namespace] = refname
+            if refname not in self.loadedIkFkData.keys():
+                ikFkData = self.loadIkFkData(refname)
+                self.loadedIkFkData[refname] = ikFkData
+                print ('loading from disc')
+        return namespaceToCharDict
+
+    def getLimbsToMatchFromSelection(self, sel=None):
+        if sel is None:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        characters = self.splitSelectionToCharacters(sel)
+        print ('chars', characters)
+        namespaceToCharDict = self.loadDataForCharacters(characters)
+
+        limbsToMatch = {c: list() for c in characters.keys()}
+
+        # get the limbs selected
+        for char, controls in characters.items():
+            for s in controls:
+                control = s.split(':')[-1]
+                for key, limb in self.loadedIkFkData[namespaceToCharDict[char]].limbs.items():
+                    if limb.controlInData(control):
+                        limbsToMatch[char].append(key)
+
+        return limbsToMatch, namespaceToCharDict
+
+    def matchFKToCurrentPose(self):
+        limbsToMatch, namespaceToCharDict = self.getLimbsToMatchFromSelection()
+        for ns, limb in limbsToMatch.items():
+            for l in limb:
+                self.loadedIkFkData[namespaceToCharDict[ns]].limbs[l].matchToFK(ns)
+
+
+class IkFkData(object):
+    def __init__(self):
+        self.limbs = dict()
+
+    def addLimb(self, name):
+        self.limbs[name] = TwoBoneIKData()
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, separators=(',', ': '))
+
+    def fromJson(self, data):
+        rawJsonData = json.load(open(data))
+        for limb, data in rawJsonData.get('limbs').items():
+            self.addLimb(limb)
+            for k, v in data.items():
+                self.limbs[limb].__dict__[k] = v
+
+
+class TwoBoneIKData(object):
+    def __init__(self):
+        self.jointUp = str()
+        self.jointMid = str()
+        self.jointEnd = str()
+        self.fkControlUp = str()
+        self.fkControlMid = str()
+        self.fkControlEnd = str()
+        self.ikControl = str()
+        self.pvControl = str()
+        self.fkControlOffsets = dict()
+        self.ikControlOffset = dict()
+        self.pvDistance = float()
+        self.ikAttr = str()
+        self.ikValue = float()
+        self.fkValue = float()
+
+        self.jointKeys = ['jointUp', 'jointMid', 'jointEnd']
+        self.fkKeys = ['fkControlUp', 'fkControlMid', 'fkControlEnd']
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, separators=(',', ': '))
+
+    def controlInData(self, control):
+        return control in self.__dict__.values()
+
+    def getIkFkOffsets(self, namespace):
+        # set to FK
+        # get offsets between joints and fk controls
+        ikControlAttr = IKFK().getControl(namespace, self.ikAttr)
+        cmds.setAttr(ikControlAttr, self.fkValue)
+        for j, c in zip(self.jointKeys, self.fkKeys):
+            control = IKFK().getControl(namespace, self.__dict__[c])
+            joint = IKFK().getControl(namespace, self.__dict__[j])
+            controlMMatrix = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, q=True))
+            jointMMatrix = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, q=True))
+            # print controlMMatrix, jointMMatrix
+            resultTFMatrix = om2.MTransformationMatrix(controlMMatrix * jointMMatrix.inverse())
+            resultMatrix = controlMMatrix * jointMMatrix.inverse()
+            # print resultTFMatrix.translation(om2.MSpace.kWorld)
+            self.fkControlOffsets[c] = [x for x in resultMatrix]
+
+    def matchToFK(self, namespace):
+        print ('matchToFK', namespace)
+        # upperRotation = cmds.xform()
+        for fk, j in zip(self.fkKeys, self.jointKeys):
+            control = IKFK().getControl(namespace, self.__dict__.get(fk))
+            joint = IKFK().getControl(namespace, self.__dict__.get(j))
+            print ('joint', joint)
+            print ('control', control)
+            fkMtx = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, absolute=True, q=True))
+            jointMtx = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, absolute=True, q=True))
+            offsetMtx = om2.MMatrix(self.fkControlOffsets[fk])
+            fkResultMtx = offsetMtx * jointMtx
+            cmds.xform(control, matrix=fkResultMtx, ws=1)
+        cmds.setAttr(namespace + ':' + self.ikAttr, self.fkValue)
+        '''
+        controlMMatrix = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, q=True))
+            jointMMatrix = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, q=True))
+            # print controlMMatrix, jointMMatrix
+            resultTFMatrix = om2.MTransformationMatrix(controlMMatrix * jointMMatrix.inverse())
+            resultMatrix = controlMMatrix * jointMMatrix.inverse()
+        '''
+
+    def matchToIK(self, namespace):
+        print ('matchToIK', namespace)
+
+
+class IKFK_SetupUI(QMainWindow):
+
+    def __init__(self):
+        super(IKFK_SetupUI, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.ikFkData = IkFkData()
+        self.rigName = str()
+        self.namespace = str()
+        self.currentLimb = str()
+        # setup stylesheet
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setWindowTitle('tbIKFK Setup Tool')
+
+        main_widget = QWidget()
+
+        self.setCentralWidget(main_widget)
+
+        self.main_layout = QVBoxLayout()
+        main_widget.setLayout(self.main_layout)
+
+        menu = self.menuBar()
+        edit_menu = menu.addMenu('&File')
+        load_action = QAction('Load data for current rig', self)
+        load_action.setShortcut('Ctrl+C')
+        edit_menu.addAction(load_action)
+        load_action.triggered.connect(self.getCurrentRig)
+
+        save_action = QAction('Save', self)
+        save_action.setShortcut('Ctrl+S')
+        edit_menu.addAction(save_action)
+        save_action.triggered.connect(self.save)
+        # 2 bone ik widget
+        self.limbWidget = LimbWidget(self)
+        self.limbWidget.setDisabled(True)
+        # all existing ik widget
+        self.existingIkLayout = QHBoxLayout()
+        self.existingIkLayout.setAlignment(Qt.AlignTop)
+        self.rigIKFKListWidget = QTreeSingleViewWidget(label='Existing IK Definitions')
+        self.existingIkLayout.addWidget(self.rigIKFKListWidget)
+        self.limbUpdateWidget = LimbUpdateWidget()
+        self.existingIkLayout.addWidget(self.limbUpdateWidget)
+        # cuurent rig label
+        self.currentRigLabel = QLabel('Current Rig ::')
+        self.currentRigNameLabel = QLabel('None')
+        self.rigLayout = QHBoxLayout()
+        self.rigLayout.addWidget(self.currentRigLabel)
+        self.rigLayout.addWidget(self.currentRigNameLabel)
+        self.rigLayout.addStretch()
+
+        self.main_layout.addLayout(self.rigLayout)
+
+        self.main_layout.addLayout(self.existingIkLayout)
+        self.main_layout.addWidget(self.limbWidget)
+
+        self.rigIKFKListWidget.pressedSignal.connect(self.selectLimb)
+        self.limbUpdateWidget.addNewSignal.connect(self.addNewLimb)
+        self.limbUpdateWidget.removeButton.clicked.connect(self.remove)
+        self.limbUpdateWidget.updateButton.clicked.connect(self.updateCurrent)
+        self.limbUpdateWidget.updateAllButton.clicked.connect(self.updateAll)
+
+    @Slot()
+    def selectLimb(self, inputData):
+        print ('selectLimb', inputData)
+        self.currentLimb = inputData
+        if not inputData:
+            self.limbWidget.setDisabled(True)
+            return
+        self.limbWidget.setDisabled(False)
+
+        self.limbWidget.refresh(inputData, self.ikFkData.limbs[inputData])
+
+    @Slot()
+    def addNewLimb(self, inputData):
+        print ('addNewLimb', inputData)
+        if inputData not in self.ikFkData.limbs.keys():
+            self.ikFkData.addLimb(inputData)
+            self.rigIKFKListWidget.updateView(self.ikFkData.limbs.keys())
+
+    def remove(self):
+        print ('remove')
+
+    def updateCurrent(self):
+        print ('updateCurrent', self.currentLimb)
+        self.ikFkData.limbs[self.currentLimb].getIkFkOffsets(self.namespace)
+
+    def updateAll(self):
+        print ('updateAll')
+
+    def getCurrentRig(self):
+        self.rigName, self.namespace = IKFK().getCurrentRig()
+        IKFK().saveRigFileIfNew(self.rigName)
+
+        self.currentRigNameLabel.setText(self.rigName)
+        self.ikFkData = IkFkData()
+        self.ikFkData.fromJson(os.path.join(IKFK().ikfkDir, self.rigName + '.json'))
+        self.rigIKFKListWidget.updateView(self.ikFkData.limbs.keys())
+
+    def save(self):
+        dataFile = os.path.join(IKFK().ikfkDir, self.rigName + '.json')
+        data = self.ikFkData.toJson()
+        print ('save')
+        print ('rig', self.rigName)
+        print ('rig file', dataFile)
+        print ('data', data)
+        IKFK().saveJsonFile(dataFile, json.loads(data))
+
+
+class LimbUpdateWidget(QWidget):
+    addNewSignal = Signal(str)
+
+    def __init__(self):
+        super(LimbUpdateWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.mainLayout = QVBoxLayout()
+
+        self.setLayout(self.mainLayout)
+        self.addButton = QPushButton('Add')
+        self.removeButton = QPushButton('Remove')
+        self.updateButton = QPushButton('Cache Offsets')
+        self.updateAllButton = QPushButton('Cache Offsets All')
+        self.mainLayout.addWidget(self.addButton)
+        self.mainLayout.addWidget(self.removeButton)
+        self.mainLayout.addWidget(self.updateButton)
+        self.mainLayout.addWidget(self.updateAllButton)
+        self.mainLayout.addStretch()
+
+        self.addButton.clicked.connect(self.addNew)
+
+    def addNew(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            defaultName = 'RENAME_ME'
+        else:
+            defaultName = sel[0].split('.')[-1]
+        dialog = TextInputWidget(title='Add new limb data', label='Enter Name', buttonText="Save",
+                                 default=defaultName,
+                                 parent=self)
+        dialog.acceptedSignal.connect(self.getAddNewSignal)
+
+    def getAddNewSignal(self, inputData):
+        self.addNewSignal.emit(inputData)
+
+
+class LimbWidget(QWidget):
+    editedSignal = Signal(dict)
+
+    def __init__(self, cls):
+        super(LimbWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.cls = cls
+        self.key = None
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.mainLayout)
+
+        self.ikAttrWidget = ChannelSelectLineEdit(key='ikAttr',
+                                                  text='Attribute', tooltip='Pick attribute to control ik blend.',
+                                                  placeholderTest='enter condition attribute')
+        self.ikAttrWidget.lineEdit.setFixedWidth(200)
+        self.ikValueWidget = intFieldWidget(key='ikValue',
+                                            optionVar=None, defaultValue=0, label='IK value', minimum=-100, maximum=100,
+                                            step=1)
+
+        self.fkValueWidget = intFieldWidget(key='fkValue',
+                                            optionVar=None, defaultValue=1, label='FK value', minimum=-100, maximum=100,
+                                            step=1)
+
+        # ik value widget (int/bool)
+        self.pickFkButton = QPushButton('From Selection')
+        self.pickFkButton.clicked.connect(self.pickFK)
+        self.pickIKButton = QPushButton('From Selection')
+        self.pickIKButton.clicked.connect(self.pickIK)
+        self.pickJointsButton = QPushButton('From Selection')
+        self.pickJointsButton.clicked.connect(self.pickJoints)
+
+        self.skeletonUpper = ObjectSelectLineEdit(key='jointUp',
+                                                  label='Upper Joint')
+        self.skeletonMid = ObjectSelectLineEdit(key='jointMid',
+                                                label='Mid Joint')
+        self.skeletonEnd = ObjectSelectLineEdit(key='jointEnd',
+                                                label='End Joint')
+
+        self.fkUpper = ObjectSelectLineEdit(key='fkControlUp',
+                                            label='Upper FK')
+        self.fkMid = ObjectSelectLineEdit(key='fkControlMid',
+                                          label='Mid FK')
+        self.fkEnd = ObjectSelectLineEdit(key='fkControlEnd',
+                                          label='End FK')
+
+        self.ikPV = ObjectSelectLineEdit(key='pvControl',
+                                         label='Pole Vector')
+        self.ikEnd = ObjectSelectLineEdit(key='ikControl',
+                                          label='IK Control')
+
+        self.skeletonUpper.editedSignalKey.connect(self.updateData)
+        self.skeletonMid.editedSignalKey.connect(self.updateData)
+        self.skeletonEnd.editedSignalKey.connect(self.updateData)
+        self.fkUpper.editedSignalKey.connect(self.updateData)
+        self.fkMid.editedSignalKey.connect(self.updateData)
+        self.fkEnd.editedSignalKey.connect(self.updateData)
+        self.ikPV.editedSignalKey.connect(self.updateData)
+        self.ikEnd.editedSignalKey.connect(self.updateData)
+        self.ikAttrWidget.editedSignalKey.connect(self.updateData)
+        self.ikValueWidget.editedSignalKey.connect(self.updateData)
+        self.fkValueWidget.editedSignalKey.connect(self.updateData)
+
+        self.attrLayout = QHBoxLayout()
+        self.jointLayout = QHBoxLayout()
+        self.fkLayout = QHBoxLayout()
+        self.ikLayout = QHBoxLayout()
+
+        self.mainLayout.addLayout(self.attrLayout)
+        self.mainLayout.addLayout(self.jointLayout)
+        self.mainLayout.addLayout(self.fkLayout)
+        self.mainLayout.addLayout(self.ikLayout)
+
+        self.attrLayout.addWidget(self.ikAttrWidget)
+        self.attrLayout.addWidget(self.ikValueWidget)
+        self.attrLayout.addWidget(self.fkValueWidget)
+        self.attrLayout.addStretch()
+        self.fkLayout.addWidget(self.fkUpper)
+        self.fkLayout.addWidget(self.fkMid)
+        self.fkLayout.addWidget(self.fkEnd)
+        self.fkLayout.addWidget(self.pickFkButton)
+
+        self.jointLayout.addWidget(self.skeletonUpper)
+        self.jointLayout.addWidget(self.skeletonMid)
+        self.jointLayout.addWidget(self.skeletonEnd)
+        self.jointLayout.addWidget(self.pickJointsButton)
+
+        self.ikLayout.addStretch()
+        self.ikLayout.addWidget(self.ikPV)
+        self.ikLayout.addWidget(self.ikEnd)
+        self.ikLayout.addWidget(self.pickIKButton)
+
+        widgets = [x for x in self.mainLayout.children() if x.__class__.__name__ == 'ObjectSelectLineEdit']
+        print ('widgets', widgets)
+
+    def refresh(self, inputData, data):
+        print ('refresh', inputData, data)
+        self.key = inputData
+        self.skeletonUpper.itemLabel.setText(data.jointUp)
+        self.skeletonMid.itemLabel.setText(data.jointMid)
+        self.skeletonEnd.itemLabel.setText(data.jointEnd)
+        self.fkUpper.itemLabel.setText(data.fkControlUp)
+        self.fkMid.itemLabel.setText(data.fkControlMid)
+        self.fkEnd.itemLabel.setText(data.fkControlEnd)
+        self.ikPV.itemLabel.setText(data.pvControl)
+        self.ikEnd.itemLabel.setText(data.ikControl)
+        self.ikAttrWidget.lineEdit.setText(data.ikAttr)
+        self.ikValueWidget.spinBox.setValue(data.ikValue)
+        self.fkValueWidget.spinBox.setValue(data.fkValue)
+
+    def updateData(self, key, value):
+        print ('updateData', key, value)
+        self.cls.ikFkData.limbs[self.key].__dict__[key] = value
+
+    def pickFK(self):
+        sel = cmds.ls(sl=True)
+        if not len(sel) == 3:
+            return cmds.warning('Please select all three fk controls')
+        sel = [s.split('.')[-1] for s in sel]
+        self.fkUpper.itemLabel.setText(sel[0])
+        self.fkMid.itemLabel.setText(sel[1])
+        self.fkEnd.itemLabel.setText(sel[2])
+
+    def pickIK(self):
+        sel = cmds.ls(sl=True)
+        if not len(sel) == 2:
+            return cmds.warning('Please select the pole vector and ik controls')
+        sel = [s.split('.')[-1] for s in sel]
+        self.ikPV.itemLabel.setText(sel[0])
+        self.ikEnd.itemLabel.setText(sel[1])
+
+    def pickJoints(self):
+        sel = cmds.ls(sl=True)
+        if not len(sel) == 3:
+            return cmds.warning('Please select all three joints')
+        sel = [s.split('.')[-1] for s in sel]
+        self.skeletonUpper.itemLabel.setText(sel[0])
+        self.skeletonMid.itemLabel.setText(sel[1])
+        self.skeletonEnd.itemLabel.setText(sel[2])
