@@ -605,7 +605,7 @@ class TextInputWidget(QWidget):
         self.text = QLabel(label)
         self.lineEdit = QLineEdit(default)
         self.lineEdit.setFocusPolicy(Qt.StrongFocus)
-        reg_ex = QRegExp("[a-z-A-Z0123456789_]+")
+        reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
         input_validator = QRegExpValidator(reg_ex, self.lineEdit)
         self.lineEdit.setValidator(input_validator)
 

@@ -160,7 +160,7 @@ class IKFK(toolAbstractFactory):
 
     def getControl(self, namespace, name):
         if namespace:
-            return name + ':' + name
+            return namespace + ':' + name
         return name
 
     def loadIkFkData(self, rigName):
@@ -283,10 +283,10 @@ class TwoBoneIKData(object):
     def controlInData(self, control):
         return control in self.__dict__.values()
 
-    def calculatePVPosition(self):
-        startPos = cmds.xform(self.jointUp, query=True, worldSpace=True, translation=True)
-        midPos = cmds.xform(self.jointMid, query=True, worldSpace=True, translation=True)
-        endPos = cmds.xform(self.jointEnd, query=True, worldSpace=True, translation=True)
+    def calculatePVPosition(self, namespace):
+        startPos = cmds.xform(IKFK().getControl(namespace, self.jointUp), query=True, worldSpace=True, translation=True)
+        midPos = cmds.xform(IKFK().getControl(namespace, self.jointMid), query=True, worldSpace=True, translation=True)
+        endPos = cmds.xform(IKFK().getControl(namespace,self.jointEnd), query=True, worldSpace=True, translation=True)
 
         startMV = om2.MVector(startPos[0], startPos[1], startPos[2])
         midMV = om2.MVector(midPos[0], midPos[1], midPos[2])
@@ -306,13 +306,13 @@ class TwoBoneIKData(object):
 
         return V
 
-    def getPVDistance(self):
+    def getPVDistance(self, namespace):
         """
         Gets the pole vector distance for caching
         :return:
         """
-        midPos = cmds.xform(self.jointMid, query=True, worldSpace=True, rotatePivot=True)
-        pvPos = cmds.xform(self.pvControl, query=True, worldSpace=True, rotatePivot=True)
+        midPos = cmds.xform(IKFK().getControl(namespace, self.jointMid), query=True, worldSpace=True, rotatePivot=True)
+        pvPos = cmds.xform(IKFK().getControl(namespace, self.pvControl), query=True, worldSpace=True, rotatePivot=True)
         midMV = om2.MVector(midPos[0], midPos[1], midPos[2])
         pvMV = om2.MVector(pvPos[0], pvPos[1], pvPos[2])
 
@@ -320,8 +320,6 @@ class TwoBoneIKData(object):
         return distance.length()
 
     def getIkFkOffsets(self, namespace):
-        # set to FK
-        # get offsets between joints and fk controls
         ikControlAttr = IKFK().getControl(namespace, self.ikAttr)
         currentState = cmds.getAttr(ikControlAttr)
         cmds.setAttr(ikControlAttr, self.fkValue)
@@ -335,7 +333,7 @@ class TwoBoneIKData(object):
             resultMatrix = controlMMatrix * jointMMatrix.inverse()
             # print resultTFMatrix.translation(om2.MSpace.kWorld)
             self.fkControlOffsets[c] = [x for x in resultMatrix]
-        self.pvDistance = self.getPVDistance()
+        self.pvDistance = self.getPVDistance(namespace)
         cmds.setAttr(ikControlAttr, self.ikValue)
         # ik is just one control this time
         control = IKFK().getControl(namespace, self.ikControl)
@@ -349,26 +347,15 @@ class TwoBoneIKData(object):
 
     def matchToFK(self, namespace):
         print ('matchToFK', namespace)
-        # upperRotation = cmds.xform()
         ikControlAttr = IKFK().getControl(namespace, self.ikAttr)
         for fk, j in zip(self.fkKeys, self.jointKeys):
             control = IKFK().getControl(namespace, self.__dict__.get(fk))
             joint = IKFK().getControl(namespace, self.__dict__.get(j))
-            print ('joint', joint)
-            print ('control', control)
-            fkMtx = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, absolute=True, q=True))
             jointMtx = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, absolute=True, q=True))
             offsetMtx = om2.MMatrix(self.fkControlOffsets[fk])
             fkResultMtx = offsetMtx * jointMtx
             cmds.xform(control, matrix=fkResultMtx, ws=1)
         cmds.setAttr(ikControlAttr, self.fkValue)
-        '''
-        controlMMatrix = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, q=True))
-            jointMMatrix = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, q=True))
-            # print controlMMatrix, jointMMatrix
-            resultTFMatrix = om2.MTransformationMatrix(controlMMatrix * jointMMatrix.inverse())
-            resultMatrix = controlMMatrix * jointMMatrix.inverse()
-        '''
 
     def matchToIK(self, namespace):
         print ('matchToIK', namespace)
@@ -384,8 +371,7 @@ class TwoBoneIKData(object):
         offsetMtx = om2.MMatrix(self.ikControlOffset)
         ikResultMtx = offsetMtx * jointMtx
 
-        pvPos = self.calculatePVPosition()
-        print (self.pvControl, pvControl, 'pvPos', pvPos)
+        pvPos = self.calculatePVPosition(namespace)
         cmds.xform(pvControl, translation=pvTranslationMV + (pvPos - pvRotatePivotMV), ws=1)
         cmds.xform(ikControl, matrix=ikResultMtx, ws=1)
 
@@ -586,7 +572,7 @@ class LimbUpdateWidget(QWidget):
         if not sel:
             defaultName = 'RENAME_ME'
         else:
-            defaultName = sel[0].split('.')[-1]
+            defaultName = sel[0].split(':')[-1]
         dialog = TextInputWidget(title='Mirror limb data', label='Enter Name', buttonText="Save",
                                  default=defaultName,
                                  parent=self)

@@ -158,7 +158,7 @@ class SelectionTools(toolAbstractFactory):
         s = splitName[-1]
         prefix = re.split('[^a-zA-Z0-9]+', s)
 
-        matchingPrefix = self.getSimilarControls(input, prefix)
+        matchingPrefix = self.getSimilarControls(namespace, s, prefix)
 
         if matchingPrefix:
             cmds.select(matchingPrefix, replace=True)
@@ -190,12 +190,12 @@ class SelectionTools(toolAbstractFactory):
 
         matches = get_close_matches(st, [x[:len(x) - tailLen] for x in matchingPrefix])
 
-    def getSimilarControls(self, input, prefix, constraint=False, shape=True):
-        matching = cmds.ls('*{0}*'.format(prefix[0]), type='transform')
+    def getSimilarControls(self, namespace, sel, prefix, constraint=False, shape=True):
+        matching = cmds.ls('{ns}:{ct}*'.format(ns=namespace, ct=prefix[0]), type='transform')
         if not constraint:
             matching = [x for x in matching if 'Constraint' not in cmds.objectType(x)]
         if shape:
             matching = [x for x in matching if cmds.listRelatives(x, shapes=True)]
-        if input in matching:
-            matching.remove(input)
+        if sel in matching:
+            matching.remove(sel)
         return matching
