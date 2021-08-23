@@ -500,6 +500,7 @@ class PickwalkQueryWidget(QDialog):
 
 class QTreeSingleViewWidget(QFrame):
     pressedSignal = Signal(str)
+    itemChangedSignal = Signal(str)
 
     def __init__(self, CLS=None, label='BLANK'):
         super(QTreeSingleViewWidget, self).__init__()
@@ -517,7 +518,7 @@ class QTreeSingleViewWidget(QFrame):
         self.filterLineEdit.addAction(QIcon(":/resources/search.ico"), QLineEdit.LeadingPosition)
         self.filterLineEdit.setPlaceholderText("Search...")
 
-        self.topLayout.addWidget(self.label)
+        #self.topLayout.addWidget(self.label)
         self.topLayout.addWidget(self.filterLineEdit)
 
         self.listView = QListView()
@@ -570,9 +571,7 @@ class QTreeSingleViewWidget(QFrame):
         self.pressedSignal.emit(item.text())
 
     def itemChanged(self, item):
-        pass
-        # print 'old value', item.destination
-        # print 'new value', item.text()
+        self.itemChangedSignal.emit(item.text())
 
 
 class TextInputWidget(QWidget):

@@ -959,6 +959,10 @@ class functions(object):
         mTimeArray[1] = finalFrame
         return mTimeArray
 
+    def stripTailDigits(self, input):
+        if input[-1].isdigit() or input[-1] == '_':
+            return self.stripTailDigits(input[:-1])
+        return input
 
     """
     UI gubbinz
@@ -987,3 +991,4 @@ class functions(object):
         cmds.formLayout(form, e=True, attachNone=(newButton, 'left'))
         cmds.formLayout(form, e=True, attachNone=(newButton, 'bottom'))
         cmds.formLayout(form, e=True, attachControl=(newButton, 'right', 1, form + '|' + uiElement))
+

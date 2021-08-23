@@ -24,6 +24,9 @@
 '''
 
 import pymel.core as pm
+import re
+from difflib import SequenceMatcher, get_close_matches, ndiff
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -50,6 +53,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('selection'))
         self.commandList = list()
         # all curve selector
+
+        self.addCommand(self.tb_hkey(name='select_all_character',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['SelectionTools.selectAllCharacter()']))
         self.addCommand(self.tb_hkey(name='select_all_anim_curves',
                                      annotation='',
                                      category=self.category,
@@ -74,6 +82,7 @@ class SelectionTools(toolAbstractFactory):
     toolName = 'SelectionTools'
     hotkeyClass = hotkeys()
     funcs = functions()
+    lastSelected = None
 
     def __new__(cls):
         if SelectionTools.__instance is None:
@@ -128,3 +137,65 @@ class SelectionTools(toolAbstractFactory):
         else:
             msg = 'no character sets found for selection'
             self.funcs.errorMessage(position="botRight", prefix="Error", message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
+
+    def selectAllCharacter(self):
+        """
+        Attempts to select all logically named controls for a single character.
+        If there is no selection, it will reselect the last known character
+        :return:
+        """
+        namespace = str()
+        sel = cmds.ls(sl=True)
+        if not sel:
+            if self.lastSelected is None:
+                return
+            if cmds.objExists(self.lastSelected):
+                sel = [self.lastSelected]
+
+        splitName = sel[0].split(':')
+        if len(splitName) > 1:
+            namespace = splitName[0]
+        s = splitName[-1]
+        prefix = re.split('[^a-zA-Z0-9]+', s)
+
+        matchingPrefix = self.getSimilarControls(input, prefix)
+
+        if matchingPrefix:
+            cmds.select(matchingPrefix, replace=True)
+            self.lastSelected = sel[0]
+
+    def getOppositeControl(self, input, constraint=False, shape=True):
+        s = input.split(':')[-1]
+        prefix = re.split('[^a-zA-Z0-9]+', s)
+        matchingPrefix = self.getSimilarControls(input, prefix)
+        st = self.funcs.stripTailDigits(s)
+        tailLen = len(s) - len(st)
+
+        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in matchingPrefix])
+        opposites = [m for m in matches if m != st]
+        print ('opposites', opposites)
+        if opposites:
+            if tailLen > 0:
+                op = opposites[0] + s[-tailLen:]
+            else:
+                op = opposites[0]
+            return op
+
+    def getLowerControl(self, input):
+        s = input.split(':')[-1]
+        prefix = re.split('[^a-zA-Z0-9]+', s)
+        matchingPrefix = self.getSimilarControls(input, prefix)
+        st = self.funcs.stripTailDigits(s)
+        tailLen = len(s) - len(st)
+
+        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in matchingPrefix])
+
+    def getSimilarControls(self, input, prefix, constraint=False, shape=True):
+        matching = cmds.ls('*{0}*'.format(prefix[0]), type='transform')
+        if not constraint:
+            matching = [x for x in matching if 'Constraint' not in cmds.objectType(x)]
+        if shape:
+            matching = [x for x in matching if cmds.listRelatives(x, shapes=True)]
+        if input in matching:
+            matching.remove(input)
+        return matching
