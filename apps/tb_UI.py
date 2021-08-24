@@ -579,13 +579,15 @@ class TextInputWidget(QWidget):
     Simple prompt with text input
     """
     acceptedSignal = Signal(str)
+    acceptedComboSignal = Signal(str, str)
+    rejectedSignal = Signal()
     oldPos = None
 
-    def __init__(self, title=str, label=str, buttonText=str, default=str,
+    def __init__(self, title=str, label=str, buttonText=str, default=str, combo=list(),
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
         self.setStyleSheet(getqss.getStyleSheet())
-
+        self.combo = combo
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -609,6 +611,12 @@ class TextInputWidget(QWidget):
         input_validator = QRegExpValidator(reg_ex, self.lineEdit)
         self.lineEdit.setValidator(input_validator)
 
+        self.comboBox = QComboBox()
+        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
+        for c in self.combo:
+            self.comboBox.addItem(c)
+
+
         self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
         # layout.addWidget(btnSetFolder)
@@ -617,6 +625,8 @@ class TextInputWidget(QWidget):
         mainLayout.addLayout(layout)
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
+        if len(self.combo):
+            layout.addWidget(self.comboBox)
         layout.addWidget(self.saveButton)
 
         self.saveButton.clicked.connect(self.acceptedFunction)
@@ -652,7 +662,12 @@ class TextInputWidget(QWidget):
 
     def acceptedFunction(self, *args):
         self.acceptedSignal.emit(self.lineEdit.text())
+        self.acceptedComboSignal.emit(self.lineEdit.text(), self.comboBox.currentText())
         self.close()
+
+    def close(self):
+        self.rejectedSignal.emit()
+        super(TextInputWidget, self).close()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
@@ -1066,14 +1081,14 @@ class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
 
-    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=140):
+    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=150):
         QWidget.__init__(self)
         self.key = key
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.label = QLabel(label)
-        self.label.setFixedWidth(labelWidth)
+        #self.label.setFixedWidth(labelWidth)
         self.itemLabel = QLineEdit()
         self.itemLabel.setFixedWidth(lineEditWidth)
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)

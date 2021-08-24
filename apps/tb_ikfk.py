@@ -44,12 +44,19 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
+import abc
+
+ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
 
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('ikfk'))
         self.commandList = list()
+        self.addCommand(self.tb_hkey(name='tbOpenIkFkCreator',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['IkFkTools.showUI()']))
         self.addCommand(self.tb_hkey(name='switch_selection_to_fk',
                                      annotation='',
                                      category=self.category,
@@ -106,8 +113,13 @@ class IKFK(toolAbstractFactory):
         self.win = IKFK_SetupUI()
         self.win.show()
 
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        self.win.getCurrentRig()
+
     def drawMenuBar(self, parentMenu):
-        return None
+        pm.menuItem(label='IkFk Setup', command='tbOpenIkFkCreator', sourceType='mel', parent=parentMenu)
 
     def getCurrentRig(self, sel=None):
         refName = None
@@ -247,7 +259,12 @@ class IkFkData(object):
         self.limbs[name] = TwoBoneIKData()
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, separators=(',', ': '))
+        return json.dumps(self, default=lambda o: o.json_serialize(), sort_keys=True, indent=4, separators=(',', ': '))
+
+    def json_serialize(self):
+        returnDict = {}
+        returnDict['limbs'] = {k: v.toJson() for k, v in self.limbs.items()}
+        return returnDict
 
     def fromJson(self, data):
         rawJsonData = json.load(open(data))
@@ -257,7 +274,7 @@ class IkFkData(object):
                 self.limbs[limb].__dict__[k] = v
 
 
-class TwoBoneIKData(object):
+class IkDataAbstract(ABC):
     def __init__(self):
         self.jointUp = str()
         self.jointMid = str()
@@ -276,9 +293,74 @@ class TwoBoneIKData(object):
 
         self.jointKeys = ['jointUp', 'jointMid', 'jointEnd']
         self.fkKeys = ['fkControlUp', 'fkControlMid', 'fkControlEnd']
+        self.limbWidget = LimbWidget(self)
 
     def toJson(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, separators=(',', ': '))
+        jsonData = '''{}'''
+        classData = json.loads(jsonData)
+        for k, v in self.__dict__.items():
+            if k == 'limbWidget':
+                continue
+            classData[k] = v
+        return classData
+
+    def controlInData(self, control):
+        return control in self.__dict__.values()
+
+    @abc.abstractmethod
+    def getIkFkOffsets(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def matchToFK(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def matchToIK(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def preBake(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def postBake(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def getFkBakeTargets(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def getIkBakeTargets(self, namespace):
+        pass
+
+    @abc.abstractmethod
+    def mirrorControls(self, sideA, sideB):
+        pass
+
+
+
+class TwoBoneIKData(IkDataAbstract):
+    def __init__(self):
+        self.jointUp = str()
+        self.jointMid = str()
+        self.jointEnd = str()
+        self.fkControlUp = str()
+        self.fkControlMid = str()
+        self.fkControlEnd = str()
+        self.ikControl = str()
+        self.pvControl = str()
+        self.fkControlOffsets = dict()
+        self.ikControlOffset = list()
+        self.pvDistance = float()
+        self.ikAttr = str()
+        self.ikValue = float()
+        self.fkValue = float()
+
+        self.jointKeys = ['jointUp', 'jointMid', 'jointEnd']
+        self.fkKeys = ['fkControlUp', 'fkControlMid', 'fkControlEnd']
+        self.limbWidget = LimbWidget(self)
 
     def controlInData(self, control):
         return control in self.__dict__.values()
@@ -286,7 +368,7 @@ class TwoBoneIKData(object):
     def calculatePVPosition(self, namespace):
         startPos = cmds.xform(IKFK().getControl(namespace, self.jointUp), query=True, worldSpace=True, translation=True)
         midPos = cmds.xform(IKFK().getControl(namespace, self.jointMid), query=True, worldSpace=True, translation=True)
-        endPos = cmds.xform(IKFK().getControl(namespace,self.jointEnd), query=True, worldSpace=True, translation=True)
+        endPos = cmds.xform(IKFK().getControl(namespace, self.jointEnd), query=True, worldSpace=True, translation=True)
 
         startMV = om2.MVector(startPos[0], startPos[1], startPos[2])
         midMV = om2.MVector(midPos[0], midPos[1], midPos[2])
@@ -377,6 +459,23 @@ class TwoBoneIKData(object):
 
         cmds.setAttr(ikControlAttr, self.ikValue)
 
+    def preBake(self, namespace):
+        pass
+
+    def postBake(self, namespace):
+        pass
+
+    def getFkBakeTargets(self, namespace):
+        fkControlUp = IKFK().getControl(namespace, self.fkControlUp)
+        fkControlMid = IKFK().getControl(namespace, self.fkControlMid)
+        fkControlEnd = IKFK().getControl(namespace, self.fkControlEnd)
+        return [fkControlUp, fkControlMid, fkControlEnd]
+
+    def getIkBakeTargets(self, namespace):
+        ikControl = IKFK().getControl(namespace, self.ikControl)
+        pvControl = IKFK().getControl(namespace, self.pvControl)
+        return [ikControl, pvControl]
+
     def mirrorControls(self, sideA, sideB):
         if sideB in self.ikControl:
             old = sideB
@@ -395,9 +494,11 @@ class TwoBoneIKData(object):
         self.pvControl = self.pvControl.replace(old, new)
         self.ikAttr = self.ikAttr.replace(old, new)
 
+
 class IKFK_SetupUI(QMainWindow):
     def __init__(self):
         super(IKFK_SetupUI, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setObjectName('IKFK_SetupUI')
         self.ikFkData = IkFkData()
         self.rigName = str()
         self.namespace = str()
@@ -406,12 +507,12 @@ class IKFK_SetupUI(QMainWindow):
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle('tbIKFK Setup Tool')
 
-        main_widget = QWidget()
+        self.main_widget = QWidget()
 
-        self.setCentralWidget(main_widget)
+        self.setCentralWidget(self.main_widget)
 
         self.main_layout = QHBoxLayout()
-        main_widget.setLayout(self.main_layout)
+        self.main_widget.setLayout(self.main_layout)
 
         menu = self.menuBar()
         edit_menu = menu.addMenu('&File')
@@ -425,8 +526,10 @@ class IKFK_SetupUI(QMainWindow):
         edit_menu.addAction(save_action)
         save_action.triggered.connect(self.save)
         # 2 bone ik widget
-        self.limbWidget = LimbWidget(self)
-        self.limbWidget.setDisabled(True)
+        self.limbStackedWidget = QStackedWidget()
+        self.blankWidget = LimbWidget(self)
+        self.limbStackedWidget.addWidget(self.blankWidget)
+        self.limbStackedWidget.setCurrentWidget(self.blankWidget)
         # all existing ik widget
         self.existingIkLayout = QVBoxLayout()
         self.existingIkLayout.setAlignment(Qt.AlignTop)
@@ -441,45 +544,57 @@ class IKFK_SetupUI(QMainWindow):
         self.rigLabelLayout = QHBoxLayout()
         self.rigLabelLayout.addWidget(self.currentRigLabel)
         self.rigLabelLayout.addWidget(self.currentRigNameLabel)
-        #self.rigLayout.addStretch()
+        # self.rigLayout.addStretch()
 
         self.main_layout.addLayout(self.rigLayout)
 
         self.rigLayout.addLayout(self.rigLabelLayout)
         self.rigLayout.addLayout(self.existingIkLayout)
-        self.main_layout.addWidget(self.limbWidget)
+        self.main_layout.addWidget(self.limbStackedWidget)
 
         self.rigIKFKListWidget.pressedSignal.connect(self.selectLimb)
         self.rigIKFKListWidget.itemChangedSignal.connect(self.renameLimb)
         self.limbUpdateWidget.addNewSignal.connect(self.addNewLimb)
+        self.limbUpdateWidget.enableMainWidgetSignal.connect(self.toggleEnabledState)
         self.limbUpdateWidget.mirrorSignal.connect(self.mirrorLimb)
         self.limbUpdateWidget.removeButton.clicked.connect(self.remove)
-        #self.limbUpdateWidget.mirrorButton.clicked.connect(self.mirrorLimb)
+        # self.limbUpdateWidget.mirrorButton.clicked.connect(self.mirrorLimb)
         self.limbUpdateWidget.updateButton.clicked.connect(self.updateCurrent)
         self.limbUpdateWidget.updateAllButton.clicked.connect(self.updateAll)
+
+        self.resize(self.sizeHint())
+
+    @Slot()
+    def toggleEnabledState(self, state):
+        print ('toggleEnabledState', state)
+        self.main_widget.setEnabled(state)
+        self.limbUpdateWidget.dialog.setEnabled(True)
 
     @Slot()
     def selectLimb(self, inputData):
         print ('selectLimb', inputData)
         self.currentLimb = inputData
         if not inputData:
-            self.limbWidget.setDisabled(True)
+            self.limbStackedWidget.setDisabled(True)
             return
-        self.limbWidget.setDisabled(False)
-
-        self.limbWidget.refresh(inputData, self.ikFkData.limbs[inputData])
+        self.limbStackedWidget.setDisabled(False)
+        print (self.limbStackedWidget.children())
+        self.limbStackedWidget.addWidget(self.ikFkData.limbs[self.currentLimb].limbWidget)
+        self.limbStackedWidget.setCurrentWidget(self.ikFkData.limbs[self.currentLimb].limbWidget)
+        self.ikFkData.limbs[self.currentLimb].limbWidget.refresh()
 
     @Slot()
     def renameLimb(self, inputData):
         self.ikFkData.limbs[inputData] = self.ikFkData.limbs.pop(self.currentLimb)
 
     @Slot()
-    def addNewLimb(self, inputData):
-        print ('addNewLimb', inputData)
+    def addNewLimb(self, inputData, ikType):
+        print ('addNewLimb', inputData, ikType)
         if inputData not in self.ikFkData.limbs.keys():
             self.ikFkData.addLimb(inputData)
             self.rigIKFKListWidget.updateView(self.ikFkData.limbs.keys())
             self.currentLimb = inputData
+            self.limbStackedWidget.addWidget(self.ikFkData.limbs[self.currentLimb].limbWidget)
 
     def remove(self):
         print ('remove')
@@ -487,9 +602,11 @@ class IKFK_SetupUI(QMainWindow):
     @Slot()
     def mirrorLimb(self, inputData):
         self.ikFkData.limbs[inputData] = self.ikFkData.limbs[self.currentLimb].__class__()
-        self.ikFkData.limbs[inputData].__dict__ = {k: v for k, v in self.ikFkData.limbs[self.currentLimb].__dict__.items()}
-        self.ikFkData.limbs[inputData].mirrorControls(self.limbUpdateWidget.sideA.text(), self.limbUpdateWidget.sideB.text())
-        self.limbWidget.refresh(inputData, self.ikFkData.limbs[inputData])
+        self.ikFkData.limbs[inputData].__dict__ = {k: v for k, v in
+                                                   self.ikFkData.limbs[self.currentLimb].__dict__.items()}
+        self.ikFkData.limbs[inputData].mirrorControls(self.limbUpdateWidget.sideA.text(),
+                                                      self.limbUpdateWidget.sideB.text())
+        self.limbStackedWidget.refresh(inputData, self.ikFkData.limbs[inputData])
         self.updateCurrent()
 
     def updateCurrent(self):
@@ -518,14 +635,29 @@ class IKFK_SetupUI(QMainWindow):
         IKFK().saveJsonFile(dataFile, json.loads(data))
 
 
+class BlankWidget(QWidget):
+    def __init__(self):
+        super(BlankWidget, self).__init__()
+
+        self.mainLayout = QVBoxLayout()
+        self.setObjectName('BlankWidget')
+        self.setLayout(self.mainLayout)
+
+        self.blankLabel = QLabel('Blank')
+        self.mainLayout.addWidget(self.blankLabel)
+
+
 class LimbUpdateWidget(QWidget):
-    addNewSignal = Signal(str)
+    addNewSignal = Signal(str, str)
     mirrorSignal = Signal(str)
 
-    def __init__(self):
-        super(LimbUpdateWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
-        self.mainLayout = QVBoxLayout()
+    enableMainWidgetSignal = Signal(bool)
 
+    def __init__(self):
+        super(LimbUpdateWidget, self).__init__()
+
+        self.mainLayout = QVBoxLayout()
+        self.setObjectName('LimbUpdateWidget')
         self.setLayout(self.mainLayout)
         self.addButton = QPushButton('Add')
         self.removeButton = QPushButton('Remove')
@@ -548,7 +680,7 @@ class LimbUpdateWidget(QWidget):
         self.mainLayout.addLayout(self.sidesLayout)
         self.mainLayout.addWidget(self.updateButton)
         self.mainLayout.addWidget(self.updateAllButton)
-        #self.mainLayout.addStretch()
+        # self.mainLayout.addStretch()
 
         self.addButton.clicked.connect(self.addNew)
         self.mirrorButton.clicked.connect(self.mirror)
@@ -558,14 +690,20 @@ class LimbUpdateWidget(QWidget):
         if not sel:
             defaultName = 'RENAME_ME'
         else:
-            defaultName = sel[0].split('.')[-1]
-        dialog = TextInputWidget(title='Add new limb data', label='Enter Name', buttonText="Save",
-                                 default=defaultName,
-                                 parent=self)
-        dialog.acceptedSignal.connect(self.getAddNewSignal)
+            defaultName = sel[0].split(':')[-1]
+        self.dialog = TextInputWidget(title='Add new limb data', label='Enter Name', buttonText="Save",
+                                      default=defaultName,
+                                      combo=['Arm', 'Leg'],
+                                      parent=self)
+        self.enableMainWidgetSignal.emit(False)
+        self.dialog.acceptedComboSignal.connect(self.getAddNewSignal)
+        self.dialog.rejectedSignal.connect(self.enableMainWidget)
 
-    def getAddNewSignal(self, inputData):
-        self.addNewSignal.emit(inputData)
+    def enableMainWidget(self):
+        self.enableMainWidgetSignal.emit(True)
+
+    def getAddNewSignal(self, inputData, ikType):
+        self.addNewSignal.emit(inputData, ikType)
 
     def mirror(self):
         sel = cmds.ls(sl=True)
@@ -573,13 +711,17 @@ class LimbUpdateWidget(QWidget):
             defaultName = 'RENAME_ME'
         else:
             defaultName = sel[0].split(':')[-1]
-        dialog = TextInputWidget(title='Mirror limb data', label='Enter Name', buttonText="Save",
-                                 default=defaultName,
-                                 parent=self)
-        dialog.acceptedSignal.connect(self.getMirrorSignal)
+        self.dialog = TextInputWidget(title='Mirror limb data', label='Enter Name', buttonText="Save",
+                                      default=defaultName,
+                                      parent=self)
+
+        self.enableMainWidgetSignal.emit(False)
+        self.dialog.acceptedSignal.connect(self.getMirrorSignal)
+        self.dialog.rejectedSignal.connect(self.enableMainWidget)
 
     def getMirrorSignal(self, inputData):
         self.mirrorSignal.emit(inputData)
+
 
 class LimbWidget(QWidget):
     editedSignal = Signal(dict)
@@ -597,6 +739,7 @@ class LimbWidget(QWidget):
                                                   text='Attribute', tooltip='Pick attribute to control ik blend.',
                                                   placeholderTest='enter condition attribute')
         self.ikAttrWidget.lineEdit.setFixedWidth(200)
+        self.ikValuesLayout = QHBoxLayout()
         self.ikValueWidget = intFieldWidget(key='ikValue',
                                             optionVar=None, defaultValue=0, label='IK value', minimum=-100, maximum=100,
                                             step=1)
@@ -631,7 +774,15 @@ class LimbWidget(QWidget):
                                          label='Pole Vector')
         self.ikEnd = ObjectSelectLineEdit(key='ikControl',
                                           label='IK Control')
-
+        objSelectWidgets = [self.skeletonUpper,
+                            self.skeletonMid,
+                            self.skeletonEnd,
+                            self.fkUpper,
+                            self.fkMid,
+                            self.fkEnd,
+                            self.ikPV,
+                            self.ikEnd]
+        print (max([x.label.sizeHint().width() for x in objSelectWidgets]))
         self.skeletonUpper.editedSignalKey.connect(self.updateData)
         self.skeletonMid.editedSignalKey.connect(self.updateData)
         self.skeletonEnd.editedSignalKey.connect(self.updateData)
@@ -644,22 +795,33 @@ class LimbWidget(QWidget):
         self.ikValueWidget.editedSignalKey.connect(self.updateData)
         self.fkValueWidget.editedSignalKey.connect(self.updateData)
 
-        self.attrLayout = QVBoxLayout()
         self.attrFrame = QFrame()
         self.attrFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.jointFrame = QFrame()
+        self.jointFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.fkFrame = QFrame()
+        self.fkFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.ikFrame = QFrame()
+        self.ikFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+
+        self.attrLayout = QVBoxLayout()
         self.jointLayout = QVBoxLayout()
         self.fkLayout = QVBoxLayout()
         self.ikLayout = QVBoxLayout()
 
         self.mainLayout.addWidget(self.attrFrame)
+        self.mainLayout.addWidget(self.jointFrame)
+        self.mainLayout.addWidget(self.fkFrame)
+        self.mainLayout.addWidget(self.ikFrame)
         self.attrFrame.setLayout(self.attrLayout)
-        self.mainLayout.addLayout(self.jointLayout)
-        self.mainLayout.addLayout(self.fkLayout)
-        self.mainLayout.addLayout(self.ikLayout)
+        self.jointFrame.setLayout(self.jointLayout)
+        self.fkFrame.setLayout(self.fkLayout)
+        self.ikFrame.setLayout(self.ikLayout)
 
         self.attrLayout.addWidget(self.ikAttrWidget)
-        self.attrLayout.addWidget(self.ikValueWidget)
-        self.attrLayout.addWidget(self.fkValueWidget)
+        self.attrLayout.addLayout(self.ikValuesLayout)
+        self.ikValuesLayout.addWidget(self.ikValueWidget)
+        self.ikValuesLayout.addWidget(self.fkValueWidget)
         self.attrLayout.addStretch()
         self.fkLayout.addWidget(self.fkUpper)
         self.fkLayout.addWidget(self.fkMid)
@@ -679,24 +841,22 @@ class LimbWidget(QWidget):
         widgets = [x for x in self.mainLayout.children() if x.__class__.__name__ == 'ObjectSelectLineEdit']
         print ('widgets', widgets)
 
-    def refresh(self, inputData, data):
-        print ('refresh', inputData, data)
-        self.key = inputData
-        self.skeletonUpper.itemLabel.setText(data.jointUp)
-        self.skeletonMid.itemLabel.setText(data.jointMid)
-        self.skeletonEnd.itemLabel.setText(data.jointEnd)
-        self.fkUpper.itemLabel.setText(data.fkControlUp)
-        self.fkMid.itemLabel.setText(data.fkControlMid)
-        self.fkEnd.itemLabel.setText(data.fkControlEnd)
-        self.ikPV.itemLabel.setText(data.pvControl)
-        self.ikEnd.itemLabel.setText(data.ikControl)
-        self.ikAttrWidget.lineEdit.setText(data.ikAttr)
-        self.ikValueWidget.spinBox.setValue(data.ikValue)
-        self.fkValueWidget.spinBox.setValue(data.fkValue)
+    def refresh(self):
+        self.skeletonUpper.itemLabel.setText(self.cls.jointUp)
+        self.skeletonMid.itemLabel.setText(self.cls.jointMid)
+        self.skeletonEnd.itemLabel.setText(self.cls.jointEnd)
+        self.fkUpper.itemLabel.setText(self.cls.fkControlUp)
+        self.fkMid.itemLabel.setText(self.cls.fkControlMid)
+        self.fkEnd.itemLabel.setText(self.cls.fkControlEnd)
+        self.ikPV.itemLabel.setText(self.cls.pvControl)
+        self.ikEnd.itemLabel.setText(self.cls.ikControl)
+        self.ikAttrWidget.lineEdit.setText(self.cls.ikAttr)
+        self.ikValueWidget.spinBox.setValue(self.cls.ikValue)
+        self.fkValueWidget.spinBox.setValue(self.cls.fkValue)
 
     def updateData(self, key, value):
         print ('updateData', key, value)
-        self.cls.ikFkData.limbs[self.key].__dict__[key] = value
+        self.__dict__[key] = value
 
     def pickFK(self):
         sel = cmds.ls(sl=True)

@@ -79,7 +79,7 @@ class MotionTrails(toolAbstractFactory):
     trailPostFramesOption = 'tbMotrailPostFramesOption'
     trailThicknessOption = 'tbMotrailThicknessOption'
     trailframeMarkerSizesOption = 'tbMotrailframeMarkerSizesOption'
-    showframeMarkerSizesOption = 'tbMotrailshowFrameMarkerSizesOption'
+    showframeMarkerOption = 'tbMotrailshowFrameMarkerOption'
 
     def __new__(cls):
         if MotionTrails.__instance is None:
@@ -126,7 +126,7 @@ class MotionTrails(toolAbstractFactory):
                                                      label='Marker Size',
                                                      minimum=1, maximum=10, step=1)
         showTicksOptionWidget = optionVarBoolWidget('Show frame markers',
-                                                    self.showframeMarkerSizesOption)
+                                                    self.showframeMarkerOption)
 
         self.layout.addWidget(infoText)
 
@@ -159,11 +159,12 @@ class MotionTrails(toolAbstractFactory):
                                         increment=1,
                                         startTime=self.funcs.getTimelineMin(),
                                         endTime=self.funcs.getTimelineMax())
-                cmds.setAttr(moTrail[0] + '.showFrameMarkers', 1)
                 cmds.setAttr(moTrail[0] + '.trailThickness', pm.optionVar.get(self.trailThicknessOption, 1))
                 cmds.setAttr(moTrail[0] + '.fadeInoutFrames', pm.optionVar.get(self.trailFadeFramesOption, 0))
                 cmds.setAttr(moTrail[0] + '.preFrame', pm.optionVar.get(self.trailPreFramesOption, 0))
                 cmds.setAttr(moTrail[0] + '.postFrame', pm.optionVar.get(self.trailPostFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.frameMarkerSize', pm.optionVar.get(self.trailframeMarkerSizesOption, 1))
+                cmds.setAttr(moTrail[0] + '.showFrameMarkers', pm.optionVar.get(self.showframeMarkerOption, 0))
 
                 cmds.select(moTrail, replace=True)
                 mel.eval("addToIsolation")

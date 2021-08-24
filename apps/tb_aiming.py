@@ -129,6 +129,9 @@ class AimTools(toolAbstractFactory):
     defaultAimData = {'aimAxis': 'z', 'upAxis': 'y', 'flipAim': False, 'flipUp': False, 'distance': 100.0}
 
     tempAimSizeOption = 'tbTempAimLocatorSize'
+    aimFwdMotionTrailOption = 'aimFwdMotionTrailOption'
+    aimUpMotionTrailOption = 'aimUpMotionTrailOption'
+    aimTempMotionTrailOption = 'aimTempMotionTrailOption'
     mainAssetAttr = 'mainAsset'
     controlMessageAttr = 'aimedControl'
 
@@ -184,12 +187,23 @@ class AimTools(toolAbstractFactory):
                                          label='Aim to temp control size',
                                          minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updateTempControlPreview)
+
+        aimFwdMotionTrailWidget = optionVarBoolWidget('Motion Trail On Aim Forward',
+                                                      self.aimFwdMotionTrailOption)
+        aimUpMotionTrailWidget = optionVarBoolWidget('Motion Trail On Aim Up',
+                                                     self.aimUpMotionTrailOption)
+        aimTempMotionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Control',
+                                                       self.aimTempMotionTrailOption)
+
         self.aimWidget.itemLayout.addStretch()
         self.layout.addWidget(infoText)
         self.layout.addWidget(self.aimWidget)
         self.layout.addWidget(tempControlHeader)
         self.layout.addWidget(tempControlInfo)
         self.layout.addWidget(crossSizeWidget)
+        self.layout.addWidget(aimFwdMotionTrailWidget)
+        self.layout.addWidget(aimUpMotionTrailWidget)
+        self.layout.addWidget(aimTempMotionTrailWidget)
         self.layout.addStretch()
         self.aimWidget.editedSignal.connect(self.updateDefault)
         return self.optionWidget
@@ -203,6 +217,19 @@ class AimTools(toolAbstractFactory):
     def build_MM(self):
         cmds.menuItem(label='tbAimTools',
                       divider=0,
+                      boldFont=True,
+                      enable=False,
+                      )
+        cmds.menuItem(label='tbAimTools',
+                      divider=1,
+                      boldFont=True,
+                      enable=False,
+                      )
+        cmds.menuItem(label='Quick Aim at Temp Control',
+                      command=self.aimAtTempControl,
+                      )
+        cmds.menuItem(label='tbAimTools',
+                      divider=1,
                       boldFont=True,
                       enable=False,
                       )
@@ -356,6 +383,13 @@ class AimTools(toolAbstractFactory):
                      includeHierarchyBelow=True,
                      force=True,
                      addNode=self.constraints)
+
+        if pm.optionVar.get(self.aimFwdMotionTrailOption, False):
+            cmds.select(str(aim), replace=True)
+            mel.eval('createMotionTrail')
+        if pm.optionVar.get(self.aimUpMotionTrailOption, False):
+            cmds.select(str(up), replace=True)
+            mel.eval('createMotionTrail')
 
     def getAimAxis(self, data):
         flipVector = {True: -1.0, False: 1.0}  # make this data driven somehow?
@@ -573,7 +607,7 @@ class AimTools(toolAbstractFactory):
     Hacky stuff for aim at locator
     """
 
-    def aimAtTempControl(self):
+    def aimAtTempControl(self, *args):
         sel = pm.ls(selection=True)
 
         if not sel:
@@ -589,7 +623,6 @@ class AimTools(toolAbstractFactory):
         scriptJob = cmds.scriptJob(runOnce=True,
                                    killWithScene=True,
                                    event=("SelectionChanged", pm.Callback(self.bakeTempAim, control, aimLocator)))
-
 
     def bakeTempAim(self, control, aimLocator):
         tempConstraint = pm.parentConstraint(control, aimLocator, maintainOffset=True)
@@ -621,6 +654,9 @@ class AimTools(toolAbstractFactory):
                      includeHierarchyBelow=True,
                      force=True,
                      addNode=constraint)
+        if pm.optionVar.get(self.aimTempMotionTrailOption, False):
+            cmds.select(str(aimLocator), replace=True)
+            mel.eval('createMotionTrail')
 
     def constrainTargetToControl(self, control, target):
         keyTimes = self.funcs.get_object_key_times(control)
@@ -732,6 +768,7 @@ class AimTools(toolAbstractFactory):
         cmds.setAttr('temp_Preview.scaleX', scale)
         cmds.setAttr('temp_Preview.scaleY', scale)
         cmds.setAttr('temp_Preview.scaleZ', scale)
+
 
 def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
     selList = om.MSelectionList()
