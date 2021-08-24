@@ -157,7 +157,6 @@ class MotionTrails(toolAbstractFactory):
         if not sel:
             return
         if all([self.hasMotionTrail(s) for s in sel]):
-            print ('motion trail present')
             self.removeMotionTrail()
         else:
             self.createMotionTrail()
