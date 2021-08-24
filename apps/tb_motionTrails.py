@@ -49,6 +49,10 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('motionTrails'))
         self.commandList = list()
+        self.addCommand(self.tb_hkey(name='toggleMotionTrail',
+                                     annotation='',
+                                     category=self.category, command=['MotionTrails.toggleMotionTrail()'],
+                                     help=self.helpStrings.removeMotionTrail))
         self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.createMotionTrail()'],
@@ -57,7 +61,6 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['MotionTrails.removeMotionTrail()'],
                                      help=self.helpStrings.removeMotionTrail))
-
         return self.commandList
 
     def assignHotkeys(self):
@@ -80,6 +83,8 @@ class MotionTrails(toolAbstractFactory):
     trailThicknessOption = 'tbMotrailThicknessOption'
     trailframeMarkerSizesOption = 'tbMotrailframeMarkerSizesOption'
     showframeMarkerOption = 'tbMotrailshowFrameMarkerOption'
+
+    motionTrailNodes = ['motionTrailShape', 'motionTrail1Handle', 'motionTrail']
 
     def __new__(cls):
         if MotionTrails.__instance is None:
@@ -147,6 +152,16 @@ class MotionTrails(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
+    def toggleMotionTrail(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        if all([self.hasMotionTrail(s) for s in sel]):
+            print ('motion trail present')
+            self.removeMotionTrail()
+        else:
+            self.createMotionTrail()
+
     def createMotionTrail(self):
         sel = cmds.ls(sl=True)
         if not sel:
@@ -154,6 +169,8 @@ class MotionTrails(toolAbstractFactory):
         with self.funcs.keepSelection():
             trials = []
             for s in sel:
+                if self.hasMotionTrail(s):
+                    continue
                 cmds.select(s, replace=True)
                 moTrail = cmds.snapshot(motionTrail=True,
                                         increment=1,
@@ -169,8 +186,22 @@ class MotionTrails(toolAbstractFactory):
                 cmds.select(moTrail, replace=True)
                 mel.eval("addToIsolation")
 
+    def hasMotionTrail(self, s):
+        messageConnection = cmds.listConnections(s + '.message', source=False, destination=True, plugs=False)
+        nodesToRemove = list()
+        if not messageConnection:
+            return False
+        for m in messageConnection:
+            childNodes = cmds.listRelatives(m, children=True)
+            if childNodes:
+                for c in childNodes:
+                    if cmds.nodeType(c) in self.motionTrailNodes:
+                        return True
+            if cmds.nodeType(m) in self.motionTrailNodes:
+                return True
+        return False
+
     def removeMotionTrail(self):
-        motionTrailNodes = ['motionTrailShape', 'motionTrail1Handle', 'motionTrail']
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -181,9 +212,9 @@ class MotionTrails(toolAbstractFactory):
                 childNodes = cmds.listRelatives(m, children=True)
                 if childNodes:
                     for c in childNodes:
-                        if cmds.nodeType(c) in motionTrailNodes:
+                        if cmds.nodeType(c) in self.motionTrailNodes:
                             nodesToRemove.append(m)
-                if cmds.nodeType(m) in motionTrailNodes:
+                if cmds.nodeType(m) in self.motionTrailNodes:
                     nodesToRemove.append(m)
 
             if nodesToRemove:
