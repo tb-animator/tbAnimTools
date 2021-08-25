@@ -128,6 +128,7 @@ class mainOptionWindow(QMainWindow):
                 self.toolOptionStack.addWidget(self.tbtoolsCLS.tools[tool].optionUI())
 
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
+        self.update()
         self.resize(self.sizeHint())
 
     def displayToolOptions(self, index):

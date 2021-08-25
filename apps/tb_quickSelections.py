@@ -248,12 +248,22 @@ class QuickSelectionTools(toolAbstractFactory):
             return pm.warning('Unable to save empty selection')
 
         dialog = TextInputWidget(title='Save Quick Selection Set', label='Enter Name', buttonText="Save",
-                                 default=sel[-1].split(':')[-1])
-        dialog.acceptedSignal.connect(self.getSaveQssSignal)
+                                 default=sel[-1].split(':')[-1],
+                                 checkBox='Mirror')
+        dialog.acceptedCBSignal.connect(self.getSaveQssSignal)
 
-    def getSaveQssSignal(self, input):
-        if input:
-            self.save_qs(input, cmds.ls(sl=True))
+    def getSaveQssSignal(self, name, mirror):
+        sel = cmds.ls(sl=True)
+        if name:
+            self.save_qs(name, sel)
+        from pluginLookup import ClassFinder
+        tbtoolCLS = ClassFinder()
+        opposites = list()
+        for s in sel:
+            opposites.append(tbtoolCLS.tools["SelectionTools"].getOppositeControl(s))
+        print ('MIRROR', opposites)
+        if opposites:
+            self.save_qs(opposites[0], opposites)
 
     def save_qs(self, qs_name, selection):
         qs_name = qs_name.split(':')[-1]

@@ -580,13 +580,15 @@ class TextInputWidget(QWidget):
     """
     acceptedSignal = Signal(str)
     acceptedComboSignal = Signal(str, str)
+    acceptedCBSignal = Signal(str, bool)
     rejectedSignal = Signal()
     oldPos = None
 
-    def __init__(self, title=str, label=str, buttonText=str, default=str, combo=list(),
+    def __init__(self, title=str, label=str, buttonText=str, default=str, combo=list(), checkBox=None,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
         self.setStyleSheet(getqss.getStyleSheet())
+        self.checkBox = checkBox
         self.combo = combo
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
@@ -596,7 +598,7 @@ class TextInputWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(300, 64)
+        self.setFixedSize(400, 64)
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
@@ -611,11 +613,13 @@ class TextInputWidget(QWidget):
         input_validator = QRegExpValidator(reg_ex, self.lineEdit)
         self.lineEdit.setValidator(input_validator)
 
+        self.checkBoxWD = QCheckBox()
+        self.checkBoxWD.setText(self.checkBox)
+
         self.comboBox = QComboBox()
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
         for c in self.combo:
             self.comboBox.addItem(c)
-
 
         self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
@@ -627,6 +631,8 @@ class TextInputWidget(QWidget):
         layout.addWidget(self.lineEdit)
         if len(self.combo):
             layout.addWidget(self.comboBox)
+        if self.checkBox is not None:
+            layout.addWidget(self.checkBoxWD)
         layout.addWidget(self.saveButton)
 
         self.saveButton.clicked.connect(self.acceptedFunction)
@@ -640,6 +646,7 @@ class TextInputWidget(QWidget):
             "border-radius: 8;"
             "}"
         )
+        self.resize(self.sizeHint())
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -663,6 +670,7 @@ class TextInputWidget(QWidget):
     def acceptedFunction(self, *args):
         self.acceptedSignal.emit(self.lineEdit.text())
         self.acceptedComboSignal.emit(self.lineEdit.text(), self.comboBox.currentText())
+        self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
 
     def close(self):
@@ -1069,7 +1077,7 @@ class ChannelSelectLineEdit(QWidget):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             return pm.warning('no channel selected')
-        self.lineEdit.setText(channels[0].split(':')[-1])
+        self.lineEdit.setText(channels[0].split(':', 1)[-1])
 
     @Slot()
     def sendtextChangedSignal(self):
@@ -1081,7 +1089,7 @@ class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
 
-    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=150):
+    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200):
         QWidget.__init__(self)
         self.key = key
         self.mainLayout = QHBoxLayout()

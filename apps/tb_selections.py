@@ -164,22 +164,26 @@ class SelectionTools(toolAbstractFactory):
             cmds.select(matchingPrefix, replace=True)
             self.lastSelected = sel[0]
 
-    def getOppositeControl(self, input, constraint=False, shape=True):
-        s = input.split(':')[-1]
-        prefix = re.split('[^a-zA-Z0-9]+', s)
-        matchingPrefix = self.getSimilarControls(input, prefix)
-        st = self.funcs.stripTailDigits(s)
-        tailLen = len(s) - len(st)
+    def getOppositeControl(self, name, constraint=False, shape=True):
+        namespace, control = name.rsplit(':', 1)
+        prefix = re.split('[^a-zA-Z0-9]+', control)
+        matchingPrefix = self.getSimilarControls(namespace, control, prefix, constraint=False, shape=True)
+        st = self.funcs.stripTailDigits(control)
+        tailLen = len(control) - len(st)
 
-        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in matchingPrefix])
+        strippedMatches = [c.rsplit(':', 1)[-1] for c in matchingPrefix if st not in c]
+        if st in strippedMatches:
+            strippedMatches.remove(st)
+
+        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in strippedMatches], cutoff=0.5)
         opposites = [m for m in matches if m != st]
-        print ('opposites', opposites)
+
         if opposites:
             if tailLen > 0:
-                op = opposites[0] + s[-tailLen:]
+                op = opposites[0] + control[-tailLen:]
             else:
                 op = opposites[0]
-            return op
+            return namespace + ':' + op
 
     def getLowerControl(self, input):
         s = input.split(':')[-1]

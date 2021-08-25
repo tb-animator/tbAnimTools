@@ -119,7 +119,7 @@ class IKFK(toolAbstractFactory):
         self.win.getCurrentRig()
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='IkFk Setup', command='tbOpenIkFkCreator', sourceType='mel', parent=parentMenu)
+        pm.menuItem(label='IkFk Setup', image='out_ikHandle.png', command='tbOpenIkFkCreator', sourceType='mel', parent=parentMenu)
 
     def getCurrentRig(self, sel=None):
         refName = None
@@ -137,7 +137,7 @@ class IKFK(toolAbstractFactory):
                 # might just be working in the rig file itself
                 refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
             if ':' in sel[0]:
-                namespace = sel[0].split(':')[0]
+                namespace = sel[0].split(':', 1)[0]
         else:
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
 
@@ -190,11 +190,11 @@ class IKFK(toolAbstractFactory):
             return
 
         # split selection by character
-        namespaces = [x.split(':')[0] for x in sel if ':' in x]
+        namespaces = [x.split(':', 1)[0] for x in sel if ':' in x]
 
         characters = {k: list() for k in namespaces}
         for s in sel:
-            splitString = s.split(':')
+            splitString = s.split(':', 1)
             if len(splitString) == 1:
                 if ('') not in characters.keys():
                     characters[''] = list()
@@ -231,7 +231,7 @@ class IKFK(toolAbstractFactory):
         # get the limbs selected
         for char, controls in characters.items():
             for s in controls:
-                control = s.split(':')[-1]
+                control = s.split(':', 1)[-1]
                 for key, limb in self.loadedIkFkData[namespaceToCharDict[char]].limbs.items():
                     if limb.controlInData(control):
                         limbsToMatch[char].append(key)
@@ -402,6 +402,7 @@ class TwoBoneIKData(IkDataAbstract):
         return distance.length()
 
     def getIkFkOffsets(self, namespace):
+        print ('namespace', namespace, self.ikAttr )
         ikControlAttr = IKFK().getControl(namespace, self.ikAttr)
         currentState = cmds.getAttr(ikControlAttr)
         cmds.setAttr(ikControlAttr, self.fkValue)
@@ -606,7 +607,8 @@ class IKFK_SetupUI(QMainWindow):
                                                    self.ikFkData.limbs[self.currentLimb].__dict__.items()}
         self.ikFkData.limbs[inputData].mirrorControls(self.limbUpdateWidget.sideA.text(),
                                                       self.limbUpdateWidget.sideB.text())
-        self.limbStackedWidget.refresh(inputData, self.ikFkData.limbs[inputData])
+        self.ikFkData.limbs[inputData].limbWidget.refresh()
+        self.rigIKFKListWidget.updateView(self.ikFkData.limbs.keys())
         self.updateCurrent()
 
     def updateCurrent(self):
@@ -633,7 +635,8 @@ class IKFK_SetupUI(QMainWindow):
         print ('rig file', dataFile)
         print ('data', data)
         IKFK().saveJsonFile(dataFile, json.loads(data))
-
+        if self.rigName in IKFK().loadedIkFkData.keys():
+            IKFK().loadedIkFkData.pop(self.rigName)
 
 class BlankWidget(QWidget):
     def __init__(self):
@@ -690,7 +693,7 @@ class LimbUpdateWidget(QWidget):
         if not sel:
             defaultName = 'RENAME_ME'
         else:
-            defaultName = sel[0].split(':')[-1]
+            defaultName = sel[0].split(':', 1)[-1]
         self.dialog = TextInputWidget(title='Add new limb data', label='Enter Name', buttonText="Save",
                                       default=defaultName,
                                       combo=['Arm', 'Leg'],
@@ -710,7 +713,7 @@ class LimbUpdateWidget(QWidget):
         if not sel:
             defaultName = 'RENAME_ME'
         else:
-            defaultName = sel[0].split(':')[-1]
+            defaultName = sel[0].split(':', 1)[-1]
         self.dialog = TextInputWidget(title='Mirror limb data', label='Enter Name', buttonText="Save",
                                       default=defaultName,
                                       parent=self)
@@ -856,13 +859,13 @@ class LimbWidget(QWidget):
 
     def updateData(self, key, value):
         print ('updateData', key, value)
-        self.__dict__[key] = value
+        self.cls.__dict__[key] = value
 
     def pickFK(self):
         sel = cmds.ls(sl=True)
         if not len(sel) == 3:
             return cmds.warning('Please select all three fk controls')
-        sel = [s.split('.')[-1] for s in sel]
+        sel = [s.split(':', 1)[-1] for s in sel]
         self.fkUpper.itemLabel.setText(sel[0])
         self.fkMid.itemLabel.setText(sel[1])
         self.fkEnd.itemLabel.setText(sel[2])
@@ -871,7 +874,7 @@ class LimbWidget(QWidget):
         sel = cmds.ls(sl=True)
         if not len(sel) == 2:
             return cmds.warning('Please select the pole vector and ik controls')
-        sel = [s.split('.')[-1] for s in sel]
+        sel = [s.split(':', 1)[-1] for s in sel]
         self.ikPV.itemLabel.setText(sel[0])
         self.ikEnd.itemLabel.setText(sel[1])
 
@@ -879,7 +882,7 @@ class LimbWidget(QWidget):
         sel = cmds.ls(sl=True)
         if not len(sel) == 3:
             return cmds.warning('Please select all three joints')
-        sel = [s.split('.')[-1] for s in sel]
+        sel = [s.split(':', 1)[-1] for s in sel]
         self.skeletonUpper.itemLabel.setText(sel[0])
         self.skeletonMid.itemLabel.setText(sel[1])
         self.skeletonEnd.itemLabel.setText(sel[2])

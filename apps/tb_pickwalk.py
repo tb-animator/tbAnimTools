@@ -781,8 +781,8 @@ class Pickwalk(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Pickwalk Creator', command='tbOpenPickwalkCreator', sourceType='mel', parent=parentMenu)
-        pm.menuItem(label='Pickwalk Library', command='tbOpenPickwalkLibrary', sourceType='mel', parent=parentMenu)
+        pm.menuItem(label='Pickwalk Creator', image='walk.png', command='tbOpenPickwalkCreator', sourceType='mel', parent=parentMenu)
+        pm.menuItem(label='Pickwalk Library', image='QR_settings.png', command='tbOpenPickwalkLibrary', sourceType='mel', parent=parentMenu)
 
     def openLibrary(self):
         win = pickwalkRigAssignemtWindow()

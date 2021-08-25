@@ -187,6 +187,8 @@ class AimTools(toolAbstractFactory):
                                          label='Aim to temp control size',
                                          minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updateTempControlPreview)
+        motionTrailHeader = subHeader('Motion Trails')
+        motionTrailInfo = infoLabel(['Add motion trails to newly created temp controls.'])
 
         aimFwdMotionTrailWidget = optionVarBoolWidget('Motion Trail On Aim Forward',
                                                       self.aimFwdMotionTrailOption)
@@ -201,6 +203,8 @@ class AimTools(toolAbstractFactory):
         self.layout.addWidget(tempControlHeader)
         self.layout.addWidget(tempControlInfo)
         self.layout.addWidget(crossSizeWidget)
+        self.layout.addWidget(motionTrailHeader)
+        self.layout.addWidget(motionTrailInfo)
         self.layout.addWidget(aimFwdMotionTrailWidget)
         self.layout.addWidget(aimUpMotionTrailWidget)
         self.layout.addWidget(aimTempMotionTrailWidget)
