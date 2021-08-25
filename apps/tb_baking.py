@@ -999,7 +999,25 @@ class BakeTools(toolAbstractFactory):
                 if not keyRange or keyRange[0] == None:
                     keyRange = self.funcs.getTimelineRange()
 
-                cmds.bakeResults(selection,
+                if base:
+                    cmds.bakeResults(selection,
+                                     time=(keyRange[0], keyRange[-1]),
+                                     # destinationLayer=rootLayer,
+                                     simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
+                                     sampleBy=1,
+                                     oversamplingRate=1,
+                                     disableImplicitControl=True,
+                                     preserveOutsideKeys=False,
+                                     sparseAnimCurveBake=True,
+                                     removeBakedAttributeFromLayer=True,
+                                     removeBakedAnimFromLayer=True,
+                                     # bakeOnOverrideLayer=False,
+                                     minimizeRotation=True,
+                                     controlPoints=False,
+                                     shape=False)
+
+                else:
+                    cmds.bakeResults(selection,
                                  time=(keyRange[0], keyRange[-1]),
                                  destinationLayer=resultLayer,
                                  simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
@@ -1014,36 +1032,7 @@ class BakeTools(toolAbstractFactory):
                                  minimizeRotation=True,
                                  controlPoints=False,
                                  shape=False)
-                attrs = cmds.animLayer(resultLayer, query=True, attribute=True)
-                if base:
-                    # copy anim from result layer to base
-                    for attr in attrs:
-                        layerCurve = cmds.animLayer(resultLayer, query=True, findCurveForPlug=attr)
-                        baseCurve = cmds.animLayer(rootLayer, query=True, findCurveForPlug=attr)
-                        blendNode = cmds.listConnections(attr, type='animBlendNodeBase', s=True, d=False)[0]
-                        history = cmds.listHistory(blendNode)
-                        lastAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[-1]
-                        if cmds.objectType(lastAnimBlendNode, isa='animBlendNodeAdditiveRotation'):
-                            letterXYZ = attr[-1]
-                            basePlug = '{0}.inputA{1}'.format(lastAnimBlendNode, letterXYZ.upper())
-                        else:
-                            basePlug = '{0}.inputA'.format(lastAnimBlendNode)
+                mel.eval('deleteEmptyAnimLayers')
 
-                        if not baseCurve:
-                            baseCurve = [attr]
-                            # might need to add some flags here to match timing...
-                        cmds.copyKey(layerCurve[0], option="curve")
-                        cmds.pasteKey(baseCurve[0], option='replace')
-                    # delete result layer
-                    cmds.delete(resultLayer)
-                # delete empty layers
-                emptyLayers = list()
-                for layer in affectedLayers:
-                    for attr in attrs:
-                        cmds.animLayer(layer, edit=True, removeAttribute=attr)
-                    if cmds.animLayer(layer, query=True, attribute=True):
-                        continue
-                    emptyLayers.append(layer)
-                if emptyLayers: cmds.delete(emptyLayers)
         except Exception as e:
             self.funcs.resumeSkinning()
