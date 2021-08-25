@@ -357,7 +357,7 @@ class BakeTools(toolAbstractFactory):
                                  includeHierarchyBelow=True,
                                  force=True,
                                  addNode=constraint)
-        if pm.optionVar.get(self.aimFwdMotionTrailOption, False):
+        if pm.optionVar.get(self.tempControlMotionTrailOption, False):
             for l in locs:
                 cmds.select(str(l), replace=True)
                 mel.eval('createMotionTrail')
@@ -421,7 +421,7 @@ class BakeTools(toolAbstractFactory):
                       command=pm.Callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
         # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
-        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset))
+        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
     def get_available_attrs(self, node):
