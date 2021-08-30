@@ -123,9 +123,11 @@ class mainOptionWindow(QMainWindow):
         # find tools with UI, make list of tool keys?
         for index, tool in enumerate(sorted(self.tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
             if self.tbtoolsCLS.tools[tool] is not None:
-
+                ui = self.tbtoolsCLS.tools[tool].optionUI()
+                if not ui:
+                    continue
                 self.toolWidget.insertItem(index, re.sub("([a-z])([A-Z])", "\g<1> \g<2>", tool))
-                self.toolOptionStack.addWidget(self.tbtoolsCLS.tools[tool].optionUI())
+                self.toolOptionStack.addWidget(ui)
 
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
         self.update()

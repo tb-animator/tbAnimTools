@@ -114,7 +114,7 @@ class slideTools(toolAbstractFactory):
 
     def optionUI(self):
         super(slideTools, self).optionUI()
-        return self.optionWidget
+        return None
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
