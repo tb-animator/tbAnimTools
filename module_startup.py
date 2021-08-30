@@ -28,6 +28,7 @@ import maya.utils as mutils
 import pymel.core as pm
 import maya.mel as mel
 import tbtoolsUpdater as upd
+import tb_qtMarkingMenu as qtm
 
 class initialise(object):
     def check_for_updates(self):
@@ -36,13 +37,14 @@ class initialise(object):
         if not pm.optionVar.get('tbUpdateType', -1) == 2:
             updater = upd.updater()
             updater.check_version()
-    '''
+
     def loadRMB(self, *args):
         try:
-            mml.customloadRMBer().load()
+            eventFilterManager = qtm.EventFilterManager()
+            eventFilterManager.installMainFilter()
         except Exception as e:
-            print "BAD CALLBACK", Exception, e
-    '''
+            print "EventFilterManager Failed", Exception, e
+
     def load_everything(self):
         import tbtoolsInstaller
         tbtoolsInstaller.module_maker().install()
@@ -50,7 +52,7 @@ class initialise(object):
             self.check_for_updates()
         except Exception as e:
             pm.error(e)
-
+        #self.loadRMB()
         import apps.tb_optionVars as tbo
         import apps.tb_keyCommands as tb_hotKeys
         #reload(tbo)

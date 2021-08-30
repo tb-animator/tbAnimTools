@@ -294,7 +294,6 @@ class LayerEditor(toolAbstractFactory):
         layers = cmds.treeView('AnimLayerTabanimLayerEditor', query=True, selectItem=True)
         if not layers:
             return cmds.warning('no layers selected')
-        print ('weight curves for layers', layers)
         for layer in layers:
             if layer == cmds.animLayer(query=True, root=True):
                 continue
@@ -315,12 +314,10 @@ class LayerEditor(toolAbstractFactory):
         if baseLayer in layers: layers.remove(baseLayer)
 
         if value >= 0.99 or value <= 0.01:
-            print ('setLayerWeightKeyFlat')
             self.setLayerWeightKeyFlat(layers)
 
     def weightSliderEditCommand(self):
         mods = cmds.getModifiers()
-        print ('mods', mods)
         layers = cmds.treeView('AnimLayerTabanimLayerEditor', query=True, selectItem=True)
         value = cmds.floatSlider('AnimLayerTabWeightSlider', query=True, value=True)
         baseLayer = cmds.animLayer(query=True, root=True)
@@ -345,7 +342,6 @@ class LayerEditor(toolAbstractFactory):
 
     def setLayerWeightKeyFlat(self, layers):
         for layer in layers:
-            print ('setLayerWeightKeyFlat', layer)
             cmds.setKeyframe('{0}.weight'.format(layer))
             cmds.keyTangent('{0}.weight'.format(layer), inTangentType='flat', outTangentType='flat')
 
@@ -370,3 +366,27 @@ class LayerEditor(toolAbstractFactory):
             return
         self.refreshHack()
         self.setLayerWeight(layers, 1.0)
+
+    def colourAnimLayers(self, *args):
+        """
+        Script job function to colour the anim layer tab based on ghosting colour
+        :param args:
+        :return:
+        """
+
+        def lerpFloat(a, b, alpha):
+            return a * alpha + b * (1.0 - alpha)
+
+        # TODO - hook this up to a script job when anim layer tab is rebuilt
+        if not pm.treeView('AnimLayerTabanimLayerEditor', query=True, exists=True):
+            return
+        layers = cmds.ls(type='animLayer')
+        for layer in layers:
+            colour = cmds.getAttr(layer + '.ghostColor') - 1
+            col = cmds.colorIndex(colour, q=True)
+            pm.treeView('AnimLayerTabanimLayerEditor',
+                        edit=True,
+                        labelBackgroundColor=[layer,
+                                              lerpFloat(col[0], 0.5, 0.5),
+                                              lerpFloat(col[1], 0.5, 0.5),
+                                              lerpFloat(col[2], 0.5, 0.5)])

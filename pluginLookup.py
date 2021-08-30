@@ -100,6 +100,19 @@ class ClassFinder(object):
                     if cls.__module__ == module_name:
                         yield cls
 
+    def collectQtMarkingMenuData(self, selection):
+        print ('collectQtMarkingMenuData', selection)
+
+        menuDataDict = dict()
+        if not selection:
+            return None
+        for tool, cls in self.tools.items():
+            print (tool, cls)
+            if not cls:
+                continue
+            menuDataDict[tool] = cls.qtMarkingMenu(selection)
+        return menuDataDict
+
     def startupScriptJobs(self):
         if self.animLayerScriptJob is not -1:
             self.animLayerScriptJob = pm.scriptJob(event=('aninLayerRebuild', self.colourAnimLayers))

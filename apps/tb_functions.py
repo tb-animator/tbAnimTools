@@ -242,6 +242,38 @@ class functions(object):
     def get_modelEditors(self, editors):
         return filter(self.filter_modelEditors, editors)
 
+    def get_all_key_times_for_node(self, node, animLayer=None):
+        allLayers = pm.ls(type='animLayer')
+        keyTimes = []
+        if animLayer:
+            animLayer = pm.PyNode(animLayer)
+
+        if allLayers:
+            for layers in allLayers:
+                layers.selected.set(False)
+                layers.preferred.set(False)
+                pm.refresh()
+            for layers in allLayers:
+                if not animLayer or layers._name == animLayer._name:
+                    layers.preferred.set(True)
+                    layers.selected.set(True)
+                pm.refresh()
+                if isinstance(node, list):
+                    if pm.keyframe(node, query=True):
+                        keyTimes.extend(pm.keyframe(node, query=True))
+                else:
+                    if cmds.keyframe(str(node), query=True):
+                        keyTimes.extend(pm.keyframe(str(node), query=True))
+                layers.preferred.set(False)
+                layers.selected.set(False)
+        else:
+            if isinstance(node, list):
+                if cmds.keyframe(node, query=True):
+                    keyTimes.extend(pm.keyframe(node, query=True))
+            else:
+                keyTimes = pm.keyframe(node, query=True)
+        return sorted(list(set(keyTimes)))
+
     @staticmethod
     def get_all_curves(node=pm.ls(selection=True)):
         if node:

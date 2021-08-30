@@ -60,7 +60,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToNew',
                                      annotation='',
                                      category=self.category, command=['BakeTools.quickMergeSelectionToNew()'],
-                                     help=self.helpStrings.simpleBakeToOverride))
+                                     help=self.helpStrings.quickMergeSelectionToNew))
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToBase',
                                      annotation='',
                                      category=self.category, command=['BakeTools.quickMergeSelectionToBase()'],
@@ -573,30 +573,6 @@ class BakeTools(toolAbstractFactory):
     def deselect_layers(self):
         for layers in pm.ls(type='animLayer'):
             layers.selected.set(False)
-
-    def colourAnimLayers(self, *args):
-        """
-        Script job function to colour the anim layer tab based on ghosting colour
-        :param args:
-        :return:
-        """
-
-        def lerpFloat(a, b, alpha):
-            return a * alpha + b * (1.0 - alpha)
-
-        # TODO - hook this up to a script job when anim layer tab is rebuilt
-        if not pm.treeView('AnimLayerTabanimLayerEditor', query=True, exists=True):
-            return
-        layers = cmds.ls(type='animLayer')
-        for layer in layers:
-            colour = cmds.getAttr(layer + '.ghostColor') - 1
-            col = cmds.colorIndex(colour, q=True)
-            pm.treeView('AnimLayerTabanimLayerEditor',
-                        edit=True,
-                        labelBackgroundColor=[layer,
-                                              lerpFloat(col[0], 0.5, 0.5),
-                                              lerpFloat(col[1], 0.5, 0.5),
-                                              lerpFloat(col[2], 0.5, 0.5)])
 
     def counterLayerAnimation(self):
         """

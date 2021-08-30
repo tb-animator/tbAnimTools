@@ -22,6 +22,7 @@ else:
 import maya.cmds as cmds
 from apps.tb_functions import functions
 import tb_helpStrings
+from apps.tb_qtMarkingMenu import MarkingMenuItem
 from apps.tb_UI import *
 
 # compatible with Python 2 *and* 3:
@@ -186,3 +187,6 @@ class toolAbstractFactory(ABC):
     def closeMM(self):
         if cmds.popupMenu('tempMM', exists=True):
             cmds.deleteUI('tempMM')
+
+    def qtMarkingMenu(self, inputNodes):
+        return list()
