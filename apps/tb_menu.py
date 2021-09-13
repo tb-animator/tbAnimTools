@@ -97,7 +97,7 @@ def open_options(*args):
 
 
 def open_discord_link(*args):
-    webbrowser.open('https://discord.gg/yxfP8rVS')
+    webbrowser.open('https://discord.gg/SyUyyJb8xw')
 
 
 def open_anim_page(*args):
