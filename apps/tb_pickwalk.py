@@ -696,7 +696,7 @@ class Pickwalk(toolAbstractFactory):
         Pickwalk.__instance.initialiseWalkData()
         return Pickwalk.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.initData()

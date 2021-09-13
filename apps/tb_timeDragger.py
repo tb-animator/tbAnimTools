@@ -112,7 +112,7 @@ class timeDragger(toolAbstractFactory):
         timeDragger.__instance.val = cls.toolName
         return timeDragger.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 

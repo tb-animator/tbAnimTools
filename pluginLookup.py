@@ -71,7 +71,10 @@ class ClassFinder(object):
 
         self.tools = dict()
         for cls in toolClasses:
+            print (cls)
             self.tools[cls.toolName] = cls()
+            self.tools[cls.toolName].allTools = self
+
         self.loadedClasses['hotkeys'] = hotkeyClasses
 
     def getAllModulesInFolder(self, baseDirectory, toolDirectory, compiledOnly=False):

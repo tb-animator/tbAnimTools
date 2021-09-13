@@ -739,6 +739,7 @@ class functions(object):
             cmds.setAttr(skin + '.nodeState', 0)
 
         cmds.refresh(su=False)
+
     @staticmethod
     def unit_conversion():
         conversion = {'mm': 0.1, 'cm': 1.0, 'm': 100.0, 'in': 2.54, 'ft': 30.48, 'yd': 91.44}

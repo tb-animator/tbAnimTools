@@ -87,7 +87,7 @@ class TrackingCamera(toolAbstractFactory):
         TrackingCamera.__instance.val = cls.toolName
         return TrackingCamera.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 

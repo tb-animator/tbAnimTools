@@ -166,7 +166,7 @@ class BakeTools(toolAbstractFactory):
         BakeTools.__instance.val = cls.toolName
         return BakeTools.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 
@@ -530,26 +530,33 @@ class BakeTools(toolAbstractFactory):
             self.clearBlendAttrs(node)
 
     def addOverrideLayer(self):
-        self.add_layer(mode=True)
+        return self.add_layer(mode=True)
 
     def addAdditiveLayer(self):
-        self.add_layer(mode=False)
+        return self.add_layer(mode=False)
 
-    def add_layer(self, mode=False):
-        suffix = {True: ['Override', self.overrideLayerColour], False: ['Additive', self.additiveLayerColour]}
+    def createLayer(self, override=False, suffixStr=None):
+        if suffixStr is None:
+            suffixStr = {True: 'Override', False: 'Additive'}[override]
 
-        newAnimLayer = pm.animLayer(suffix[mode][0],
-                                    override=mode,
+        colour = {True: self.overrideLayerColour, False: self.additiveLayerColour}
+
+        newAnimLayer = pm.animLayer(suffixStr,
+                                    override=override,
                                     excludeScale=True,
                                     # excludeEnum=True,
                                     addSelectedObjects=True,
-                                    passthrough=False,
+                                    passthrough=True,
                                     lock=False)
-        newAnimLayer.ghostColor.set(suffix[mode][1])
+        newAnimLayer.ghostColor.set(colour[override])
         self.deselect_layers()
         newAnimLayer.selected.set(True)
         newAnimLayer.preferred.set(True)
         newAnimLayer.scaleAccumulationMode.set(0)
+        return newAnimLayer
+
+    def add_layer(self, mode=False):
+        newAnimLayer = self.createLayer()
         if not self.funcs.isTimelineHighlighted():
             return
         if not mode:
@@ -578,6 +585,7 @@ class BakeTools(toolAbstractFactory):
         """
         Counters the animation of the last selected object in the layer, outputs the countered
         animation into a new layer under the other.
+        TODO - fix this so it gets a better key range!
         :return:
         """
         sel = pm.ls(sl=True)

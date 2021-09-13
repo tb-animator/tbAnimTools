@@ -143,7 +143,7 @@ class ViewModeTool(toolAbstractFactory):
         ViewModeTool.__instance.val = cls.toolName
         return ViewModeTool.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.loadData()

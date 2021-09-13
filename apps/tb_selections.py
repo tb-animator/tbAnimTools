@@ -91,7 +91,7 @@ class SelectionTools(toolAbstractFactory):
         SelectionTools.__instance.val = cls.toolName
         return SelectionTools.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 

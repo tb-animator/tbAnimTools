@@ -147,8 +147,9 @@ class Manipulators(toolAbstractFactory):
         Manipulators.__instance.loadData()
         return Manipulators.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
+        self.funcs = functions()
         self.funcs = functions()
 
     """

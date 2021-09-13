@@ -103,6 +103,7 @@ class toolAbstractFactory(ABC):
 
     hotkeyClass = None
     funcs = None
+    allTools = None
 
     layout = None
     classData = dict()

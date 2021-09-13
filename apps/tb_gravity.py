@@ -109,7 +109,7 @@ class GravityTools(toolAbstractFactory):
 
         return GravityTools.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 

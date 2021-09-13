@@ -189,7 +189,7 @@ class CameraPivot(toolAbstractFactory):
         CameraPivot.__instance.val = cls.toolName
         return CameraPivot.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.time = cmds.timerX()

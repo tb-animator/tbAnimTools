@@ -43,7 +43,7 @@ class initialise(object):
             eventFilterManager = qtm.EventFilterManager()
             eventFilterManager.installMainFilter()
         except Exception as e:
-            print "EventFilterManager Failed", Exception, e
+            print ("EventFilterManager Failed", Exception, e)
 
     def load_everything(self):
         import tbtoolsInstaller

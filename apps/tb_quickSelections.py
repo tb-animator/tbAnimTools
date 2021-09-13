@@ -104,9 +104,10 @@ class QuickSelectionTools(toolAbstractFactory):
         QuickSelectionTools.__instance.val = cls.toolName
         return QuickSelectionTools.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
+
 
         self.all_sets = self.get_sets()
 

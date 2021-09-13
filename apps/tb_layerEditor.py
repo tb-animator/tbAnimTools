@@ -87,7 +87,7 @@ class LayerEditor(toolAbstractFactory):
         LayerEditor.__instance.val = cls.toolName
         return LayerEditor.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         if pm.optionVar.get(self.useCustomUIOption, False):

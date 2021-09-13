@@ -104,7 +104,7 @@ class Playback(toolAbstractFactory):
         Playback.__instance.val = cls.toolName
         return Playback.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.playback_state = pm.play(query=True, state=True)

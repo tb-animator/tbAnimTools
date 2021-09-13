@@ -34,6 +34,11 @@ cycleCurrentMode = ['Cycle the current manipulator mode', ' between user defined
 
 OpenPickwalkCreator = ['Open the pickwalk creation UI']
 OpenPickwalkLibrary = ['Open the pickwalk map assignment UI']
+toggleMotionTrail = ['Toggles motion trail states',
+                     'Creates a motion trail if needed',
+                     'If nothing is selected, all trails are toggled on/off',
+                     'If nodes are selected, trails are toggled on/off based on current state',
+                     'Automatically added to the currently isolated selection']
 createMotionTrail = ['Creates a motion trail set to the current timeline',
                      'Automatically added to the currently isolated selection']
 removeMotionTrail = ['Removes motion trails connected to selection']

@@ -90,7 +90,7 @@ class SnapTools(toolAbstractFactory):
         SnapTools.__instance.val = cls.toolName
         return SnapTools.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 

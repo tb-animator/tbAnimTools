@@ -81,7 +81,7 @@ class isolator(toolAbstractFactory):
         isolator.__instance.val = cls.toolName
         return isolator.__instance
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 
