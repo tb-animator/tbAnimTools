@@ -423,9 +423,14 @@ class BakeTools(toolAbstractFactory):
         return lockedTranslates, lockedRotates
 
     def bakeSelectedCommand(self, asset, sel):
+        print ('bakeSelectedCommand')
         tempControls = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in tempControls]
         filteredTargets = [item for sublist in targets for item in sublist if item]
+        print ('tempControls', tempControls)
+        print ('targets', targets)
+        print ('filteredTargets', filteredTargets)
+        print ('sel', sel)
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(tempControls)
@@ -440,26 +445,6 @@ class BakeTools(toolAbstractFactory):
 
     def deleteSelectedControlsCommand(self, asset, sel):
         pm.delete(sel)
-
-    def deleteControlsCommand(self, asset, sel):
-        pm.delete(asset)
-
-    def bakeSelectedCommand(self, asset, sel):
-        # print ('rebakeCommand', asset, sel)
-        targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in sel]
-        filteredTargets = [item for sublist in targets for item in sublist if item]
-        pm.select(filteredTargets, replace=True)
-        mel.eval("simpleBakeToOverride")
-
-    def bakeAllCommand(self, asset, sel):
-        # print ('bakeAllCommand', asset, sel)
-        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
-        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
-        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        # print ('filteredTargets', filteredTargets)
-        pm.select(filteredTargets, replace=True)
-        mel.eval("simpleBakeToOverride")
-        pm.delete(asset)
 
     def deleteControlsCommand(self, asset, sel):
         pm.delete(asset)

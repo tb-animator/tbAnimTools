@@ -82,6 +82,7 @@ class SnapTools(toolAbstractFactory):
     transformTranslateDict = dict()
     transformRotateDict = dict()
     tempControlSizeOption = 'tbTempParentSizeOption'
+    selectionOrderOption = 'tbSnapSelectionOrder'
 
     def __new__(cls):
         if SnapTools.__instance is None:
@@ -105,8 +106,18 @@ class SnapTools(toolAbstractFactory):
                                          defaultValue=1.0,
                                          label='Temp Parent Control size',
                                          minimum=0.1, maximum=100, step=0.1)
+        snapOrderHeader = subHeader('Snap Order')
+        selectionOrderInfo = infoLabel(['If checked, the first selected object will be moved to the second',
+                                        'If unchecked, the second object will be moved to the first'
+                                        ])
+
+        selectionOrderOptionWidget = optionVarBoolWidget('Reverse Snap Order',
+                                                         self.selectionOrderOption)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
         self.layout.addWidget(crossSizeWidget)
+        self.layout.addWidget(snapOrderHeader)
+        self.layout.addWidget(selectionOrderInfo)
+        self.layout.addWidget(selectionOrderOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -145,8 +156,9 @@ class SnapTools(toolAbstractFactory):
         if not sel:
             return
         if len(sel) >= 2:
-            original = sel[0]
-            target = sel[1]
+            state = pm.optionVar.get(self.selectionOrderOption, False)
+            original = {True: sel[1], False: sel[0]}[state]
+            target = {True: sel[0], False: sel[1]}[state]
 
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
