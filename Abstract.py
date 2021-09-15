@@ -108,6 +108,7 @@ class toolAbstractFactory(ABC):
     layout = None
     classData = dict()
     rawJsonData = None
+    assetCommandName ='blankCommandName'
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
@@ -168,6 +169,16 @@ class toolAbstractFactory(ABC):
         if not os.path.isfile(self.dataFile):
             self.saveData()
         self.rawJsonData = json.load(open(self.dataFile))
+
+    def createAsset(self, name, imageName=None):
+        asset = cmds.container(name=name,
+                               includeHierarchyBelow=False,
+                               includeTransform=True,
+                               )
+        if imageName:
+            pm.setAttr(asset + '.iconName', imageName, type="string")
+        cmds.setAttr(asset + '.rmbCommand', self.assetCommandName, type='string')
+        return asset
 
     def openMM(self):
         if cmds.popupMenu('tempMM', exists=True):

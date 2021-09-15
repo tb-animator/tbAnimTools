@@ -155,6 +155,8 @@ class BakeTools(toolAbstractFactory):
     overrideLayerColour = 19
     additiveLayerColour = 18
 
+    assetCommandName = 'tempControlCommand'
+
     crossSizeOption = 'tbBakeLocatorSize'
     assetName = 'TempControls'
     constraintTargetAttr = 'constraintTarget'
@@ -365,16 +367,6 @@ class BakeTools(toolAbstractFactory):
             pm.select(locs, replace=True)
         return locs
 
-    def createAsset(self, name, imageName=None):
-        asset = cmds.container(name=name,
-                               includeHierarchyBelow=False,
-                               includeTransform=True,
-                               )
-        if imageName:
-            pm.setAttr(asset + '.iconName', imageName, type="string")
-        cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
-        return asset
-
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'
@@ -394,16 +386,6 @@ class BakeTools(toolAbstractFactory):
                       command=pm.Callback(self.deleteSelectedControlsCommand, asset, sel))
         cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
-
-    def createAsset(self, name, imageName=None):
-        asset = cmds.container(name=name,
-                               includeHierarchyBelow=False,
-                               includeTransform=True,
-                               )
-        if imageName:
-            pm.setAttr(asset + '.iconName', imageName, type="string")
-        cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
-        return asset
 
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)

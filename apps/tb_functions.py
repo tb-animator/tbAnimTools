@@ -997,6 +997,25 @@ class functions(object):
             return self.stripTailDigits(input[:-1])
         return input
 
+    def getNotesAttr(self, node):
+        node = pm.PyNode(node)
+        if node.hasAttr('notes'):
+            return node.notes.get()
+        else:
+            # go ahead and create attr
+            node.addAttr('notes', dt='string')
+            return node.notes.get()
+
+    def isObjectMoving(self, obj):
+        conns = cmds.listConnections(obj, source=True, destination=False)
+        if conns:
+            return True
+        parent = cmds.listRelatives(obj, parent=True)
+        if not parent:
+            return False
+        return self.isObjectMoving(parent[0])
+
+
     """
     UI gubbinz
     """

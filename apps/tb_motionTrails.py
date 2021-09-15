@@ -57,8 +57,12 @@ class hotkeys(hotKeyAbstractFactory):
                                      help=self.helpStrings.toggleMotionTrail))
         self.addCommand(self.tb_hkey(name='createCameraRelativeMotionTrail',
                                      annotation='',
-                                     category=self.category, command=['MotionTrails.createMotionTrail()'],
-                                     help=self.helpStrings.createMotionTrail))
+                                     category=self.category, command=['MotionTrails.createCameraRelativeMotionTrail()'],
+                                     help=self.helpStrings.createCameraRelativeMotionTrail))
+        self.addCommand(self.tb_hkey(name='toggleMotionTrailCameraRelative',
+                                     annotation='',
+                                     category=self.category, command=['MotionTrails.toggleMotionTrailCameraRelative()'],
+                                     help=self.helpStrings.toggleMotionTrailCameraRelative))
         self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.createMotionTrail()'],
@@ -91,6 +95,8 @@ class MotionTrails(toolAbstractFactory):
     showframeMarkerOption = 'tbMotrailshowFrameMarkerOption'
 
     motionTrailNodes = ['motionTrailShape', 'motionTrail1Handle', 'motionTrail']
+
+    ignoredAttributes = ['points', 'boundingBox', 'drawOverride', 'frames', 'boundingBoxMax']
 
     def __new__(cls):
         if MotionTrails.__instance is None:
@@ -158,11 +164,105 @@ class MotionTrails(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
+    def createInfoNode(self):
+        if not cmds.objExists('motionTrailInfo'):
+            cmds.createNode("network", name='motionTrailInfo')
+            self.funcs.getNotesAttr('motionTrailInfo')
+            data = '''{}'''
+            jsonObjectInfo = json.loads(data)
+            jsonObjectInfo['camera'] = dict()
+            jsonObjectInfo['target'] = dict()
+            jsonObjectInfo['motionTrail'] = dict()
+            jsonObjectInfo['motionTrailShape'] = dict()
+            output = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
+            cmds.setAttr('motionTrailInfo.notes', output, type='string')
+
+
+    def getMotionTrailInfo(self):
+        self.createInfoNode()
+        allMotionTrails = self.getAllMotionTrails()
+        jsonObjectInfo = self.readFromScene()
+
+        for m in allMotionTrails:
+            shape = self.getMotionTrailShape(m)[0]
+
+            jsonObjectInfo['camera'][m] = self.getMotionTrailCamera(m)
+            jsonObjectInfo['target'][m] = self.getNodeFromMotionTrail(m)[0]
+            jsonObjectInfo['motionTrail'][m] = {x: self.readAttr(m, x) for x in self.getAttributes(m)}
+            jsonObjectInfo['motionTrailShape'][m] = {x: self.readAttr(shape, x) for x in self.getAttributes(shape)}
+
+        output = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
+        cmds.setAttr('motionTrailInfo.notes', output, type='string')
+
+    def readFromScene(self):
+        self.createInfoNode()
+        jsonData = self.funcs.getNotesAttr('motionTrailInfo')
+        jsonObjectInfo = json.loads(jsonData)
+        return jsonObjectInfo
+
+    def createFromSceneInfo(self, key=None):
+        data = self.readFromScene()
+        if not data: return
+        if key:
+            self.createFromData(data, key)
+            return
+        for key in data['motionTrail'].keys():
+            self.createFromData(data, key)
+
+    def createFromData(self, data, key):
+        if not cmds.objExists(key):
+            trail = self.createMotionTrail(sel=data['target'][key], camera=data['camera'][key])
+            trailShape = pm.PyNode(trail[0][0]).getShape()
+
+            '''
+            for attr, value in data['motionTrailShape'][key].items():
+                if not pm.getAttr(trail[0][0] + '.' + attr, keyable=True):
+                    continue
+                if isinstance(value, list):
+                    pm.setAttr(trail[0][0] + '.' + attr, *value)
+                else:
+                    pm.setAttr(trail[0][0] + '.' + attr, value)
+            '''
+            for attr, value in data['motionTrail'][key].items():
+                if not pm.getAttr(trail[0][1] + '.' + attr, keyable=True):
+                    continue
+                if isinstance(value, list):
+                    pm.setAttr(trail[0][1] + '.' + attr, *value)
+                else:
+                    pm.setAttr(trail[0][1] + '.' + attr, value)
+
+    def getAttributes(self, node):
+        allAttrs = cmds.listAttr(node)
+        allAttrs = [a.split('.')[-1] for a in allAttrs if self.isValidAttribute(node, a)]
+        return allAttrs
+
+    def readAttr(self, node, attr):
+        try:
+            return cmds.getAttr(node + '.' + attr)
+        except:
+            pass
+
+    def isValidAttribute(self, node, attribute):
+        if ('.') in str(attribute):
+            return False
+        if str(attribute) in self.ignoredAttributes: return False
+        if cmds.attributeQuery(attribute.split('.')[-1], node=node, multi=True): return False
+        if cmds.attributeQuery(attribute.split('.')[-1], node=node, message=True): return False
+
+        return True
+
     def toggleMotionTrail(self):
+        """
+        toggling off will delete all trails, save trail to scene before deletion
+        :return:
+        """
         sel = cmds.ls(sl=True)
         disable = True
+        self.getMotionTrailInfo()
+        data = self.readFromScene()
+
         if not sel:
-            allMotionTrails = self.getAllMotionTrails()
+            allMotionTrails = data['motionTrail'].keys()
             if not allMotionTrails:
                 return
         else:
@@ -172,27 +272,52 @@ class MotionTrails(toolAbstractFactory):
                 if not self.hasMotionTrail(s):
                     self.createMotionTrail([s])
                     disable = False
+            if not disable:
+                return
             allMotionTrails = self.getAllMotionTrailsFromSelection(sel=sel)
         if not allMotionTrails:
             return
-        if all([cmds.getAttr("{0}.nodeState".format(m)) == 2 for m in allMotionTrails]):
+
+        if all([cmds.objExists(m) for m in allMotionTrails]):
+            disable = True
+        else:
             disable = False
 
         for motionTrail in allMotionTrails:
-            motionTrailShape = self.getMotionTrailShape(motionTrail)
             if disable:
-                self.disableMotionTrail(motionTrail, motionTrailShape[0])
+                motionTrailShape = self.getMotionTrailShape(motionTrail)
+                #self.disableMotionTrail(motionTrail, motionTrailShape[0])
+                pm.delete(motionTrail, motionTrailShape[0])
             else:
-                self.enableMotionTrail(motionTrail, motionTrailShape[0])
+                self.createFromSceneInfo(key=motionTrail)
+        self.getMotionTrailInfo()
 
     def getCurrentCamera(self):
         view = omUI.M3dView.active3dView()
         cam = om.MDagPath()
         view.getCamera(cam)
         camPath = cam.partialPathName()
-        print (camPath)
 
         return camPath
+
+    def toggleMotionTrailCameraRelative(self):
+        sel = cmds.ls(sl=True)
+        trails = None
+        if not sel:
+            trails = self.findAllMotionTrails()
+
+            sel = [self.getNodeFromMotionTrail(t) for t in trails]
+            sel = [item for sublist in sel for item in sublist if item]
+        if not sel:
+            return
+        if not trails:
+            trails = self.getAllMotionTrailsFromSelection(sel)
+            sel = [self.getNodeFromMotionTrail(t) for t in trails]
+            sel = [item for sublist in sel for item in sublist if item]
+        camera = {True: None, False: self.getCurrentCamera()}[self.isCameraRelative(trails)]
+
+        self.removeMotionTrail(sel)
+        self.createMotionTrail(sel=sel, camera=camera)
 
     def createCameraRelativeMotionTrail(self):
         sel = cmds.ls(sl=True)
@@ -205,6 +330,8 @@ class MotionTrails(toolAbstractFactory):
             sel = cmds.ls(sl=True)
         if not sel:
             return
+        if not isinstance(sel, list):
+            sel = [sel]
         with self.funcs.keepSelection():
             trials = []
             for s in sel:
@@ -221,7 +348,8 @@ class MotionTrails(toolAbstractFactory):
                 cmds.setAttr(moTrail[0] + '.postFrame', pm.optionVar.get(self.trailPostFramesOption, 0))
                 cmds.setAttr(moTrail[0] + '.frameMarkerSize', pm.optionVar.get(self.trailframeMarkerSizesOption, 1))
                 cmds.setAttr(moTrail[0] + '.showFrameMarkers', pm.optionVar.get(self.showframeMarkerOption, 0))
-                print('moTrail', moTrail)
+
+                trials.append(moTrail)
                 cmds.select(moTrail, replace=True)
                 if camera:
                     cmds.addAttr(moTrail[1], ln='camera', at='message')
@@ -245,6 +373,7 @@ class MotionTrails(toolAbstractFactory):
                     cmds.connectAttr('{0}.outputRotate'.format(trailDecomp), '{0}.rotate'.format(moTrail[0]),
                                      force=True)
                 mel.eval("addToIsolation")
+        return trials
 
     def isMotionTrail(self, s):
         childNodes = cmds.listRelatives(s, children=True)
@@ -266,6 +395,19 @@ class MotionTrails(toolAbstractFactory):
                 return True
         return False
 
+    def isCameraRelative(self, sel):
+        return any([cmds.attributeQuery('camera', node=s, exists=True) for s in sel])
+
+    def getMotionTrailCamera(self, m):
+        if not cmds.attributeQuery('camera', node=m, exists=True):
+            return None
+        conns = cmds.listConnections(m + '.camera', source=True,
+                                     destination=False,
+                                     plugs=False)
+        if not conns:
+            return None
+        return conns[0]
+
     def findAllMotionTrails(self):
         return cmds.ls(type='motionTrail')
 
@@ -277,7 +419,7 @@ class MotionTrails(toolAbstractFactory):
         cmds.setAttr("{0}.nodeState".format(motionTrail), 0)
         cmds.setAttr("{0}.visibility".format(trialShape), True)
         if cmds.attributeQuery('camera', node=motionTrail, exists=True):
-            print ('is camera relative')
+           pass
 
     def getMotionTrailShape(self, motionTrail):
         return list(set(cmds.listConnections(motionTrail, source=False, destination=True, plugs=False)))
@@ -312,12 +454,10 @@ class MotionTrails(toolAbstractFactory):
         shape = list()
         trail = list()
         if messageConnection:
-            print ('message', messageConnection)
             for m in messageConnection:
                 childNodes = cmds.listRelatives(m, children=True)
                 if childNodes:
                     for c in childNodes:
-                        print ('    c', c)
                         if cmds.nodeType(c) == 'motionTrailShape':
                             shape.append(c)
                         if cmds.nodeType(c) == 'motionTrail':
@@ -359,8 +499,12 @@ class MotionTrails(toolAbstractFactory):
                 cmds.delete(nodesToRemove)
 
     def getNodeFromMotionTrail(self, node):
-        return list(set(cmds.listConnections(node,
-                                             source=True,
-                                             destination=False,
-                                             plugs=False,
-                                             type='transform')))
+        conns = cmds.listConnections(node,
+                                     source=True,
+                                     destination=False,
+                                     plugs=False,
+                                     type='transform'
+                                     )
+        if not conns:
+            return list()
+        return list(set(conns))

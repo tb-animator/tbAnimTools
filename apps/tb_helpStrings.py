@@ -11,6 +11,7 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
             'manipulators': '%s_Manipulators' % tbAnimTools,
             'keying': '%s_Keyframe' % tbAnimTools,
             'sliders': '%s_Sliders' % tbAnimTools,
+            'tempPivot': '%s_TempPivot' % tbAnimTools,
             'pickwalk': '%s_Pickwalk' % tbAnimTools,
             'constraints': '%s_Constraints' % tbAnimTools,
             'footpath': '%s_FootPath' % tbAnimTools,
@@ -41,6 +42,12 @@ toggleMotionTrail = ['Toggles motion trail states',
                      'Automatically added to the currently isolated selection']
 createMotionTrail = ['Creates a motion trail set to the current timeline',
                      'Automatically added to the currently isolated selection']
+createCameraRelativeMotionTrail = ['Creates a motion trail set to the current timeline',
+                                   'Automatically added to the currently isolated selection',
+                                   'Trail is relative to the current canera']
+toggleMotionTrailCameraRelative = ['Toggles the currently selected trail, or trails associated with a control',
+                                   'to be world space or camera relative',
+                                   'If nothing is selected, all motion trails are toggled']
 removeMotionTrail = ['Removes motion trails connected to selection']
 
 gravity = {'quickJump': ['Uses the highlighted time slider range to plot',
