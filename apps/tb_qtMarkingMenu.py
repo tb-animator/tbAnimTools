@@ -9,7 +9,7 @@ import maya.cmds as cmds
 
 qtVersion = pm.about(qtVersion=True)
 
-if qtVersion.split('.')[0] < 5:
+if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     from PySide.QtWidgets import *
@@ -72,7 +72,7 @@ class EventFilterManager(object):
                 matches[0].installEventFilter(filter)
             # print "installing event filter,", filter, "on", matches[0], matches[0].__class__
         except Exception as e:
-            print e
+            print (e)
             for child in widget.children():
                 self.recursive_widget_lookup(child, filter)
 
@@ -126,7 +126,6 @@ class QtMarkingMenu(QObject):
     menuWidget = None
 
     def __init__(self):
-        print "here?"
         super(QtMarkingMenu, self).__init__()
 
         # auto build methods for ik/spaces etc
@@ -145,7 +144,7 @@ class QtMarkingMenu(QObject):
         self.keyMod = QApplication.keyboardModifiers()
         # print event.type(), obj, self.keyMod
         if event.type() == QEvent.MouseButtonPress:
-            print 'press'
+            print ('press')
         try:
             # is the menu raised?
             '''
@@ -190,21 +189,21 @@ class QtMarkingMenu(QObject):
             if event.type() == QEvent.MouseButtonDblClick:
                 _clicked_node = "nothing"
                 _clicked_node = selectFromScreenApi(event.pos().x(), obj.height() - event.pos().y())
-                print _clicked_node
+                print (_clicked_node)
                 self.double_click()
                 return True
             else:
                 return False
         except Exception as e:
-            print e
+            print (e)
             return False
 
     def open_menu(self, node=[]):
-        print "node", node
+        print( "node", node)
         return False
 
     def double_click(self):
-        print "double clicked"
+        print ("double clicked")
 
     def isRightClickHeld(self):
         return qApp.mouseButtons() & Qt.RightButton
@@ -310,7 +309,7 @@ class MarkingMenuData(object):
     # add a list of menu items to this menu data, useful for auto generated menu items
     def add_items(self, menuItems=[]):
         if menuItems:
-            print "__ appending menu items"
+            print ("__ appending menu items")
             for item in menuItems:
                 self.menu_items.append(item)
 
@@ -370,8 +369,8 @@ class _pMap(QGraphicsPixmapItem):
         self.dot1.setFont(self.font)
         self.dot1.setPos(-0, -0)
         self.drawWidth = self.dot1.boundingRect().width()
-        print self.dot1.boundingRect().width()
-        print self.boundingRect().width()
+        print (self.dot1.boundingRect().width())
+        print (self.boundingRect().width())
 
 
     def paint(self, painter, option, widget):
@@ -404,7 +403,7 @@ class markingMenu_filter(QObject):
     '''A simple event filter to catch MouseMove events'''
 
     def eventFilter(self, obj, event):
-        print event.type()
+        print (event.type())
 
 
 class centre_image(QObject):
@@ -614,7 +613,7 @@ class animated_scene(QWidget):
             self.all_items.append(item)
             if menu_item.radial:
                 if menu_item.radial_position in self.radial_positions.keys():
-                    print "ooo look its in the place"
+                    print ("ooo look its in the place")
                 self.radial_items.append(item)
 
             else:
@@ -685,12 +684,12 @@ class animated_scene(QWidget):
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_1:
             self.c.transition_out.emit()
-            print "1"
+            print ("1")
         elif e.key() == Qt.Key_2:
             self.delayed_hide()
-            print "2"
+            print ("2")
         elif e.key() == Qt.Key_3:
-            print "3"
+            print ("3")
             self.close()
 
     def hide(self):
@@ -763,12 +762,12 @@ class animated_scene(QWidget):
                         delta = current_delta
                         closest_item = position.item.label
                         closest_index = index
-                print "radial section", closest_item
+                print ("radial section", closest_item)
 
             if self.closest_item is not closest_item:
                 self.closest_item = closest_item
                 self.closest_index = closest_index
-                print "closest item", self.closest_item, self.closest_index, current_distance
+                print ("closest item", self.closest_item, self.closest_index, current_distance)
         else:
             self.closest_item = -1
             self.closest_index = -1

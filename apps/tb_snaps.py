@@ -45,8 +45,7 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('snap'))
         self.commandList = list()
-        self.addCommand(self.tb_hkey(name='createTempParent', annotation='',
-                                     category=self.category, command=['SnapTools.tempParent()']))
+
         self.addCommand(self.tb_hkey(name='store_ctrl_transform', annotation='store object transform',
                                      category=self.category, command=[
                 'SnapTools.store_transform()']))
@@ -81,7 +80,7 @@ class SnapTools(toolAbstractFactory):
 
     transformTranslateDict = dict()
     transformRotateDict = dict()
-    tempControlSizeOption = 'tbTempParentSizeOption'
+
     selectionOrderOption = 'tbSnapSelectionOrder'
 
     def __new__(cls):
@@ -102,10 +101,7 @@ class SnapTools(toolAbstractFactory):
 
     def optionUI(self):
         super(SnapTools, self).optionUI()
-        crossSizeWidget = intFieldWidget(optionVar=self.tempControlSizeOption,
-                                         defaultValue=1.0,
-                                         label='Temp Parent Control size',
-                                         minimum=0.1, maximum=100, step=0.1)
+
         snapOrderHeader = subHeader('Snap Order')
         selectionOrderInfo = infoLabel(['If checked, the first selected object will be moved to the second',
                                         'If unchecked, the second object will be moved to the first'
@@ -113,8 +109,7 @@ class SnapTools(toolAbstractFactory):
 
         selectionOrderOptionWidget = optionVarBoolWidget('Reverse Snap Order',
                                                          self.selectionOrderOption)
-        crossSizeWidget.changedSignal.connect(self.updatePreview)
-        self.layout.addWidget(crossSizeWidget)
+
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(selectionOrderInfo)
         self.layout.addWidget(selectionOrderOptionWidget)
@@ -127,19 +122,7 @@ class SnapTools(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
-    def updatePreview(self, scale):
-        if not cmds.objExists('temp_Preview'):
-            self.drawPreview()
 
-        cmds.setAttr('temp_Preview.scaleX', scale)
-        cmds.setAttr('temp_Preview.scaleY', scale)
-        cmds.setAttr('temp_Preview.scaleZ', scale)
-
-    def drawPreview(self):
-        self.funcs.tempControl(name='temp',
-                               suffix='Preview',
-                               scale=pm.optionVar.get(self.tempControlSizeOption, 1),
-                               drawType='orb')
 
     @staticmethod
     def minus(vector1, vector2):
@@ -265,30 +248,4 @@ class SnapTools(toolAbstractFactory):
         # set the absolute world rotation
         pm.xform(node, absolute=True, worldSpace=True, rotation=rotation)
 
-    def tempParent(self):
-        sel = pm.ls(sl=True)
-        if not sel:
-            return
-        pivotControl = sel[-1]
 
-        tempControl = self.funcs.tempControl(name=pivotControl, suffix='tempParent',
-                                             scale=pm.optionVar.get(self.tempControlSizeOption, 1))
-        pm.delete(pm.parentConstraint(pivotControl, tempControl))
-
-        constraints = list()
-        for s in sel:
-            constraints.append(pm.parentConstraint(tempControl, s,
-                                                   skipTranslate=self.funcs.getAvailableTranslates(s),
-                                                   skipRotate=self.funcs.getAvailableRotates(s),
-                                                   maintainOffset=True))
-        pm.select(tempControl, replace=True)
-
-        scriptJob = cmds.scriptJob(runOnce=True,
-                                   killWithScene=True,
-                                   event=("SelectionChanged", pm.Callback(self.bakeTempControl, sel, tempControl)))
-
-    def bakeTempControl(self, controls, tempControl):
-        if not pm.objExists(tempControl):
-            return
-        pm.setKeyframe(controls)
-        pm.delete(tempControl)

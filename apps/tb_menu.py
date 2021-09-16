@@ -49,11 +49,16 @@ class main_menu(object):
             if tbtoolsCLS.tools[tool] is not None:
                 tbtoolsCLS.tools[tool].drawMenuBar(editorMenu)
 
+        self.drawStoreMenu()
         self.drawUpdateMenu()
 
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
         pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
+
+    def drawStoreMenu(self):
+        storeMenu = pm.menuItem(label='Store', subMenu=True, parent=self.main_menu)
+        pm.menuItem(label="Store Main", command=open_store_main, parent=storeMenu)
 
     def drawUpdateMenu(self):
         updateMode = pm.optionVar.get('tbUpdateType', 0)
@@ -98,6 +103,9 @@ def open_options(*args):
 
 def open_discord_link(*args):
     webbrowser.open('https://discord.gg/SyUyyJb8xw')
+
+def open_store_main(*args):
+    webbrowser.open('https://tb3d.gumroad.com/')
 
 
 def open_anim_page(*args):

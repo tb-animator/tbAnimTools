@@ -423,14 +423,10 @@ class BakeTools(toolAbstractFactory):
         return lockedTranslates, lockedRotates
 
     def bakeSelectedCommand(self, asset, sel):
-        print ('bakeSelectedCommand')
         tempControls = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in tempControls]
         filteredTargets = [item for sublist in targets for item in sublist if item]
-        print ('tempControls', tempControls)
-        print ('targets', targets)
-        print ('filteredTargets', filteredTargets)
-        print ('sel', sel)
+
         pm.select(filteredTargets, replace=True)
         mel.eval("simpleBakeToOverride")
         pm.delete(tempControls)
@@ -493,8 +489,11 @@ class BakeTools(toolAbstractFactory):
                              endTime],
                        sampleBy=1)
         if deleteConstraints:
-            pm.delete(node.listRelatives(type='constraint'))
-            self.clearBlendAttrs(node)
+            if not isinstance(node, list):
+                node = [node]
+            for n in node:
+                pm.delete(n.listRelatives(type='constraint'))
+                self.clearBlendAttrs(n)
 
     def addOverrideLayer(self):
         return self.add_layer(mode=True)

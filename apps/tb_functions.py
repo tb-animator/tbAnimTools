@@ -114,7 +114,7 @@ crossPointList = [[-25, 0, 0],
                   [0, 25, 0],
                   [0, -25, 0]]
 
-
+acceptedConstraintTypes = ['pairBlend', 'constraint']
 class functions(object):
     """
     Huge list of functions that scripts 'should' get built from
@@ -286,6 +286,16 @@ class functions(object):
             return self.get_key_indexes_in_selection(node=node)
         else:
             return self.get_keys_indexes_at_frame(node=node)
+
+    def getBakeRange(self, sel):
+        """
+        Returns a list of all key times for the input object list, if the timeline is highlighted
+        :param sel: input object list
+        :param timeline: Force visible timeline range
+        :return:
+        """
+        startTime, endTime = self.getTimelineRange()
+        return [x for x in self.get_all_key_times_for_node(sel) if x <= endTime and x >= startTime]
 
     def get_keys_indexes_at_frame(self, node=None, time=None):
         if not time:
@@ -611,6 +621,26 @@ class functions(object):
                 for a in attrNames:
                     pm.setAttr(n + '.scale' + a, lock=True, keyable=False, channelBox=False)
 
+    def isConstrained(self, node):
+        conns = cmds.listConnections(node, source=True, destination=False, plugs=False)
+        if not conns:
+            return False, None, None
+        conns = [c for c in list(set(conns)) if cmds.objectType(c) in acceptedConstraintTypes]
+        if conns:
+            rel = cmds.listRelatives(node, type='constraint')
+            return True, conns, rel
+        return False, None, None
+
+    def getConstrainTargets(self, constraint):
+        constraint = pm.PyNode(constraint)
+        targets = constraint.getTargetList()
+        return targets
+
+    def getConstrainWeights(self, constraint):
+        constraint = pm.PyNode(constraint)
+        targets = constraint.getWeightAliasList()
+        return targets
+
     @staticmethod
     def getAvailableTranslates(node):
         return [attr.lower()[-1] for attr in ['translateX', 'translateY', 'translateZ'] if
@@ -704,6 +734,22 @@ class functions(object):
         else:
             mel.eval('GraphEditor;')
         cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
+
+    @contextmanager
+    def undoNoQueue(self):
+        cmds.undoInfo(stateWithoutFlush=False)
+
+        yield
+
+        cmds.undoInfo(stateWithoutFlush=True)
+
+    @contextmanager
+    def undoChunk(self):
+        cmds.undoInfo(openChunk=True)
+
+        yield
+
+        cmds.undoInfo(closeChunk=True)
 
     @contextmanager
     def keepSelection(self):
