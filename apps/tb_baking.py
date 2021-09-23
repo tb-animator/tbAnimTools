@@ -78,7 +78,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
-                                     help=self.helpStrings.simpleBakeToOverride))
+                                     help=self.helpStrings.simpleBakeToBase))
         self.addCommand(self.tb_hkey(name='simpleBakeToBase',
                                      annotation='',
                                      category=self.category, command=['BakeTools.simpleBake()'],
@@ -496,10 +496,10 @@ class BakeTools(toolAbstractFactory):
                 self.clearBlendAttrs(n)
 
     def addOverrideLayer(self):
-        return self.add_layer(mode=True)
+        return self.add_layer(override=True)
 
     def addAdditiveLayer(self):
-        return self.add_layer(mode=False)
+        return self.add_layer(override=False)
 
     def createLayer(self, override=False, suffixStr=None):
         if suffixStr is None:
@@ -521,11 +521,11 @@ class BakeTools(toolAbstractFactory):
         newAnimLayer.scaleAccumulationMode.set(0)
         return newAnimLayer
 
-    def add_layer(self, mode=False):
-        newAnimLayer = self.createLayer()
+    def add_layer(self, override=False):
+        newAnimLayer = self.createLayer(override=override)
         if not self.funcs.isTimelineHighlighted():
             return
-        if not mode:
+        if not override:
             return
 
         timeRange = self.funcs.getTimelineHighlightedRange()

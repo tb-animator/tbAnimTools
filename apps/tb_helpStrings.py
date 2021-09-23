@@ -20,6 +20,7 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
 quickMergeSelectionToNew = ['Fast bake currently selected objects to a new layer']
 quickMergeSelectionToBase = ['Fast bake currently selected objects to the base layer']
 simpleBakeToOverride = ['bake current selection to an override layer']
+simpleBakeToBase = ['bake current selection to the base layer']
 quickCreateAdditiveLayer = ['create a new additive layer, selection is', 'added to the layer']
 quickCreateOverrideLayer = ['create a new override layer, selection is', 'added to the layer']
 counterAnimLayer = ['creates an additive layer which will counter',
@@ -56,3 +57,8 @@ gravity = {'quickJump': ['Uses the highlighted time slider range to plot',
                                  'using the highlighted time slider range'],
            'jumpUsingInitialFrameVelocity': ['Plots a ballistic arc for the duration of the highlighted',
                                              'time slider range using the first frames velocity']}
+
+selectBestLayer = ['Selects the top most preferred layer if an object is selected',
+        'on repeat it will cycle down through available layers',
+        'Changing selection will reset the repeat state',
+        'If no object is selected, the topmost layer will be selected']

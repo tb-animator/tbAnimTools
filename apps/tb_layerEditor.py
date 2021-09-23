@@ -24,10 +24,10 @@
 '''
 import pymel.core as pm
 import maya.cmds as cmds
+from functools import partial
 
 from Abstract import *
 import maya.OpenMayaUI as omui
-
 
 
 qtVersion = pm.about(qtVersion=True)
@@ -51,16 +51,13 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('layers'))
         self.commandList = list()
-        '''
-        self.addCommand(self.tb_hkey(name='toggle_isolate_selection',
+
+        self.addCommand(self.tb_hkey(name='select_best_layer',
                                      annotation='',
                                      category=self.category,
-                                     command=['isolator.toggle_isolate()']))
-        self.addCommand(self.tb_hkey(name='addToIsolation',
-                                     annotation='',
-                                     category=self.category,
-                                     command=['isolator.addToIsolation()']))
-        '''
+                                     help=self.helpStrings.selectBestLayer,
+                                     command=['LayerEditor.selectBestLayer()']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -80,6 +77,10 @@ class LayerEditor(toolAbstractFactory):
 
     useCustomUIOption = 'tUseCustomLayerEditor'
     buttonSize = 18
+
+    selectBestLayerTimer = -1
+    selectBestLayerRepeat = False
+
     def __new__(cls):
         if LayerEditor.__instance is None:
             LayerEditor.__instance = object.__new__(cls)
@@ -366,6 +367,48 @@ class LayerEditor(toolAbstractFactory):
             return
         self.refreshHack()
         self.setLayerWeight(layers, 1.0)
+
+    def selectBestLayer(self, sel=None):
+        """
+        Selects the top most preferred layer if an object is selected
+        on repeat it will cycle down through available layers
+        Changing selection will reset the repeat state
+        If no object is selected, the topmost layer will be selected
+        :param sel:
+        :return:
+        """
+        resultLayer = None
+        allLayers = cmds.treeView('AnimLayerTabanimLayerEditor', query=True, children=True)
+        if not allLayers:
+            return
+        currentLayerSelection = [layer for layer in allLayers if cmds.animLayer(layer, query=True, selected=True)]
+        if len(currentLayerSelection) > 1:
+            selectedLayer = None
+        else:
+            if currentLayerSelection:
+                selectedLayer = currentLayerSelection[-1]
+        if sel is None:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            resultLayer = allLayers[-1]
+        if not resultLayer:
+            affectedLayers = cmds.animLayer(query=True, affectedLayers=True)
+            if affectedLayers:
+                index = 0
+                if selectedLayer in affectedLayers:
+                    if self.selectBestLayerRepeat or selectedLayer == affectedLayers[0]:
+                        index = (affectedLayers.index(selectedLayer) + 1) % (len(affectedLayers))
+
+                resultLayer = affectedLayers[index]
+        cmds.treeView('AnimLayerTabanimLayerEditor', edit=True, clearSelection=True)
+        cmds.animLayer(resultLayer, edit=True, preferred=True, selected=True)
+
+        if not self.selectBestLayerRepeat:
+            self.selectBestLayerRepeat = True
+            pm.scriptJob(runOnce=True, event=['SelectionChanged', partial(self.clearBestAnimSelection)])
+
+    def clearBestAnimSelection(self):
+        self.selectBestLayerRepeat = False
 
     def colourAnimLayers(self, *args):
         """

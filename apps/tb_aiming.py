@@ -135,6 +135,8 @@ class AimTools(toolAbstractFactory):
     mainAssetAttr = 'mainAsset'
     controlMessageAttr = 'aimedControl'
 
+    aimAtTempControlScriptJobs = list()
+
     def __new__(cls):
         if AimTools.__instance is None:
             AimTools.__instance = object.__new__(cls)
@@ -611,6 +613,16 @@ class AimTools(toolAbstractFactory):
     Hacky stuff for aim at locator
     """
 
+    def clearAimAtTempControlScriptJobs(self):
+        allJobs = cmds.scriptJob(listJobs=True)
+        allJobID = [int(i.split(':')[0]) for i in allJobs]
+        for j in self.aimAtTempControlScriptJobs:
+            if j in allJobID:
+                try:
+                    pm.scriptJob(kill=j)
+                except:
+                    pass
+
     def aimAtTempControl(self, *args):
         sel = pm.ls(selection=True)
 
@@ -618,17 +630,41 @@ class AimTools(toolAbstractFactory):
             return
 
         control = sel[0]
-        aimLocator = self.funcs.tempControl(name=sel[0], suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
+        cmds.undoInfo(openChunk=True, chunkName='aimAtTempControl', stateWithoutFlush=False)
+        tempControl = self.funcs.tempLocator(name=control, suffix='AimTempNode')
+        cmds.undoInfo(closeChunk=True, stateWithoutFlush=True)
+        pm.delete(pm.parentConstraint(control, tempControl))
+        cmds.MoveTool()
+        cmds.manipMoveContext('Move', edit=True, mode=0)
+        cmds.setToolTo(cmds.currentCtx())
+        cmds.ctxEditMode()
+
+        self.clearAimAtTempControlScriptJobs()
+        self.aimAtTempControlScriptJobs.append(cmds.scriptJob(runOnce=True,
+                                                              killWithScene=True,
+                                                              compressUndo=True,
+                                                              event=("SelectionChanged",
+                                                                     pm.Callback(self.bakeTempAim, control,
+                                                                                 tempControl))))
+        self.aimAtTempControlScriptJobs.append(cmds.scriptJob(runOnce=True,
+                                                              killWithScene=True,
+                                                              compressUndo=True,
+                                                              event=("ToolChanged",
+                                                                     pm.Callback(self.bakeTempAim, control,
+                                                                                 tempControl))))
+
+    def bakeTempAim(self, control, tempControl):
+
+        aimLocator = self.funcs.tempControl(name=control, suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
                                             drawType='orb')
 
-        pm.delete(pm.orientConstraint(control, aimLocator))
-        pm.delete(pm.pointConstraint(control, aimLocator))
-        cmds.MoveTool()
-        scriptJob = cmds.scriptJob(runOnce=True,
-                                   killWithScene=True,
-                                   event=("SelectionChanged", pm.Callback(self.bakeTempAim, control, aimLocator)))
+        pm.delete(pm.orientConstraint(tempControl, aimLocator))
+        pm.delete(pm.pointConstraint(tempControl, aimLocator))
 
-    def bakeTempAim(self, control, aimLocator):
+        cmds.undoInfo(openChunk=True, chunkName='aimAtTempControl', stateWithoutFlush=False)
+        pm.delete(tempControl)
+        cmds.undoInfo(closeChunk=True, stateWithoutFlush=True)
+
         tempConstraint = pm.parentConstraint(control, aimLocator, maintainOffset=True)
         keyTimes = self.funcs.get_object_key_times(str(control))
 
@@ -658,6 +694,9 @@ class AimTools(toolAbstractFactory):
                      includeHierarchyBelow=True,
                      force=True,
                      addNode=constraint)
+
+        self.clearAimAtTempControlScriptJobs()
+
         if pm.optionVar.get(self.aimTempMotionTrailOption, False):
             cmds.select(str(aimLocator), replace=True)
             mel.eval('createMotionTrail')
