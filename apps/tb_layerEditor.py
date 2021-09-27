@@ -378,14 +378,15 @@ class LayerEditor(toolAbstractFactory):
         :return:
         """
         resultLayer = None
+        selectedLayer = None
         allLayers = cmds.treeView('AnimLayerTabanimLayerEditor', query=True, children=True)
         if not allLayers:
             return
         currentLayerSelection = [layer for layer in allLayers if cmds.animLayer(layer, query=True, selected=True)]
-        if len(currentLayerSelection) > 1:
-            selectedLayer = None
-        else:
-            if currentLayerSelection:
+        if currentLayerSelection:
+            if len(currentLayerSelection) > 1:
+                selectedLayer = None
+            else:
                 selectedLayer = currentLayerSelection[-1]
         if sel is None:
             sel = cmds.ls(sl=True)
