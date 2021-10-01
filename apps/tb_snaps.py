@@ -26,6 +26,7 @@ import pymel.core as pm
 import maya.mel as mel
 import pymel.core.datatypes as dt
 from Abstract import *
+import maya.api.OpenMaya as om2
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -52,6 +53,12 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='restore_ctrl_transform', annotation='restore object transform',
                                      category=self.category, command=[
                 'SnapTools.restore_transform()']))
+        self.addCommand(self.tb_hkey(name='store_relative_transform', annotation='store relative transform',
+                                     category=self.category, command=[
+                'SnapTools.store_relative_transform()']))
+        self.addCommand(self.tb_hkey(name='restore_relative_transform', annotation='restore relative transform',
+                                     category=self.category, command=[
+                'SnapTools.restore_relative_transform()']))
         self.addCommand(self.tb_hkey(name='snap_objects', annotation='snap selection',
                                      category=self.category, command=[
                 'SnapTools.snap_selection()']))
@@ -79,9 +86,11 @@ class SnapTools(toolAbstractFactory):
     funcs = None
 
     transformTranslateDict = dict()
+    relativeTransformDict = dict()
     transformRotateDict = dict()
 
     selectionOrderOption = 'tbSnapSelectionOrder'
+    relativeSelectionOrderOption = 'tbRelativeSnapSelectionOrder'
 
     def __new__(cls):
         if SnapTools.__instance is None:
@@ -107,12 +116,22 @@ class SnapTools(toolAbstractFactory):
                                         'If unchecked, the second object will be moved to the first'
                                         ])
 
-        selectionOrderOptionWidget = optionVarBoolWidget('Reverse Snap Order',
+        selectionOrderOptionWidget = optionVarBoolWidget('Reverse Snap Selection Order',
                                                          self.selectionOrderOption)
+        relativeSnapOrderHeader = subHeader('Relative Snap Order')
+        relativeOrderInfo = infoLabel(['If checked, the first selected object will be the reference control',
+                                       'If unchecked, the last object will be reference control',
+                                       'The other controls in the selection will be cached/moved.'
+                                       ])
+        relativeOrderOptionWidget = optionVarBoolWidget('Reverse Relative Snap Selection Order',
+                                                        self.relativeSelectionOrderOption)
 
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(selectionOrderInfo)
         self.layout.addWidget(selectionOrderOptionWidget)
+        self.layout.addWidget(relativeSnapOrderHeader)
+        self.layout.addWidget(relativeOrderInfo)
+        self.layout.addWidget(relativeOrderOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -121,8 +140,6 @@ class SnapTools(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
-
-
 
     @staticmethod
     def minus(vector1, vector2):
@@ -180,6 +197,56 @@ class SnapTools(toolAbstractFactory):
             pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
             pm.xform(original, rotateOrder=node_ro, preserve=True)
 
+    def init_relative_transform_key(self, key):
+        print ('init_relative_transform_key', key)
+        self.relativeTransformDict[key] = self.relativeTransformDict.get(key, dict())
+
+    def store_relative_transform(self):
+        sel = cmds.ls(selection=True)
+        if len(sel) < 2:
+            return
+
+        state = pm.optionVar.get(self.relativeSelectionOrderOption, False)
+        parent = {True: sel[0], False: sel[-1]}[state]
+        targets = {True: sel[1:], False: sel[:-1]}[state]
+
+        self.init_relative_transform_key(parent)
+
+        parentMatrix = om2.MMatrix(self.get_world_matrix(parent))
+        for target in targets:
+            targetMatrix = om2.MMatrix(self.get_world_matrix(target))
+            self.relativeTransformDict[parent][target] = targetMatrix * parentMatrix.inverse()
+        print (self.relativeTransformDict[parent])
+
+    def restore_relative_transform(self):
+        sel = cmds.ls(selection=True)
+        # TODO - make it restore on single selection using last used reference
+        if len(sel) < 2:
+            return
+
+        state = pm.optionVar.get(self.relativeSelectionOrderOption, False)
+        parent = {True: sel[0], False: sel[-1]}[state]
+        targets = {True: sel[1:], False: sel[:-1]}[state]
+
+        self.init_relative_transform_key(parent)
+
+        startTime = cmds.currentTime(query=True)
+        endTime = cmds.currentTime(query=True)
+        if self.funcs.isTimelineHighlighted():
+            startTime, endTime = self.funcs.getTimelineHighlightedRange()
+
+        for x in range(int(startTime), int(endTime) + 1):
+            print (x)
+            if int(cmds.currentTime(query=True)) != x:
+                cmds.currentTime(x)
+
+            parentMatrix = om2.MMatrix(self.get_world_matrix(parent))
+            for target in targets:
+                targetMatrix = self.relativeTransformDict[parent].get(target, None)
+                if not targetMatrix:
+                    continue
+                self.set_world_matrix(target, targetMatrix * parentMatrix)
+
     def store_transform(self):
         sel = cmds.ls(selection=True)
         if not sel:
@@ -200,7 +267,7 @@ class SnapTools(toolAbstractFactory):
             return
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
-            for x in xrange(int(startTime), int(endTime)):
+            for x in range(int(startTime), int(endTime)):
                 cmds.currentTime(x)
                 self.restoreTansformToSelection(sel)
         else:
@@ -248,4 +315,12 @@ class SnapTools(toolAbstractFactory):
         # set the absolute world rotation
         pm.xform(node, absolute=True, worldSpace=True, rotation=rotation)
 
+    @staticmethod
+    def get_world_matrix(node):
+        #
+        return pm.xform(node, query=True, absolute=True, worldSpace=True, matrix=True)
 
+    @staticmethod
+    def set_world_matrix(node, matrix):
+        #
+        pm.xform(node, absolute=True, worldSpace=True, matrix=matrix)

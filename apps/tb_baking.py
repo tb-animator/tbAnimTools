@@ -612,9 +612,15 @@ class BakeTools(toolAbstractFactory):
         self.removeContainersPostBake(preContainers)
 
         for v in allAttrs:
+            if not cmds.getAttr(v, keyable=True):
+                continue  # skip locked attributes
             layerValues = []
             baseplug, layerplug = self.funcs.getLowerLayerPlugs(v, resultLayer)
             animRange = int(keyRange[-1] - keyRange[0] + 1)
+            if not baseplug:
+                continue
+            if not layerplug:
+                continue
             for x in range(0, animRange):
                 baseVal = cmds.getAttr(baseplug, time=keyRange[0] + x)
                 layerVal = cmds.getAttr(layerplug, time=keyRange[0] + x)
