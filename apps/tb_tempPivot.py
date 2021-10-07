@@ -105,7 +105,7 @@ class TempPivot(toolAbstractFactory):
                                          defaultValue=1.0,
                                          label='Temp Parent Control size',
                                          minimum=0.1, maximum=100, step=0.1)
-        crossSizeWidget.changedSignal.connect(self.updatePreview)
+        crossSizeWidget.changedSignal.connect(partial(self.updatePreview, optionVar=self.tempControlSizeOption))
         self.layout.addWidget(crossSizeWidget)
         self.layout.addStretch()
         return self.optionWidget
@@ -134,19 +134,6 @@ class TempPivot(toolAbstractFactory):
         cmds.menuItem(label='Delete all temp pivots', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
-    def updatePreview(self, scale):
-        if not cmds.objExists('temp_Preview'):
-            self.drawPreview()
-
-        cmds.setAttr('temp_Preview.scaleX', scale)
-        cmds.setAttr('temp_Preview.scaleY', scale)
-        cmds.setAttr('temp_Preview.scaleZ', scale)
-
-    def drawPreview(self):
-        self.funcs.tempControl(name='temp',
-                               suffix='Preview',
-                               scale=pm.optionVar.get(self.tempControlSizeOption, 1),
-                               drawType='orb')
 
     def bakeSelectedCommand(self, asset, sel):
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]

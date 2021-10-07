@@ -29,6 +29,7 @@ import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
 import pymel.core.datatypes as dt
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -115,6 +116,8 @@ crossPointList = [[-25, 0, 0],
                   [0, -25, 0]]
 
 acceptedConstraintTypes = ['pairBlend', 'constraint']
+
+
 class functions(object):
     """
     Huge list of functions that scripts 'should' get built from
@@ -178,11 +181,12 @@ class functions(object):
         return loc
 
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb'):
+        print ('scale', scale)
         drawFunction = {
             'orb': self.drawOrb,
             'cross': self.drawCross,
         }
-        control, shape = drawFunction.get(drawType)(scale=scale)
+        control, shape = drawFunction.get(drawType)(scale=float(scale))
         control.rename(name + '_' + suffix)
 
         control.rotateOrder.set(3)
@@ -656,6 +660,17 @@ class functions(object):
         return [attr.lower()[-1] for attr in ['scaleX', 'scaleY', 'scaleZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
 
+    def safeParentConstraint(self, drivers, target, orientOnly=False, maintainOffset=False):
+        skipT = self.getAvailableTranslates(target)
+        skipR = self.getAvailableRotates(target)
+        constraint = pm.parentConstraint(drivers, target,
+                                         skipTranslate={True: ('x', 'y', 'z'),
+                                                        False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
+                                         skipRotate=[x.split('rotate')[-1] for x in skipR],
+                                         maintainOffset=maintainOffset)
+        return constraint
+
+
     # this disables the default maya inview messages (which are pointless after a while)
     def disable_messages(self):
         pm.optionVar(intValue=(self.messageOptionVar_name, 0))
@@ -1061,10 +1076,10 @@ class functions(object):
             return False
         return self.isObjectMoving(parent[0])
 
-
     """
     UI gubbinz
     """
+
     @staticmethod
     def findUI(name):
         allUI = cmds.lsUI(controls=True)
@@ -1089,4 +1104,3 @@ class functions(object):
         cmds.formLayout(form, e=True, attachNone=(newButton, 'left'))
         cmds.formLayout(form, e=True, attachNone=(newButton, 'bottom'))
         cmds.formLayout(form, e=True, attachControl=(newButton, 'right', 1, form + '|' + uiElement))
-

@@ -5,7 +5,7 @@ import os
 import pymel.core as pm
 import maya.mel as mel
 import json
-
+import textwrap
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -58,7 +58,7 @@ class hotKeyAbstractFactory(ABC):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
     class tb_hkey(object):
-        def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""], help=[""]):
+        def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""], help=str()):
             self.name = name
             self.annotation = annotation
             self.category = category
@@ -90,8 +90,8 @@ class hotKeyAbstractFactory(ABC):
             cmd += "\n\n"
             cmd += '"""About ----------------------------------------------\n'
             if help:
-                for lines in help:
-                    cmd += lines + "\n"
+                cmd += textwrap.fill(help, 80)
+                cmd += "\n\n"
             cmd += '----------------------------------------------------"""'
             return cmd
 
@@ -109,6 +109,7 @@ class toolAbstractFactory(ABC):
     classData = dict()
     rawJsonData = None
     assetCommandName ='blankCommandName'
+    assetTitleLabel = 'Empty'
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
@@ -170,8 +171,30 @@ class toolAbstractFactory(ABC):
             self.saveData()
         self.rawJsonData = json.load(open(self.dataFile))
 
-    def createAsset(self, name, imageName=None):
-        asset = cmds.container(name=name,
+    def updatePreview(self, scale=1, optionVar=str(), drawType='orb'):
+        if not cmds.objExists('temp_Preview'):
+            self.drawPreview(optionVar=optionVar, drawType=drawType)
+
+        cmds.setAttr('temp_Preview.scaleX', scale)
+        cmds.setAttr('temp_Preview.scaleY', scale)
+        cmds.setAttr('temp_Preview.scaleZ', scale)
+
+    def drawPreview(self, optionVar=str(), drawType='orb'):
+        self.funcs.tempControl(name='temp',
+                               suffix='Preview',
+                               scale=pm.optionVar.get(optionVar, 1),
+                               drawType=drawType)
+
+    def createAsset(self, name, imageName=None, transform=False):
+        if transform:
+            asset = cmds.container(name=name,
+                                   includeHierarchyBelow=False,
+                                   includeTransform=True,
+                                   type='dagContainer',
+                                   )
+
+        else:
+            asset = cmds.container(name=name,
                                includeHierarchyBelow=False,
                                includeTransform=True,
                                )
@@ -202,3 +225,39 @@ class toolAbstractFactory(ABC):
 
     def qtMarkingMenu(self, inputNodes):
         return list()
+
+    def assetRmbCommand(self):
+        panel = cmds.getPanel(underPointer=True)
+        parentMMenu = panel + 'ObjectPop'
+        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
+        sel = pm.ls(sl=True)
+        asset = pm.container(query=True, findContainer=sel[0])
+
+        cmds.menuItem(label=self.assetTitleLabel, enable=False, boldFont=True, image='container.svg')
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Bake selected temp pivots to layer',
+                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp pivots to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
+        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete all temp pivots', command=pm.Callback(self.deleteControlsCommand, asset, sel))
+        cmds.menuItem(divider=True)
+
+    def bakeSelectedCommand(self, asset, sel):
+        targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        bakeRange = self.funcs.getBakeRange(filteredTargets)
+        self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
+                                                   deleteConstraints=True)
+        pm.delete(filteredTargets)
+
+    def bakeAllCommand(self, asset, sel):
+        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        bakeRange = self.funcs.getBakeRange(filteredTargets)
+        self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
+                                                   deleteConstraints=True)
+        pm.delete(asset)
+
+    def deleteControlsCommand(self, asset, sel):
+        pm.delete(asset)
