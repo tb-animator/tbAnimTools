@@ -24,7 +24,9 @@
 '''
 import pymel.core as pm
 import maya.mel as mel
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 import pymel.core.datatypes as dt
 from Abstract import *
 import maya.api.OpenMaya as om2
@@ -49,24 +51,36 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='store_ctrl_transform', annotation='store object transform',
+                                     help=maya.stringTable['SnapTools.store_ctrl_transform'],
                                      category=self.category, command=[
                 'SnapTools.store_transform()']))
         self.addCommand(self.tb_hkey(name='restore_ctrl_transform', annotation='restore object transform',
+                                     help=maya.stringTable['SnapTools.restore_ctrl_transform'],
                                      category=self.category, command=[
                 'SnapTools.restore_transform()']))
         self.addCommand(self.tb_hkey(name='store_relative_transform', annotation='store relative transform',
+                                     help=maya.stringTable['SnapTools.store_relative_transform'],
                                      category=self.category, command=[
                 'SnapTools.store_relative_transform()']))
         self.addCommand(self.tb_hkey(name='restore_relative_transform', annotation='restore relative transform',
+                                     help=maya.stringTable['SnapTools.restore_relative_transform'],
                                      category=self.category, command=[
-                'SnapTools.restore_relative_transform()']))
+                'SnapTools.restore_relative_transform_for_target()']))
+        self.addCommand(
+            self.tb_hkey(name='restore_relative_transform_last_used', annotation='restore relative transform',
+                         help=maya.stringTable['SnapTools.restore_relative_transform_last_used'],
+                         category=self.category, command=[
+                    'SnapTools.restore_relative_transform_for_last_used_target()']))
         self.addCommand(self.tb_hkey(name='snap_objects', annotation='snap selection',
+                                     help=maya.stringTable['SnapTools.snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.snap_selection()']))
         self.addCommand(self.tb_hkey(name='point_snap_objects', annotation='point snap selection',
+                                     help=maya.stringTable['SnapTools.point_snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.point_snap_selection()']))
         self.addCommand(self.tb_hkey(name='orient_snap_objects', annotation='orient snap selection',
+                                     help=maya.stringTable['SnapTools.orient_snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.orient_snap_selection()']))
 
@@ -88,10 +102,13 @@ class SnapTools(toolAbstractFactory):
 
     transformTranslateDict = dict()
     relativeTransformDict = dict()
+    relativeTransformLastParent = str()
+    relativeTransformLastControls = list()
     transformRotateDict = dict()
 
     selectionOrderOption = 'tbSnapSelectionOrder'
     relativeSelectionOrderOption = 'tbRelativeSnapSelectionOrder'
+    relativeSelectionConstraintOption = 'tbRelativeSnapConstraintMethod'
 
     def __new__(cls):
         if SnapTools.__instance is None:
@@ -113,19 +130,17 @@ class SnapTools(toolAbstractFactory):
         super(SnapTools, self).optionUI()
 
         snapOrderHeader = subHeader('Snap Order')
-        selectionOrderInfo = infoLabel(['If checked, the first selected object will be moved to the second',
-                                        'If unchecked, the second object will be moved to the first'
-                                        ])
+        selectionOrderInfo = infoLabel([maya.stringTable['SnapTools.selectionOrderInfo']])
 
-        selectionOrderOptionWidget = optionVarBoolWidget('Reverse Snap Selection Order',
+        selectionOrderOptionWidget = optionVarBoolWidget(maya.stringTable['SnapTools.selectionOrderOption'],
                                                          self.selectionOrderOption)
-        relativeSnapOrderHeader = subHeader('Relative Snap Order')
-        relativeOrderInfo = infoLabel(['If checked, the first selected object will be the reference control',
-                                       'If unchecked, the last object will be reference control',
-                                       'The other controls in the selection will be cached/moved.'
-                                       ])
-        relativeOrderOptionWidget = optionVarBoolWidget('Reverse Relative Snap Selection Order',
+        relativeSnapOrderHeader = subHeader(maya.stringTable['SnapTools.relativeSnapOrderHeader'])
+        relativeOrderInfo = infoLabel([maya.stringTable['SnapTools.relativeOrderInfo']])
+        relativeOrderOptionWidget = optionVarBoolWidget(maya.stringTable['SnapTools.relativeOrderOptionWidget'],
                                                         self.relativeSelectionOrderOption)
+        relativeSelectionConstraintOptionWidget = optionVarBoolWidget(
+            maya.stringTable['SnapTools.relativeSelectionConstraintOptionWidget'],
+            self.relativeSelectionConstraintOption)
 
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(selectionOrderInfo)
@@ -133,6 +148,7 @@ class SnapTools(toolAbstractFactory):
         self.layout.addWidget(relativeSnapOrderHeader)
         self.layout.addWidget(relativeOrderInfo)
         self.layout.addWidget(relativeOrderOptionWidget)
+        self.layout.addWidget(relativeSelectionConstraintOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -199,7 +215,6 @@ class SnapTools(toolAbstractFactory):
             pm.xform(original, rotateOrder=node_ro, preserve=True)
 
     def init_relative_transform_key(self, key):
-        print ('init_relative_transform_key', key)
         self.relativeTransformDict[key] = self.relativeTransformDict.get(key, dict())
 
     def store_relative_transform(self):
@@ -217,9 +232,10 @@ class SnapTools(toolAbstractFactory):
         for target in targets:
             targetMatrix = om2.MMatrix(self.get_world_matrix(target))
             self.relativeTransformDict[parent][target] = targetMatrix * parentMatrix.inverse()
-        print (self.relativeTransformDict[parent])
+        self.relativeTransformLastParent = parent
+        self.relativeTransformLastControls = targets
 
-    def restore_relative_transform(self):
+    def restore_relative_transform_for_target(self):
         sel = cmds.ls(selection=True)
         # TODO - make it restore on single selection using last used reference
         if len(sel) < 2:
@@ -228,7 +244,25 @@ class SnapTools(toolAbstractFactory):
         state = pm.optionVar.get(self.relativeSelectionOrderOption, False)
         parent = {True: sel[0], False: sel[-1]}[state]
         targets = {True: sel[1:], False: sel[:-1]}[state]
+        with self.funcs.keepSelection():
+            self.restore_relative_transform(parent, targets)
 
+    def restore_relative_transform_for_last_used_target(self):
+        sel = cmds.ls(selection=True)
+        # TODO - make it restore on single selection using last used reference
+        if len(sel) == 1:
+            if str(sel[0]) == self.relativeTransformLastParent:
+                sel = self.relativeTransformLastControls
+        if not sel:
+            sel = self.relativeTransformLastControls
+        if not sel:
+            return  # TODO - make this use all the last stored controls
+
+        parent = self.relativeTransformLastParent
+        with self.funcs.keepSelection():
+            self.restore_relative_transform(parent, sel)
+
+    def restore_relative_transform(self, parent, targets):
         self.init_relative_transform_key(parent)
 
         startTime = cmds.currentTime(query=True)
@@ -236,17 +270,26 @@ class SnapTools(toolAbstractFactory):
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
 
+        constrain = pm.optionVar.get(self.relativeSelectionConstraintOption, False)
         for x in range(int(startTime), int(endTime) + 1):
-            print (x)
             if int(cmds.currentTime(query=True)) != x:
                 cmds.currentTime(x)
-
+            tempNodes = list()
+            tempConstraints = list()
             parentMatrix = om2.MMatrix(self.get_world_matrix(parent))
             for target in targets:
                 targetMatrix = self.relativeTransformDict[parent].get(target, None)
                 if not targetMatrix:
                     continue
-                self.set_world_matrix(target, targetMatrix * parentMatrix)
+                if constrain:
+                    tempNode, tempConstraint = self.set_transform(target, targetMatrix * parentMatrix)
+                    tempNodes.append(tempNode)
+                    tempConstraints.append(tempConstraint)
+                else:
+                    self.set_world_matrix(target, targetMatrix * parentMatrix)
+            if constrain:
+                pm.setKeyframe(targets)
+                pm.delete(tempNodes)
 
     def store_transform(self):
         sel = cmds.ls(selection=True)
@@ -325,3 +368,15 @@ class SnapTools(toolAbstractFactory):
     def set_world_matrix(node, matrix):
         #
         pm.xform(node, absolute=True, worldSpace=True, matrix=matrix)
+
+    def set_transform(self, node, matrix):
+        """
+        use a temp node and a constraint
+        :param node:
+        :param matrix:
+        :return:
+        """
+        n = cmds.createNode('transform')
+        self.set_world_matrix(n, matrix)
+        constraint = self.funcs.safeParentConstraint(n, node)
+        return n, constraint
