@@ -134,6 +134,12 @@ class toolAbstractFactory(ABC):
         self.layout = self.optionWidget.layout
         return self.optionWidget
 
+    def hotkeyUI(self):
+        toolUIName = re.sub("([a-z])([A-Z])", "\g<1> \g<2>", self.toolName)
+        self.hotkeyWidget = optionWidget(label=toolUIName)
+        self.layout = self.hotkeyWidget.layout
+        return self.hotkeyWidget
+
     @abc.abstractmethod
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

@@ -33,6 +33,10 @@ import json
 from Abstract import *
 from tb_UI import *
 
+defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
+
+saveOnUpdateOption = 'tbPickwalkSaveOnUpdate'
+
 getStylesheet = getqss.getStyleSheet()
 
 ToolTip_ctrlClickSelect = 'ctrl + click to select control in scene'
@@ -100,7 +104,7 @@ class WalkData(object):
         """
         # print filePath
         self._filePath = filePath
-        self.name = filePath.split('/')[-1].split('.')[0]
+        self.setName(filePath)
         self.toJson()
         fileName = os.path.join(filePath)
         jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
@@ -108,6 +112,11 @@ class WalkData(object):
 
         jsonFile.write(jsonString)
         jsonFile.close()
+
+    def setName(self, filePath):
+        name = filePath.split('/')[-1].split('.')[0]
+        name = name.split('\\')[-1]
+        self.name = name
 
     def setLastUsedIndex(self, node):
         # print ('setLastUsedIndex', node)
@@ -514,6 +523,9 @@ class PickwalkCreator(object):
                                            destination=dValue)
 
         self.walkData._filePath = walkDataFile
+        self.walkData.setName(walkDataFile)
+        print ('_filePath', self.walkData._filePath)
+        print ('NAME', self.walkData.name)
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -618,7 +630,8 @@ class Pickwalk(toolAbstractFactory):
     hotkeyClass = None
     funcs = None
 
-    defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
+    saveOnUpdateOption = saveOnUpdateOption
+    defaultToStandardAtDeadEndOption = defaultToStandardAtDeadEndOption
 
     transformTranslateDict = dict()
     transformRotateDict = dict()
@@ -723,6 +736,10 @@ class Pickwalk(toolAbstractFactory):
         openCreator.clicked.connect(self.openCreator)
         self.layout.addWidget(openCreator)
 
+        endOptionWidget = optionVarBoolWidget('Default to standard walk on empty custom map ',
+                                              self.defaultToStandardAtDeadEndOption)
+        self.layout.addWidget(endOptionWidget)
+
         layout = QHBoxLayout()
         arrowLabel = QLabel('Arrow keys for pickwalking')
         assignArrowHotkeys = QPushButton('Assign arrow keys')
@@ -771,9 +788,7 @@ class Pickwalk(toolAbstractFactory):
         layout.addWidget(revertArrowLabel)
         self.layout.addLayout(layout)
 
-        endOptionWidget = optionVarBoolWidget('Default to standard walk on empty custom map ',
-                                              self.defaultToStandardAtDeadEndOption)
-        self.layout.addWidget(endOptionWidget)
+
         self.layout.addStretch()
         return self.optionWidget
 
@@ -781,8 +796,10 @@ class Pickwalk(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Pickwalk Creator', image='walk.png', command='tbOpenPickwalkCreator', sourceType='mel', parent=parentMenu)
-        pm.menuItem(label='Pickwalk Library', image='QR_settings.png', command='tbOpenPickwalkLibrary', sourceType='mel', parent=parentMenu)
+        pm.menuItem(label='Pickwalk Creator', image='walk.png', command='tbOpenPickwalkCreator', sourceType='mel',
+                    parent=parentMenu)
+        pm.menuItem(label='Pickwalk Library', image='QR_settings.png', command='tbOpenPickwalkLibrary',
+                    sourceType='mel', parent=parentMenu)
 
     def openLibrary(self):
         win = pickwalkRigAssignemtWindow()
@@ -833,7 +850,7 @@ class Pickwalk(toolAbstractFactory):
 
         if not os.path.isfile(self.libraryFilePath):
             self.walkDataLibrary = WalkDataLibrary()
-            self.walkDataLibrary.save(self.libraryFilePath)
+            self.savePickwalkLibraryMap()
         else:
             self.walkDataLibrary = WalkDataLibrary()
             self.walkDataLibrary.load(self.libraryFilePath)
@@ -857,7 +874,7 @@ class Pickwalk(toolAbstractFactory):
 
         statinfo = os.access(self.libraryFilePath, os.W_OK)
         if statinfo:
-            self.walkDataLibrary.save(self.libraryFilePath)
+            self.savePickwalkLibraryMap()
         # print self.walkDataLibrary.__dict__
 
     def initialiseWalkData(self):
@@ -914,10 +931,10 @@ class Pickwalk(toolAbstractFactory):
                 self.pickwalkCreator.setControlDestination(sel[0],
                                                            direction=direction,
                                                            destination=sel[1])
-                if direction == 'left' or direction == 'right':
+                if direction != 'up':
                     # if left or right, create the reverse
                     self.pickwalkCreator.setControlDestination(sel[1],
-                                                               direction=self.pickwalkCreator.directionsDict[direction],
+                                                               direction=self.pickwalkCreator.reciprocalDirectionsDict[direction],
                                                                destination=sel[0])
             elif len(sel) > 2:
                 # add all objects in a chain
@@ -938,12 +955,8 @@ class Pickwalk(toolAbstractFactory):
                 elif direction == 'up':
                     # print(sel[1:], 'up to', sel[0])
                     self.pickwalkCreator.quickUpFromMulti()
-
         self.saveLibrary()
-        self.loadLibraryForCurrent()
-        self.loadWalkLibrary()
-        self.getAllPickwalkMaps()
-        self.initialiseWalkData()
+        self.forceReloadData()
         return
 
     def pickwalk(self, direction=str, add=False):
@@ -1077,6 +1090,9 @@ class Pickwalk(toolAbstractFactory):
                                                    direction=direction,
                                                    destination=destination[0])
         self.saveLibrary()
+        self.forceReloadData()
+
+    def forceReloadData(self):
         self.loadLibraryForCurrent()
         self.loadWalkLibrary()
         self.getAllPickwalkMaps()
@@ -1144,12 +1160,15 @@ class Pickwalk(toolAbstractFactory):
 
     def assignRig(self, rigMap, rigName):
         self.walkDataLibrary.assignRig(rigMap, rigName)
-        self.walkDataLibrary.save(self.libraryFilePath)
+        self.savePickwalkLibraryMap()
         self.getAllPickwalkMaps()
+
+    def savePickwalkLibraryMap(self):
+        self.walkDataLibrary.save(self.libraryFilePath)
 
     def assignIgnoreNewRig(self, rigName):
         self.walkDataLibrary.ignoreRig(rigName)
-        self.walkDataLibrary.save(self.libraryFilePath)
+        self.savePickwalkLibraryMap()
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
@@ -1161,7 +1180,7 @@ class Pickwalk(toolAbstractFactory):
         newMap = win.saveAsLibrary()
         # print('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
-        self.walkDataLibrary.save(self.libraryFilePath)
+        self.savePickwalkLibraryMap()
         self.getAllPickwalkMaps()
         win.loadLibraryForCurrent()
 
@@ -1211,6 +1230,7 @@ class Pickwalk(toolAbstractFactory):
 
     def saveLibrary(self):
         if not self.pickwalkCreator.walkData._filePath:
+            print ('no current file path')
             self.saveAsLibrary()
             return
         self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
@@ -1233,6 +1253,9 @@ class Pickwalk(toolAbstractFactory):
 
         return os.path.basename(save_filename[0])
 
+    def getCurrentLibraryName(self):
+        return self.pickwalkCreator.walkData.name
+
     def overwriteQuery(self):
         msg = QMessageBox()
         msg.setStyleSheet(getqss.getStyleSheet())
@@ -1252,6 +1275,7 @@ class WalkDataLibrary(object):
         self._walkData = dict()
 
     def toJson(self):
+        print ('toJson', self.rigMapDict)
         jsonData = '''{}'''
         self.jsonObjectInfo = json.loads(jsonData)
         self.jsonObjectInfo['rigMapDict'] = {key: value for key, value in self.rigMapDict.items()}
@@ -1263,9 +1287,8 @@ class WalkDataLibrary(object):
                 values.remove(rigName)
         if rigName in self.ignoredRigs:
             self.ignoredRigs.remove(rigName)
-        # print (self.rigMapDict)
         self.rigMapDict[mapName].append(rigName)
-        # print (self.rigMapDict)
+        print ('assignRig', self.rigMapDict)
 
     def ignoreRig(self, rigName):
         for key, values in self.rigMapDict.items():
@@ -1278,13 +1301,14 @@ class WalkDataLibrary(object):
         """
         :return:
         """
+        print ('filePath', filePath)
         self.name = filePath.split('/')[-1].split('.')[0]
         self.toJson()
 
         fileName = os.path.join(filePath)
         jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
         jsonFile = open(fileName, 'w')
-
+        print ('jsonString',jsonString)
         jsonFile.write(jsonString)
         jsonFile.close()
 
@@ -1540,7 +1564,7 @@ class lockButton(QPushButton):
 
 
 class pickObjectWidget(QWidget):
-    setActiveObjectSignal = Signal(str)
+    setActiveObjectSignal = Signal()
     modeChangedSignal = Signal(bool)
     lockChangedSignal = Signal(bool)
 
@@ -1551,7 +1575,7 @@ class pickObjectWidget(QWidget):
 
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
-        self.pickBtn = lockButton(icon=lockedIcon, icon2=unlockedIcon)
+        self.pickBtn = QPushButton('Pick Current')
 
         self.ObjLabel = QLabel('Object ::')
         self.ObjLabel.setFixedWidth(btnWidth)
@@ -1563,11 +1587,11 @@ class pickObjectWidget(QWidget):
         self.mainLayout.addWidget(self.pickBtn)
         # self.mainLayout.addWidget(self.modeBtn)
 
-        self.pickBtn.pressedSignal.connect(self.pickButtonPress)
+        self.pickBtn.clicked.connect(self.pickButtonPress)
 
     @Slot()
-    def pickButtonPress(self, data):
-        self.setActiveObjectSignal.emit(data)
+    def pickButtonPress(self):
+        self.setActiveObjectSignal.emit()
 
     @Slot()
     def sendModeChangedSignal(self):
@@ -1731,14 +1755,12 @@ class pickDirectionWidget(QFrame):
                                            self.rightBtn.lineEdit.text()
                                            )
 
-    def displayCurrentData(self, data):
-        sel = pm.ls(selection=True, type='transform')
-        # print ('sel', sel)
-        if not sel:
+    def displayCurrentData(self, data, activeObject):
+        if not activeObject:
             self.clear()
             return
-        self.objectWidget.currentObjLabel.setText(sel[0].stripNamespace())
-        walkData = data.objectDict.get(sel[0].stripNamespace(), str())
+        self.objectWidget.currentObjLabel.setText(activeObject)
+        walkData = data.objectDict.get(activeObject, str())
         if walkData:
             if walkData.up:
                 self.setWidgetText(self.upBtn.lineEdit, walkData.up)
@@ -3412,7 +3434,6 @@ class pickwalkMainWindow(QMainWindow):
             os.mkdir(self.defaultDir)
 
         self.pickwalkCreator = PickwalkCreator()
-        self.pickwalkCreator = PickwalkCreator()
         self.resize(948, self.height())
         # Main Widgets
         # setup stylesheet
@@ -3447,46 +3468,59 @@ class pickwalkMainWindow(QMainWindow):
         main_widget.setLayout(self.superLayout)
 
         menu = self.menuBar()
-        edit_menu = menu.addMenu('&File')
+        file_menu = menu.addMenu('&File')
+        option_menu = menu.addMenu('&Options')
         view_menu = menu.addMenu('&View')
 
         add_action = QAction('Add new library', self)
         add_action.setShortcut('Ctrl+N')
-        edit_menu.addAction(add_action)
+        file_menu.addAction(add_action)
         add_action.triggered.connect(self.newLibrary)
 
         load_action = QAction('Load (replace)', self)
         load_action.setShortcut('Ctrl+O')
-        edit_menu.addAction(load_action)
+        file_menu.addAction(load_action)
         load_action.triggered.connect(self.loadLibrary)
 
         load_action = QAction('Load map for current rig', self)
         load_action.setShortcut('Ctrl+C')
-        edit_menu.addAction(load_action)
+        file_menu.addAction(load_action)
         load_action.triggered.connect(self.loadLibraryForCurrent)
 
         merge_action = QAction('load (merge)', self)
         merge_action.setShortcut('Ctrl+M')
-        edit_menu.addAction(merge_action)
+        file_menu.addAction(merge_action)
         merge_action.triggered.connect(self.appendLibrary)
 
         mergeSelected_action = QAction('load to selected', self)
-        edit_menu.addAction(mergeSelected_action)
+        file_menu.addAction(mergeSelected_action)
         mergeSelected_action.triggered.connect(self.loadLibraryToSelection)
 
         save_action = QAction('Save', self)
         save_action.setShortcut('Ctrl+S')
-        edit_menu.addAction(save_action)
+        file_menu.addAction(save_action)
         save_action.triggered.connect(self.saveLibrary)
 
         saveAs_action = QAction('Save AS', self)
         saveAs_action.setShortcut('Ctrl+Shift+S')
-        edit_menu.addAction(saveAs_action)
+        file_menu.addAction(saveAs_action)
         saveAs_action.triggered.connect(self.saveAsLibrary)
+
+        assign_action = QAction('Assign to selected rig', self)
+        file_menu.addAction(assign_action)
+        assign_action.triggered.connect(self.assignToSelectedRig)
 
         open_action = QAction('Open pickwalk data location', self)
         open_action.triggered.connect(self.openDataFolder)
-        edit_menu.addAction(open_action)
+        file_menu.addAction(open_action)
+
+
+        self.saveOnEdit_action = QAction('Save On Edit', self)
+        self.saveOnEdit_action.setCheckable(True)
+        self.saveOnEdit_action.triggered.connect(self.toggleSaveOnEdit)
+        option_menu.addAction(self.saveOnEdit_action)
+
+
 
         '''
         nodeGrapherModeSimple.svg
@@ -3562,6 +3596,7 @@ class pickwalkMainWindow(QMainWindow):
         # self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
 
         self.setSimpleMode()
+        self.loadLibraryForCurrent()
 
     def closeEvent(self, event):
         msg = QMessageBox()
@@ -3609,6 +3644,15 @@ class pickwalkMainWindow(QMainWindow):
         fname = None
         sel = cmds.ls(sl=True)
 
+        refName = self.getReferenceName(sel)
+        pickwalk = Pickwalk()
+        if refName in pickwalk.walkDataLibrary._fileToMapDict.keys():
+            mapName = pickwalk.walkDataLibrary._fileToMapDict[refName]
+            fname = os.path.join(pickwalk.defaultPickwalkDir, mapName + '.json')
+        return fname
+
+    def getReferenceName(self, sel):
+        refName = None
         if sel:
             refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
             if refState:
@@ -3619,11 +3663,7 @@ class pickwalkMainWindow(QMainWindow):
                 refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         else:
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
-
-        if refName in Pickwalk().walkDataLibrary._fileToMapDict.keys():
-            mapName = Pickwalk().walkDataLibrary._fileToMapDict[refName]
-            fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName + '.json')
-        return fname
+        return refName
 
     def loadLibraryForCurrent(self):
         # TODO - implement this to look at the main walk library and open the
@@ -3672,13 +3712,36 @@ class pickwalkMainWindow(QMainWindow):
         self.refreshUI()
 
     def saveLibrary(self):
-        Pickwalk().saveLibrary()
+        if not self.pickwalkCreator.walkData._filePath:
+            self.saveAsLibrary()
+        else:
+            self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
+        Pickwalk()
         self.refreshUI()
 
     def saveAsLibrary(self):
         save_filename = Pickwalk().saveAsLibrary()
         self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename)
         return os.path.basename(save_filename)
+
+    def assignToSelectedRig(self):
+        pickwalk = Pickwalk()
+        if not self.pickwalkCreator.walkData.name:
+            return cmds.warning('No current map')
+        sel = cmds.ls(sl=True)
+
+        fname = self.getReferenceName(sel)
+
+        if not fname:
+            fname = self.browseToFile()
+        if not fname:
+            return None
+        baseName = os.path.basename(fname)
+
+        pickwalk.walkDataLibrary.assignRig(self.pickwalkCreator.walkData.name, baseName.split('.')[0])
+        pickwalk.savePickwalkLibraryMap()
+        pickwalk.loadWalkLibrary()
+        pickwalk.forceReloadData()
 
     def overwriteQuery(self):
         msg = QMessageBox()
@@ -3693,7 +3756,7 @@ class pickwalkMainWindow(QMainWindow):
     def refreshUI(self):
         self.controlListWidget.CLS = self.pickwalkCreator
         self.destinationListWidget.CLS = self.pickwalkCreator
-        self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData)
+        self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData, self.activeObject)
         self.updateTreeView()
 
     def keyPressEvent(self, event):
@@ -3707,6 +3770,7 @@ class pickwalkMainWindow(QMainWindow):
             return
         for s in sel:
             self.pickwalkCreator.replaceDestination(original=s.split(':')[-1], new=item)
+        self.saveOnUpdate()
 
     def inputSignal_selectConditionalDestination(self, item):
         self.currentDestination = item
@@ -3725,6 +3789,7 @@ class pickwalkMainWindow(QMainWindow):
                                                    direction=item.direction,
                                                    destination=destinationItem.text())
         item.setText(destinationItem.text())
+        self.saveOnUpdate()
 
     def inputSignal_dirFromControlTreeView(self, control, direction, destination):
         # print 'inputSignal_newDestinationFromControlTreeView', control, direction, destination
@@ -3742,6 +3807,7 @@ class pickwalkMainWindow(QMainWindow):
             self.pickwalkCreator.setControlDestination(control,
                                                        direction=direction,
                                                        destination=destination[0].split(':')[-1])
+        self.saveOnUpdate()
 
     def setLockState(self, bool):
         self.lockState = bool
@@ -3757,6 +3823,7 @@ class pickwalkMainWindow(QMainWindow):
                                                            direction='up',
                                                            destination=control)
             self.updateTreeView()
+            self.saveOnUpdate()
             return
 
     def inputSignal_quickDownToMulti(self):
@@ -3775,6 +3842,7 @@ class pickwalkMainWindow(QMainWindow):
                                                        direction='down',
                                                        destination=name)
             self.updateTreeView()
+            self.saveOnUpdate()
             return
 
     def inputSignal_quickLeftRight(self):
@@ -3787,6 +3855,7 @@ class pickwalkMainWindow(QMainWindow):
                                                   reciprocate=True,
                                                   endOnSelf=False)
             self.updateTreeView()
+            self.saveOnUpdate()
             return
 
     def inputSignal_quickUpDown(self):
@@ -3799,6 +3868,7 @@ class pickwalkMainWindow(QMainWindow):
                                                   reciprocate=True,
                                                   endOnSelf=True)
             self.updateTreeView()
+            self.saveOnUpdate()
             return
 
     @Slot()
@@ -3808,10 +3878,12 @@ class pickwalkMainWindow(QMainWindow):
                                                    direction=direction,
                                                    destination=destination)
         self.updateTreeView()
+        self.saveOnUpdate()
         return
 
     @Slot()
     def inputSignal_applyPickwalk(self, control, up, down, left, right):
+        print ('inputSignal_applyPickwalk', control, up, down, left, right)
         self.pickwalkCreator.setControlDestination(control,
                                                    direction='up',
                                                    destination=up)
@@ -3825,14 +3897,21 @@ class pickwalkMainWindow(QMainWindow):
                                                    direction='right',
                                                    destination=right)
         self.updateTreeView()
+        self.saveOnUpdate()
+
+    def saveOnUpdate(self):
+        if pm.optionVar.get(saveOnUpdateOption, False):
+            self.saveLibrary()
 
     def inputSignal_activeObjectSet(self):
         sel = cmds.ls(sl=True)
         # print 'inputSignal_activeObjectSet', sel
         if not sel:
             return
-        self.activeObject = sel[0]
+        self.activeObject = sel[0].split(':')[-1]
         self.mainPickWidget.objectWidget.currentObjLabel.setText(self.activeObject)
+        self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData, self.activeObject)
+
         for control in sel:
             self.pickwalkCreator.addControl(control)
         self.updateTreeView()
@@ -3870,6 +3949,7 @@ class pickwalkMainWindow(QMainWindow):
                                             conditionAttribute=input.get('conditionAttribute', str()),
                                             conditionValue=input.get('conditionValue', 0.5))
         self.destinationListWidget.updateView()
+        self.saveOnUpdate()
 
     def inputSignal_getFromRig(self):
         for s in cmds.ls(sl=True):
@@ -3925,7 +4005,12 @@ class pickwalkMainWindow(QMainWindow):
                                                    destination=sel[0])
         self.updateTreeView()
         self.updateTreeView()
+        self.saveOnUpdate()
         return
+
+    def toggleSaveOnEdit(self):
+        #print ('toggleSaveOnEdit', self.saveOnEdit_action.isChecked())
+        pm.optionVar[saveOnUpdateOption] = self.saveOnEdit_action.isChecked()
 
     def openDataFolder(self):
         os.startfile(self.defaultDir)

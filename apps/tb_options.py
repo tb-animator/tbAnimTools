@@ -116,18 +116,35 @@ class mainOptionWindow(QMainWindow):
         self.toolOptionStack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.toolOptionLayout = QVBoxLayout(self)
 
+        self.toolHotkeyStack = QStackedWidget(self)
+        self.toolHotkeyStack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.toolHotkeyLayout = QVBoxLayout(self)
+
+        self.leftLayout = QVBoxLayout()
+        self.toolLabel = QLabel('Tools')
+        self.leftLayout.addWidget(self.toolLabel)
+        self.leftLayout.addWidget(self.toolTypeScrollArea)
+
+        self.tabWidget = QTabWidget()
+
         self.win.setLayout(self.mainLayout)
-        self.mainLayout.addWidget(self.toolTypeScrollArea)
-        self.mainLayout.addWidget(self.toolOptionStack)
+        self.mainLayout.addLayout(self.leftLayout)
+        self.mainLayout.addWidget(self.tabWidget)
+
+
+        self.tabWidget.addTab(self.toolOptionStack, "Tool Options")
+        self.tabWidget.addTab(self.toolHotkeyStack, "Tool Hotkeys")
 
         # find tools with UI, make list of tool keys?
         for index, tool in enumerate(sorted(self.tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
             if self.tbtoolsCLS.tools[tool] is not None:
-                ui = self.tbtoolsCLS.tools[tool].optionUI()
-                if not ui:
+                optionUI = self.tbtoolsCLS.tools[tool].optionUI()
+                hotkeyUI = self.tbtoolsCLS.tools[tool].hotkeyUI()
+                if not optionUI:
                     continue
                 self.toolWidget.insertItem(index, re.sub("([a-z])([A-Z])", "\g<1> \g<2>", tool))
-                self.toolOptionStack.addWidget(ui)
+                self.toolOptionStack.addWidget(optionUI)
+                self.toolHotkeyStack.addWidget(hotkeyUI)
 
         self.toolWidget.currentRowChanged.connect(self.displayToolOptions)
         self.update()
@@ -135,6 +152,7 @@ class mainOptionWindow(QMainWindow):
 
     def displayToolOptions(self, index):
         self.toolOptionStack.setCurrentIndex(index)
+        self.toolHotkeyStack.setCurrentIndex(index)
 
     def showUI(self):
         self.buildUI()

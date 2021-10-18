@@ -509,8 +509,6 @@ class BakeTools(toolAbstractFactory):
 
         newAnimLayer = pm.animLayer(suffixStr,
                                     override=override,
-                                    excludeScale=True,
-                                    # excludeEnum=True,
                                     addSelectedObjects=True,
                                     passthrough=True,
                                     lock=False)
@@ -522,26 +520,30 @@ class BakeTools(toolAbstractFactory):
         return newAnimLayer
 
     def add_layer(self, override=False):
+        timeRange = None
+        if self.funcs.isTimelineHighlighted():
+            timeRange = self.funcs.getTimelineHighlightedRange()
         newAnimLayer = self.createLayer(override=override)
-        if not self.funcs.isTimelineHighlighted():
-            return
-        if not override:
-            return
 
-        timeRange = self.funcs.getTimelineHighlightedRange()
-        cmds.setKeyframe(animLayer=newAnimLayer,
-                         time=((timeRange[0]), timeRange[1]),
-                         respectKeyable=True,
-                         hierarchy=False,
-                         breakdown=False,
-                         dirtyDG=True,
-                         controlPoints=False,
-                         shape=False,
-                         identity=True)
+        if timeRange:
+            print ('time range', self.allTools.tools)
+            self.allTools.tools['LayerEditor'].bookEndLayerWeight(newAnimLayer, timeRange[0], timeRange[1])
+            if not override:
+                cmds.setKeyframe(animLayer=newAnimLayer,
+                                 time=((timeRange[0]), timeRange[1]),
+                                 respectKeyable=True,
+                                 hierarchy=False,
+                                 breakdown=False,
+                                 dirtyDG=True,
+                                 controlPoints=False,
+                                 shape=False,
+                                 identity=True)
+        '''
         # in case there's something to do automatically to the objects?
         sel = pm.ls(selection=True)
         if not sel:
             return
+        '''
 
     def deselect_layers(self):
         for layers in pm.ls(type='animLayer'):
@@ -974,20 +976,20 @@ class BakeTools(toolAbstractFactory):
 
                 else:
                     cmds.bakeResults(selection,
-                                 time=(keyRange[0], keyRange[-1]),
-                                 destinationLayer=resultLayer,
-                                 simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
-                                 sampleBy=1,
-                                 oversamplingRate=1,
-                                 disableImplicitControl=True,
-                                 preserveOutsideKeys=False,
-                                 sparseAnimCurveBake=True,
-                                 removeBakedAttributeFromLayer=True,
-                                 removeBakedAnimFromLayer=True,
-                                 # bakeOnOverrideLayer=False,
-                                 minimizeRotation=True,
-                                 controlPoints=False,
-                                 shape=False)
+                                     time=(keyRange[0], keyRange[-1]),
+                                     destinationLayer=resultLayer,
+                                     simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
+                                     sampleBy=1,
+                                     oversamplingRate=1,
+                                     disableImplicitControl=True,
+                                     preserveOutsideKeys=False,
+                                     sparseAnimCurveBake=True,
+                                     removeBakedAttributeFromLayer=True,
+                                     removeBakedAnimFromLayer=True,
+                                     # bakeOnOverrideLayer=False,
+                                     minimizeRotation=True,
+                                     controlPoints=False,
+                                     shape=False)
                 mel.eval('deleteEmptyAnimLayers')
 
         except Exception as e:

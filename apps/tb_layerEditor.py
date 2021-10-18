@@ -29,7 +29,6 @@ from functools import partial
 from Abstract import *
 import maya.OpenMayaUI as omui
 
-
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -367,6 +366,16 @@ class LayerEditor(toolAbstractFactory):
             return
         self.refreshHack()
         self.setLayerWeight(layers, 1.0)
+
+    def bookEndLayerWeight(self, layer, startTime, endTime):
+        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=startTime - 1, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=startTime, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=endTime, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=endTime + 1, inTangentType='flat',
+                         outTangentType='flat')
 
     def selectBestLayer(self, sel=None):
         """

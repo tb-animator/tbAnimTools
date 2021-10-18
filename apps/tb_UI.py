@@ -1084,6 +1084,61 @@ class ChannelSelectLineEdit(QWidget):
         self.editedSignal.emit(self.lineEdit.text())
         self.editedSignalKey.emit(self.key, self.lineEdit.text())
 
+class hotKeyWidget(QWidget):
+    label = None
+    lineEdit = None
+    editedSignal = Signal(str)
+
+    def __init__(self, command=str(), text=str(), tooltip=str(), placeholderTest=str()):
+        super(hotKeyWidget, self).__init__()
+
+        self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.layout)
+        self.label = QLabel(text)
+        self.lineEdit = QLineEdit()
+
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/arrowDown.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(tooltip)
+        self.cle_action_pick.triggered.connect(self.show_category_table_Popup)
+        self._category_table_Popup = QMenu(self)
+        recentAction = QAction('Recent Command List', self._category_table_Popup, checkable=True, checked=True)
+        onPressAction = QAction('On Press', self._category_table_Popup, checkable=True, checked=True)
+        onReleaseAction = QAction('On Release', self._category_table_Popup, checkable=True, checked=True)
+        self._category_table_Popup.addAction(recentAction)
+        self._category_table_Popup.addSeparator()
+        self._category_table_Popup.addAction(onPressAction)
+        self._category_table_Popup.addAction(onReleaseAction)
+
+
+        self.action_group = QActionGroup(self)
+        self.action_group.addAction(onPressAction)
+        self.action_group.addAction(onReleaseAction)
+        self.action_group.setExclusive(True)
+
+        self.lineEdit.setPlaceholderText(placeholderTest)
+        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.lineEdit)
+        self.label.setFixedWidth(60)
+
+        self.label.setStyleSheet("QFrame {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+
+    @Slot()
+    def sendtextChangedSignal(self):
+        self.editedSignal.emit(self.lineEdit.text())
+    @Slot()
+    def show_category_table_Popup(self):
+        '''
+        Show Popup Menu on Category Table
+        '''
+        self._category_table_Popup.exec_(QCursor.pos())
 
 class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
@@ -1561,3 +1616,4 @@ class UpdateWin(BaseDialog):
         if event.key() == Qt.Key_Escape:
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
+
