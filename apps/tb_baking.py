@@ -512,6 +512,8 @@ class BakeTools(toolAbstractFactory):
                                     addSelectedObjects=True,
                                     passthrough=True,
                                     lock=False)
+        if not override:
+            pm.setAttr(newAnimLayer.scaleAccumulationMode, 1)
         newAnimLayer.ghostColor.set(colour[override])
         self.deselect_layers()
         newAnimLayer.selected.set(True)
@@ -526,11 +528,26 @@ class BakeTools(toolAbstractFactory):
         newAnimLayer = self.createLayer(override=override)
 
         if timeRange:
-            print ('time range', self.allTools.tools)
-            self.allTools.tools['LayerEditor'].bookEndLayerWeight(newAnimLayer, timeRange[0], timeRange[1])
-            if not override:
+            if override:
+                # if adding an override layer with timeline selected, key the layer weight
+                self.allTools.tools['LayerEditor'].bookEndLayerWeight(newAnimLayer, timeRange[0], timeRange[1])
+            '''
+            # key the start and end times with an identity pose
+            cmds.setKeyframe(animLayer=newAnimLayer,
+                             time=((timeRange[0]), timeRange[1]),
+                             respectKeyable=True,
+                             hierarchy=False,
+                             breakdown=False,
+                             dirtyDG=True,
+                             controlPoints=False,
+                             shape=False,
+                             identity=True)
+            '''
+        return
+        '''
+            if override:
                 cmds.setKeyframe(animLayer=newAnimLayer,
-                                 time=((timeRange[0]), timeRange[1]),
+                                 time=(cmds.currentTime(query=True), ),
                                  respectKeyable=True,
                                  hierarchy=False,
                                  breakdown=False,
@@ -538,6 +555,7 @@ class BakeTools(toolAbstractFactory):
                                  controlPoints=False,
                                  shape=False,
                                  identity=True)
+        '''
         '''
         # in case there's something to do automatically to the objects?
         sel = pm.ls(selection=True)
