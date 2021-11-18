@@ -177,6 +177,22 @@ class toolAbstractFactory(ABC):
             self.saveData()
         self.rawJsonData = json.load(open(self.dataFile))
 
+    def loadRigData(self, dataCLS, rigName):
+        subPath = os.path.join(self.dataPath, self.toolName)
+        dataCLS.fromJson(os.path.join(subPath, rigName + '.json'))
+        return dataCLS
+
+    def saveRigData(self, dataCLS, rigName):
+        print ('save not written', dataCLS, rigName)
+
+    def saveRigFileIfNew(self, refname, jsonData):
+        self.subPath = os.path.join(self.dataPath, self.toolName)
+        if not os.path.isdir(self.subPath):
+            os.mkdir(self.subPath)
+        dataFile = os.path.join(self.subPath, refname + '.json')
+        if not os.path.isfile(os.path.join(dataFile)):
+            self.saveJsonFile(dataFile, json.loads(jsonData))
+
     def updatePreview(self, scale=1, optionVar=str(), drawType='orb'):
         if not cmds.objExists('temp_Preview'):
             self.drawPreview(optionVar=optionVar, drawType=drawType)
