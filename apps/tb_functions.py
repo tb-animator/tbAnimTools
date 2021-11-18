@@ -1076,6 +1076,65 @@ class functions(object):
             return False
         return self.isObjectMoving(parent[0])
 
+    def splitSelectionToCharacters(self, sel):
+        """
+        Returns a dictionary for all characters found in the selection, namespace as key, controls as items
+        :param sel:
+        :return:
+        """
+        if not sel:
+            return
+
+        # split selection by character
+        namespaces = [x.split(':', 1)[0] for x in sel if ':' in x]
+
+        characters = {k: list() for k in namespaces}
+        for s in sel:
+            splitString = s.split(':', 1)
+            if len(splitString) == 1:
+                if ('') not in characters.keys():
+                    characters[''] = list()
+                characters[''].append(s)
+                continue
+            for ns in namespaces:
+                if splitString[0] == ns:
+                    characters[ns].append(s)
+                    continue
+        return characters
+
+    def getCurrentRig(self, sel=None):
+        """
+        Used to determine the rig name/file, used when saving out rig data for tools
+        :param sel:
+        :return:
+        """
+        refName = None
+        mapName = None
+        fname = None
+        if sel is None:
+            sel = cmds.ls(sl=True)
+        namespace = str()
+        refNamespace = None
+        print ('yesh?')
+        if sel:
+            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            if refState:
+                # if it is referenced, check against pickwalk library entries
+                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+                namespace = cmds.referenceQuery(sel[0], namespace=True)
+                print ('namespace', namespace)
+            else:
+                # might just be working in the rig file itself
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+            '''
+            if ':' in sel[0]:
+                namespace = sel[0].split(':', 1)[0]
+            '''
+        else:
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+
+        return refName, namespace  # TODO - fix up data path etc
+
     """
     UI gubbinz
     """

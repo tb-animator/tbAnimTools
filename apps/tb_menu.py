@@ -27,7 +27,6 @@ import pymel.core as pm
 import webbrowser
 from pluginLookup import ClassFinder
 
-
 class main_menu(object):
     def __init__(self):
         self.main_menu = "tbAnimTools"

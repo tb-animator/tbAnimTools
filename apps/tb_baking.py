@@ -512,13 +512,12 @@ class BakeTools(toolAbstractFactory):
                                     addSelectedObjects=True,
                                     passthrough=True,
                                     lock=False)
-        if not override:
-            pm.setAttr(newAnimLayer.scaleAccumulationMode, 1)
+
         newAnimLayer.ghostColor.set(colour[override])
+        newAnimLayer.scaleAccumulationMode.set(not override)
         self.deselect_layers()
         newAnimLayer.selected.set(True)
         newAnimLayer.preferred.set(True)
-        newAnimLayer.scaleAccumulationMode.set(0)
         return newAnimLayer
 
     def add_layer(self, override=False):

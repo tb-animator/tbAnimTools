@@ -24,6 +24,7 @@
 '''
 import pymel.core as pm
 import maya.mel as mel
+import maya.cmds as cmds
 import maya.OpenMayaUI as omUI
 import pymel.core as pm
 
@@ -1077,7 +1078,14 @@ class ChannelSelectLineEdit(QWidget):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             return pm.warning('no channel selected')
-        self.lineEdit.setText(channels[0].split(':', 1)[-1])
+        refState = cmds.referenceQuery(channels[0].split('.')[0], isNodeReferenced=True)
+
+
+        if refState:
+            #refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
+            self.lineEdit.setText(channels[0].split(':', 1)[-1])
+        else:
+            self.lineEdit.setText(channels[0])
 
     @Slot()
     def sendtextChangedSignal(self):
@@ -1200,9 +1208,10 @@ class comboBoxWidget(QWidget):
         label = QLabel(label)
 
         self.comboBox = QComboBox()
-        for c in self.values:
-            self.comboBox.addItem(c)
-        self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
+        if self.values:
+            for c in self.values:
+                self.comboBox.addItem(c)
+            self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
 
         self.mainLayout.addWidget(label)
@@ -1216,6 +1225,12 @@ class comboBoxWidget(QWidget):
         self.changedSignal.emit(self.comboBox.currentText())
         self.editedSignalKey.emit(self.key, self.comboBox.currentText())
 
+    def updateValues(self, valueList):
+        print ('updateValues', valueList)
+        self.comboBox.clear()
+        for c in self.values:
+            self.comboBox.addItem(c)
+        #self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
 
 class intFieldWidget(QWidget):
     mainLayout = None
