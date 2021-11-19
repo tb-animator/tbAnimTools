@@ -73,6 +73,8 @@ class ClassFinder(object):
         for cls in toolClasses:
             print (cls)
             self.tools[cls.toolName] = cls()
+            if not self.tools[cls.toolName]:
+                continue
             self.tools[cls.toolName].allTools = self
 
         self.loadedClasses['hotkeys'] = hotkeyClasses
