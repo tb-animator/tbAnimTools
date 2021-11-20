@@ -119,8 +119,8 @@ class MotionTrails(toolAbstractFactory):
         infoText = QLabel()
         infoText.setText('Motion trail display settings')
         infoText.setWordWrap(True)
-        fadeLayout = QHBoxLayout()
-        markerLayout = QHBoxLayout()
+        fadeLayout = QVBoxLayout()
+        markerLayout = QVBoxLayout()
 
         trailFadeFramesWidget = intFieldWidget(optionVar=self.trailFadeFramesOption,
                                                defaultValue=5,

@@ -140,6 +140,9 @@ class toolAbstractFactory(ABC):
         self.layout = self.hotkeyWidget.layout
         return self.hotkeyWidget
 
+    def animLayerTabUI(self):
+        return list()
+
     @abc.abstractmethod
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')

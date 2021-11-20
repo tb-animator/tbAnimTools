@@ -158,14 +158,14 @@ class functions(object):
 
     # get the current model panel
     def getModelPanel(self):
-        curPanel = pm.getPanel(withFocus=True) or self.lastPanel  # pm.getPanel(underPointer=True)
-        if pm.objectTypeUI(curPanel) == 'modelEditor':
+        curPanel = cmds.getPanel(withFocus=True) or self.lastPanel  # pm.getPanel(underPointer=True)
+        if cmds.objectTypeUI(curPanel) == 'modelEditor':
             self.lastPanel = curPanel
             return curPanel
         elif self.lastPanel:
             return self.lastPanel
         else:
-            return self.get_modelEditors(pm.lsUI(editors=True))[-1]
+            return self.get_modelEditors(cmds.lsUI(editors=True))[-1]
 
     def getAllModelPanels(self):
         return self.get_modelEditors(pm.lsUI(editors=True))
@@ -241,7 +241,7 @@ class functions(object):
 
     @staticmethod
     def filter_modelEditors(editors):
-        return pm.objectTypeUI(editors) == 'modelEditor'
+        return cmds.objectTypeUI(editors) == 'modelEditor'
 
     def get_modelEditors(self, editors):
         return filter(self.filter_modelEditors, editors)

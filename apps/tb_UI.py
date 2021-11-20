@@ -1632,3 +1632,12 @@ class UpdateWin(BaseDialog):
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
 
+def animLayerTabButton(icon='', toolTip=''):
+    button = QPushButton()
+    button.setIcon(QIcon(":/{0}".format(icon)))
+    button.setFixedSize(18, 18)
+    button.setFlat(True)
+    button.setToolTip(toolTip)
+    button.setStyleSheet("background-color: transparent;border: 0px")
+    button.setStyleSheet(getqss.getStyleSheet())
+    return button
