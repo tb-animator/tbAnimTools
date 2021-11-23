@@ -90,8 +90,10 @@ class LayerEditor(toolAbstractFactory):
     def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
-        if pm.optionVar.get(self.useCustomUIOption, False):
-            self.modifyAnimLayerTab()
+        """
+        Put this in the startup script, not on class initialize
+        """
+
 
     """
     Declare an interface for operations that create abstract product
@@ -106,6 +108,18 @@ class LayerEditor(toolAbstractFactory):
         self.layout.addStretch()
         return self.optionWidget
 
+    def animLayerTabUI(self):
+        mergeLayersDownButton = self.customButton(icon='moveButtonDown.png',
+                                                       toolTip='Fast Merge all Layers')
+        additiveExtractButton = self.customButton(icon='Amplify.png',
+                                                       toolTip='Additive Extract Selected Layer')
+        counterAnimationButton = self.customButton(icon='arcLengthDim.png',
+                                                       toolTip='Counter animation layer')
+        mergeLayersDownButton.clicked.connect(self.fastMergeAllButtonCommmand)
+        additiveExtractButton.clicked.connect(self.additiveExtractButtonCommmand)
+        counterAnimationButton.clicked.connect(self.counterAnimationButtonCommmand)
+        return [mergeLayersDownButton, additiveExtractButton, counterAnimationButton]
+
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
@@ -114,6 +128,8 @@ class LayerEditor(toolAbstractFactory):
 
     def modifyAnimLayerTab(self):
         if self.hasAppliedUI:
+            return
+        if not pm.optionVar.get(self.useCustomUIOption, False):
             return
         self.styleSheet = getStyleSheet()
         buttonSize = 22
@@ -143,10 +159,9 @@ class LayerEditor(toolAbstractFactory):
         self.animLayerWeightButton = animLayerTabWidgets[10]
 
         # extra buttons
-        self.mergeLayersDownButton = self.customButton(icon='moveButtonDown.png',
-                                                       toolTip='Fast Merge all Layers')
-        self.additiveExtractButton = self.customButton(icon='teAdditive.png',
-                                                       toolTip='Additive Extract Selected Layer')
+        """
+        Pull these buttons from somewhere else, from all tools maybe?
+        """
 
         # modify cursor style
         self.animLayerWeightSlider.setCursor(QCursor(Qt.SplitHCursor))
@@ -179,8 +194,8 @@ class LayerEditor(toolAbstractFactory):
         topButtonLeftLayout.addWidget(self.zeroWeightAnimLayerButton)
         topButtonLeftLayout.addWidget(self.fullWeightAnimLayerButton)
 
-        topButtonRightLayout.addWidget(self.additiveExtractButton)
-        topButtonRightLayout.addWidget(self.mergeLayersDownButton)
+        #topButtonRightLayout.addWidget(self.additiveExtractButton)
+        #topButtonRightLayout.addWidget(self.mergeLayersDownButton)
         topButtonRightLayout.addWidget(self.moveLayerUpButton)
         topButtonRightLayout.addWidget(self.moveLayerDownButton)
         topButtonRightLayout.addWidget(self.emptyAnimLayerButton)
@@ -247,10 +262,10 @@ class LayerEditor(toolAbstractFactory):
 
         # connections
         self.curveButton.clicked.connect(self.curveButtonCommand)
-        self.mergeLayersDownButton.clicked.connect(self.fastMergeAllButtonCommmand)
-        self.additiveExtractButton.clicked.connect(self.additiveExtractButtonCommmand)
+
 
         self.hasAppliedUI = True
+        return topButtonLeftLayout, topButtonRightLayout
 
     def customButton(self, icon='', toolTip=''):
         button = QPushButton()
@@ -288,6 +303,9 @@ class LayerEditor(toolAbstractFactory):
 
     def fastMergeAllButtonCommmand(self):
         mel.eval('quickMergeAllLayers')
+
+    def counterAnimationButtonCommmand(self):
+        mel.eval('counterAnimLayer')
 
     def curveButtonCommand(self):
         weightCurves = list()

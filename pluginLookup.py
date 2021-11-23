@@ -35,6 +35,8 @@ class ClassFinder(object):
     tools = dict()
 
     animLayerScriptJob = -1
+    animLayerTabLeftLayout = None
+    animLayerTabRightLayout = None
 
     def __new__(cls):
         if ClassFinder.__instance is None:
@@ -55,6 +57,7 @@ class ClassFinder(object):
         self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory)
 
         self.loadPluginsByClass()
+        self.applyAnimLayerTabModification()
 
     def loadPluginsByClass(self):
 
@@ -118,6 +121,27 @@ class ClassFinder(object):
                 continue
             menuDataDict[tool] = cls.qtMarkingMenu(selection)
         return menuDataDict
+
+    def collectAnimLayerTabWidgets(self):
+        widgets = list()
+        for tool, cls in self.tools.items():
+            print (tool, cls)
+            if not cls:
+                continue
+            widgets.extend(cls.animLayerTabUI())
+        return widgets
+
+    def applyToolDeferredLoad(self):
+        for tool, cls in self.tools.items():
+            cls.deferredLoad()
+
+    def applyAnimLayerTabModification(self):
+        animLayerLayouts = self.tools['LayerEditor'].modifyAnimLayerTab()
+        if not animLayerLayouts:
+            return
+        widgets = self.collectAnimLayerTabWidgets()
+        for widget in widgets:
+            animLayerLayouts[-1].insertWidget(0, widget)
 
     def startupScriptJobs(self):
         if self.animLayerScriptJob is not -1:

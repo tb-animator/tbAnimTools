@@ -248,6 +248,12 @@ class toolAbstractFactory(ABC):
     def qtMarkingMenu(self, inputNodes):
         return list()
 
+    def animLayerTabUI(self):
+        return list()
+
+    def deferredLoad(self):
+        pass
+
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'

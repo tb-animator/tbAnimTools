@@ -801,6 +801,18 @@ class BakeTools(toolAbstractFactory):
                 cmds.animLayer(additiveLayer, edit=True, removeAttribute=attr)
         cmds.delete(overrideLayer)
 
+    def overrideLayerEnumFixup(self, layerName, startTime):
+        zeroedAttrTypes = ['enum', 'bool']
+        zeroedAttrs = [a for a in cmds.animLayer(layerName, query=True, attribute=True) if
+                       cmds.getAttr(a, type=True) in zeroedAttrTypes]
+        cmds.animLayer(layerName, edit=True, override=False)
+        cmds.animLayer(layerName, edit=True, mute=False)
+        cmds.animLayer(layerName, edit=True, selected=True)
+        cmds.animLayer(layerName, edit=True, preferred=True)
+        cmds.setKeyframe(zeroedAttrs, identity=True, time=(startTime,))
+        cmds.animLayer(layerName, edit=True, lock=True)
+        cmds.animLayer(layerName, edit=True, lock=False)
+
     def additiveExtract(self, nodes):
         """
         TODO - fix bad calculation on non-zero start time
@@ -832,9 +844,11 @@ class BakeTools(toolAbstractFactory):
         cmds.setAttr(additiveLayer + '.scaleAccumulationMode', 0)
 
         attributes = cmds.animLayer(overrideLayer, query=True, attribute=True)
+        '''
         for attr in attributes:
             if 'visibility' in attr.split('.')[-1]:
                 cmds.animLayer(additiveLayer, edit=True, removeAttribute=attr)
+        '''
         layeredPlugs = list()
         basePlugs = list()
         baseLayerMPlugs, baseLayerMFnAnimCurves = self.funcs.omGetPlugsFromLayer(str(overrideLayer), attributes)
@@ -844,9 +858,11 @@ class BakeTools(toolAbstractFactory):
         additiveValues = dict()
         additiveMTimeArray = None
         overrideMTimeArray = None
-
+        ignoredAttributeTypes = ['bool', 'enum']
         for attr, curve in baseLayerMFnAnimCurves.items():
-            # print (attr, curve.numKeys)
+            attrIngored= False
+            attrType = cmds.getAttr(attr, type=True)
+            attrIngored = attrType in ignoredAttributeTypes
             keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
 
             # print (keyTimes)
@@ -860,7 +876,10 @@ class BakeTools(toolAbstractFactory):
             for index, key in enumerate(keyTimes):
                 alpha = key.value / keyRange.value
                 progress = ((finalVal - initialVal) * alpha) + initialVal
-                blendedValues.append(progress - keyValues[index])
+                if attrIngored:
+                    blendedValues.append(progress)
+                else:
+                    blendedValues.append(keyValues[index] - progress)
             additiveValues[attr] = blendedValues
             overrideValues[attr] = [initialVal, finalVal]
             if not additiveMTimeArray:
@@ -900,6 +919,7 @@ class BakeTools(toolAbstractFactory):
             dg.doIt()
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
+        #self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
         return
 
     def quickMergeAllLayers(self):

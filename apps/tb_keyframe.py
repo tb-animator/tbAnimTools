@@ -55,6 +55,23 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='match_tangent_end_to_start', annotation='',
                                      category=self.category,
                                      command=['KeyModifiers.matchEndTangentsToStartTangents()']))
+        self.addCommand(self.tb_hkey(name='shift_selected_keys_to_start_at_current_time', annotation='',
+                                     category=self.category,
+                                     command=['KeyModifiers.shiftKeySelection()']))
+        self.addCommand(self.tb_hkey(name='shift_selected_keys_to_end_at_current_time', annotation='',
+                                     category=self.category,
+                                     command=['KeyModifiers.shiftKeySelection(start=False)']))
+
+        self.addCommand(self.tb_hkey(name='flip_selected_key_values', annotation='',
+                                     category=self.category,
+                                     command=['KeyModifiers.flipKeyValues()']))
+        self.addCommand(self.tb_hkey(name='flip_selected_key_values_start', annotation='',
+                                     category=self.category,
+                                     command=['KeyModifiers.flipKeyValues(first=True)']))
+        self.addCommand(self.tb_hkey(name='flip_selected_key_values_end', annotation='',
+                                     category=self.category,
+                                     command=['KeyModifiers.flipKeyValues(last=True)']))
+
         self.addCommand(self.tb_hkey(name='filter_channelBox',
                                      annotation='filters the current channelBox selection in the graph editor',
                                      category=self.category, command=['KeyModifiers.filterChannels()']))
@@ -279,6 +296,41 @@ class KeyModifiers(toolAbstractFactory):
         worldMatrix = worldMatrixData.matrix()
 
         return worldMatrix
+
+    def shiftKeySelection(self, start=True):
+        """
+        Shift the current graph editor key selection so the first/last key aligns with the current time
+        :param start:
+        :return:
+        """
+        currentTime = cmds.currentTime(query=True)
+        timeDelta = 1
+        selectedKeyTimes = cmds.keyframe(query=True, selected=True, timeChange=True)
+        if not selectedKeyTimes:
+            return False
+        keyTimes = sorted(list(set(selectedKeyTimes)))
+        keyTimes = [keyTimes[0], keyTimes[-1]]
+        cmds.keyframe(animation='keys', option='over', relative=True, timeChange=currentTime-keyTimes[not start])
+
+    def flipKeyValues(self, first=False, last=False):
+        """
+        Flip the key values around either the first value, last value or 0
+        :return:
+        """
+        selectedCurves = cmds.keyframe(query=True, selected=True, name=True)
+        if not selectedCurves:
+            return
+        for curve in selectedCurves:
+            selectedKeyTimes = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+            selectedKeyValues = cmds.keyframe(curve, query=True, selected=True, valueChange=True)
+            print (curve, selectedKeyTimes)
+            pivotValue = 0
+            if first:
+                pivotValue = selectedKeyValues[0]
+            elif last:
+                pivotValue = selectedKeyValues[-1]
+            for index, key in enumerate(selectedKeyTimes):
+                cmds.scaleKey(curve, time=(key,), valueScale=-1, valuePivot=pivotValue)
 
     def level(self):
         sel = cmds.ls(selection=True)
