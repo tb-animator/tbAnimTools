@@ -604,6 +604,8 @@ class functions(object):
         returnAttributes = list()
         for node in nodes:
             attrs = cmds.listAttr(node, inUse=True, keyable=True)
+            if not attrs:
+                return list()
             ignoredAttrs = cmds.attributeInfo(node, bool=True, enumerated=True)
             finalAttrs = [x for x in attrs if x not in ignoredAttrs]
             for at in finalAttrs:
