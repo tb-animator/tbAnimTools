@@ -36,7 +36,7 @@ class initialise(object):
             return
         print ('check_for_updates')
         if not pm.optionVar.get('tbUpdateType', -1) == 2:
-            updater = upd.updater()
+            updater = upd.AnimToolsUpdater()
             updater.check_version()
 
     def loadRMB(self, *args):

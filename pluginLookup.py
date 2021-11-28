@@ -98,15 +98,15 @@ class ClassFinder(object):
                 if file.rsplit('.', 1)[-1] != 'py':
                     continue
 
-            file_name = os.path.basename(file.split('.')[0])
+            file_name = os.path.basename(file.rsplit('.', 1)[0])
             subFolder = str(os.path.relpath(os.path.dirname(file), toolDirectory)).replace('\\', '.')
 
-            module_name = ('%s%s%s') % (baseDirectory, subFolder, file_name)
             # hacky check to see if the script is in the start folder
             if subFolder == '.':
                 module_name = baseDirectory + '.' + file_name
             else:
                 module_name = baseDirectory + '.' + subFolder + '.' + file_name
+
             for name, cls in inspect.getmembers(importlib.import_module(module_name), inspect.isclass):
                 if cls.__module__ == module_name:
                     yield cls
