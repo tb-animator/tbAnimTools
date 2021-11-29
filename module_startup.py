@@ -32,9 +32,6 @@ import tb_qtMarkingMenu as qtm
 
 class initialise(object):
     def check_for_updates(self):
-        if pm.optionVar.get('tbOfflineMode', 1):
-            return
-        print ('check_for_updates')
         if not pm.optionVar.get('tbUpdateType', -1) == 2:
             updater = upd.AnimToolsUpdater()
             updater.check_version()
