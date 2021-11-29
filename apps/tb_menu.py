@@ -89,7 +89,10 @@ class main_menu(object):
         '''
 
     def downloadUpdate(self):
-        print ('downloadUpdate')
+        import tbtoolsUpdater as upd
+        updater = upd.updater()
+        updater.forceUpdate()
+
 
 def make_ui():
     main_menu().build_menu()

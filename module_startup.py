@@ -33,7 +33,7 @@ import tb_qtMarkingMenu as qtm
 class initialise(object):
     def check_for_updates(self):
         if not pm.optionVar.get('tbUpdateType', -1) == 2:
-            updater = upd.AnimToolsUpdater()
+            updater = upd.updater()
             updater.check_version()
 
     def loadRMB(self, *args):

@@ -124,6 +124,21 @@ class updater():
             datetime_str = datetime.datetime.strptime(date_time, self.uiDateFormat)
         return datetime_str
 
+    def forceUpdate(self):
+        lastPushDay = self.lastPush.strftime(self.uiDateFormat)
+        lastPushTime = self.lastPush.strftime(self.timeFormat)
+
+        currentVersionDay = self.currentVersion.strftime(self.uiDateFormat)
+        currentVersionTime = self.currentVersion.strftime(self.timeFormat)
+
+        updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
+                              oldVersion=currentVersionDay + ' ' + currentVersionTime,
+                              updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
+        if updateWin.exec_() != 1:
+            return
+        self.download_project_files(self.latestZip)
+        self.save(self.lastPush, self.latestRelease)
+
     def check_version(self):
         if self.updateType == 0:
             print('Check for latest stable version')
