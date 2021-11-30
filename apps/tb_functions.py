@@ -29,6 +29,8 @@ import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
 import pymel.core.datatypes as dt
+import re
+from difflib import SequenceMatcher, get_close_matches, ndiff
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -1117,14 +1119,12 @@ class functions(object):
             sel = cmds.ls(sl=True)
         namespace = str()
         refNamespace = None
-        print ('yesh?')
         if sel:
             refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
             if refState:
                 # if it is referenced, check against pickwalk library entries
                 refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
                 namespace = cmds.referenceQuery(sel[0], namespace=True)
-                print ('namespace', namespace)
             else:
                 # might just be working in the rig file itself
                 refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
@@ -1136,6 +1136,85 @@ class functions(object):
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
 
         return refName, namespace  # TODO - fix up data path etc
+
+    """
+    SELECTION
+    
+    """
+    def getSimilarControlsMinusPrefix(self, namespace, control, prefix, constraint=False, shape=False):
+        wildcard = ('{ns}:*'.format(ns=namespace))
+        matching = cmds.ls(wildcard, type='transform')
+        if not constraint:
+            matching = [x for x in matching if 'Constraint' not in cmds.objectType(x)]
+        if shape:
+            matching = [x for x in matching if cmds.listRelatives(x, shapes=True)]
+        if control in matching:
+            matching.remove(control)
+        return [x.split(':')[-1] for x in matching]
+
+    def getOppositeControl(self, name):
+        namespace, control = name.rsplit(':', 1)
+        prefix = re.split('[^a-zA-Z0-9]+', control)
+
+        for pre in prefix:
+            matches = self.getSimilarControlsMinusPrefix(namespace, control, pre, constraint=False, shape=False)
+            close_matches = get_close_matches(control, [x.split(':')[-1] for x in matches])
+            shorter = sorted(list(x for x in close_matches if len(x) < len(control)), key=len)
+            longer = sorted(list(x for x in close_matches if len(x) >= len(control)), key=len)
+            if len(shorter) < len(longer):
+                shorter.extend([None] * (len(longer) - len(shorter)))
+            if len(longer) < len(shorter):
+                longer.extend([None] * (len(shorter) - len(longer)))
+            longer = [x for x in longer if x != control]
+            shorter = [x for x in shorter if x != control]
+            merged = list()
+            for index, x in enumerate(longer):
+                merged.append(x)
+                merged.append(shorter[index])
+            merged = [i for i in merged if i is not control]
+
+            for x in merged:
+                obj = '{ns}:{ct}'.format(ns=namespace, ct=x)
+                if cmds.objExists(obj):
+                    return obj
+        return
+        st = self.stripTailDigits(control)
+        tailLen = len(control) - len(st)
+
+        strippedMatches = [c.rsplit(':', 1)[-1] for c in matchingPrefix if st not in c]
+        if st in strippedMatches:
+            strippedMatches.remove(st)
+        print ('matchingPrefix', matchingPrefix)
+        print ('strippedMatches', strippedMatches)
+        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in strippedMatches], cutoff=0.5)
+        opposites = [m for m in matches if m != st]
+
+        if opposites:
+            if tailLen > 0:
+                op = opposites[0] + control[-tailLen:]
+            else:
+                op = opposites[0]
+            return namespace + ':' + op
+
+    def getLowerControl(self, input):
+        s = input.split(':')[-1]
+        prefix = re.split('[^a-zA-Z0-9]+', s)
+        matchingPrefix = self.getSimilarControls(input, prefix)
+        st = self.stripTailDigits(s)
+        tailLen = len(s) - len(st)
+
+        matches = get_close_matches(st, [x[:len(x) - tailLen] for x in matchingPrefix])
+
+    def getSimilarControls(self, namespace, sel, prefix, constraint=False, shape=True):
+        matching = cmds.ls('{ns}:{ct}*'.format(ns=namespace, ct=prefix[0]), type='transform')
+        if not constraint:
+            matching = [x for x in matching if 'Constraint' not in cmds.objectType(x)]
+        if shape:
+            matching = [x for x in matching if cmds.listRelatives(x, shapes=True)]
+        if sel in matching:
+            matching.remove(sel)
+        return matching
+
 
     """
     UI gubbinz

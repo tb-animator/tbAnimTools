@@ -257,12 +257,11 @@ class QuickSelectionTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if name:
             self.save_qs(name, sel)
-        from pluginLookup import ClassFinder
-        tbtoolCLS = ClassFinder()
         opposites = list()
+        if not mirror:
+            return
         for s in sel:
-            opposites.append(tbtoolCLS.tools["SelectionTools"].getOppositeControl(s))
-        print ('MIRROR', opposites)
+            opposites.append(self.funcs.getOppositeControl(s))
         if opposites:
             self.save_qs(opposites[0], opposites)
 
