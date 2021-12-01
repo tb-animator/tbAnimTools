@@ -187,19 +187,19 @@ class GravityTools(toolAbstractFactory):
         currentTime = cmds.currentTime(query=True)
         mobjDict = dict()
         locs = dict()
-
+        keyTimesDict = dict()
         for s in sel:
             if timeRange is None:
-                keyTimes = self.funcs.get_object_key_times(s)
-                idx = bisect.bisect_left(keyTimes, currentTime)
+                keyTimesDict[s] = self.funcs.get_object_key_times(s)
+                idx = bisect.bisect_left(keyTimesDict[s], currentTime)
                 if idx - 1 < 0:
                     start = currentTime
                 else:
-                    start = keyTimes[idx - 1]
-                if idx >= len(keyTimes):
+                    start = keyTimesDict[s][idx - 1]
+                if idx >= len(keyTimesDict[s]):
                     end = currentTime
                 else:
-                    end = keyTimes[idx]
+                    end = keyTimesDict[s][idx]
             else:
                 start = timeRange[0]
                 end = timeRange[1]
@@ -213,26 +213,26 @@ class GravityTools(toolAbstractFactory):
             arcX, arcY, arcZ = self.getJumpArc(startTranslation, endTranslation, duration)
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
 
-        self.bakeJumpToControl(start, end, locs, sel)
+            self.bakeJumpToControl(start, end, locs[s], s)
 
     def bakeJumpToControl(self, start, end, locs, sel):
         constraints = list()
         if not isinstance(sel, list):
             sel = [sel]
 
-        selectedLayer = self.funcs.get_selected_layers(ignoreBase=True)
-        attrList = list()
         plugs = dict()
         curves = dict()
         curveDuplicates = dict()
 
-        if len(selectedLayer):
-            """
-            Baking to a layer will remove the outside keys, as preserveOutsideKeys does not work with layers
-            Need a function to snapshot the existing animation and merge it after baking
-            """
+        for s in sel:
+            selectedLayer = self.funcs.get_preferred_layers(s, ignoreBase=True)
 
-            for s in sel:
+            if len(selectedLayer):
+                """
+                Baking to a layer will remove the outside keys, as preserveOutsideKeys does not work with layers
+                Need a function to snapshot the existing animation and merge it after baking
+                """
+                attrList = list()
                 for attr in ['translateX', 'translateY', 'translateZ']:
                     attrList.append(s + '.' + attr)
                     # hack for pre maya 2020.4.3
@@ -242,31 +242,26 @@ class GravityTools(toolAbstractFactory):
                     if curve:
                         curves[s + '.' + attr] = curve[0]
                         curveDuplicates[s + '.' + attr] = cmds.duplicate(curve[0])[0]
-
-        for s in sel:
-            constraints.append(pm.pointConstraint(locs[s], s))
-
-        if len(selectedLayer):
-            pm.bakeResults(attrList,
-                           simulation=False,
-                           disableImplicitControl=True,
-                           # removeBakedAttributeFromLayer=False,
-                           destinationLayer=selectedLayer[0],
-                           sampleBy=1,
-                           oversamplingRate=1,
-                           preserveOutsideKeys=True,
-                           sparseAnimCurveBake=True,
-                           removeBakedAttributeFromLayer=False,
-                           removeBakedAnimFromLayer=False,
-                           bakeOnOverrideLayer=False,
-                           minimizeRotation=True,
-                           controlPoints=False,
-                           shape=False,
-                           time=(start, end),
-                           )
-            pm.delete(constraints)
-            if cmds.animLayer(selectedLayer[0], query=True, override=True):
-                for s in sel:
+                constraints.append(pm.pointConstraint(locs, s))
+                pm.bakeResults(attrList,
+                               simulation=False,
+                               disableImplicitControl=True,
+                               # removeBakedAttributeFromLayer=False,
+                               destinationLayer=selectedLayer[0],
+                               sampleBy=1,
+                               oversamplingRate=1,
+                               preserveOutsideKeys=True,
+                               sparseAnimCurveBake=True,
+                               removeBakedAttributeFromLayer=False,
+                               removeBakedAnimFromLayer=False,
+                               bakeOnOverrideLayer=False,
+                               minimizeRotation=True,
+                               controlPoints=False,
+                               shape=False,
+                               time=(start, end),
+                               )
+                pm.delete(constraints)
+                if cmds.animLayer(selectedLayer[0], query=True, override=True):
                     for attr in ['translateX', 'translateY', 'translateZ']:
                         # hack for pre maya 2020.4.3
                         curve = curves.get(s + '.' + attr, None)
@@ -278,9 +273,7 @@ class GravityTools(toolAbstractFactory):
                         cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
                         cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
                         cmds.delete(resultCurve)
-            else: # additive layer
-                print ('destination additive')
-                for s in sel:
+                else: # additive layer
                     for attr in ['translateX', 'translateY', 'translateZ']:
                         # hack for pre maya 2020.4.3
                         curve = curves.get(s + '.' + attr, None)
@@ -288,11 +281,9 @@ class GravityTools(toolAbstractFactory):
                             continue
                         curveOriginal = curveDuplicates.get(s + '.' + attr, None)
                         resultCurve = cmds.listConnections(plugs[s + '.' + attr], source=True, destination=False)
-                        print ('curveOriginal', curveOriginal)
-                        print ('resultCurve', resultCurve)
+
                         layerValues = []
                         baseplug, layerplug = self.funcs.getLowerLayerPlugs(s + '.' + attr, selectedLayer[0])
-                        print ('baseplug', baseplug, 'layerplug', layerplug)
                         animRange = int(end - start + 1)
                         for x in range(0, animRange):
                             baseVal = cmds.getAttr(baseplug, time=start + x)
@@ -305,19 +296,16 @@ class GravityTools(toolAbstractFactory):
                         cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
                         cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
                         cmds.delete(resultCurve)
-        else:
-            pm.bakeResults(sel, simulation=False,
-                           disableImplicitControl=True,
-                           # removeBakedAttributeFromLayer=False,
-                           # destinationLayer=pm.animLayer(query=True, root=True),
-                           # bakeOnOverrideLayer=False,
-                           preserveOutsideKeys=True,
-                           time=(start, end),
-                           sampleBy=1)
-            pm.delete(constraints)
+            else:
+                constraints.append(pm.pointConstraint(locs, s))
+                pm.bakeResults(sel, simulation=False,
+                               disableImplicitControl=True,
+                               preserveOutsideKeys=True,
+                               time=(start, end),
+                               sampleBy=1)
+                pm.delete(constraints)
 
-        for s in sel:
-            pm.delete(locs[s])
+        pm.delete(locs)
 
     def doJumpUsingInitialFrameVelocity(self):
         with self.funcs.keepSelection():

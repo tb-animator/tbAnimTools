@@ -401,6 +401,21 @@ class functions(object):
 
         return selectedLayers
 
+    def get_preferred_layers(self, selection, ignoreBase=False):
+        if cmds.animLayer(q=True, root=True) == None:
+            self.initBaseAnimationLayer()
+            return []
+        cmds.select(selection, replace=True)
+        affectedLayers = cmds.animLayer(query=True, affectedLayers=True)
+        selectedLayers = []
+        for layer in affectedLayers:
+            if cmds.animLayer(layer, query=True, preferred=True):
+                if ignoreBase:
+                    if layer == cmds.animLayer(q=True, root=True):
+                        continue
+                selectedLayers.append(layer)
+        return selectedLayers
+
     def select_layer(self, layerName):
         layers = cmds.ls(type='animLayer')
         for layer in layers:
