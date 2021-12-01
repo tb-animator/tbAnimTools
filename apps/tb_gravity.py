@@ -264,19 +264,47 @@ class GravityTools(toolAbstractFactory):
                            shape=False,
                            time=(start, end),
                            )
-
-            for s in sel:
-                for attr in ['translateX', 'translateY', 'translateZ']:
-                    # hack for pre maya 2020.4.3
-                    curve = curves.get(s + '.' + attr, None)
-                    if not curve:
-                        continue
-                    curveOriginal = curveDuplicates.get(s + '.' + attr, None)
-                    resultCurve = cmds.listConnections(plugs[s + '.' + attr] , source=True, destination=False)
-                    cmds.copyKey(resultCurve, time=(start, end), option="curve")
-                    cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
-                    cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
-                    cmds.delete(resultCurve)
+            pm.delete(constraints)
+            if cmds.animLayer(selectedLayer[0], query=True, override=True):
+                for s in sel:
+                    for attr in ['translateX', 'translateY', 'translateZ']:
+                        # hack for pre maya 2020.4.3
+                        curve = curves.get(s + '.' + attr, None)
+                        if not curve:
+                            continue
+                        curveOriginal = curveDuplicates.get(s + '.' + attr, None)
+                        resultCurve = cmds.listConnections(plugs[s + '.' + attr] , source=True, destination=False)
+                        cmds.copyKey(resultCurve, time=(start, end), option="curve")
+                        cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
+                        cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
+                        cmds.delete(resultCurve)
+            else: # additive layer
+                print ('destination additive')
+                for s in sel:
+                    for attr in ['translateX', 'translateY', 'translateZ']:
+                        # hack for pre maya 2020.4.3
+                        curve = curves.get(s + '.' + attr, None)
+                        if not curve:
+                            continue
+                        curveOriginal = curveDuplicates.get(s + '.' + attr, None)
+                        resultCurve = cmds.listConnections(plugs[s + '.' + attr], source=True, destination=False)
+                        print ('curveOriginal', curveOriginal)
+                        print ('resultCurve', resultCurve)
+                        layerValues = []
+                        baseplug, layerplug = self.funcs.getLowerLayerPlugs(s + '.' + attr, selectedLayer[0])
+                        print ('baseplug', baseplug, 'layerplug', layerplug)
+                        animRange = int(end - start + 1)
+                        for x in range(0, animRange):
+                            baseVal = cmds.getAttr(baseplug, time=start + x)
+                            layerVal = cmds.getAttr(layerplug, time=start + x)
+                            delta = layerVal - baseVal
+                            layerValues.append(delta)
+                        for x in range(0, animRange):
+                            cmds.setKeyframe(resultCurve, time=start + x, value=layerValues[x])
+                        cmds.copyKey(resultCurve, time=(start, end), option="curve")
+                        cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
+                        cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
+                        cmds.delete(resultCurve)
         else:
             pm.bakeResults(sel, simulation=False,
                            disableImplicitControl=True,
@@ -286,8 +314,8 @@ class GravityTools(toolAbstractFactory):
                            preserveOutsideKeys=True,
                            time=(start, end),
                            sampleBy=1)
+            pm.delete(constraints)
 
-        pm.delete(constraints)
         for s in sel:
             pm.delete(locs[s])
 

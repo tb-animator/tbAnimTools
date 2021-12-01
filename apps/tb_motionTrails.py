@@ -212,17 +212,8 @@ class MotionTrails(toolAbstractFactory):
     def createFromData(self, data, key):
         if not cmds.objExists(key):
             trail = self.createMotionTrail(sel=data['target'][key], camera=data['camera'][key])
-            trailShape = pm.PyNode(trail[0][0]).getShape()
-
-            '''
-            for attr, value in data['motionTrailShape'][key].items():
-                if not pm.getAttr(trail[0][0] + '.' + attr, keyable=True):
-                    continue
-                if isinstance(value, list):
-                    pm.setAttr(trail[0][0] + '.' + attr, *value)
-                else:
-                    pm.setAttr(trail[0][0] + '.' + attr, value)
-            '''
+            if not trail:
+                return
             for attr, value in data['motionTrail'][key].items():
                 if not pm.getAttr(trail[0][1] + '.' + attr, keyable=True):
                     continue
@@ -290,7 +281,8 @@ class MotionTrails(toolAbstractFactory):
                 pm.delete(motionTrail, motionTrailShape[0])
             else:
                 self.createFromSceneInfo(key=motionTrail)
-        self.getMotionTrailInfo()
+                #self.getMotionTrailInfo()
+
 
     def getCurrentCamera(self):
         view = omUI.M3dView.active3dView()
@@ -327,7 +319,7 @@ class MotionTrails(toolAbstractFactory):
 
     def createMotionTrail(self, sel=None, camera=None):
         if not sel:
-            sel = cmds.ls(sl=True)
+            sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return
         if not isinstance(sel, list):
@@ -338,7 +330,8 @@ class MotionTrails(toolAbstractFactory):
                 if self.hasMotionTrail(s):
                     continue
                 cmds.select(s, replace=True)
-                moTrail = cmds.snapshot(motionTrail=True,
+                moTrail = cmds.snapshot(name=s + '_motionTrail',
+                                        motionTrail=True,
                                         increment=1,
                                         startTime=self.funcs.getTimelineMin(),
                                         endTime=self.funcs.getTimelineMax())
