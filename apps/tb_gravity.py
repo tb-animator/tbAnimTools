@@ -33,7 +33,9 @@ import math
 import bisect
 from Abstract import *
 from tb_UI import *
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -65,15 +67,15 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickJump',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.doQuickJump()'],
-                                     help=self.helpStrings.gravity.get('quickJump')))
+                                     help=maya.stringTable['y_tb_Gravity.doQuickJump']))
         self.addCommand(self.tb_hkey(name='jumpAllKeypairs',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpAllKeypairs()'],
-                                     help=self.helpStrings.gravity.get('doJumpAllKeypairs')))
+                                     help=maya.stringTable['y_tb_Gravity.doJumpAllKeypairs']))
         self.addCommand(self.tb_hkey(name='jumpUsingInitialFrameVelocity',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
-                                     help=self.helpStrings.gravity.get('doJumpUsingInitialFrameVelocity')))
+                                     help=maya.stringTable['y_tb_Gravity.doJumpUsingInitialFrameVelocity']))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
@@ -324,6 +326,7 @@ class GravityTools(toolAbstractFactory):
             timeRange = self.funcs.getTimelineHighlightedRange()
         else:
             timeRange = self.funcs.getTimelineRange()
+            timeRange[0] = cmds.currentTime(query=True)
         velStart = timeRange[0] - 1
         velEnd = timeRange[0]
         start = timeRange[0]
@@ -343,7 +346,7 @@ class GravityTools(toolAbstractFactory):
             arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, 0)
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
 
-        self.bakeJumpToControl(start, end, locs, sel)
+            self.bakeJumpToControl(start, end, locs[s], s)
 
     def getMatrixTranslation(self, mtx):
         startMTransform = om2.MTransformationMatrix(mtx)

@@ -107,6 +107,7 @@ class WalkData(object):
         self.setName(filePath)
         self.toJson()
         fileName = os.path.join(filePath)
+        print (self.jsonObjectInfo)
         jsonString = json.dumps(self.jsonObjectInfo, indent=4, separators=(',', ': '))
         jsonFile = open(fileName, 'w')
 
@@ -528,6 +529,7 @@ class PickwalkCreator(object):
         print ('NAME', self.walkData.name)
 
 
+
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('pickwalk'))
@@ -707,12 +709,14 @@ class Pickwalk(toolAbstractFactory):
         Pickwalk.__instance.loadWalkLibrary()
         Pickwalk.__instance.getAllPickwalkMaps()
         Pickwalk.__instance.initialiseWalkData()
+        Pickwalk.__instance.pickwalkPopup = None
         return Pickwalk.__instance
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.initData()
+
 
     def initData(self):
         super(Pickwalk, self).initData()
@@ -1074,12 +1078,23 @@ class Pickwalk(toolAbstractFactory):
         prompt.conditionSignal.connect(self.assignNewConditionFromWalk)
         prompt.show()
 
+    def openPickwalkConditionUI(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.error('Nothing selected')
+        namespace, control = sel[0].rsplit(':', 1)
+        self.assignNewConditionFromWalk(str(), namespace, control, str())
+
     def assignNewConditionFromWalk(self, direction, namespace, walkObject, destination):
         # print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
         cmds.select(namespace + ':' + walkObject, replace=True)
         self.loadLibraryForCurrent()
-        dlg = PickwalkPopup(control=walkObject, destination=destination)
-        dlg.show()
+        if self.pickwalkPopup is not None:
+            self.pickwalkPopup.close()
+            self.pickwalkPopup.deleteLater()
+
+        self.pickwalkPopup = PickwalkPopup(control=walkObject, destination=destination)
+        self.pickwalkPopup.show()
 
     def assignNewDestinationFromWalk(self, direction, namespace, walkObject, destination):
         # print('assignNewDestinationFromWalk', direction, namespace, walkObject, destination)
@@ -1172,16 +1187,20 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        # print('assignNewRigNewMap', rigName)
+        print('assignNewRigNewMap', rigName)
         win = pickwalkMainWindow()
-        win.show()
+
         # TODO this is a bit ugly as it opens the save as windows window, nice to avoid that as you have to save
         # TODO the pickwalk map in the save folder anyway
-        newMap = win.saveAsLibrary()
+        newMap = win.saveAsLibrary(defaultName=rigName)
+        if not newMap:
+            return
         # print('new map', newMap)
         self.walkDataLibrary.assignRig(newMap.split('.')[0], rigName)
         self.savePickwalkLibraryMap()
         self.getAllPickwalkMaps()
+        Pickwalk()
+        win.show()
         win.loadLibraryForCurrent()
 
     """
@@ -1238,10 +1257,10 @@ class Pickwalk(toolAbstractFactory):
         self.loadWalkLibrary()
         self.getAllPickwalkMaps()
 
-    def saveAsLibrary(self):
+    def saveAsLibrary(self, defaultName = str()):
         save_filename = QFileDialog.getSaveFileName(QWidget(),
                                                     "Save file as",
-                                                    self.defaultPickwalkDir,
+                                                    self.defaultPickwalkDir + '/' + defaultName,
                                                     "Pickwalk files (*.json)")
         if not save_filename:
             return
@@ -1282,11 +1301,14 @@ class WalkDataLibrary(object):
         self.jsonObjectInfo['ignoredRigs'] = self.ignoredRigs
 
     def assignRig(self, mapName, rigName):
+        if mapName not in self.rigMapDict.keys():
+            self.rigMapDict[mapName] = list()
         for key, values in self.rigMapDict.items():
             if rigName in values:
                 values.remove(rigName)
         if rigName in self.ignoredRigs:
             self.ignoredRigs.remove(rigName)
+
         self.rigMapDict[mapName].append(rigName)
         print ('assignRig', self.rigMapDict)
 
@@ -2971,6 +2993,9 @@ class PickwalkPopup(BaseDialog):
         super(PickwalkPopup, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                             title='Context pickwalk Creation')
         # TODO - move these functions out of the window and into Pickwalk()
+        self.borderHighlightQSS = "QLineEdit {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}" \
+                                  "QListWidget {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
+
         self.control = control
         self.destination = destination
         self.pickwalk = Pickwalk()
@@ -2979,6 +3004,7 @@ class PickwalkPopup(BaseDialog):
         self.creator = self.pickwalk.pickwalkCreator
 
         print('mapName', self.creator.walkData._filePath)
+        print('creator', self.creator)
 
         self.setStyleSheet("QFrame {"
                            "border-width: 2;"
@@ -3105,6 +3131,7 @@ class PickwalkPopup(BaseDialog):
         if not channels:
             return pm.warning('no channel selected')
         self.conditionAttrWidget.lineEdit.setText(channels[0].split(':')[-1])
+        self.setOKHighlight(self.conditionAttrWidget.lineEdit)
 
     def outputSignal_newDestinationCreated(self):
         # print 'outputSignal_newDestinationCreated'
@@ -3120,10 +3147,10 @@ class PickwalkPopup(BaseDialog):
         self.nameWidget.lineEdit.setText(item)
 
     def inputSignal_destinationsUpdated(self, items):
-        print('inputSignal_destinationsPicked,', items)
+        self.setOKHighlight(self.destinationsWidget.listwidget)
 
     def inputSignal_altDestinationsUpdated(self, items):
-        print('inputSignal_altDestinationsPicked,', items)
+        self.setOKHighlight(self.altDestinationsWidget.listwidget)
 
     def inputSignal_nameChanged(self, name):
         print('inputSignal_nameChanged,', name)
@@ -3134,38 +3161,52 @@ class PickwalkPopup(BaseDialog):
     def inputSignal_conditionhanged(self, value):
         print('inputSignal_conditionhanged,', value)
 
+    def setErrorHighlight(self, widget):
+        widget.setStyleSheet(self.borderHighlightQSS)
+
+    def setOKHighlight(self, widget):
+        widget.setStyleSheet(getqss.getStyleSheet())
+
     def addWalk(self, direction=str()):
-        # print('addWalk', direction)
+        self.pickwalkWindow.loadLibraryForCurrent()
         outData = dict()
+        if not self.conditionAttrWidget.lineEdit.text():
+            self.setErrorHighlight(self.conditionAttrWidget.lineEdit)
+            return pm.warning('No valid attribute')
         if not self.destinationsWidget.currentItems():
+            self.setErrorHighlight(self.destinationsWidget.listwidget)
             return pm.warning('No destinations')
         if not self.altDestinationsWidget.currentItems():
+            self.setErrorHighlight(self.altDestinationsWidget.listwidget)
             return pm.warning('No alt destinations')
-        if not self.conditionAttrWidget.lineEdit.text():
-            return pm.warning('No valid attribute')
+
+
         outData['destination'] = self.destinationsWidget.currentItems()
         outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
         outData['conditionAttribute'] = self.conditionAttrWidget.lineEdit.text()
         outData['conditionValue'] = self.conditionWidget.spinBox.value()
         outData['name'] = self.controlWidget.lineEdit.text() + '__' + direction
         # print(outData)
-
+        print (self.creator.walkData.name)
+        print (self.creator.walkData._filePath)
+        print (self.creator.walkData.destinations)
         self.creator.addDestination(name=outData['name'],
                                     destination=outData['destination'],
                                     destinationAlt=outData['destinationAlt'],
                                     conditionAttribute=outData['conditionAttribute'],
                                     conditionValue=outData['conditionValue'])
         for control in self.controls:
-            # print('setControlDestination for control::', control)
+            print('setControlDestination for control::', control)
             self.creator.setControlDestination(control,
                                                direction=direction,
                                                destination=outData['name'])
-
-        self.pickwalkWindow.saveLibrary()
-        self.pickwalkWindow.loadLibraryForCurrent()
-        self.pickwalk.loadWalkLibrary()
+        print (self.creator.walkData.destinations)
+        self.creator.walkData.save(self.creator.walkData._filePath)
+        #self.pickwalkWindow.saveLibrary()
+        #self.pickwalk.loadWalkLibrary()
         self.pickwalk.getAllPickwalkMaps()
         self.pickwalk.initialiseWalkData()
+        self.pickwalkWindow.loadLibraryForCurrent()
 
 
 class mirrorPickwalkWidget(QFrame):
@@ -3666,14 +3707,9 @@ class pickwalkMainWindow(QMainWindow):
         return refName
 
     def loadLibraryForCurrent(self):
-        # TODO - implement this to look at the main walk library and open the
-        # TODO - correct map file
-        #
         fname = self.getCurrentRig()
         if not fname:
-            fname = self.browseToFile()
-        if not fname:
-            return None
+            return
 
         self.pickwalkCreator.load(fname)
         self.refreshUI()
@@ -3719,8 +3755,8 @@ class pickwalkMainWindow(QMainWindow):
         Pickwalk()
         self.refreshUI()
 
-    def saveAsLibrary(self):
-        save_filename = Pickwalk().saveAsLibrary()
+    def saveAsLibrary(self, defaultName=str()):
+        save_filename = Pickwalk().saveAsLibrary(defaultName=defaultName)
         self.setWindowTitle('tbPickwwalkSetup :: %s' % save_filename)
         return os.path.basename(save_filename)
 

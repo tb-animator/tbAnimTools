@@ -26,9 +26,7 @@ import pymel.core as pm
 import maya.cmds as cmds
 
 from Abstract import *
-import maya
-
-maya.utils.loadStringResourcesForModule(__name__)
+from functools import partial
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -46,42 +44,36 @@ __author__ = 'tom.bailey'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory(self.helpStrings.category.get('view'))
+        self.setCategory(self.helpStrings.category.get('keying'))
         self.commandList = list()
-
-        self.addCommand(self.tb_hkey(name='toggle_isolate_selection',
+        '''
+        self.addCommand(self.tb_hkey(name='example',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_isolator.toggle_isolate_selection'],
-                                     command=['isolator.toggle_isolate()']))
-        self.addCommand(self.tb_hkey(name='addToIsolation',
-                                     annotation='',
-                                     category=self.category,
-                                     help=maya.stringTable['y_tb_isolator.addToIsolation'],
-                                     command=['isolator.addToIsolation()']))
-
+                                     command=['example.exampleFunc()']))
+        '''
         return self.commandList
 
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class isolator(toolAbstractFactory):
+class GraphEditor(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
     # __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'isolator'
+    toolName = 'Graph Editor'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     def __new__(cls):
-        if isolator.__instance is None:
-            isolator.__instance = object.__new__(cls)
+        if GraphEditor.__instance is None:
+            GraphEditor.__instance = object.__new__(cls)
 
-        isolator.__instance.val = cls.toolName
-        return isolator.__instance
+        GraphEditor.__instance.val = cls.toolName
+        return GraphEditor.__instance
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
@@ -93,7 +85,7 @@ class isolator(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(isolator, self).optionUI()
+        return super(GraphEditor, self).optionUI()
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -101,30 +93,41 @@ class isolator(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
-    def toggle_isolate(self):
-        '''
-        import isolate as iso
-        reload (iso)
-        iso.isolate()
-        '''
-        panel = self.funcs.getModelPanel()
+    def deferredLoad(self):
+        name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
+        popup = cmds.popupMenu(name,
+                               ctrlModifier=False,
+                               shiftModifier=True,
+                               button=3,
+                               allowOptionBoxes=False,
+                               parent='graphEditor1GraphEd',
+                               markingMenu=True,
+                               postMenuCommandOnce=False,
+                               postMenuCommand=partial(self.graphEditorMenu))
 
-        state = cmds.isolateSelect(panel, query=True, state=True)
-        if state:
-            cmds.isolateSelect(panel, state=0)
-            pm.isolateSelect(panel, removeSelected=True)
-        else:
-            cmds.isolateSelect(panel, state=1)
-            cmds.isolateSelect(panel, addSelected=True)
+    def graphEditorMenu(self, menuName, *args):
+        mode = self.getMoveKeyMode()
+        cmds.popupMenu(menuName, edit=True, deleteAllItems=True)
+        cmds.setParent(menuName, menu=True)
+        cmds.menuItem('Key Move Mode', enable=False)
+        cmds.menuItem(divider=True)
 
-    def addToIsolation(self):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return
-        panels = self.funcs.getAllModelPanels()
-        if not panels:
-            return
-        for p in panels:
-            state = pm.isolateSelect(p, query=True, state=True)
-            if state:
-                cmds.isolateSelect(p, addSelected=True)
+        cmds.menuItem('Constant',
+                      parent=menuName,
+                      command=partial(self.setMoveKeyMode, 'constant'),
+                      boldFont=mode=='constant')
+        cmds.menuItem('Linear',
+                      parent=menuName,
+                      command=partial(self.setMoveKeyMode, 'linear'),
+                      boldFont=mode=='linear')
+        cmds.menuItem('Power',
+                      parent=menuName,
+                      command=partial(self.setMoveKeyMode, 'power'),
+                      boldFont=mode=='power')
+
+    def getMoveKeyMode(self):
+        mode = cmds.moveKeyCtx('moveKeyContext', query=True, moveFunction=True)
+        return mode
+
+    def setMoveKeyMode(self, mode, *args):
+        cmds.moveKeyCtx('moveKeyContext', edit=True, moveFunction=mode)

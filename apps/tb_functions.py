@@ -408,6 +408,8 @@ class functions(object):
         cmds.select(selection, replace=True)
         affectedLayers = cmds.animLayer(query=True, affectedLayers=True)
         selectedLayers = []
+        if not affectedLayers:
+            return list()
         for layer in affectedLayers:
             if cmds.animLayer(layer, query=True, preferred=True):
                 if ignoreBase:

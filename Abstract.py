@@ -90,7 +90,10 @@ class hotKeyAbstractFactory(ABC):
             cmd += "\n\n"
             cmd += '"""About ----------------------------------------------\n'
             if help:
-                cmd += textwrap.fill(help, 80)
+                helpLines = help.split('__')
+                for helpLine in helpLines:
+                    cmd += textwrap.fill(helpLine, 60)
+                    cmd += "\n"
                 cmd += "\n\n"
             cmd += '----------------------------------------------------"""'
             return cmd

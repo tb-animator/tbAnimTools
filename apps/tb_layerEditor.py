@@ -28,7 +28,9 @@ from functools import partial
 
 from Abstract import *
 import maya.OpenMayaUI as omui
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -54,7 +56,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='select_best_layer',
                                      annotation='',
                                      category=self.category,
-                                     help=self.helpStrings.selectBestLayer,
+                                     help=maya.stringTable['y_tb_layerEditor.select_best_layer'],
                                      command=['LayerEditor.selectBestLayer()']))
 
         return self.commandList
@@ -102,8 +104,8 @@ class LayerEditor(toolAbstractFactory):
 
     def optionUI(self):
         super(LayerEditor, self).optionUI()
-        customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor', self.useCustomUIOption)
-        customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTab)
+        customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart', self.useCustomUIOption)
+        customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTabToggled)
         self.layout.addWidget(customLayerEditorWidget)
         self.layout.addStretch()
         return self.optionWidget
@@ -125,6 +127,13 @@ class LayerEditor(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
+
+    def modifyAnimLayerTabToggled(self, *args):
+        print ('modifyAnimLayerTabToggled', args)
+        from pluginLookup import ClassFinder
+        print ('ClassFinder',ClassFinder)
+        ClassFinder().applyAnimLayerTabModification()
+        print ('DONE')
 
     def modifyAnimLayerTab(self):
         if self.hasAppliedUI:

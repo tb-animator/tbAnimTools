@@ -35,7 +35,9 @@ qtVersion = pm.about(qtVersion=True)
 margin = 2
 from random import randint
 from Abstract import *
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
@@ -69,8 +71,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('sliders'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='inbetweenSliderPress', annotation='',
+                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderPress'],
                                      category=self.category, command=['slideTools.inbetweenSlidePress()']))
         self.addCommand(self.tb_hkey(name='inbetweenSliderRelease', annotation='',
+                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderRelease'],
                                      category=self.category, command=['slideTools.inbetweenSlideRelease()']))
 
         return self.commandList
@@ -232,7 +236,7 @@ class tweenBase(object):
         :return: [MObject) an MObject for each item in the selection
         """
         sel = om2.MGlobal.getActiveSelectionList()
-        for i in xrange(sel.length()):
+        for i in range(sel.length()):
             yield sel.getDependNode(i)
 
     def setAffectedObjects(self):
@@ -354,7 +358,7 @@ class worldSpaceTween(tweenBase):
         """
         # TODO - bug here where the active seleciton list is curves, although the graph editor is closed
         sel = om2.MGlobal.getActiveSelectionList()
-        for i in xrange(sel.length()):
+        for i in range(sel.length()):
             yield sel.getDependNode(i)
 
     def setAffectedObjects(self):
@@ -1138,7 +1142,7 @@ class sliderWidget(QWidget):
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
-        alpha = 198
+        alpha = 255
 
         fillColor = QColor(128, 128, 128, alpha)
         lineColor = QColor(64, 64, 64, 64)
@@ -1161,7 +1165,6 @@ class sliderWidget(QWidget):
         qp.drawRoundedRect(QRect(0, 0, 321, 52), 4, 4)
 
         # qp.setCompositionMode(qp.CompositionMode_Clear)
-
 
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, orange)
@@ -1260,7 +1263,7 @@ class sliderWidget(QWidget):
           background-color: rgba(55, 250, 55, 0);
       }
       QLayout{
-          background: rgba(128, 55, 55, 0);
+          background: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
       }
       QFrame{
           border-style: None;

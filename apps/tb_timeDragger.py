@@ -26,24 +26,27 @@
 import pymel.core as pm
 import maya.mel as mel
 from Abstract import hotKeyAbstractFactory
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 import maya.cmds as cmds
 import maya.mel as mel
 
 from Abstract import *
 from functools import partial
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -52,18 +55,22 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
+                                     help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_on'],
                                      command=['timeDragger.drag(True)']))
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
+                                     help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_off'],
                                      command=['timeDragger.drag(False)']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
+                                     help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_on'],
                                      command=['timeDragger.stepDrag()']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
+                                     help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_off'],
                                      command=['timeDragger.stepDrag(state=False)']))
         return self.commandList
 
@@ -71,13 +78,13 @@ class hotkeys(hotKeyAbstractFactory):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class timeDragger(toolAbstractFactory):
+class TimeDragger(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'timeDragger'
+    toolName = 'TimeDragger'
     hotkeyClass = None
     funcs = None
 
@@ -86,7 +93,7 @@ class timeDragger(toolAbstractFactory):
     optionVar = "tb_timedrag"
     modes = ['toggleBackground']
     step_modes = ['odd frames only']
-    step_var = "tb_timedrag_step_frame"
+    stepFrameCount_var = "tb_timedrag_step_frame"
     step_optionVar = "tb_step_odd"
     MessagePos = None
     showMessage = None
@@ -106,16 +113,16 @@ class timeDragger(toolAbstractFactory):
     evaluate_mode = ""
 
     def __new__(cls):
-        if timeDragger.__instance is None:
-            timeDragger.__instance = object.__new__(cls)
+        if TimeDragger.__instance is None:
+            TimeDragger.__instance = object.__new__(cls)
 
-        timeDragger.__instance.val = cls.toolName
-        return timeDragger.__instance
+        TimeDragger.__instance.val = cls.toolName
+        return TimeDragger.__instance
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
-
+        self.even_only = pm.optionVar.get(self.step_optionVar, True)
         self.update_options()
         self.previous_tool = self.get_previous_ctx()
         self.step_ctx = pm.draggerContext(name='step_ctx',
@@ -130,7 +137,25 @@ class timeDragger(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(timeDragger, self).optionUI()
+        super(TimeDragger, self).optionUI()
+
+        snapOrderHeader = subHeader('Stepped Drag')
+        stepDragInfo = infoLabel([maya.stringTable['y_tb_timeDragger.stepDragInfo']])
+
+        StepFramesWidget = intFieldWidget(optionVar=self.stepFrameCount_var,
+                                               defaultValue=1,
+                                               label='Step every x frames',
+                                               minimum=1, maximum=100, step=1)
+        EvenOnlyOptionWidget = optionVarBoolWidget('Step on even frames only',
+                                                   self.step_optionVar)
+
+        self.layout.addWidget(snapOrderHeader)
+        self.layout.addWidget(stepDragInfo)
+        self.layout.addWidget(EvenOnlyOptionWidget)
+        self.layout.addWidget(StepFramesWidget)
+
+        self.layout.addStretch()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -163,17 +188,17 @@ class timeDragger(toolAbstractFactory):
             if self.showMessage:
                 msg = 'on'
                 self.funcs.infoMessage(prefix='smooth drag',
-                             message=' : %s' % msg,
-                             position=self.MessagePos
-                             )
+                                       message=' : %s' % msg,
+                                       position=self.MessagePos
+                                       )
             cmds.setToolTo('TimeDragger')
         else:
             if self.showMessage:
                 msg = 'off'
                 self.funcs.infoMessage(prefix='smooth drag',
-                             message=' : %s' % msg,
-                             position=self.MessagePos
-                             )
+                                       message=' : %s' % msg,
+                                       position=self.MessagePos
+                                       )
             pm.setCurrentTime(int(pm.getCurrentTime()))
             cmds.displayPref(displayGradient=self.background_state)
             mel.eval('invokeLastAction')
@@ -183,9 +208,9 @@ class timeDragger(toolAbstractFactory):
         msg = "you pressed some weird combination of alt or maybe the windows key"
         print (msg)
         self.funcs.errorMessage(prefix='Warning',
-                      message=' : %s' % msg,
-                      position='botRight'
-                      )
+                                message=' : %s' % msg,
+                                position='botRight'
+                                )
 
     def stepDrag(self, state=True):
         if state:
@@ -194,7 +219,7 @@ class timeDragger(toolAbstractFactory):
                 self.evaluate_mode = cmds.evaluationManager(mode='off')
             except:
                 pass
-            self.step = pm.optionVar.get(self.step_var, 1)
+            self.step = pm.optionVar.get(self.stepFrameCount_var, 1)
             self.even_only = pm.optionVar.get(self.step_optionVar, True)
             print ("step even", self.even_only)
             cmds.setToolTo(self.step_ctx)

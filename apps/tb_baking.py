@@ -32,7 +32,9 @@ import math
 from Abstract import *
 from tb_UI import *
 import tb_helpStrings
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -56,81 +58,98 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickMergeAllLayers',
                                      annotation='Merges all layers',
                                      category=self.category, command=['BakeTools.quickMergeAllLayers()'],
-                                     help=self.helpStrings.simpleBakeToOverride))
+                                     help=maya.stringTable['y_tb_Baking.quickMergeAllLayers']))
+
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToNew',
                                      annotation='',
                                      category=self.category, command=['BakeTools.quickMergeSelectionToNew()'],
-                                     help=self.helpStrings.quickMergeSelectionToNew))
+                                     help=maya.stringTable['y_tb_Baking.quickMergeSelectionToNew']))
+
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToBase',
                                      annotation='',
                                      category=self.category, command=['BakeTools.quickMergeSelectionToBase()'],
-                                     help=self.helpStrings.quickMergeSelectionToBase
-                                     ))
+                                     help=maya.stringTable['y_tb_Baking.quickMergeSelectionToBase']))
 
         self.addCommand(self.tb_hkey(name='bakeConstraintToAdditive',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bakeConstraintToAdditiveSelection()']
-                                     ))
+                                     category=self.category, command=['BakeTools.bakeConstraintToAdditiveSelection()'],
+                                     help=maya.stringTable['y_tb_Baking.bakeConstraintToAdditive']))
         self.addCommand(self.tb_hkey(name='additiveExtractSelection',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.additiveExtractSelection()']
-                                     ))
+                                     category=self.category, command=['BakeTools.additiveExtractSelection()'],
+                                     help=maya.stringTable['y_tb_Baking.additiveExtractSelection']))
+
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
-                                     help=self.helpStrings.simpleBakeToBase))
+                                     help=maya.stringTable['y_tb_Baking.simpleBakeToOverride']))
+
         self.addCommand(self.tb_hkey(name='simpleBakeToBase',
                                      annotation='',
                                      category=self.category, command=['BakeTools.simpleBake()'],
-                                     help=self.helpStrings.simpleBakeToOverride))
+                                     help=maya.stringTable['y_tb_Baking.simpleBakeToBase']))
 
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addAdditiveLayer()'],
-                                     help=self.helpStrings.quickCreateAdditiveLayer))
+                                     help=maya.stringTable['y_tb_Baking.quickCreateAdditiveLayer']))
+
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addOverrideLayer()'],
-                                     help=self.helpStrings.quickCreateOverrideLayer))
+                                     help=maya.stringTable['y_tb_Baking.quickCreateOverrideLayer']))
+
         self.addCommand(self.tb_hkey(name='counterAnimLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.counterLayerAnimation()'],
-                                     help=self.helpStrings.counterAnimLayer))
+                                     help=maya.stringTable['y_tb_Baking.counterAnimLayer']))
+
         self.setCategory(self.helpStrings.category.get('constraints'))
         self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='',
                                      category=self.category,
                                      command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
-                                     help=self.helpStrings.bakeToLocator))
+                                     help=maya.stringTable['y_tb_Baking.bakeToLocator']))
         self.addCommand(
             self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
                          category=self.category,
-                         command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)']))
+                         command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
+                         help=maya.stringTable['y_tb_Baking.bakeToLocatorRotation']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintOffset']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset', annotation='constrain to objects with NO offset',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintNoOffset']))
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake',
                                      annotation='constrain to objects with offset - post baked',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintOffsetPostBake']))
+
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake',
                                      annotation='constrain to objects with NO offset - post baked',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintNoOffsetPostBake']))
+
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse',
                                      annotation='constrain to objects with offset - post baked, constraint reversed',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintOffsetPostBakeReverse']))
+
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse',
                                      annotation='constrain to objects with NO offset - post baked, constraint reversed',
                                      category=self.category, command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)']))
+                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)'],
+                                     help=maya.stringTable['y_tb_Baking.simpleConstraintNoOffsetPostBakeReverse']))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='right click menu for temp controls',
-                                     category=self.category, command=['BakeTools.assetRmbCommand()']))
+                                     category=self.category, command=['BakeTools.assetRmbCommand()'],
+                                     help='Do not assign to a hotkey'))
 
         return self.commandList
 
@@ -860,7 +879,7 @@ class BakeTools(toolAbstractFactory):
         overrideMTimeArray = None
         ignoredAttributeTypes = ['bool', 'enum']
         for attr, curve in baseLayerMFnAnimCurves.items():
-            attrIngored= False
+            attrIngored = False
             attrType = cmds.getAttr(attr, type=True)
             attrIngored = attrType in ignoredAttributeTypes
             keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
@@ -919,7 +938,7 @@ class BakeTools(toolAbstractFactory):
             dg.doIt()
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
-        #self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
+        # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
         return
 
     def quickMergeAllLayers(self):

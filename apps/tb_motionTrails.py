@@ -32,7 +32,9 @@ import pymel.core.datatypes as dt
 import math
 from Abstract import *
 import itertools
+import maya
 
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -54,23 +56,23 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='toggleMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.toggleMotionTrail()'],
-                                     help=self.helpStrings.toggleMotionTrail))
+                                     help=maya.stringTable['y_tb_motionTrails.toggleMotionTrail']))
         self.addCommand(self.tb_hkey(name='createCameraRelativeMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.createCameraRelativeMotionTrail()'],
-                                     help=self.helpStrings.createCameraRelativeMotionTrail))
+                                     help=maya.stringTable['y_tb_motionTrails.createCameraRelativeMotionTrail']))
         self.addCommand(self.tb_hkey(name='toggleMotionTrailCameraRelative',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.toggleMotionTrailCameraRelative()'],
-                                     help=self.helpStrings.toggleMotionTrailCameraRelative))
+                                     help=maya.stringTable['y_tb_motionTrails.toggleMotionTrailCameraRelative']))
         self.addCommand(self.tb_hkey(name='createMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.createMotionTrail()'],
-                                     help=self.helpStrings.createMotionTrail))
+                                     help=maya.stringTable['y_tb_motionTrails.createMotionTrail']))
         self.addCommand(self.tb_hkey(name='removeMotionTrail',
                                      annotation='',
                                      category=self.category, command=['MotionTrails.removeMotionTrail()'],
-                                     help=self.helpStrings.removeMotionTrail))
+                                     help=maya.stringTable['y_tb_motionTrails.removeMotionTrail']))
         return self.commandList
 
     def assignHotkeys(self):

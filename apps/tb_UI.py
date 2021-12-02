@@ -964,6 +964,7 @@ class optionVarBoolWidget(optionVarWidget):
 
     def checkBoxEdited(self):
         pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
+        self.sendChangedSignal()
 
     def sendChangedSignal(self):
         self.changedSignal.emit(self.checkBox.isChecked())
@@ -996,6 +997,7 @@ class optionVarListWidget(optionVarWidget):
             checkBox.setObjectName(optionVar + '_' + op)
             checkBox.setChecked(op in optionVarValues)
             self.cbLayout.addWidget(checkBox, count / 2, count % numColumns)
+            checkBox.clicked.connect(self.checkBoxEdited)
             count += 1
 
         self.layout.addWidget(self.labelText)
@@ -1151,10 +1153,10 @@ class hotKeyWidget(QWidget):
 class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
-
-    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str()):
+    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(), stripNamespace=False):
         QWidget.__init__(self)
         self.key = key
+        self.stripNamespace = stripNamespace
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
@@ -1175,9 +1177,18 @@ class ObjectSelectLineEdit(QWidget):
         sel = pm.ls(sl=True)
         if not sel:
             return
-        self.itemLabel.setText(str(sel[0]))
-        self.pickedSignal.emit(str(sel[0]))
+        if self.stripNamespace:
+            s = str(sel[0]).split(':', 1)[-1]
+        else:
+            s = str(sel[0])
+        self.itemLabel.setText(s)
+        self.pickedSignal.emit(s)
         #self.editedSignalKey.emit(self.key, str(sel[0]))
+
+    def setTextNoUpdate(self, text):
+        self.blockSignals(True)
+        self.itemLabel.setText(text)
+        self.blockSignals(False)
 
     @Slot()
     def textEdited(self):
@@ -1233,7 +1244,7 @@ class comboBoxWidget(QWidget):
         #self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
 
 class intFieldWidget(QWidget):
-    mainLayout = None
+    layout = None
     optionVar = None
     optionValue = 0
 
@@ -1250,9 +1261,10 @@ class intFieldWidget(QWidget):
             self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
         else:
             self.optionValue = None
-        self.mainLayout = QHBoxLayout()
-        self.mainLayout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.mainLayout)
+        self.layout = QHBoxLayout()
+        self.layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
 
         label = QLabel(label)
 
@@ -1264,10 +1276,10 @@ class intFieldWidget(QWidget):
         if step == 1:
             self.spinBox.setDecimals(0)
         self.spinBox.setProperty("value", self.optionValue)
-        self.mainLayout.addWidget(label)
-        self.mainLayout.addWidget(self.spinBox)
+        self.layout.addWidget(label)
+        self.layout.addWidget(self.spinBox)
         self.spinBox.valueChanged.connect(self.interactivechange)
-        self.mainLayout.addStretch()
+        self.layout.addStretch()
 
     def interactivechange(self, b):
         if self.optionVar is not None:
@@ -1632,3 +1644,224 @@ class UpdateWin(BaseDialog):
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
 
+class AnimLayerTabButton(QPushButton):
+    """
+    UI menu item for anim layer tab,
+    subclass this and add to the _showMenu function, or just add menu items
+    """
+    def __init__(self, icon='', toolTip=''):
+        super(AnimLayerTabButton, self).__init__()
+        self.setIcon(QIcon(":/{0}".format(icon)))
+        self.setFixedSize(18, 18)
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px")
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
+
+        self.m = QMenu()
+
+    def _showMenu(self):
+        self.m.exec_(QCursor.pos())
+
+
+ss = """
+
+
+QSlider::groove:horizontal {
+border: 1px solid #bbb;
+background: transparent;
+height: 4;
+border-radius: 4px;
+}
+
+QSlider::sub-page:horizontal {
+background: QLinearGradient( x1: 0, y1: 0, x2:1, y2: 1, stop: 0 #d7801a, stop: 1 #ffa02f);
+background: qlineargradient(x1: 0, y1: 0,    x2: 0, y2: 1,
+    stop: 0 #66e, stop: 1 #bbf);
+border: 1px solid #2d2d2d;
+height: 4;
+margin-top: -2px; 
+margin-bottom: -2px; 
+border-radius: 2px;
+}
+
+QSlider::add-page:horizontal {
+background: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #d7801a, stop: 1 #ffa02f);
+border: 1px solid #2d2d2d;
+height: 4px;
+margin-top: -2px; 
+margin-bottom: -2px; 
+border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+background: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
+border: 2px solid #444;
+width: 20px; 
+height: 20px; 
+line-height: 20px; 
+margin-top: -10px; 
+margin-bottom: -10px; 
+border-radius: 10px; 
+image: url(":greasePencilPreGhostOff.png");
+}
+
+QSlider::handle:horizontal:hover {
+background: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
+border: 2px solid #777;
+}
+
+QSlider::sub-page:horizontal:disabled {
+background: #bbb;
+border-color: #999;
+}
+
+QSlider::add-page:horizontal:disabled {
+background: #eee;
+border-color: #999;
+}
+
+QSlider::handle:horizontal:disabled {
+background: #eee;
+border: 1px solid #aaa;
+border-radius: 4px;
+"""
+
+buttonSS = """
+QPushButton {
+color: #333;
+border: 2px solid #555;
+border-radius: 8px;
+border-style: outset;
+background: qradialgradient(
+cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
+radius: 1.35, stop: 0 #fff, stop: 1 #888
+);
+padding: 5px;
+}
+
+QPushButton:hover {
+background: qradialgradient(
+cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
+radius: 1.35, stop: 0 #fff, stop: 1 #bbb
+);
+}
+"""
+
+class testDialog(QDialog):
+    AssignNewRigSignal = Signal(str)
+    CreateNewRigMapSignal = Signal(str)
+    IgnoreRigSignal = Signal(str)
+
+    def __init__(self, parent=None, title='title?', rigName=str(), text='message?',
+                 assignText='Assign existing map',
+                 createText='Create new map',
+                 ignoreText='Ignore',
+                 cancelText='Cancel',
+                 ):
+        super(testDialog, self).__init__(parent=parent)
+        self.rigName = rigName
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setWindowTitle("HELLO!")
+        self.setWindowOpacity(0.9)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        # self.layout = QVBoxLayout()
+        # message = QLabel("Something happened, is that OK?")
+        # self.layout.addWidget(message)
+        # self.layout.addWidget(self.buttonBox)
+        # self.setLayout(self.layout)
+
+        # self.setFocusPolicy(Qt.StrongFocus)
+        self.setFixedSize(400, 64)
+        mainLayout = QVBoxLayout()
+        mainLayout.setContentsMargins(2,2,2,2)
+        sliderLayout = QHBoxLayout()
+        sliderLayout.setContentsMargins(0,0,0,0)
+
+        leftButton = QPushButton()
+        rightButton = QPushButton()
+        leftButton.setStyleSheet(buttonSS)
+        leftButton.setFixedSize(16,16)
+        sliderLayout.setAlignment(Qt.AlignCenter)
+        sliderLayout.setSpacing(0)
+        self.slider_label = QLabel()
+        self.slider_label.setFixedHeight(20)
+        self.slider_label.setAlignment(Qt.AlignCenter)
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setFixedHeight(24)
+        self.slider.setMinimum(-100)
+        self.slider.setMaximum(100)
+        self.slider.setValue(0)
+        self.slider.setTickPosition(QSlider.TicksBelow)
+        self.slider.setTickInterval(0.1)
+        self.slider.setStyleSheet(ss)
+        self.slider.valueChanged.connect(self.slider_changed)
+        self.slider.sliderReleased.connect(self.slider_released)
+
+        self.slider_label.setText(str(self.slider.value()))
+
+        sliderLayout.addWidget(leftButton)
+        sliderLayout.addWidget(self.slider)
+        sliderLayout.addWidget(rightButton)
+        mainLayout.addLayout(sliderLayout)
+        mainLayout.addWidget(self.slider_label)
+        self.setLayout(mainLayout)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.end()
+
+    def move_UI(self):
+        ''' Moves the UI to the widget position '''
+        pos = QCursor.pos()
+        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5))
+
+    def slider_changed(self):
+        self.slider_label.setText(str(self.slider.value()))
+
+    def slider_released(self):
+        cmds.warning('Value is %d' % self.slider.value())
+
+    def button_clicked(self, obj):
+        self.button.setText('Clicked')
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(testDialog, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
