@@ -51,39 +51,39 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.shift_time_range_start'],
-                                     command=['timeline.shift_start()']))
+                                     command=['Timeline.shift_start()']))
         self.addCommand(self.tb_hkey(name='shift_time_range_end',
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.shift_time_range_end'],
-                                     command=['timeline.shift_end()']))
+                                     command=['Timeline.shift_end()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_start',
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.crop_time_range_start'],
-                                     command=['timeline.crop_start()']))
+                                     command=['Timeline.crop_start()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_end',
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.crop_time_range_end'],
-                                     command=['timeline.crop_end()']))
+                                     command=['Timeline.crop_end()']))
         self.addCommand(self.tb_hkey(name='skip_forward',
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.skip_forward'],
-                                     command=['timeline.skip(mode=1)']))
+                                     command=['Timeline.skip(mode=1)']))
         self.addCommand(self.tb_hkey(name='skip_backward',
                                      annotation='',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeline.skip_backward'],
-                                     command=['timeline.skip(mode=-1)']))
+                                     command=['Timeline.skip(mode=-1)']))
         return self.commandList
 
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
-class timeline(toolAbstractFactory):
+class Timeline(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
@@ -96,11 +96,11 @@ class timeline(toolAbstractFactory):
     skipFramesOption = 'tb_skip'
 
     def __new__(cls):
-        if timeline.__instance is None:
-            timeline.__instance = object.__new__(cls)
+        if Timeline.__instance is None:
+            Timeline.__instance = object.__new__(cls)
 
-        timeline.__instance.val = cls.toolName
-        return timeline.__instance
+        Timeline.__instance.val = cls.toolName
+        return Timeline.__instance
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
@@ -112,7 +112,7 @@ class timeline(toolAbstractFactory):
     """
 
     def optionUI(self):
-        super(timeline, self).optionUI()
+        super(Timeline, self).optionUI()
         StepFramesWidget = intFieldWidget(optionVar=self.skipFramesOption,
                                           defaultValue=5,
                                           label='Next/Previous skip frames count',
