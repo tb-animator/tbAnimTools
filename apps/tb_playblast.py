@@ -25,7 +25,7 @@
 import pymel.core as pm
 import maya.cmds as cmds
 import os.path
-from tb_timeline import timeline
+from Abstract import *
 from Abstract import *
 
 qtVersion = pm.about(qtVersion=True)
