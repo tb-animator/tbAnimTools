@@ -59,6 +59,8 @@ maya.stringTable[
 maya.stringTable['SnapTools.relativeOrderOptionWidget'] = u'First selected object is the driver'
 maya.stringTable[
     'SnapTools.relativeSelectionConstraintOptionWidget'] = u'Use Constraint method (slower, order independent)'
+maya.stringTable[
+    'SnapTools.relativeSelectionChannelOptionWidget'] = u'Restore transform on selected channels (if selected)'
 
 maya.stringTable['SnapTools.kGetOptVarValues'] = u'Get optionVar values'
 maya.stringTable['SnapTools.tbSnapSelectionOrder'] = u'Get optionVar values'

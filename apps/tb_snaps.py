@@ -29,6 +29,7 @@ import maya
 maya.utils.loadStringResourcesForModule(__name__)
 import pymel.core.datatypes as dt
 from Abstract import *
+import maya.OpenMaya as om
 import maya.api.OpenMaya as om2
 
 qtVersion = pm.about(qtVersion=True)
@@ -109,6 +110,7 @@ class SnapTools(toolAbstractFactory):
     selectionOrderOption = 'tbSnapSelectionOrder'
     relativeSelectionOrderOption = 'tbRelativeSnapSelectionOrder'
     relativeSelectionConstraintOption = 'tbRelativeSnapConstraintMethod'
+    relativeSelectionChannelFilterOption = 'tbRelativeChannelFilter'
 
     def __new__(cls):
         if SnapTools.__instance is None:
@@ -141,7 +143,9 @@ class SnapTools(toolAbstractFactory):
         relativeSelectionConstraintOptionWidget = optionVarBoolWidget(
             maya.stringTable['SnapTools.relativeSelectionConstraintOptionWidget'],
             self.relativeSelectionConstraintOption)
-
+        relativeSelectionChannelOptionWidget = optionVarBoolWidget(
+            maya.stringTable['SnapTools.relativeSelectionChannelOptionWidget'],
+            self.relativeSelectionChannelFilterOption)
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(selectionOrderInfo)
         self.layout.addWidget(selectionOrderOptionWidget)
@@ -149,6 +153,7 @@ class SnapTools(toolAbstractFactory):
         self.layout.addWidget(relativeOrderInfo)
         self.layout.addWidget(relativeOrderOptionWidget)
         self.layout.addWidget(relativeSelectionConstraintOptionWidget)
+        self.layout.addWidget(relativeSelectionChannelOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -263,6 +268,8 @@ class SnapTools(toolAbstractFactory):
             self.restore_relative_transform(parent, sel)
 
     def restore_relative_transform(self, parent, targets):
+        channels = self.funcs.getChannels()
+        print ('channels', channels)
         self.init_relative_transform_key(parent)
 
         startTime = cmds.currentTime(query=True)
@@ -282,11 +289,12 @@ class SnapTools(toolAbstractFactory):
                 if not targetMatrix:
                     continue
                 if constrain:
-                    tempNode, tempConstraint = self.set_transform(target, targetMatrix * parentMatrix)
+                    tempNode, tempConstraint = self.set_transform(target, targetMatrix * parentMatrix,
+                                                                  channels=channels)
                     tempNodes.append(tempNode)
                     tempConstraints.append(tempConstraint)
                 else:
-                    self.set_world_matrix(target, targetMatrix * parentMatrix)
+                    self.set_world_matrix(target, targetMatrix * parentMatrix, channels=channels)
             if constrain:
                 pm.setKeyframe(targets)
                 pm.delete(tempNodes)
@@ -334,42 +342,58 @@ class SnapTools(toolAbstractFactory):
             if rot:
                 self.set_world_rotation(s, rot)
 
-    @staticmethod
-    def get_world_pivot(node):
+    def get_world_pivot(self, node):
         # get the world pivot
         return pm.xform(node, query=True, worldSpace=True, rotatePivot=True)
 
-    @staticmethod
-    def get_world_space(node):
+    def get_world_space(self, node):
         # gets the world space, not really world space tho, just what maya thinks is world space
         return pm.xform(node, query=True, relative=True, worldSpace=True, translation=True)
 
-    @staticmethod
-    def set_world_translation(node, position):
+    def set_world_translation(self, node, position):
         # set the world space position on the object
         pm.xform(node, absolute=True, worldSpace=True, translation=position)
 
-    @staticmethod
-    def get_world_rotation(node):
+    def get_world_rotation(self, node):
         # get the absolute world rotation of the object
         return pm.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
 
-    @staticmethod
-    def set_world_rotation(node, rotation):
+    def set_world_rotation(self, node, rotation):
         # set the absolute world rotation
         pm.xform(node, absolute=True, worldSpace=True, rotation=rotation)
 
-    @staticmethod
-    def get_world_matrix(node):
+    def get_world_matrix(self, node):
         #
-        return pm.xform(node, query=True, absolute=True, worldSpace=True, matrix=True)
+        return cmds.xform(node, query=True, absolute=True, worldSpace=True, matrix=True)
 
-    @staticmethod
-    def set_world_matrix(node, matrix):
+    def set_world_matrix(self, node, matrix, channels=list()):
         #
         pm.xform(node, absolute=True, worldSpace=True, matrix=matrix)
+        '''
+        print ('currentMatrix', currentMatrix)
+        print ('matrix', matrix)
+        offset = matrix * om2.MMatrix(currentMatrix).inverse()
+        print ('offset', offset)
+        transform_fn = om2.MTransformationMatrix(offset)
+        print ('transform_fn', transform_fn)
+        translation = transform_fn.translation(om.MSpace.kObject)
+        rotation = transform_fn.rotation(asQuaternion=False)
+        print (translation)
+        print (rotation)
+        outRotation = [0.0, 0.0, 0.0]
+        outTranslation = [0.0, 0.0, 0.0]
+        if 'rx' in channels: outRotation[0] = rotation[0]
+        if 'ry' in channels: outRotation[1] = rotation[1]
+        if 'rz' in channels: outRotation[2] = rotation[2]
 
-    def set_transform(self, node, matrix):
+        if 'tx' in channels: outTranslation[0] = rotation[0]
+        if 'ty' in channels: outTranslation[1] = rotation[1]
+        if 'tz' in channels: outTranslation[2] = rotation[2]
+        print (outTranslation)
+        print (outRotation)
+        '''
+
+    def set_transform(self, node, matrix, channels=list()):
         """
         use a temp node and a constraint
         :param node:
@@ -378,5 +402,7 @@ class SnapTools(toolAbstractFactory):
         """
         n = cmds.createNode('transform')
         self.set_world_matrix(n, matrix)
-        constraint = self.funcs.safeParentConstraint(n, node)
+        if not pm.optionVar.get(self.relativeSelectionChannelFilterOption, False):
+            channels = list()
+        constraint = self.funcs.safeParentConstraint(n, node, channels=channels)
         return n, constraint
