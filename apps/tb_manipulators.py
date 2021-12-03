@@ -213,21 +213,13 @@ class Manipulators(toolAbstractFactory):
 
     def cycleIndex(self, current, keyDict=dict(), user_modes=list(), default=str()):
         currentMode = list(keyDict.keys())[list(keyDict.values()).index(current)]
-        print ('currentMode', currentMode)
-        print ('user modes', user_modes)
         if currentMode not in user_modes:
             index = 0
-            print ('current index NOT in user modes', user_modes)
-            print ('next index in user modes', index)
             return user_modes[0], index
         else:
             index = (user_modes.index(currentMode) + 1) % (len(user_modes))
-            print ('current index in user modes', user_modes.index(currentMode))
-            print ('next index in user modes', index)
-            print ('next index name from user modes', user_modes[index])
             return user_modes[index], 0
         indexName = keyDict.keys()[index]
-        print ('next mode', indexName, index)
         return indexName, index
 
     def cycleRotation(self):
@@ -241,7 +233,7 @@ class Manipulators(toolAbstractFactory):
                                               keyDict=self.rotate_modesDict,
                                               user_modes=self.modeData[self.rotate_optionVar],
                                               default='Local')
-        print ('setting rotate mode to ', modeName, self.rotate_modesDict[modeName])
+
         pm.manipRotateContext('Rotate', edit=True, mode=self.rotate_modesDict[modeName])
         if pm.optionVar.get(self.rotate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='rotate',
@@ -322,7 +314,6 @@ class Manipulators(toolAbstractFactory):
                         pm.setAttr(plug, lock=False)
 
                     if pm.getAttr(plug):
-                        print (plug)
                         pm.setAttr(plug, value)
 
                     if locked:
