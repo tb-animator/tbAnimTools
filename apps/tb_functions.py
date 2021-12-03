@@ -681,9 +681,31 @@ class functions(object):
         return [attr.lower()[-1] for attr in ['scaleX', 'scaleY', 'scaleZ'] if
                 not cmds.getAttr(node + '.' + attr, settable=True)]
 
-    def safeParentConstraint(self, drivers, target, orientOnly=False, maintainOffset=False):
-        skipT = self.getAvailableTranslates(target)
+    def safeParentConstraint(self, drivers, target, orientOnly=False, maintainOffset=False, channels=list()):
         skipR = self.getAvailableRotates(target)
+        skipT = self.getAvailableTranslates(target)
+
+        if channels:
+            if 'rx' not in channels:
+                if 'x' not in skipR:
+                    skipR.append('x')
+            if 'ry' not in channels:
+                if 'y' not in skipR:
+                    skipR.append('y')
+            if 'rz' not in channels:
+                if 'z' not in skipR:
+                    skipR.append('z')
+
+            if 'tx' not in channels:
+                if 'x' not in skipT:
+                    skipT.append('x')
+            if 'ty' not in channels:
+                if 'y' not in skipT:
+                    skipT.append('y')
+            if 'tz' not in channels:
+                if 'z' not in skipT:
+                    skipT.append('z')
+
         constraint = pm.parentConstraint(drivers, target,
                                          skipTranslate={True: ('x', 'y', 'z'),
                                                         False: [x.split('translate')[-1] for x in skipT]}[orientOnly],
