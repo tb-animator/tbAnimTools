@@ -209,7 +209,7 @@ class Manipulators(toolAbstractFactory):
         ctxDict = {'RotateSuperContext': self.cycleRotation,
                    'moveSuperContext': self.cycleTranslation,
                    'selectSuperContext': self.cycle_selection_mask}
-        ctxDict.get(currentCtx, 'selectSuperContext')()
+        ctxDict.get(currentCtx, self.cycle_selection_mask)()
 
     def cycleIndex(self, current, keyDict=dict(), user_modes=list(), default=str()):
         currentMode = list(keyDict.keys())[list(keyDict.values()).index(current)]
