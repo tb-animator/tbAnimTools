@@ -56,22 +56,22 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_on'],
-                                     command=['timeDragger.drag(True)']))
+                                     command=['TimeDragger.drag(True)']))
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_off'],
-                                     command=['timeDragger.drag(False)']))
+                                     command=['TimeDragger.drag(False)']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_on'],
-                                     command=['timeDragger.stepDrag()']))
+                                     command=['TimeDragger.stepDrag()']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
                                      help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_off'],
-                                     command=['timeDragger.stepDrag(state=False)']))
+                                     command=['TimeDragger.stepDrag(state=False)']))
         return self.commandList
 
     def assignHotkeys(self):
