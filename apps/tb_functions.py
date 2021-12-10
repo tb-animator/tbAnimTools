@@ -160,7 +160,7 @@ class functions(object):
 
     # get the current model panel
     def getModelPanel(self):
-        curPanel = pm.getPanel(withFocus=True) or self.lastPanel  # pm.getPanel(underPointer=True)
+        curPanel = cmds.getPanel(withFocus=True) or self.lastPanel  # pm.getPanel(underPointer=True)
         if pm.objectTypeUI(curPanel) == 'modelEditor':
             self.lastPanel = curPanel
             return curPanel
@@ -220,6 +220,8 @@ class functions(object):
         control.overrideRGBColors.set(refObj.overrideRGBColors.get())
         control.overrideColorRGB.set(refObj.overrideColorRGB.get())
         control.overrideColor.set(refObj.overrideColor.get())
+        for s in control.getShapes():
+            s.overrideEnabled.set(0)
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
         # print ('addPickwalk', control, direction)
@@ -909,7 +911,6 @@ class functions(object):
         for layer in layers_to_extract:
             # skip muted layers during bakedown
             if not cmds.animLayer(layer, query=True, mute=True):
-                print ('layer:', layer)
                 exLayer = cmds.animLayer(layer + '_extracted', copyNoAnimation=layer, moveLayerAfter=layer)
                 attributes = cmds.animLayer(layer, query=True, attribute=True)
                 for attr in attributes:
