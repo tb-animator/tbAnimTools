@@ -457,5 +457,5 @@ QComboBox::drop-down
 
 QComboBox::down-arrow
 {
-     image: url(down_arrow.png);
+     image: url(':down_arrow.png');
 }
