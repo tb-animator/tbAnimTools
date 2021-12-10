@@ -1,4 +1,5 @@
 import importlib, inspect
+import sys
 import os
 import copy
 import maya.cmds as cmds
@@ -54,8 +55,13 @@ class ClassFinder(object):
         self.toolsBaseDirectory = 'apps'
         self.proToolsBaseDirectory = 'proApps'
         self.toolsDirectory = os.path.join(self.directory, self.toolsBaseDirectory)
-        self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory)
-
+        if sys.version_info >= (2, 8):
+            self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python3')
+            self.proToolsBaseDirectory = 'proApps.Python3'
+        else:
+            self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python2')
+            self.proToolsBaseDirectory = 'proApps.Python2'
+        print ('self.proToolsDirectory', self.proToolsDirectory)
         self.loadPluginsByClass()
         self.applyAnimLayerTabModification()
 
@@ -100,7 +106,10 @@ class ClassFinder(object):
 
             file_name = os.path.basename(file.rsplit('.', 1)[0])
             subFolder = str(os.path.relpath(os.path.dirname(file), toolDirectory)).replace('\\', '.')
-
+            print ('file', file)
+            print ('baseDirectory', baseDirectory)
+            print ('file_name', file_name)
+            print ('subFolder', subFolder)
             # hacky check to see if the script is in the start folder
             if subFolder == '.':
                 module_name = baseDirectory + '.' + file_name

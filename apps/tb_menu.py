@@ -26,6 +26,8 @@ import maya.mel as mel
 import pymel.core as pm
 import webbrowser
 from pluginLookup import ClassFinder
+import sys
+
 
 class main_menu(object):
     def __init__(self):
@@ -51,6 +53,9 @@ class main_menu(object):
         self.drawStoreMenu()
         self.drawUpdateMenu()
 
+        pm.menuItem(label="Activate New Plugins", image='reloadPlugins.png', command=licenseNewPlugins,
+                    parent=self.main_menu)
+
         pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
         pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
@@ -74,7 +79,9 @@ class main_menu(object):
         self.updateMenuItems.append(menu)
         menu = pm.menuItem(label="Update Manually", radioButton=updateMode == 2,
                            command=pm.Callback(self.setUpdateMode, 2), parent=updateMenu)
+        self.updateMenuItems.append(menu)
         menu = pm.menuItem(label="Check For Updates",
+                           image='getUpdates.png',
                            command=pm.Callback(self.downloadUpdate), parent=updateMenu)
         self.updateMenuItems.append(menu)
 
@@ -106,6 +113,7 @@ def open_options(*args):
 def open_discord_link(*args):
     webbrowser.open('https://discord.gg/SyUyyJb8xw')
 
+
 def open_store_main(*args):
     webbrowser.open('https://tb3d.gumroad.com/')
 
@@ -114,10 +122,16 @@ def open_anim_page(*args):
     webbrowser.open('http://tb-animator.blogspot.co.uk/p/tools-documentaion.html')
 
 
-def download_updates(*args):
-    import updater as upd
-    reload(upd)
-    upd.updaterWindow().showUI()
+def licenseNewPlugins(*args):
+    if sys.version_info >= (2, 8):
+        print ('licenseNewPlugins python 3')
+
+    else:
+        print ('licenseNewPlugins python 2')
+        import pluginLookup as pLookup
+        reload(pLookup)
+        pLookupCLS = pLookup.ClassFinder()
+        pLookupCLS.startup()
 
 
 def show_aboutWin(*args):

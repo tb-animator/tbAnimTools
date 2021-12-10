@@ -28,6 +28,7 @@ import maya.cmds as cmds
 import maya.OpenMayaUI as omUI
 import pymel.core as pm
 
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -43,6 +44,8 @@ else:
 import getStyleSheet as getqss
 import os
 
+IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
+baseIconFile = 'checkBox.png'
 
 class CustomDialog(QDialog):
     def __init__(self, parent=None):
@@ -67,10 +70,8 @@ class CustomDialog(QDialog):
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
 
-
 class BaseDialog(QDialog):
     oldPos = None
-
     def __init__(self, parent=None, title='', text=''):
         super(BaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
@@ -86,17 +87,32 @@ class BaseDialog(QDialog):
 
         self.setFixedSize(400, 120)
         self.mainLayout = QVBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(4,4,4,4)
         self.layout = QVBoxLayout()
+        self.titleLayout = QHBoxLayout()
+        self.titleLayout.setSpacing(0)
+        self.titleLayout.setContentsMargins(0,0,0,0)
+        self.closeButton = CloseButton()
+        self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
+        self.titleText.setFont(QFont('Impact', 10))
+        #self.titleText.setStyleSheet("font-weight: standard; font-size: 14px;")
+        self.titleText.setStyleSheet("background: rgba(255, 0, 0, 0);")
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel(text)
-        self.mainLayout.addWidget(self.titleText)
+
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+
+        self.mainLayout.addLayout(self.titleLayout)
         self.infoText.setStyleSheet(self.stylesheet)
         self.layout.addWidget(self.infoText)
 
         self.mainLayout.addLayout(self.layout)
         self.setLayout(self.mainLayout)
-
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
@@ -113,7 +129,7 @@ class BaseDialog(QDialog):
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 8, 8)
         qp.end()
 
     def keyPressEvent(self, event):
@@ -585,7 +601,7 @@ class TextInputWidget(QWidget):
     rejectedSignal = Signal()
     oldPos = None
 
-    def __init__(self, title=str, label=str, buttonText=str, default=str, combo=list(), checkBox=None,
+    def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(), checkBox=None,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
         self.setStyleSheet(getqss.getStyleSheet())
@@ -647,6 +663,9 @@ class TextInputWidget(QWidget):
             "border-radius: 8;"
             "}"
         )
+        width = self.comboBox.minimumSizeHint().width()
+        self.comboBox.view().setMinimumWidth(width)
+        self.comboBox.setMinimumWidth(width)
         self.resize(self.sizeHint())
 
     def paintEvent(self, event):
@@ -1319,6 +1338,40 @@ class radioGroupWidget(QWidget):
     def extBtnState(self, b):
         pm.optionVar[self.optionVar] = b.text()
 
+class radioGroupVertical(object):
+    layout = None
+    optionVar = None
+    dirButton = None
+    optionVarList = list()
+    optionVar = str()
+    optionValue = str()
+
+    def __init__(self, formLayout=QFormLayout, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str(), tooltips=list()):
+        super(radioGroupVertical, self).__init__()
+        self.tooltips = tooltips
+        self.optionVarList = optionVarList
+        self.optionVar = optionVar
+        self.defaultValue = defaultValue
+        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+
+        self.btnGrp = QButtonGroup()  # Letter group
+        self.returnedWidgets = list()
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
+            self.buttons.append(QRadioButton(option))
+            self.btnGrp.addButton(self.buttons[index])
+            self.returnedWidgets.append(['option', self.buttons[index]])
+            self.buttons[index].setChecked(self.optionValue == option)
+            self.buttons[index].toggled.connect(self.buttonChecked)
+            try:
+                self.buttons[index].setToolTip(self.tooltips[index])
+            except:
+                pass
+
+    def buttonChecked(self, value):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                pm.optionVar[self.optionVar] = button.text()
 
 class LicenseWin(BaseDialog):
     ActivateSignal = Signal(str, str)
@@ -1644,6 +1697,30 @@ class UpdateWin(BaseDialog):
             self.close()
         return super(UpdateWin, self).keyPressEvent(event)
 
+
+class CloseButton(QPushButton):
+    """
+    UI menu item for anim layer tab,
+    subclass this and add to the _showMenu function, or just add menu items
+    """
+    def __init__(self, icon=baseIconFile, toolTip='Close'):
+        super(CloseButton, self).__init__()
+        #self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
+        self.setFixedSize(18, 18)
+
+        transform = QTransform()
+        transform.translate(-5, 55)
+        pixmap = QPixmap(os.path.join(IconPath, icon))
+        icon = QIcon(pixmap)
+
+        self.setIcon(icon)
+
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px")
+        self.setStyleSheet(getqss.getStyleSheet())
+
+
 class AnimLayerTabButton(QPushButton):
     """
     UI menu item for anim layer tab,
@@ -1660,11 +1737,17 @@ class AnimLayerTabButton(QPushButton):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showMenu)
 
-        self.m = QMenu()
+    def setPopupMenu(self, menuClass):
+        self.pop_up_window = menuClass('name', self)
 
-    def _showMenu(self):
-        self.m.exec_(QCursor.pos())
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
 
+    def _showMenu(self, pos):
+        pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
+        self.pop_up_window.move(pop_up_pos)
+
+        self.pop_up_window.show()
 
 ss = """
 
@@ -1865,3 +1948,31 @@ class testDialog(QDialog):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
+
+class ButtonPopup(QWidget):
+    def __init__(self, name, parent=None):
+        super(ButtonPopup, self).__init__(parent)
+
+        self.setWindowTitle("{0} Options".format(name))
+
+        self.setWindowFlags(Qt.Popup)
+
+        self.layout = QFormLayout(self)
+
+        self.create_widgets()
+        self.create_layout()
+
+    def create_widgets(self):
+        pass
+        self.radioGroup = radioGroupVertical(formLayout=self.layout,
+                                             optionVarList=['test', 'test2','test3'],
+                                             optionVar='testVar',
+                                             defaultValue='test',
+                                             label=str())
+
+    def create_layout(self):
+        for label, widget in self.radioGroup.returnedWidgets:
+            self.layout.addRow("%s:" % label, widget)
+        #layout.addRow("Size:", self.size_sb)
+        #layout.addRow("Opacity:", self.opacity_sb)
