@@ -139,17 +139,22 @@ class TempPivot(toolAbstractFactory):
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
         bakeRange = self.funcs.getBakeRange(filteredTargets)
-        self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
-                                                   deleteConstraints=True)
-        pm.delete(filteredTargets)
+
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+        pm.delete(targets)
 
     def bakeAllCommand(self, asset, sel):
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
         bakeRange = self.funcs.getBakeRange(filteredTargets)
+        pm.select(filteredTargets, replace=True)
+        mel.eval("simpleBakeToOverride")
+        '''
         self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
                                                    deleteConstraints=True)
+        '''
         pm.delete(asset)
 
     def deleteControlsCommand(self, asset, sel):
