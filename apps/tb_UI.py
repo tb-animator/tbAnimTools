@@ -27,7 +27,7 @@ import maya.mel as mel
 import maya.cmds as cmds
 import maya.OpenMayaUI as omUI
 import pymel.core as pm
-
+from functools import partial
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -46,6 +46,7 @@ import os
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
 baseIconFile = 'checkBox.png'
+
 
 class CustomDialog(QDialog):
     def __init__(self, parent=None):
@@ -70,13 +71,18 @@ class CustomDialog(QDialog):
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
 
+
 class BaseDialog(QDialog):
     oldPos = None
-    def __init__(self, parent=None, title='', text=''):
+
+    def __init__(self, parent=None, title='', text='',
+                 lockState=False, showLockButton=False, showCloseButton=True, *args, **kwargs):
         super(BaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
-
+        self.lockState = lockState
+        self.showLockButton = showLockButton
+        self.showCloseButton = showCloseButton
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
@@ -88,16 +94,18 @@ class BaseDialog(QDialog):
         self.setFixedSize(400, 120)
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(4,4,4,4)
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
         self.layout = QVBoxLayout()
         self.titleLayout = QHBoxLayout()
         self.titleLayout.setSpacing(0)
-        self.titleLayout.setContentsMargins(0,0,0,0)
-        self.closeButton = CloseButton()
+        self.titleLayout.setContentsMargins(0, 0, 0, 0)
+        self.pinButton = LockButton('', None, lockState=self.lockState)
+        self.pinButton.lockSignal.connect(self.togglePinState)
+        self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
         self.titleText.setFont(QFont('Impact', 10))
-        #self.titleText.setStyleSheet("font-weight: standard; font-size: 14px;")
+        # self.titleText.setStyleSheet("font-weight: standard; font-size: 14px;")
         self.titleText.setStyleSheet("background: rgba(255, 0, 0, 0);")
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel(text)
@@ -105,6 +113,7 @@ class BaseDialog(QDialog):
         self.titleLayout.addStretch()
         self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
         self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.pinButton, alignment=Qt.AlignRight)
         self.titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
 
         self.mainLayout.addLayout(self.titleLayout)
@@ -113,6 +122,10 @@ class BaseDialog(QDialog):
 
         self.mainLayout.addLayout(self.layout)
         self.setLayout(self.mainLayout)
+
+        self.pinButton.setVisible(self.showLockButton)
+        self.closeButton.setVisible(self.showCloseButton)
+
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
@@ -132,15 +145,28 @@ class BaseDialog(QDialog):
         qp.drawRoundedRect(self.rect(), 8, 8)
         qp.end()
 
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Control:
+            self.controlKeyPressed = False
+        return False
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
+        if event.key() == Qt.Key_Control:
+            self.controlKeyPressed = True
         return super(BaseDialog, self).keyPressEvent(event)
 
     def mousePressEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if self.lockState and not modifiers == Qt.ControlModifier:
+            return
         self.oldPos = event.globalPos()
 
     def mouseMoveEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if self.lockState and not modifiers == Qt.ControlModifier:
+            return
         if not self.oldPos:
             return
         delta = QPoint(event.globalPos() - self.oldPos)
@@ -149,6 +175,10 @@ class BaseDialog(QDialog):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
+    def togglePinState(self, pinState):
+        self.lockState = pinState
+        self.closeButton.setVisible(True)
 
 
 class AimAxisWidget(QWidget):
@@ -535,7 +565,7 @@ class QTreeSingleViewWidget(QFrame):
         self.filterLineEdit.addAction(QIcon(":/resources/search.ico"), QLineEdit.LeadingPosition)
         self.filterLineEdit.setPlaceholderText("Search...")
 
-        #self.topLayout.addWidget(self.label)
+        # self.topLayout.addWidget(self.label)
         self.topLayout.addWidget(self.filterLineEdit)
 
         self.listView = QListView()
@@ -1101,9 +1131,8 @@ class ChannelSelectLineEdit(QWidget):
             return pm.warning('no channel selected')
         refState = cmds.referenceQuery(channels[0].split('.')[0], isNodeReferenced=True)
 
-
         if refState:
-            #refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
+            # refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
             self.lineEdit.setText(channels[0].split(':', 1)[-1])
         else:
             self.lineEdit.setText(channels[0])
@@ -1112,6 +1141,7 @@ class ChannelSelectLineEdit(QWidget):
     def sendtextChangedSignal(self):
         self.editedSignal.emit(self.lineEdit.text())
         self.editedSignalKey.emit(self.key, self.lineEdit.text())
+
 
 class hotKeyWidget(QWidget):
     label = None
@@ -1139,7 +1169,6 @@ class hotKeyWidget(QWidget):
         self._category_table_Popup.addAction(onPressAction)
         self._category_table_Popup.addAction(onReleaseAction)
 
-
         self.action_group = QActionGroup(self)
         self.action_group.addAction(onPressAction)
         self.action_group.addAction(onReleaseAction)
@@ -1162,6 +1191,7 @@ class hotKeyWidget(QWidget):
     @Slot()
     def sendtextChangedSignal(self):
         self.editedSignal.emit(self.lineEdit.text())
+
     @Slot()
     def show_category_table_Popup(self):
         '''
@@ -1169,10 +1199,13 @@ class hotKeyWidget(QWidget):
         '''
         self._category_table_Popup.exec_(QCursor.pos())
 
+
 class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
-    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(), stripNamespace=False):
+
+    def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(),
+                 stripNamespace=False):
         QWidget.__init__(self)
         self.key = key
         self.stripNamespace = stripNamespace
@@ -1180,7 +1213,7 @@ class ObjectSelectLineEdit(QWidget):
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.label = QLabel(label)
-        #self.label.setFixedWidth(labelWidth)
+        # self.label.setFixedWidth(labelWidth)
         self.itemLabel = QLineEdit()
         self.itemLabel.setPlaceholderText(placeholderTest)
         self.itemLabel.setFixedWidth(lineEditWidth)
@@ -1202,7 +1235,7 @@ class ObjectSelectLineEdit(QWidget):
             s = str(sel[0])
         self.itemLabel.setText(s)
         self.pickedSignal.emit(s)
-        #self.editedSignalKey.emit(self.key, str(sel[0]))
+        # self.editedSignalKey.emit(self.key, str(sel[0]))
 
     def setTextNoUpdate(self, text):
         self.blockSignals(True)
@@ -1212,6 +1245,7 @@ class ObjectSelectLineEdit(QWidget):
     @Slot()
     def textEdited(self):
         self.editedSignalKey.emit(self.key, self.itemLabel.text())
+
 
 class comboBoxWidget(QWidget):
     mainLayout = None
@@ -1260,7 +1294,8 @@ class comboBoxWidget(QWidget):
         self.comboBox.clear()
         for c in self.values:
             self.comboBox.addItem(c)
-        #self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
+        # self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
+
 
 class intFieldWidget(QWidget):
     layout = None
@@ -1338,6 +1373,7 @@ class radioGroupWidget(QWidget):
     def extBtnState(self, b):
         pm.optionVar[self.optionVar] = b.text()
 
+
 class radioGroupVertical(object):
     layout = None
     optionVar = None
@@ -1346,7 +1382,8 @@ class radioGroupVertical(object):
     optionVar = str()
     optionValue = str()
 
-    def __init__(self, formLayout=QFormLayout, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str(), tooltips=list()):
+    def __init__(self, formLayout=QFormLayout, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str(),
+                 tooltips=list()):
         super(radioGroupVertical, self).__init__()
         self.tooltips = tooltips
         self.optionVarList = optionVarList
@@ -1372,6 +1409,7 @@ class radioGroupVertical(object):
         for button in self.buttons:
             if button.isChecked() == True:
                 pm.optionVar[self.optionVar] = button.text()
+
 
 class LicenseWin(BaseDialog):
     ActivateSignal = Signal(str, str)
@@ -1698,18 +1736,17 @@ class UpdateWin(BaseDialog):
         return super(UpdateWin, self).keyPressEvent(event)
 
 
-class CloseButton(QPushButton):
+class MiniButton(QPushButton):
     """
     UI menu item for anim layer tab,
     subclass this and add to the _showMenu function, or just add menu items
     """
+
     def __init__(self, icon=baseIconFile, toolTip='Close'):
-        super(CloseButton, self).__init__()
-        #self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
+        super(MiniButton, self).__init__()
+        # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
         self.setFixedSize(18, 18)
 
-        transform = QTransform()
-        transform.translate(-5, 55)
         pixmap = QPixmap(os.path.join(IconPath, icon))
         icon = QIcon(pixmap)
 
@@ -1721,11 +1758,41 @@ class CloseButton(QPushButton):
         self.setStyleSheet(getqss.getStyleSheet())
 
 
+class LockButton(MiniButton):
+    lockSignal = Signal(bool)
+
+    def __init__(self, label, parent,
+                 icon='pinned.png',
+                 unlockIcon='pin.png',
+                 lockState=False,
+                 toolTip='Close'):
+        super(LockButton, self).__init__(icon=icon, toolTip=toolTip)
+        self.lockState = False
+
+        self.lockIcon = QPixmap(os.path.join(IconPath, icon))
+        self.unlockIcon = QPixmap(os.path.join(IconPath, unlockIcon))
+
+        self.clicked.connect(self.toggleLock)
+        self.setLockIcon()
+
+    def setLockIcon(self):
+        if self.lockState:
+            self.setIcon(self.lockIcon)
+        else:
+            self.setIcon(self.unlockIcon)
+
+    def toggleLock(self, *args):
+        self.lockState = not self.lockState
+        self.lockSignal.emit(self.lockState)
+        self.setLockIcon()
+
+
 class AnimLayerTabButton(QPushButton):
     """
     UI menu item for anim layer tab,
     subclass this and add to the _showMenu function, or just add menu items
     """
+
     def __init__(self, icon='', toolTip=''):
         super(AnimLayerTabButton, self).__init__()
         self.setIcon(QIcon(":/{0}".format(icon)))
@@ -1749,7 +1816,8 @@ class AnimLayerTabButton(QPushButton):
 
         self.pop_up_window.show()
 
-ss = """
+
+sliderStylesheet = """
 
 
 QSlider::groove:horizontal {
@@ -1782,12 +1850,12 @@ border-radius: 2px;
 QSlider::handle:horizontal {
 background: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
 border: 2px solid #444;
-width: 20px; 
-height: 20px; 
+width: 16px; 
+height: 16px; 
 line-height: 20px; 
-margin-top: -10px; 
-margin-bottom: -10px; 
-border-radius: 10px; 
+margin-top: -8px; 
+margin-bottom: -8px; 
+border-radius: 8px; 
 image: url(":greasePencilPreGhostOff.png");
 }
 
@@ -1816,7 +1884,7 @@ buttonSS = """
 QPushButton {
 color: #333;
 border: 2px solid #555;
-border-radius: 8px;
+border-radius: 6px;
 border-style: outset;
 background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
@@ -1832,6 +1900,7 @@ radius: 1.35, stop: 0 #fff, stop: 1 #bbb
 );
 }
 """
+
 
 class testDialog(QDialog):
     AssignNewRigSignal = Signal(str)
@@ -1862,16 +1931,18 @@ class testDialog(QDialog):
         # self.setLayout(self.layout)
 
         # self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(400, 64)
+        # self.setFixedSize(400, 64)
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(2,2,2,2)
+        mainLayout.setContentsMargins(2, 2, 2, 2)
         sliderLayout = QHBoxLayout()
-        sliderLayout.setContentsMargins(0,0,0,0)
+        sliderLayout.setContentsMargins(0, 0, 0, 0)
 
         leftButton = QPushButton()
         rightButton = QPushButton()
         leftButton.setStyleSheet(buttonSS)
-        leftButton.setFixedSize(16,16)
+        leftButton.setFixedSize(12, 12)
+        rightButton.setStyleSheet(buttonSS)
+        rightButton.setFixedSize(12, 12)
         sliderLayout.setAlignment(Qt.AlignCenter)
         sliderLayout.setSpacing(0)
         self.slider_label = QLabel()
@@ -1879,13 +1950,15 @@ class testDialog(QDialog):
         self.slider_label.setAlignment(Qt.AlignCenter)
 
         self.slider = QSlider(Qt.Horizontal)
+        self.slider.setTickPosition(QSlider.TicksAbove)
         self.slider.setFixedHeight(24)
+        self.slider.setFixedWidth(220)
         self.slider.setMinimum(-100)
         self.slider.setMaximum(100)
         self.slider.setValue(0)
         self.slider.setTickPosition(QSlider.TicksBelow)
         self.slider.setTickInterval(0.1)
-        self.slider.setStyleSheet(ss)
+        self.slider.setStyleSheet(sliderStylesheet)
         self.slider.valueChanged.connect(self.slider_changed)
         self.slider.sliderReleased.connect(self.slider_released)
 
@@ -1897,6 +1970,7 @@ class testDialog(QDialog):
         mainLayout.addLayout(sliderLayout)
         mainLayout.addWidget(self.slider_label)
         self.setLayout(mainLayout)
+        self.resize(self.sizeHint())
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -1966,7 +2040,7 @@ class ButtonPopup(QWidget):
     def create_widgets(self):
         pass
         self.radioGroup = radioGroupVertical(formLayout=self.layout,
-                                             optionVarList=['test', 'test2','test3'],
+                                             optionVarList=['test', 'test2', 'test3'],
                                              optionVar='testVar',
                                              defaultValue='test',
                                              label=str())
@@ -1974,5 +2048,55 @@ class ButtonPopup(QWidget):
     def create_layout(self):
         for label, widget in self.radioGroup.returnedWidgets:
             self.layout.addRow("%s:" % label, widget)
-        #layout.addRow("Size:", self.size_sb)
-        #layout.addRow("Opacity:", self.opacity_sb)
+        # layout.addRow("Size:", self.size_sb)
+        # layout.addRow("Opacity:", self.opacity_sb)
+
+
+class PluginExtractor(BaseDialog):
+    installSignal = Signal(str)
+
+    def __init__(self, parentCLS):
+        super(PluginExtractor, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.parentCLS = parentCLS
+        self.titleText.setText('tbAnimTools Plugin Extractor')
+        self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
+        self.infoText.setText('Install plugins from the zip file')
+        self.infoText.setAlignment(Qt.AlignCenter)
+
+        self.btnCloseWIndow = QPushButton("Close")
+        self.btnCloseWIndow.clicked.connect(partial(self.close))
+
+        self.btnInstall = QPushButton("Install")
+        self.btnInstall.clicked.connect(partial(self.install))
+        self.btnInstall.setEnabled(False)
+
+        self.filePathLayout = QHBoxLayout()
+        self.pathLabel = QLabel('Install to ::')
+        self.pathLineEdit = QLineEdit('')
+        self.pathLineEdit.setPlaceholderText('zip file path')
+        self.cle_action_pick = self.pathLineEdit.addAction(QIcon(":/folder-open.png"),
+                                                           QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(
+            'Select your downloaded zip file')
+        self.cle_action_pick.triggered.connect(self.pickZipFile)
+        self.pathLineEdit.textChanged.connect(self.pathEdited)
+
+        self.layout.addLayout(self.filePathLayout)
+        self.filePathLayout.addWidget(self.pathLineEdit)
+        self.layout.addWidget(self.btnInstall)
+        self.layout.addWidget(self.btnCloseWIndow)
+        self.setFixedSize(self.sizeHint())
+
+    def pathEdited(self, *args):
+        self.btnInstall.setEnabled(os.path.isfile(self.pathLineEdit.text()))
+
+    def install(self, *args):
+        self.installSignal.emit(self.pathLineEdit.text())
+
+    def pickZipFile(self, *args):
+        filename, filter = QFileDialog.getOpenFileName(parent=self,
+                                                       caption='Open file',
+                                                       dir='.',
+                                                       filter='Zip Files (*.zip)')
+        if filename:
+            self.pathLineEdit.setText(filename)
