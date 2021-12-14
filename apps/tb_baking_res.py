@@ -28,6 +28,9 @@ maya.stringTable[
                                       u'The affected controls animation on this layer will be in their original locations as if the additive was off.____' \
                                       u'You can now play with the weight of both your original additive layer and this to blend in/out how much the original layer affects the child controls.'
 
+maya.stringTable['y_tb_Baking.worldOffsetSelection'] = u'Bake the current selected objects rotation to a temp control, used as a world space additive control, __' \
+                                                       u'a second control is added as a final local offset.'
+maya.stringTable['y_tb_Baking.redirectSelected'] = u'Bake the current selected objects to a mini rig to redirect translation/rotation.__Good for turning a walk into a strafe.'
 maya.stringTable['y_tb_Baking.bakeToLocator'] = u'Bake the current selected objects to world space locators.__' \
                                                 u'Supports locked channels.'
 maya.stringTable['y_tb_Baking.bakeToLocatorRotation'] = u'Bake the current selected objects to world space locators.__' \

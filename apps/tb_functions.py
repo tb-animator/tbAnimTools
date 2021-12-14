@@ -31,7 +31,7 @@ import maya.OpenMayaUI as omUI
 import pymel.core.datatypes as dt
 import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
-
+from colorsys import rgb_to_hls, hls_to_rgb
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -172,6 +172,11 @@ class functions(object):
     def getAllModelPanels(self):
         return self.get_modelEditors(pm.lsUI(editors=True))
 
+    def tempNull(self,name='loc', suffix='baked'):
+        node = pm.createNode('transform', name=name + '_' + suffix)
+        node.rotateOrder.set(3)
+        return node
+
     def tempLocator(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
         loc = pm.spaceLocator(name=name + '_' + suffix)
         size = scale * self.locator_unit_conversion()
@@ -183,7 +188,6 @@ class functions(object):
         return loc
 
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb'):
-        print ('scale', scale)
         drawFunction = {
             'orb': self.drawOrb,
             'cross': self.drawCross,
@@ -200,7 +204,7 @@ class functions(object):
         shape.overrideColorRGB.set(color)
         return control
 
-    def getSetColour(self, ref, control):
+    def getSetColour(self, ref, control, brightnessOffset=0):
         """
         Copies the colour override from ref to control
         :param ref:
@@ -217,11 +221,40 @@ class functions(object):
             if overrideState:
                 refObj = shape
         control.overrideEnabled.set(True)
-        control.overrideRGBColors.set(refObj.overrideRGBColors.get())
-        control.overrideColorRGB.set(refObj.overrideColorRGB.get())
-        control.overrideColor.set(refObj.overrideColor.get())
+        if not refObj.overrideRGBColors.get():
+            print ('not using rgb',refObj.overrideColor.get())
+            if refObj.overrideColor.get() == 0:
+                rgbColour = [125, 125, 125]
+            else:
+                rgbColour = [x * 255 for x in cmds.colorIndex(refObj.overrideColor.get(), q=True )]
+        else:
+            rgbColour = refObj.overrideColorRGB.get()
+        rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
+        rgbColourOut = [x / 255.0 for x in rgbColourOut]
+        control.overrideColorRGB.set(rgbColourOut)
+        print ('rgbColourOut', rgbColourOut)
+        control.overrideRGBColors.set(True)
+        #control.overrideColor.set(refObj.overrideColor.get())
         for s in control.getShapes():
             s.overrideEnabled.set(0)
+
+    def adjust_color_lightness(self, r, g, b, factor):
+        h, l, s = rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+        l = max(min(l * factor, 1.0), 0.0)
+        r, g, b = hls_to_rgb(h, l, s)
+        return int(r * 255), int(g * 255), int(b * 255)
+
+    def lighten_color(self, colour, factor=0.1):
+        return self.adjust_color_lightness(colour[0], colour[1], colour[2], 1 + factor)
+
+    def darken_color(self, colour, factor=0.1):
+        return self.adjust_color_lightness(colour[0], colour[1], colour[2], 1 - factor)
+
+    def hex_to_rgb(self, hex):
+        return [(hex[x:x + 2], 16) for x in [1, 3, 5]]
+
+    def rgb_to_hex(self, colour):
+        return "#%02x%02x%02x" % (colour[0], colour[1], colour[2])
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
         # print ('addPickwalk', control, direction)

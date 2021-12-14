@@ -10,6 +10,8 @@ import maya.api.OpenMayaAnim as om2a
 
 from Abstract import *
 
+import zipfile
+
 
 # paths
 
@@ -54,13 +56,14 @@ class ClassFinder(object):
         self.baseDirectory = os.path.split(self.directory)[-1]
         self.toolsBaseDirectory = 'apps'
         self.proToolsBaseDirectory = 'proApps'
+        self.proToolsVerionDirectory = 'proApps'
         self.toolsDirectory = os.path.join(self.directory, self.toolsBaseDirectory)
         if sys.version_info >= (2, 8):
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python3')
-            self.proToolsBaseDirectory = 'proApps.Python3'
+            self.proToolsVerionDirectory = 'proApps.Python3'
         else:
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python2')
-            self.proToolsBaseDirectory = 'proApps.Python2'
+            self.proToolsVerionDirectory = 'proApps.Python2'
         print ('self.proToolsDirectory', self.proToolsDirectory)
         self.loadPluginsByClass()
         self.applyAnimLayerTabModification()
@@ -71,8 +74,9 @@ class ClassFinder(object):
                            self.getAllModulesInFolder(self.toolsBaseDirectory, self.toolsDirectory)
                            if cls]
         self.allProClasses = [cls for cls in
-                           self.getAllModulesInFolder(self.proToolsBaseDirectory, self.proToolsDirectory, compiledOnly=True)
-                           if cls]
+                              self.getAllModulesInFolder(self.proToolsVerionDirectory, self.proToolsDirectory,
+                                                         compiledOnly=True)
+                              if cls]
 
         self.allClasses.extend(self.allProClasses)
         hotkeyClasses = [cls for cls in self.allClasses if cls.__base__ == hotKeyAbstractFactory]
@@ -158,3 +162,24 @@ class ClassFinder(object):
 
     def colourAnimLayers(self):
         print ('colourAnimLayers')
+
+    def installFromZip(self, filename):
+        print ('installFromZip', filename)
+        self.directory = os.path.dirname(os.path.abspath(__file__))
+        self.baseDirectory = os.path.split(self.directory)[-1]
+        destinationPath = os.path.join(self.directory, self.proToolsBaseDirectory)
+        destinationP2 = os.path.join(destinationPath, 'Python2')
+        destinationP3 = os.path.join(destinationPath, 'Python3')
+        if not os.path.isdir(destinationP2):
+            os.mkdir(destinationP2)
+        if not os.path.isdir(destinationP3):
+            os.mkdir(destinationP3)
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            print ('destinationPath', destinationPath)
+            zip_ref.extractall(destinationPath)
+        self.loadPluginsByClass()
+
+    def installFromZipUI(self):
+        wd = PluginExtractor(self)
+        wd.show()
+        wd.installSignal.connect(self.installFromZip)

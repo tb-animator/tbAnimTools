@@ -114,6 +114,18 @@ class hotkeys(hotKeyAbstractFactory):
                          category=self.category,
                          command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
                          help=maya.stringTable['y_tb_Baking.bakeToLocatorRotation']))
+        self.addCommand(
+            self.tb_hkey(name='redirectSelected', annotation='constrain to object to locator - rotate only',
+                         category=self.category,
+                         command=['BakeTools.redirectSelected()'],
+                         help=maya.stringTable['y_tb_Baking.redirectSelected']))
+        self.addCommand(
+            self.tb_hkey(name='worldOffsetSelection', annotation='constrain to object to locator - rotate only',
+                         category=self.category,
+                         command=['BakeTools.worldOffsetSelection()'],
+                         help=maya.stringTable['y_tb_Baking.worldOffsetSelection']))
+
+
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
                                      category=self.category, command=[
@@ -178,6 +190,7 @@ class BakeTools(toolAbstractFactory):
 
     crossSizeOption = 'tbBakeLocatorSize'
     assetName = 'TempControls'
+    worldOffsetAssetName = 'WorldOffsetControls'
     constraintTargetAttr = 'constraintTarget'
 
     def __new__(cls):
@@ -1050,3 +1063,154 @@ class BakeTools(toolAbstractFactory):
 
         except Exception as e:
             self.funcs.resumeSkinning()
+
+    def worldOffsetSelection(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return
+        self.worldOffset(sel)
+
+    def worldOffset(self, sel):
+        """
+
+        :return:
+        """
+        if not sel:
+            return
+
+        rotationRoots = dict()
+        rotateAnimNodes = dict()
+        rotateAnimOffsetNodes = dict()
+
+        tempConstraints = list()
+
+        for s in sel:
+            rotationRoot = self.funcs.tempControl(name=s, suffix='worldOffset')
+            rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='localOffset', scale=0.5)
+
+            self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
+            self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
+
+            pm.parent(rotateAnimNode, rotationRoot)
+            pm.parent(rotateAnimOffsetNode, rotateAnimNode)
+
+            tempConstraints.append(pm.pointConstraint(s, rotationRoot))
+            tempConstraints.append(pm.parentConstraint(s, rotateAnimNode))
+
+            rotationRoots[s] = rotationRoot
+            rotateAnimNodes[s] = rotateAnimNode
+            rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
+            ns = s.rsplit(':', 1)[0]
+            if not cmds.objExists(ns + self.worldOffsetAssetName):
+                self.createAsset(ns + self.worldOffsetAssetName, imageName=None)
+            asset = ns + self.worldOffsetAssetName
+
+            pm.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
+            pm.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
+            pm.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
+            pm.connectAttr(s + '.message', rotationRoot + '.' + self.constraintTargetAttr)
+            pm.connectAttr(s + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
+            pm.connectAttr(s + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
+            pm.container(asset, edit=True,
+                         includeHierarchyBelow=True,
+                         force=True,
+                         addNode=rotationRoot)
+
+        bakeTargets = rotationRoots.values() + rotateAnimNodes.values()
+        pm.bakeResults(bakeTargets,
+                       time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
+                       simulation=False,
+                       sampleBy=1,
+                       oversamplingRate=1,
+                       disableImplicitControl=True,
+                       preserveOutsideKeys=False,
+                       sparseAnimCurveBake=True,
+                       removeBakedAttributeFromLayer=False,
+                       removeBakedAnimFromLayer=False,
+                       bakeOnOverrideLayer=False,
+                       minimizeRotation=True,
+                       controlPoints=False,
+                       shape=False)
+        pm.delete(tempConstraints)
+
+        for s in sel:
+            pm.parentConstraint(rotateAnimOffsetNodes[s], s)
+
+    def redirectSelected(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+
+        self.redirect(sel)
+
+    def redirect(self, sel):
+        if not sel:
+            return
+
+        roots = dict()
+        rotationRoots = dict()
+        translateAnimNodes = dict()
+        rotateAnimNodes = dict()
+        translateAnimOFfsetNodes = dict()
+        rotateAnimOffsetNodes = dict()
+        tempConstraints = list()
+        for s in sel:
+            root = self.funcs.tempControl(name=s, suffix='Root', drawType='cross')
+            rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='cross')
+            translateAnimNode = self.funcs.tempNull(name=s, suffix='TranslateBaked')
+            translateAnimOFfsetNode = self.funcs.tempControl(name=s, suffix='TranslateOffset')
+            rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset')
+
+            self.funcs.getSetColour(s, root, brightnessOffset=0)
+
+            self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
+            self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
+
+            self.funcs.getSetColour(s, translateAnimOFfsetNode, brightnessOffset=0.5)
+
+
+            pm.parent(rotateAnimOffsetNode, rotateAnimNode)
+            pm.parent(rotateAnimNode, rotationRoot)
+            pm.parent(rotationRoot, root)
+            pm.parent(translateAnimOFfsetNode, translateAnimNode)
+            pm.parent(translateAnimNode, root)
+
+            pm.delete(pm.parentConstraint(s, root))
+            pm.setAttr(root.rotate, (0, 0, 0))
+
+            rotationRoot.inheritsTransform.set(0)
+
+            tempConstraints.append(pm.parentConstraint(s, translateAnimNode))
+            tempConstraints.append(pm.parentConstraint(s, rotateAnimNode))
+            pm.pointConstraint(translateAnimNode, rotationRoot)
+
+            roots[s] = root
+            rotationRoots[s] = rotationRoot
+            translateAnimNodes[s] = translateAnimNode
+            rotateAnimNodes[s] = rotateAnimNode
+            translateAnimOFfsetNodes[s] = translateAnimOFfsetNode
+            rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
+        bakeTargets = translateAnimNodes.values() + rotateAnimNodes.values()
+        pm.bakeResults(bakeTargets,
+                       time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
+                       simulation=False,
+                       sampleBy=1,
+                       oversamplingRate=1,
+                       disableImplicitControl=True,
+                       preserveOutsideKeys=False,
+                       sparseAnimCurveBake=True,
+                       removeBakedAttributeFromLayer=False,
+                       removeBakedAnimFromLayer=False,
+                       bakeOnOverrideLayer=False,
+                       minimizeRotation=True,
+                       controlPoints=False,
+                       shape=False)
+        pm.delete(tempConstraints)
+
+        # TODO - add scalar/blend to animated nodes-rest position
+
+        for s in sel:
+            pm.pointConstraint(translateAnimOFfsetNodes[s], s)
+            pm.orientConstraint(rotateAnimOffsetNodes[s], s)

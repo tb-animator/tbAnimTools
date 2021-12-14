@@ -123,15 +123,9 @@ def open_anim_page(*args):
 
 
 def licenseNewPlugins(*args):
-    if sys.version_info >= (2, 8):
-        print ('licenseNewPlugins python 3')
-
-    else:
-        print ('licenseNewPlugins python 2')
-        import pluginLookup as pLookup
-        reload(pLookup)
-        pLookupCLS = pLookup.ClassFinder()
-        pLookupCLS.startup()
+    print ("Activate New Plugins")
+    pLookupCLS = ClassFinder()
+    pLookupCLS.installFromZipUI()
 
 
 def show_aboutWin(*args):
