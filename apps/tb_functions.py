@@ -228,7 +228,7 @@ class functions(object):
             else:
                 rgbColour = [x * 255 for x in cmds.colorIndex(refObj.overrideColor.get(), q=True )]
         else:
-            rgbColour = refObj.overrideColorRGB.get()
+            rgbColour = [x * 255 for x in  refObj.overrideColorRGB.get()]
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         control.overrideColorRGB.set(rgbColourOut)
