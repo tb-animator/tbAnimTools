@@ -828,21 +828,21 @@ class Pickwalk(toolAbstractFactory):
                         name=command + 'NameCommand')
 
     def assignCtrlArrowHotkeys(self):
-        for direction, command in self.walkAddHotkeyMap.items():
+        for direction, command in self.walkCreateHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=False,
-                        ctrltModifier=True,
+                        ctrlModifier=True,
                         name=command + 'NameCommand')
 
     def assignCtrlShiftArrowHotkeys(self):
-        for direction, command in self.walkCreateHotkeyMap.items():
+        for direction, command in self.walkCreateConditionHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
-                        ctrltModifier=True,
+                        ctrlModifier=True,
                         name=command + 'NameCommand')
 
     def assignWASDHotkeys(self):
-        for direction, command in self.walkCreateConditionHotkeyMap.items():
+        for direction, command in self.walkHotkeyMap.items():
             cmds.hotkey(keyShortcut=direction,
                         shiftModifier=True,
                         altModifier=True,
