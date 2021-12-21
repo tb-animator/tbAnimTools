@@ -182,6 +182,7 @@ class BakeTools(toolAbstractFactory):
     quickBakeSimOption = 'tbQuickBakeUseSim'
     quickBakeRemoveContainerOption = 'tbQuickBakeRemoveContainer'
     tempControlMotionTrailOption = 'tbTempControlMotionTrailOption'
+    tempControlChannelOption = 'tbTempControlChannelOption'
     bakeSimObjectCountOption = 'tbBakeSimObjectCountOption'
     overrideLayerColour = 19
     additiveLayerColour = 18
@@ -219,6 +220,12 @@ class BakeTools(toolAbstractFactory):
                                          label='Baked locator control size',
                                          minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
+
+        constraintChannelHeader = subHeader('Constraint Channels')
+        constraintChannelInfo = infoLabel(['Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
+        constraintChannelWidget = optionVarBoolWidget('Constrain Highlighted Channels',
+                                                self.tempControlChannelOption)
+
         tempControlHeader = subHeader('Bake Simulation')
         tempControlInfo = infoLabel(['When baking many objects it is often faster to use simulation.',
                                      'Experiment to see where the threshold lies on your machine. Set the value below to automatically toggle bake sim when baking many objects'])
@@ -232,9 +239,16 @@ class BakeTools(toolAbstractFactory):
         motionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Controls',
                                                 self.tempControlMotionTrailOption)
 
+
+
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
+
+        self.layout.addWidget(constraintChannelHeader)
+        self.layout.addWidget(constraintChannelInfo)
+        self.layout.addWidget(constraintChannelWidget)
+
         self.layout.addWidget(tempControlHeader)
         self.layout.addWidget(tempControlInfo)
         self.layout.addWidget(bakeSimThresholdWidget)
@@ -1134,8 +1148,9 @@ class BakeTools(toolAbstractFactory):
                        shape=False)
         pm.delete(tempConstraints)
 
+        channels = self.funcs.getChannels()
         for s in sel:
-            pm.parentConstraint(rotateAnimOffsetNodes[s], s)
+            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s, orientOnly=False, maintainOffset=False, channels=channels)
 
     def redirectSelected(self):
         sel = cmds.ls(sl=True)

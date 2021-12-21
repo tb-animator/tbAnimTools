@@ -76,7 +76,8 @@ class BaseDialog(QDialog):
     oldPos = None
 
     def __init__(self, parent=None, title='', text='',
-                 lockState=False, showLockButton=False, showCloseButton=True, *args, **kwargs):
+                 lockState=False, showLockButton=False, showCloseButton=True, showInfo=True,
+                 *args, **kwargs):
         super(BaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
@@ -104,11 +105,20 @@ class BaseDialog(QDialog):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
-        self.titleText.setFont(QFont('Impact', 10))
-        # self.titleText.setStyleSheet("font-weight: standard; font-size: 14px;")
-        self.titleText.setStyleSheet("background: rgba(255, 0, 0, 0);")
+        self.titleText.setFont(QFont('Lucida Console', 16))
+        self.titleText.setStyleSheet("font-weight: lighter; font-size: 16px;")
+        self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        self.titleText.setStyleSheet("QLabel {"
+                                     "border-width: 0;"
+                                     "border-radius: 4;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "font-weight: bold; font-size: 16px;}"
+                                     )
+
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel(text)
+        if not showInfo: self.infoText.hide()
 
         self.titleLayout.addStretch()
         self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
@@ -1002,6 +1012,7 @@ class optionVarBoolWidget(optionVarWidget):
         QWidget.__init__(self)
         self.optionVar = optionVar
         self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(0,0,0,0)
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
         self.checkBox = QCheckBox()
@@ -1762,10 +1773,10 @@ class LockButton(MiniButton):
     lockSignal = Signal(bool)
 
     def __init__(self, label, parent,
-                 icon='pinned.png',
+                 icon='pinned_small.png',
                  unlockIcon='pin.png',
                  lockState=False,
-                 toolTip='Close'):
+                 toolTip='Lock UI on screen, hold control+left mouse click to move'):
         super(LockButton, self).__init__(icon=icon, toolTip=toolTip)
         self.lockState = False
 
@@ -2059,7 +2070,7 @@ class PluginExtractor(BaseDialog):
         super(PluginExtractor, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.parentCLS = parentCLS
         self.titleText.setText('tbAnimTools Plugin Extractor')
-        self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
+        self.titleText.setStyleSheet("font-weight: normal; font-size: 18px;")
         self.infoText.setText('Install plugins from the zip file')
         self.infoText.setAlignment(Qt.AlignCenter)
 

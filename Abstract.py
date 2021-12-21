@@ -114,6 +114,8 @@ class toolAbstractFactory(ABC):
     assetCommandName ='blankCommandName'
     assetTitleLabel = 'Empty'
 
+    dependentPlugins = list()
+
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
             toolAbstractFactory.__instance = object.__new__(cls)

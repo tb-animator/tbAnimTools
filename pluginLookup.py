@@ -84,13 +84,24 @@ class ClassFinder(object):
 
         self.tools = dict()
         for cls in toolClasses:
-            print (cls)
+            # print (cls)
             self.tools[cls.toolName] = cls()
             if not self.tools[cls.toolName]:
                 continue
             self.tools[cls.toolName].allTools = self
 
         self.loadedClasses['hotkeys'] = hotkeyClasses
+        self.loadAllDependentPlugins()
+
+    def loadAllDependentPlugins(self):
+        allPlugins = [x.dependentPlugins for x in self.tools.values()]
+        allPlugins = [plugin for dependentPlugins in allPlugins for plugin in dependentPlugins if plugin]
+        print ('allPlugins', allPlugins)
+        if not allPlugins:
+            return
+        for plugin in allPlugins:
+            cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin))
+            cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin))
 
     def getAllModulesInFolder(self, baseDirectory, toolDirectory, compiledOnly=False):
         allFiles = list()
@@ -110,10 +121,7 @@ class ClassFinder(object):
 
             file_name = os.path.basename(file.rsplit('.', 1)[0])
             subFolder = str(os.path.relpath(os.path.dirname(file), toolDirectory)).replace('\\', '.')
-            print ('file', file)
-            print ('baseDirectory', baseDirectory)
-            print ('file_name', file_name)
-            print ('subFolder', subFolder)
+
             # hacky check to see if the script is in the start folder
             if subFolder == '.':
                 module_name = baseDirectory + '.' + file_name

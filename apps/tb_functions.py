@@ -32,6 +32,7 @@ import pymel.core.datatypes as dt
 import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -172,7 +173,7 @@ class functions(object):
     def getAllModelPanels(self):
         return self.get_modelEditors(pm.lsUI(editors=True))
 
-    def tempNull(self,name='loc', suffix='baked'):
+    def tempNull(self, name='loc', suffix='baked'):
         node = pm.createNode('transform', name=name + '_' + suffix)
         node.rotateOrder.set(3)
         return node
@@ -222,19 +223,19 @@ class functions(object):
                 refObj = shape
         control.overrideEnabled.set(True)
         if not refObj.overrideRGBColors.get():
-            print ('not using rgb',refObj.overrideColor.get())
+            print ('not using rgb', refObj.overrideColor.get())
             if refObj.overrideColor.get() == 0:
                 rgbColour = [125, 125, 125]
             else:
-                rgbColour = [x * 255 for x in cmds.colorIndex(refObj.overrideColor.get(), q=True )]
+                rgbColour = [x * 255 for x in cmds.colorIndex(refObj.overrideColor.get(), q=True)]
         else:
-            rgbColour = [x * 255 for x in  refObj.overrideColorRGB.get()]
+            rgbColour = [x * 255 for x in refObj.overrideColorRGB.get()]
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         control.overrideColorRGB.set(rgbColourOut)
         print ('rgbColourOut', rgbColourOut)
         control.overrideRGBColors.set(True)
-        #control.overrideColor.set(refObj.overrideColor.get())
+        # control.overrideColor.set(refObj.overrideColor.get())
         for s in control.getShapes():
             s.overrideEnabled.set(0)
 
@@ -748,7 +749,6 @@ class functions(object):
                                          maintainOffset=maintainOffset)
         return constraint
 
-
     # this disables the default maya inview messages (which are pointless after a while)
     def disable_messages(self):
         pm.optionVar(intValue=(self.messageOptionVar_name, 0))
@@ -1214,6 +1214,7 @@ class functions(object):
     SELECTION
     
     """
+
     def getSimilarControlsMinusPrefix(self, namespace, control, prefix, constraint=False, shape=False):
         wildcard = ('{ns}:*'.format(ns=namespace))
         matching = cmds.ls(wildcard, type='transform')
@@ -1288,7 +1289,6 @@ class functions(object):
             matching.remove(sel)
         return matching
 
-
     """
     UI gubbinz
     """
@@ -1317,3 +1317,24 @@ class functions(object):
         cmds.formLayout(form, e=True, attachNone=(newButton, 'left'))
         cmds.formLayout(form, e=True, attachNone=(newButton, 'bottom'))
         cmds.formLayout(form, e=True, attachControl=(newButton, 'right', 1, form + '|' + uiElement))
+
+    def apiTypes(self, filter):
+        typeDict = {'animCurve': [om.MFn.kAnimCurveTimeToAngular,
+                    om.MFn.kAnimCurveTimeToDistance,
+                    om.MFn.kAnimCurveTimeToUnitless,
+                    om.MFn.kAnimCurveTimeToTime],
+                    'selection':
+            [om.MItSelectionList.kDagSelectionItem,
+             om.MItSelectionList.kDNselectionItem],
+                    'animCurveSelection': [om.MItSelectionList.kDagSelectionItem,
+                                      om.MItSelectionList.kAnimSelectionItem,
+                                      om.MItSelectionList.kDNselectionItem]}
+        if filter not in typeDict.keys():
+            return cmds.error('type must be one of - ', typeDict.keys())
+        return typeDict[filter]
+
+    def getAnimCurveSelectionAPI(self):
+        return self.apiTypes('animCurveSelection')
+
+    def getAnimCurveTypesAPI(self):
+        return self.apiTypes('animCurve')
