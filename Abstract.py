@@ -115,6 +115,8 @@ class toolAbstractFactory(ABC):
     assetTitleLabel = 'Empty'
 
     dependentPlugins = list()
+    deferredLoadJob = None
+    deferredLoadDone = False
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:

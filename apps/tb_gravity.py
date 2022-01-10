@@ -58,7 +58,7 @@ import math
 import sys
 import pymel.core as pm
 import pymel.core.datatypes as dt
-
+import maya.cmds as cmds
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):

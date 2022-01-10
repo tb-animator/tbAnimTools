@@ -23,6 +23,7 @@
 *******************************************************************************
 '''
 import pymel.core as pm
+import maya.cmds as cmds
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *

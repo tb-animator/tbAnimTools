@@ -64,12 +64,12 @@ class ClassFinder(object):
         else:
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python2')
             self.proToolsVerionDirectory = 'proApps.Python2'
-        print ('self.proToolsDirectory', self.proToolsDirectory)
+
         self.loadPluginsByClass()
         self.applyAnimLayerTabModification()
+        self.applyToolDeferredLoad()
 
     def loadPluginsByClass(self):
-
         self.allClasses = [cls for cls in
                            self.getAllModulesInFolder(self.toolsBaseDirectory, self.toolsDirectory)
                            if cls]
@@ -84,7 +84,14 @@ class ClassFinder(object):
 
         self.tools = dict()
         for cls in toolClasses:
-            # print (cls)
+            print (cls)
+            tool = None
+            try:
+                tool = cls()
+            except:
+                pass
+            if not tool:
+                continue
             self.tools[cls.toolName] = cls()
             if not self.tools[cls.toolName]:
                 continue
@@ -96,7 +103,6 @@ class ClassFinder(object):
     def loadAllDependentPlugins(self):
         allPlugins = [x.dependentPlugins for x in self.tools.values()]
         allPlugins = [plugin for dependentPlugins in allPlugins for plugin in dependentPlugins if plugin]
-        print ('allPlugins', allPlugins)
         if not allPlugins:
             return
         for plugin in allPlugins:
@@ -155,6 +161,12 @@ class ClassFinder(object):
     def applyToolDeferredLoad(self):
         for tool, cls in self.tools.items():
             cls.deferredLoad()
+            '''
+            try:
+                cls.deferredLoad()
+            except:
+                cmds.warning('deferredLoad failing for ', cls)
+            '''
 
     def applyAnimLayerTabModification(self):
         animLayerLayouts = self.tools['LayerEditor'].modifyAnimLayerTab()

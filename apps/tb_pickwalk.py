@@ -24,6 +24,7 @@
 '''
 import pymel.core as pm
 import maya.mel as mel
+import maya.cmds as cmds
 import pymel.core.datatypes as dt
 import os
 from functools import partial

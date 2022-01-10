@@ -68,6 +68,8 @@ class GraphEditor(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+
+
     def __new__(cls):
         if GraphEditor.__instance is None:
             GraphEditor.__instance = object.__new__(cls)
@@ -94,6 +96,14 @@ class GraphEditor(toolAbstractFactory):
         return None
 
     def deferredLoad(self):
+        try:
+            self.createPopup()
+        except:
+            self.deferredLoadJob = cmds.scriptJob(runOnce=True,  event=('PostSceneRead', self.createPopup))
+
+    def createPopup(self, *args):
+        if self.deferredLoadDone:
+            return
         name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
         popup = cmds.popupMenu(name,
                                ctrlModifier=False,
@@ -104,6 +114,7 @@ class GraphEditor(toolAbstractFactory):
                                markingMenu=True,
                                postMenuCommandOnce=False,
                                postMenuCommand=partial(self.graphEditorMenu))
+        self.deferredLoadDone = True
 
     def graphEditorMenu(self, menuName, *args):
         mode = self.getMoveKeyMode()

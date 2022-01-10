@@ -25,7 +25,7 @@
 import pymel.core as pm
 import maya.mel as mel
 import maya
-
+import maya.cmds as cmds
 maya.utils.loadStringResourcesForModule(__name__)
 import pymel.core.datatypes as dt
 from Abstract import *

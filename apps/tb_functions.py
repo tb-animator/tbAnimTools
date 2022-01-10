@@ -25,6 +25,7 @@
 import pymel.core as pm
 import maya.cmds as cmds
 import maya.OpenMayaAnim as oma
+
 import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
@@ -32,6 +33,31 @@ import pymel.core.datatypes as dt
 import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
+
+API_TYPES = {'animCurve': [om2.MFn.kAnimCurveTimeToAngular,
+                                         om2.MFn.kAnimCurveTimeToDistance,
+                                         om2.MFn.kAnimCurveTimeToUnitless,
+                                         om2.MFn.kAnimCurveTimeToTime],
+                           'selection':
+                               [om2.MItSelectionList.kDagSelectionItem,
+                                om2.MItSelectionList.kDNselectionItem],
+                           'animCurveSelection': [om2.MItSelectionList.kDagSelectionItem,
+                                                  om2.MItSelectionList.kAnimSelectionItem,
+                                                  om2.MItSelectionList.kDNselectionItem],
+                           'blendModes': [om2.MFn.kBlendNodeDoubleLinear,
+                                          om2.MFn.kBlendNodeAdditiveRotation,
+                                          om2.MFn.kBlendNodeAdditiveScale,
+                                          om2.MFn.kBlendNodeBoolean,
+                                          om2.MFn.kBlendNodeEnum,
+                                          om2.MFn.kBlendNodeDouble,
+                                          om2.MFn.kBlendNodeDoubleAngle,
+                                          om2.MFn.kBlendNodeFloat,
+                                          om2.MFn.kBlendNodeFloatAngle,
+                                          om2.MFn.kBlendNodeFloatLinear,
+                                          om2.MFn.kBlendNodeInt16,
+                                          om2.MFn.kBlendNodeInt32,
+                                          om2.MFn.kBlendNodeBase],
+                           'rotation': [om2.MFn.kBlendNodeAdditiveRotation]}
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -148,6 +174,213 @@ class functions(object):
                       }
 
     lastPanel = None
+
+    """
+    API Classes - layers
+    """
+
+    class AnimLayerData(object):
+        __attrs__ = ['override', 'lock', 'passthrough', 'selected']
+
+        def __init__(self, layer=None):
+            """
+            pass in string name for layer, store api info
+            """
+            # get MObject from root layer name
+            sel = om2.MSelectionList()
+            print ('layer', layer)
+            sel.add(layer)
+            self.layer = sel.getDependNode(0)
+            self.mfnDepNode = om2.MFnDependencyNode(self.layer)
+            self.cache()
+
+        def cache(self):
+            for attr in self.__attrs__:
+                plug = self.mfnDepNode.findPlug(attr, True)
+                self.__dict__[attr] = plug and plug.asBool()
+
+    def getBaseLayerAPI(self):
+        baseAnimLayer = cmds.animLayer(query=True, root=True)
+        if not baseAnimLayer:
+            return None
+
+        sel = om2.MSelectionList()
+        sel.add(baseAnimLayer)
+        return self.AnimLayerData(layer=baseAnimLayer)
+
+    def getAnimLayersAPI(self):
+        baseAnimLayer = self.getBaseLayerAPI()
+
+        if not baseAnimLayer:
+            return []
+
+        allAnimLayers = [baseAnimLayer.layer]
+        baseMFnDepNode = baseAnimLayer.mfnDepNode
+
+        # get the child layers from the root, so we get them in order
+        plug = baseMFnDepNode.findPlug('childrenLayers', True)
+        for i in range(plug.numElements() - 1, -1, -1):  # walk backwards through the children
+            connections = plug.elementByPhysicalIndex(i).connectedTo(True, False)
+            if connections:
+                allAnimLayers.append(connections[0].node())
+        return allAnimLayers
+
+    def cacheAllAnimLayersAPI(self):
+        return [self.AnimLayerData(k) for k in self.getAnimLayersAPI()]
+
+    def selectedLayers(self, cache):
+        if not cache:
+            cache = self.cacheAllAnimLayersAPI()
+        return [x.layer for x in cache if x.selected]
+
+    def sceneHasAnimLayers(self):
+        layerIterator = om2.MItDependencyNodes(om2.MFn.kAnimLayer)
+        count = 0
+
+        while not layerIterator.isDone():
+            if count > 0:
+                return True
+
+            count += 1
+            layerIterator.next()
+
+        return False
+
+    def getBestLayerFromPlugAPI(self, plug, layerCache=None, baseAnimLayer=None):
+        """
+        Traverse the attribute plug hiearchy in search of animation layers and find the best candidate.
+
+        :param plug: MPlug for where to start the search
+        :type plug: om.MPlug
+        :return: Best layer or None
+        :rtype: om.MObject or None
+        """
+        if not baseAnimLayer:
+            baseAnimLayer = self.getBaseLayerAPI()
+        if not layerCache:
+            layerCache = self.cacheAllAnimLayersAPI()
+        selectedLayers = self.selectedLayers(layerCache)
+        unlockedLayers = [x for x in layerCache if not x.lock]
+        allLayers = [x.layer for x in layerCache]
+
+
+        # if baseAnimLayer layer is selected and not locked, use that
+        if baseAnimLayer.lock:
+            baseAnimLayer.layer = None
+        elif baseAnimLayer.selected and not len(selectedLayers) > 1:
+            return baseAnimLayer.layer
+
+        it = om2.MItDependencyGraph(plug, om2.MFn.kAnimLayer,
+                                   direction=om2.MItDependencyGraph.kDownstream,
+                                   traversal=om2.MItDependencyGraph.kBreadthFirst,
+                                   level=om2.MItDependencyGraph.kNodeLevel)
+        # it.pruningOnFilter = True
+        bestLayer = None
+
+        if selectedLayers:
+            while not it.isDone():
+                # store the node, and move iterator immediately
+                layer = it.currentNode()
+
+                if layer in allLayers:
+                    it.prune()
+                    if layer in selectedLayers:
+                        bestLayer = layer
+
+                it.next()
+        if bestLayer:
+            return bestLayer
+
+        it.reset()
+
+        while not it.isDone():
+            layer = it.currentNode()
+
+            if layer in allLayers:
+                it.prune()
+                if layer in unlockedLayers:
+                    bestLayer = layer
+
+            it.next()
+        if not bestLayer:
+            return baseAnimLayer
+        return bestLayer
+
+    def getAnimCurvesForObjectsAPI(self, MFnDepNodes):
+        """ Gets the animation curves connected to nodes.
+
+        :param nodes: List with MFnDependencyNode
+        :type nodes: list of om.MFnDependencyNode
+        :return: Tuple of curves and plugs
+        :rtype: (list of om.MFnDependencyNode, list of om.MPlug)
+        """
+
+        curves = []
+        plugs = []
+        animLayerCache = self.cacheAllAnimLayersAPI()
+        channelBoxSelection = self.getChannels()
+        sceneHasAnimLayers = self.sceneHasAnimLayers()
+        layersLocked = all([x.lock for x in animLayerCache])
+        baseAnimLayer = self.getBaseLayerAPI()
+
+        if sceneHasAnimLayers and layersLocked:
+            return cmds.warning('Animation layers are locked. Cannot proceed')
+
+        for node in MFnDepNodes:
+            # get all attributes
+            attributeList = node.attributeCount()
+            for index in range(attributeList):
+                attribute = node.attribute(index)
+                plug = node.findPlug(attribute, True)
+
+                if plug.isLocked or not plug.isKeyable:
+                    continue
+
+                connections = plug.connectedTo(True, False)
+                if not connections: continue
+                connectedNode = connections[0].node()
+
+                apiType = connectedNode.apiType()
+                if apiType in self.apiTypes('animCurve'):
+                    if channelBoxSelection:
+                        attributeName = om2.MFnAttribute(attribute).shortName
+                        if attributeName not in channelBoxSelection:
+                            continue
+
+                    # add the node if it matches one of the types we want
+                    curves.append(om2.MFnDependencyNode(connectedNode))
+                    plugs.append(plug)
+
+                # find curve in animation layer
+                elif sceneHasAnimLayers and apiType in self.apiTypes('blendModes'):
+                    # filter out attributes not selected in channelbox
+                    if channelBoxSelection:
+                        attributeName = om2.MFnAttribute(attribute).shortName
+                        if attributeName not in channelBoxSelection:
+                            continue
+
+                    # for testing purposes
+                    print('Attribute: %s' % plug)
+
+                    # benchmark_start = time.clock()
+                    bestLayer = self.getBestLayerFromPlugAPI(plug)
+                    if not bestLayer:
+                        continue
+
+                    # for testing purposes
+                    try:
+                        print('-> Best layer is %s' % (om.MFnDependencyNode(bestLayer).name()))
+                    except Exception as e:
+                        pass
+
+                    curve = self.getCurvesFromLayerAPI(plug, bestLayer, animLayerCache, baseAnimLayer)
+                    # animlayers.cache.benchmark += time.clock() - benchmark_start
+                    if curve:
+                        curves.append(om2.MFnDependencyNode(curve))
+                        plugs.append(plug)
+
+        # sys.stdout.write('# Retrieved %d curves in %.4f sec\n' % (len(curve_list), animlayers.cache.benchmark))
+        return curves, plugs
 
     def getChannelBoxName(self):
         if not self.gChannelBoxName:
@@ -523,13 +756,21 @@ class functions(object):
             print ("no anim curves found")
 
     def getChannels(self, *arg):
-        chList = cmds.channelBox(self.getChannelBoxName(),
-                                 query=True,
-                                 selectedMainAttributes=True)
-        plugs = mel.eval("selectedChannelBoxPlugs")
-        # strip out object names and return attibutes
-        chList = list(set([x.split('.')[-1] for x in plugs]))
-        return chList
+        channels = set()
+        mainChannelBox = self.getChannelBoxName()
+        flags = ['selectedMainAttributes',
+                 'selectedShapeAttributes',
+                 'selectedHistoryAttributes',
+                 'selectedOutputAttributes'
+                 ]
+        for flag in flags:
+            ch = cmds.channelBox(mainChannelBox, q=True, **{flag: True})
+            print (flag, ch, channels)
+            if ch: channels |= set(ch)
+
+        if not len(channels):
+            return []
+        return channels
 
     def filterChannels(self):
         channels = self.getChannels()
@@ -654,6 +895,19 @@ class functions(object):
             return not cmds.workspaceControl(graphEditorWindow, query=True, collapse=True)
         else:
             return False
+
+    def graphEdKeysSelected(self):
+        """
+        Returns true if graph editor is raised, with keys selected
+        :return:
+        """
+        activeSelectionList = om2.MGlobal.getActiveSelectionList()
+        selIterator = om2.MItSelectionList(activeSelectionList, om2.MFn.kAnimCurve)
+        selectedCurveState = not selIterator.isDone()
+        if not selectedCurveState:
+            return False
+
+        return self.getGraphEditorState()
 
     def getValidAttributes(self, nodes):
         returnAttributes = list()
@@ -1039,6 +1293,76 @@ class functions(object):
             plug = mel.eval(cmd)
         return plug
 
+    def getCurvesFromLayerAPI(self, plug, layer, layerCache, baseAnimLayer):
+        """
+        """
+        # special case for root layer
+        if layer == baseAnimLayer.layer:
+            isBaseAnimLayer = True
+        else:
+            isBaseAnimLayer = False
+
+        allLayers = [x.layer for x in layerCache]
+
+        it = om2.MItDependencyGraph(plug, om2.MFn.kInvalid,
+                                   direction=om2.MItDependencyGraph.kUpstream,
+                                   traversal=om2.MItDependencyGraph.kBreadthFirst,
+                                   level=om2.MItDependencyGraph.kNodeLevel)
+
+        target = None
+
+        while not it.isDone():
+            node = it.currentNode()
+
+            if node in allLayers:
+                it.prune()
+
+            it.next()
+            if node.apiType() in self.apiTypes('blendModes'):
+                # iterate to the last node if is root
+                if isBaseAnimLayer:
+                    target = node
+                    continue
+                # otherwise check if the layer connected to weightA is the desired layer
+                targetMFnDepNode = om2.MFnDependencyNode(node)
+                layerPlug = targetMFnDepNode.findPlug('wa', True)  # weightA
+                if layerPlug:
+                    if layer == layerPlug.source().node():
+                        target = node
+                        break
+
+        if target:
+            targetMFnDepNode = om2.MFnDependencyNode(target)
+
+            if isBaseAnimLayer:
+                inputPlug = targetMFnDepNode.findPlug('ia', True)  # inputA
+            else:
+                inputPlug = targetMFnDepNode.findPlug('ib', True)  # inputB
+
+            # is the blend node a rotation type?
+            if target.apiType() in self.apiTypes('rotation'):
+                idx = 0
+                # find which index we come from
+                if plug.isChild:
+                    parent = plug.parent()
+                    for i in range(parent.numChildren()):
+                        if parent.child(i) == plug:
+                            idx = i
+
+                # try to get the same index from the input
+                if inputPlug.isCompound and idx < inputPlug.numChildren():
+                    inputPlug = inputPlug.child(idx)
+                    curve = inputPlug.source().node()
+                    if curve and curve.apiType() in self.apiTypes('animCurve'):
+                        return curve
+
+            elif inputPlug:
+                curve = inputPlug.source().node()
+                if curve and curve.apiType() in self.apiTypes('animCurve'):
+                    return curve
+
+        return None
+
     @staticmethod
     def is_in_anim_layer(nodeName, animLayer):
         """ Determine if the given object is in the given animation layer.
@@ -1319,19 +1643,23 @@ class functions(object):
         cmds.formLayout(form, e=True, attachControl=(newButton, 'right', 1, form + '|' + uiElement))
 
     def apiTypes(self, filter):
-        typeDict = {'animCurve': [om.MFn.kAnimCurveTimeToAngular,
-                    om.MFn.kAnimCurveTimeToDistance,
-                    om.MFn.kAnimCurveTimeToUnitless,
-                    om.MFn.kAnimCurveTimeToTime],
-                    'selection':
-            [om.MItSelectionList.kDagSelectionItem,
-             om.MItSelectionList.kDNselectionItem],
-                    'animCurveSelection': [om.MItSelectionList.kDagSelectionItem,
-                                      om.MItSelectionList.kAnimSelectionItem,
-                                      om.MItSelectionList.kDNselectionItem]}
-        if filter not in typeDict.keys():
-            return cmds.error('type must be one of - ', typeDict.keys())
-        return typeDict[filter]
+        if filter not in API_TYPES.keys():
+            return cmds.error('type must be one of - ', API_TYPES.keys(), filter)
+        return API_TYPES[filter]
+
+    def getSelectedTransforms(self):
+        nodes = []
+        sel = om2.MGlobal.getActiveSelectionList()
+        selectionIterator = om2.MItSelectionList(sel, om2.MFn.kDependencyNode)
+
+        while not selectionIterator.isDone():
+            s = selectionIterator.itemType()
+            if s in self.apiTypes('selection'):
+                nodes.append(om2.MFnDependencyNode(selectionIterator.getDependNode()))
+
+            selectionIterator.next()
+
+        return nodes
 
     def getAnimCurveSelectionAPI(self):
         return self.apiTypes('animCurveSelection')

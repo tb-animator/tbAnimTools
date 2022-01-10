@@ -24,6 +24,7 @@
 '''
 import maya.mel as mel
 import pymel.core as pm
+import maya.cmds as cmds
 import webbrowser
 from pluginLookup import ClassFinder
 import sys

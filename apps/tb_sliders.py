@@ -32,11 +32,17 @@ import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
 from maya.api import OpenMaya
 
+fn_SMOOTH = 'Smooth'
+fn_BLOAT = 'Bloat'
+fn_BREAKDOWN = 'Tween'
+fn_BREAKDOWNGROUP = 'TweenGrp'
+
 qtVersion = pm.about(qtVersion=True)
 margin = 2
 from random import randint
 from Abstract import *
 import maya
+import maya.OpenMayaUI as omui
 
 maya.utils.loadStringResourcesForModule(__name__)
 if int(qtVersion.split('.')[0]) < 5:
@@ -833,6 +839,7 @@ class SlideTools(toolAbstractFactory):
     keyTweenMethods = {}
     xformWidget = None
     keyWidget = None
+    graphEditKeyWidget = None
 
     animCurveChange = None
     keyframeData = None
@@ -846,10 +853,10 @@ class SlideTools(toolAbstractFactory):
         SlideTools.__instance.val = cls.toolName
         SlideTools.__instance.app = QApplication.instance()
         SlideTools.__instance.keyTweenMethods = {
-            'LerpCurrent': SlideTools.__instance.tweenPreviousCurrentNext,
-            'Lerp': SlideTools.__instance.tweenPreviousNext,
-            'Bloat': SlideTools.__instance.tweenBloat,
-            'SmoothSimple': SlideTools.__instance.tweenSmoothNeighbours
+            fn_BREAKDOWN: SlideTools.__instance.tweenPreviousCurrentNext,
+            fn_BREAKDOWNGROUP: SlideTools.__instance.tweenPreviousNextGroup,
+            fn_BLOAT: SlideTools.__instance.tweenBloat,
+            fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours
         }
         # slideTools.__instance.xformWidget = XformSliderWidget()
 
@@ -873,6 +880,18 @@ class SlideTools(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
+
+    def deferredLoad(self):
+        try:
+            self.showGraphEdKeyInbetween()
+        except:
+            self.deferredLoadJob = cmds.scriptJob(runOnce=True, event=('PostSceneRead', self.loadGraphEditorWidget))
+
+    def loadGraphEditorWidget(self, *args):
+        if self.deferredLoadDone:
+            return
+        self.showGraphEdKeyInbetween()
+        self.deferredLoadDone = True
 
     def pickInbetweenClass(self):
         # TODO - don't pick the slider class like this, pick it in init for UI
@@ -928,6 +947,50 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.controlShiftLabel = self.xformTweenClasses[key].controlShiftLabel
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
+    # graphed key tween
+    def showGraphEdKeyInbetween(self):
+        # check tween classes
+        '''
+
+        :return:
+        '''
+        '''
+        for key, value in self.keyTweenDict.items():
+            if not self.keyTweenMethods[key]:
+                self.keyTweenMethods[key] = value()
+            if not self.keyTweenMethods[key].instance:
+                self.keyTweenMethods[key].instance = value()
+        '''
+        if not self.graphEditKeyWidget:
+            print ('new instance')
+            self.graphEditKeyWidget = GraphEdKeySliderWidget()
+            self.graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
+            self.graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+            self.graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
+            self.graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
+            self.graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
+            uiButton = "curvesPostInfinityCycleOffsetButton"
+            PControl = wrapInstance(int(omui.MQtUtil.findControl(uiButton)), QPushButton)
+
+            UIParent = PControl.parent()
+            UIParent.objectName()
+
+            phLayout = wrapInstance(int(omui.MQtUtil.findControl(UIParent.objectName())), QWidget)
+
+            self.graphEditKeyWidget.setParent(phLayout)
+            self.graphEditKeyWidget.move(PControl.pos().x() + PControl.width() + 8, 2)
+
+            self.graphEditKeyWidget.show()
+            self.graphEditKeyWidget.raise_()
+
+    def graphEditKeySliderModeChangeSignal(self, key):
+        return
+        self.graphEditKeyWidget.baseLabel = self.keyTweenMethods[key].baseLabel
+        self.graphEditKeyWidget.shiftLabel = self.keyTweenMethods[key].shiftLabel
+        self.graphEditKeyWidget.controlLabel = self.keyTweenMethods[key].controlLabel
+        self.graphEditKeyWidget.controlShiftLabel = self.keyTweenMethods[key].controlShiftLabel
+        self.graphEditKeyWidget.altLabel = self.keyTweenMethods[key].altLabel
+
     # key tween
     def showKeyInbetween(self):
         # check tween classes
@@ -948,6 +1011,7 @@ class SlideTools(toolAbstractFactory):
             self.keyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
             self.keyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
             self.keyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
+            self.keyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
             self.keyWidget.modeChangedSignal.connect(self.keySliderModeChangeSignal)
 
         # move to mouse if unlocked
@@ -972,6 +1036,11 @@ class SlideTools(toolAbstractFactory):
     def keySliderEndSignal(self, key, value):
         cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=False)
         cmds.undoInfo(closeChunk=True)
+
+    def keySliderCancelSignal(self):
+        # cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=False)
+        cmds.undoInfo(closeChunk=True)
+        cmds.undo()
 
     def keySliderModeChangeSignal(self, key):
         return
@@ -1014,12 +1083,32 @@ class SlideTools(toolAbstractFactory):
         self.app.removeEventFilter(self.keyPressHandler)
 
     def cacheKeyData(self):
-        self.selectedCurveDict = self.getAnimCurveSelectionAPI()
+        self.selectedCurveDict = dict()
+        isHighlighted = self.funcs.isTimelineHighlighted()
+        if isHighlighted:
+            minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+        else:
+            minTime = cmds.playbackOptions(query=True, min=True)
+            maxTime = cmds.playbackOptions(query=True, max=True)
+
+        selectedCurves = self.funcs.graphEdKeysSelected()
+
+        if selectedCurves:
+            self.selectedCurveDict = self.getAnimCurveSelectionAPI()
+        else:
+            selectedObjects = self.funcs.getSelectedTransforms()
+            if not selectedObjects:
+                return
+            curves, plugs = self.funcs.getAnimCurvesForObjectsAPI(selectedObjects)
+            for c in curves:
+                node = oma2.MFnAnimCurve(c.object())
+                self.selectedCurveDict[node.absoluteName()] = node
+
         if not self.selectedCurveDict.values():
             self.keyframeData = None
             self.selectedCurveDict = None
             return
-        self.keyframeData, self.keyframeRefData = self.getAnimCurveData(self.selectedCurveDict)
+        self.keyframeData, self.keyframeRefData = self.getAnimCurveData(self.selectedCurveDict, minTime, maxTime)
 
     def normalizeAlpha(self, alpha, minVal, maxVal, range=[0, 1]):
         """
@@ -1034,14 +1123,27 @@ class SlideTools(toolAbstractFactory):
     def doKeyTween(self, alpha=float(), mode=str()):
         self.keyTweenMethods[mode](alpha)
 
-    def tweenPreviousNext(self, alpha):
+    def tweenPreviousNextGroup(self, alpha):
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
         for curve, keyframeData in self.keyframeData.iteritems():
             for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.tweenPreviousNextKey(alpha,
-                                                     keyframeData.previousValues[keyframeData.keyIndexes[i]],
-                                                     keyframeData.nextValues[keyframeData.keyIndexes[i]])
+                outValue = self.tweenPreviousNextGroupKey(alpha=alpha,
+                                                          currentValue=keyframeData.keyValues[i],
+                                                          previousValue=keyframeData.previousValues[keyframeData.keyIndexes[0]],
+                                                          nextValue=keyframeData.nextValues[keyframeData.keyIndexes[-1]],
+                                                          startValue=keyframeData.keyValues[0],
+                                                          endValue=keyframeData.keyValues[-1])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
+        '''
+        for curve, keyframeData in self.keyframeData.iteritems():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+        '''
 
     def tweenPreviousCurrentNext(self, alpha):
         if not self.keyframeData.items():
@@ -1086,7 +1188,7 @@ class SlideTools(toolAbstractFactory):
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
         if not self.keyframeData:
             return
-        for x in range(100):
+        for x in range(200):
             for curve, keyframeData in self.keyframeData.iteritems():
                 smoothList = [0.0] * len(keyframeData.keyIndexes)
                 for i in range(len(keyframeData.keyIndexes)):
@@ -1122,6 +1224,21 @@ class SlideTools(toolAbstractFactory):
         :param keyframeData:
         :return:
         """
+
+    def tweenPreviousNextGroupKey(self, alpha=0.5, currentValue=0, previousValue=0, nextValue=0, startValue=0, endValue=0):
+        """
+
+        :param alpha:
+        :param currentValue:
+        :param previousValue:
+        :param nextValue:
+        :param startValue:
+        :param endValue:
+        :return:
+        """
+        if alpha < 0.0:
+            return currentValue - ((startValue - previousValue) * (alpha * -1))
+        return currentValue + ((nextValue - endValue) * alpha)
 
     def tweenPreviousNextKey(self, alpha, previousValue, nextValue):
         """
@@ -1199,7 +1316,7 @@ class SlideTools(toolAbstractFactory):
 
         return selectedAnimCurveDict  # .values()
 
-    def getAnimCurveData(self, selectedAnimCurveDict):
+    def getAnimCurveData(self, selectedAnimCurveDict, minTime, maxTime):
         curveDataDict = {}
         curveRefDataDict = {}
         for curveName, curve in selectedAnimCurveDict.iteritems():
@@ -1220,55 +1337,57 @@ class SlideTools(toolAbstractFactory):
             outTangents = list()
             bezierTangents = list()
 
-            if keyIndexes:
-                # keys are selected
-                previouskeyIndexes = {x: max(x - 1, 0) for x in keyIndexes}
-                nextkeyIndexes = {x: min(x + 1, allkeyIndexes[-1]) for x in keyIndexes}
+            # change this to figure out selected keys or not,
+            # get the indexes it should work on and then run the same code whatever
 
-                for index, i in enumerate(keyIndexes):
-                    keyTimes.append(curve.input(keyIndexes[index]).asUnits(om2.MTime.kSeconds))
-                    keyValues.append(curve.value(keyIndexes[index]))
-                    previousValues[i] = curve.value(previouskeyIndexes[i])
-                    nextKeyValues[i] = curve.value(nextkeyIndexes[i])
-                    previousKeyTimes[i] = curve.input(previouskeyIndexes[i]).asUnits(om2.MTime.kSeconds)
-                    nextKeyTimes[i] = curve.input(nextkeyIndexes[i]).asUnits(om2.MTime.kSeconds)
-                    inTangents.append(curve.getTangentXY(keyIndexes[index], True))
-                    outTangents.append(curve.getTangentXY(keyIndexes[index], False))
-                for index, i in enumerate(keyIndexes):
-                    if index == 0:
-                        tangents = self.getBezierTangentPoints(keyTimes[0],
-                                                               keyValues[0],
-                                                               outTangents[0],
-                                                               nextKeyTimes[keyIndexes[0]],
-                                                               nextKeyValues[keyIndexes[0]],
-                                                               inTangents[min(len(keyIndexes) - 1, 1)])
-                        bezierTangents.append([None, tangents])
-                    elif index == len(keyIndexes) - 1:
-                        tangents = self.getBezierTangentPoints(previousKeyTimes[keyIndexes[-1]],
-                                                               previousValues[keyIndexes[-1]],
+            if not keyIndexes:
+                keyIndexes = cmds.keyframe(curveName, query=True, indexValue=True, time=(minTime, maxTime))
+
+            # keys are selected
+            previouskeyIndexes = {x: max(x - 1, 0) for x in keyIndexes}
+            nextkeyIndexes = {x: min(x + 1, allkeyIndexes[-1]) for x in keyIndexes}
+
+            for index, i in enumerate(keyIndexes):
+                keyTimes.append(curve.input(keyIndexes[index]).asUnits(om2.MTime.kSeconds))
+                keyValues.append(curve.value(keyIndexes[index]))
+                previousValues[i] = curve.value(previouskeyIndexes[i])
+                nextKeyValues[i] = curve.value(nextkeyIndexes[i])
+                previousKeyTimes[i] = curve.input(previouskeyIndexes[i]).asUnits(om2.MTime.kSeconds)
+                nextKeyTimes[i] = curve.input(nextkeyIndexes[i]).asUnits(om2.MTime.kSeconds)
+                inTangents.append(curve.getTangentXY(keyIndexes[index], True))
+                outTangents.append(curve.getTangentXY(keyIndexes[index], False))
+            for index, i in enumerate(keyIndexes):
+                if index == 0:
+                    tangents = self.getBezierTangentPoints(keyTimes[0],
+                                                           keyValues[0],
+                                                           outTangents[0],
+                                                           nextKeyTimes[keyIndexes[0]],
+                                                           nextKeyValues[keyIndexes[0]],
+                                                           inTangents[min(len(keyIndexes) - 1, 1)])
+                    bezierTangents.append([None, tangents])
+                elif index == len(keyIndexes) - 1:
+                    tangents = self.getBezierTangentPoints(previousKeyTimes[keyIndexes[-1]],
+                                                           previousValues[keyIndexes[-1]],
+                                                           inTangents[0],
+                                                           keyTimes[0],
+                                                           keyValues[0],
+                                                           outTangents[index - 1])
+                    bezierTangents.append([tangents, None])
+                else:
+                    leftTangent = self.getBezierTangentPoints(keyTimes[index],
+                                                              keyValues[index],
+                                                              outTangents[index],
+                                                              nextKeyTimes[i],
+                                                              nextKeyValues[i],
+                                                              inTangents[index])
+                    rightTangent = self.getBezierTangentPoints(previousKeyTimes[i],
+                                                               previousValues[i],
                                                                inTangents[0],
                                                                keyTimes[0],
                                                                keyValues[0],
                                                                outTangents[index - 1])
-                        bezierTangents.append([tangents, None])
-                    else:
-                        leftTangent = self.getBezierTangentPoints(keyTimes[index],
-                                                                  keyValues[index],
-                                                                  outTangents[index],
-                                                                  nextKeyTimes[i],
-                                                                  nextKeyValues[i],
-                                                                  inTangents[index])
-                        rightTangent = self.getBezierTangentPoints(previousKeyTimes[i],
-                                                                   previousValues[i],
-                                                                   inTangents[0],
-                                                                   keyTimes[0],
-                                                                   keyValues[0],
-                                                                   outTangents[index - 1])
-                        bezierTangents.append([leftTangent, rightTangent])
+                    bezierTangents.append([leftTangent, rightTangent])
 
-            else:
-                # work on entire curve
-                continue
             keyframeData = KeyframeData(keyTimes=keyTimes,
                                         keyValues=keyValues,
                                         keyIndexes=keyIndexes,
@@ -2496,6 +2615,7 @@ class SliderWidget(BaseDialog):
     sliderEndedSignal = Signal(str, float)
     sliderBeginSignal = Signal(str, float)
     modeChangedSignal = Signal(str)
+    sliderCancelSignal = Signal()
 
     minValue = -101
     minOvershootValue = -201
@@ -2529,12 +2649,14 @@ class SliderWidget(BaseDialog):
                  controlLabel='controlLabel',
                  controlShiftLabel='controlShiftLabel',
                  altLabel='altLabel',
-                 showInfo=True
+                 showInfo=True,
                  ):
         super(SliderWidget, self).__init__(parent=parent,
                                            title=title,
                                            text=text,
                                            showLockButton=showLockButton, showCloseButton=showCloseButton)
+
+        self.isCancelled = False
         self.recentlyOpened = False
         self.invokedKey = None
         self.modeList = modeList
@@ -2570,7 +2692,7 @@ class SliderWidget(BaseDialog):
         self.slider_2.setTickInterval(1)
 
         self.slider_2.sliderPressed.connect(self.sliderPressed)
-        self.slider_2.sliderMoved.connect(self.updateValueLabel)
+        self.slider_2.sliderMoved.connect(self.sliderValueChanged)
         self.slider_2.sliderMoved.connect(self.slider_2.sliderMovedEvent)
         self.slider_2.wheelSignal.connect(self.sliderWheelUpdate)
         self.slider_2.sliderReleased.connect(self.sliderReleased)
@@ -2585,7 +2707,6 @@ class SliderWidget(BaseDialog):
         self.overlayLabel.setEnabled(False)
         self.overlayLabel.setFixedWidth(60)
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
-
 
         self.comboBox = QComboBox()
         if self.modeList:
@@ -2705,7 +2826,14 @@ class SliderWidget(BaseDialog):
     def altPressed(self):
         self.infoText.setText(self.altLabel)
 
-    def updateValueLabel(self):
+    def mousePressEvent(self, event):
+        # print ("Mouse Clicked", event.buttons(), event.button() == Qt.RightButton)
+        if event.button() == Qt.RightButton:
+            self.sliderReleased(cancel=True)
+        if event.button() == Qt.LeftButton:
+            self.restoreSlider()
+
+    def sliderValueChanged(self):
         if self.slider_2.value() > self.slider_2.maximum() * 0.6:
             self.overlayLabel.move(10, self.height() - 20)
             self.overlayLabel.setAlignment(Qt.AlignLeft)
@@ -2713,7 +2841,6 @@ class SliderWidget(BaseDialog):
             self.overlayLabel.move(self.width() - self.overlayLabel.width() - 10, self.height() - 20)
             self.overlayLabel.setAlignment(Qt.AlignRight)
         self.overlayLabel.setText(str(self.slider_2.value() * 0.01))
-
         self.sliderUpdateSignal.emit(self.currentMode, self.slider_2.value())
         # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
 
@@ -2721,8 +2848,29 @@ class SliderWidget(BaseDialog):
         self.sliderBeginSignal.emit(self.currentMode, self.slider_2.value())
         self.isDragging = True
 
-    def sliderReleased(self):
-        self.sliderEndedSignal.emit(self.currentMode, self.slider_2.value())
+    def restoreSlider(self):
+        self.slider_2.setEnabled(True)
+        self.isCancelled = False
+
+    def sliderReleased(self, cancel=False):
+        if cancel:
+            self.isCancelled = True
+            self.sliderCancelSignal.emit()
+            click_pos = QPoint(0, 0)
+            event = QMouseEvent(QEvent.MouseButtonPress,
+                                click_pos,
+                                Qt.MouseButton.LeftButton,
+                                Qt.MouseButton.LeftButton,
+                                Qt.Modifier)
+            QApplication.instance().sendEvent(self, event)
+            self.slider_2.setEnabled(False)
+            # self.slider_2.clearFocus()
+            # self.setFocus()
+            # self.update()
+            self.slider_2.setSliderDown(False)
+            # self.slider_2.setEnabled(True)
+        else:
+            self.sliderEndedSignal.emit(self.currentMode, self.slider_2.value())
         self.isDragging = False
         self.slider_2.resetStyle()
         self.resetValues()
@@ -2732,11 +2880,12 @@ class SliderWidget(BaseDialog):
         self.slider_2.blockSignals(True)
         self.slider_2.setValue(0)
         self.slider_2.blockSignals(False)
+        self.overlayLabel.hide()
 
     def sliderWheelUpdate(self):
         if not self.isDragging:
             self.sliderUpdateSignal.emit(self.currentMode, self.slider_2.value())
-            self.updateValueLabel()
+            self.sliderValueChanged()
 
     def modeChanged(self, *args):
         self.currentMode = self.comboBox.currentText()
@@ -2823,6 +2972,274 @@ class KeySliderWidget(SliderWidget):
                                               )
         self.recentlyOpened = False
         self.setFixedSize(270, 46)
+
+
+class GraphEdKeySliderWidget(QWidget):
+    __instance = None
+    # call the tween classes by name, send value
+    sliderUpdateSignal = Signal(str, float)
+    sliderEndedSignal = Signal(str, float)
+    sliderBeginSignal = Signal(str, float)
+    modeChangedSignal = Signal(str)
+    sliderCancelSignal = Signal()
+
+    minValue = -101
+    minOvershootValue = -201
+    maxValue = 101
+    maxOvershootValue = 201
+    baseSliderWidth = 160
+    baseWidth = 240
+
+    baseLabel = 'baseLabel'
+    shiftLabel = 'shiftLabel'
+    controlLabel = 'controlLabel'
+    controlShiftLabel = 'controlShiftLabel'
+    altLabel = 'altLabel'
+    labelYOffset = 16
+
+    def __new__(cls):
+        if GraphEdKeySliderWidget.__instance is None:
+            GraphEdKeySliderWidget.__instance = QWidget.__new__(cls)
+
+        GraphEdKeySliderWidget.__instance.val = 'GraphEdKeySliderWidget'
+        GraphEdKeySliderWidget.__instance.app = QApplication.instance()
+        return GraphEdKeySliderWidget.__instance
+
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 title='Key Inbetween',
+                 text='test',
+                 showLockButton=True, showCloseButton=False,
+                 modeList=SlideTools().keyTweenMethods.keys(),
+                 showInfo=False,
+
+                 ):
+        super(GraphEdKeySliderWidget, self).__init__()
+        self.isCancelled = False
+        self.recentlyOpened = False
+        self.invokedKey = None
+        self.modeList = modeList
+        #
+        # labels
+        '''
+        self.baseLabel = baseLabel
+        self.shiftLabel = shiftLabel
+        self.controlLabel = controlLabel
+        self.controlShiftLabel = controlShiftLabel
+        self.altLabel = altLabel
+        '''
+        # self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        # self.setAttribute(Qt.WA_StyledBackground, True)
+        # self.autoFillBackground = True
+        # self.windowFlags()
+        # self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setFixedHeight(24)
+
+        self.isDragging = False
+
+        self.container = QFrame()
+        self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
+
+        self.slider = PySlider()
+        self.slider.setOrientation(Qt.Horizontal)
+        self.slider.setFixedWidth(self.baseSliderWidth)
+        self.slider.setMinimum(-101)
+        self.slider.setMaximum(101)
+        self.slider.setValue(0)
+        self.slider.setTickInterval(1)
+
+        self.slider.sliderPressed.connect(self.sliderPressed)
+        self.slider.sliderMoved.connect(self.sliderValueChanged)
+        self.slider.sliderMoved.connect(self.slider.sliderMovedEvent)
+        self.slider.wheelSignal.connect(self.sliderWheelUpdate)
+        self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.sliderReleased.connect(self.slider.sliderReleasedEvent)
+
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.mainLayout)
+        self.mainLayout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+
+        self.comboBox = QComboBox()
+
+        self.overshootButton = LockButton('', self, icon='overshootOn.png',
+                                          unlockIcon='overshoot.png', )
+        self.overshootButton.lockSignal.connect(self.toggleOvershoot)
+
+        for c in self.modeList:
+            self.comboBox.addItem(c)
+        self.currentMode = self.comboBox.currentText()
+        self.comboBox.currentIndexChanged.connect(self.modeChanged)
+        width = self.comboBox.minimumSizeHint().width()
+        self.comboBox.view().setMinimumWidth(width)
+        self.comboBox.setMinimumWidth(width + self.labelYOffset)
+        self.comboBox.setMaximumWidth(width + self.labelYOffset)
+        # self.resize(self.sizeHint())
+
+        # emit the mode change signal to load the labels
+        self.modeChangedSignal.emit(self.currentMode)
+
+        self.mainLayout.addWidget(self.slider)
+        self.mainLayout.setAlignment(Qt.AlignLeft)
+        self.mainLayout.addWidget(self.overshootButton)
+        self.mainLayout.addWidget(self.comboBox)
+        self.overlayLabel = QLabel('', self)
+        self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
+        self.overlayLabel.setEnabled(False)
+        self.overlayLabel.setFixedWidth(60)
+        self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.labelYPos = 6
+        self.overlayLabel.setAlignment(Qt.AlignLeft)
+        self.overlayLabel.move(10, self.labelYPos)
+
+    def show(self):
+        super(GraphEdKeySliderWidget, self).show()
+        self.resetValues()
+        self.setEnabled(True)
+        self.setFocus()
+        self.recentlyOpened = True
+
+    def moveToCursor(self):
+        pos = QCursor.pos()
+        xOffset = 10  # border?
+        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
+
+    def keyPressEvent(self, event):
+        if event.type() == event.KeyPress:
+            if self.recentlyOpened:
+                if event.key() is not None:
+                    self.invokedKey = event.key()
+                    self.recentlyOpened = False
+            modifiers = QApplication.keyboardModifiers()
+
+            if not event.isAutoRepeat():
+                if event.key() == Qt.Key_Alt:
+                    self.altPressed()
+                    return
+                if event.key() == Qt.Key_Control:
+                    if modifiers == Qt.ShiftModifier:
+                        self.controlShiftPressed()
+                    else:
+                        self.controlPressed()
+                elif event.key() == Qt.Key_Shift:
+                    if modifiers == Qt.ControlModifier:
+                        self.controlShiftPressed()
+                    else:
+                        self.shiftPressed()
+        if not self.invokedKey or self.invokedKey == event.key():
+            return
+        super(QWidget, self).keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
+            if not self.lockState:
+                if not self.invokedKey or self.invokedKey == event.key():
+                    SlideTools().removeKeyPressHandlers()
+                    self.hide()
+        if event.type() == event.KeyRelease:
+            modifiers = QApplication.keyboardModifiers()
+
+            if event.key() == Qt.Key_Alt:
+                self.modifierReleased()
+            if event.key() == Qt.Key_Control:
+                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
+                    self.shiftPressed()
+                else:
+                    self.modifierReleased()
+            elif event.key() == Qt.Key_Shift:
+                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
+                    self.controlPressed()
+                else:
+                    self.modifierReleased()
+
+    def modifierReleased(self):
+        self.infoText.setText(self.baseLabel)
+
+    def controlReleased(self):
+        self.infoText.setText(self.baseLabel)
+
+    def controlPressed(self):
+        self.infoText.setText(self.controlLabel)
+
+    def controlShiftPressed(self):
+        self.infoText.setText(self.controlShiftLabel)
+
+    def shiftPressed(self):
+        self.infoText.setText(self.shiftLabel)
+
+    def altPressed(self):
+        self.infoText.setText(self.altLabel)
+
+    def mousePressEvent(self, event):
+        # print ("Mouse Clicked", event.buttons(), event.button() == Qt.RightButton)
+        if event.button() == Qt.RightButton:
+            self.sliderReleased(cancel=True)
+        if event.button() == Qt.LeftButton:
+            self.restoreSlider()
+
+    def sliderValueChanged(self):
+        if self.slider.value() > self.slider.maximum() * 0.6:
+            self.overlayLabel.move(10, self.labelYPos)
+            self.overlayLabel.setAlignment(Qt.AlignLeft)
+        elif self.slider.value() < self.slider.minimum() * 0.6:
+            self.overlayLabel.move(self.slider.width() - self.overlayLabel.width() - 10, self.labelYPos)
+            self.overlayLabel.setAlignment(Qt.AlignRight)
+
+        self.overlayLabel.setText(str(self.slider.value() * 0.01))
+        self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
+        # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
+
+    def sliderPressed(self):
+        self.sliderBeginSignal.emit(self.currentMode, self.slider.value())
+        self.isDragging = True
+        self.overlayLabel.show()
+
+    def restoreSlider(self):
+        self.slider.setEnabled(True)
+        self.isCancelled = False
+
+    def sliderReleased(self, cancel=False):
+        if cancel:
+            self.isCancelled = True
+            self.sliderCancelSignal.emit()
+            click_pos = QPoint(0, 0)
+            event = QMouseEvent(QEvent.MouseButtonPress,
+                                click_pos,
+                                Qt.MouseButton.LeftButton,
+                                Qt.MouseButton.LeftButton,
+                                Qt.Modifier)
+            QApplication.instance().sendEvent(self, event)
+            self.slider.setEnabled(False)
+            # self.slider_2.clearFocus()
+            # self.setFocus()
+            # self.update()
+            self.slider.setSliderDown(False)
+            # self.slider_2.setEnabled(True)
+        else:
+            self.sliderEndedSignal.emit(self.currentMode, self.slider.value())
+        self.isDragging = False
+        self.slider.resetStyle()
+        self.resetValues()
+
+    def resetValues(self):
+        # self.overlayLabel.setText('')
+        self.slider.blockSignals(True)
+        self.slider.setValue(0)
+        self.slider.blockSignals(False)
+        self.overlayLabel.hide()
+
+    def sliderWheelUpdate(self):
+        if not self.isDragging:
+            self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
+            self.sliderValueChanged()
+
+    def modeChanged(self, *args):
+        self.currentMode = self.comboBox.currentText()
+        self.modeChangedSignal.emit(self.currentMode)
+
+    def toggleOvershoot(self, overshootState):
+        self.slider.toggleOvershoot(overshootState)
+        currentPos = self.pos()
 
 
 class SliderButtonPopup(ButtonPopup):
