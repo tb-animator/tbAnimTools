@@ -45,7 +45,8 @@ import maya
 import maya.OpenMayaUI as omui
 
 maya.utils.loadStringResourcesForModule(__name__)
-if int(qtVersion.split('.')[0]) < 5:
+QTVERSION = int(qtVersion.split('.')[0])
+if QTVERSION < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     # from pysideuic import *
@@ -2629,15 +2630,21 @@ class SliderWidget(BaseDialog):
     controlLabel = 'controlLabel'
     controlShiftLabel = 'controlShiftLabel'
     altLabel = 'altLabel'
-
+    '''
     def __new__(cls):
         if SliderWidget.__instance is None:
-            SliderWidget.__instance = object.__new__(cls)
+            if cmds.about(version=True) == '2022':
+                SliderWidget.__instance = BaseDialog.__new__(cls)
+            else:
+                if QTVERSION < 5:
+                    SliderWidget.__instance = BaseDialog.__new__(cls)
+                else:
+                    SliderWidget.__instance = object.__new__(cls)
 
         SliderWidget.__instance.val = 'SliderWidget'
         SliderWidget.__instance.app = QApplication.instance()
         return SliderWidget.__instance
-
+    '''
     def __init__(self,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  showLockButton=True, showCloseButton=False,
@@ -2910,14 +2917,21 @@ class XformSliderWidget(SliderWidget):
     __instance = None
     recentlyOpened = False
 
+    '''
     def __new__(cls):
         if XformSliderWidget.__instance is None:
-            XformSliderWidget.__instance = BaseDialog.__new__(cls)
+            if cmds.about(version=True) == '2022':
+                XformSliderWidget.__instance = BaseDialog.__new__(cls)
+            else:
+                if QTVERSION < 5:
+                    XformSliderWidget.__instance = BaseDialog.__new__(cls)
+                else:
+                    XformSliderWidget.__instance = object.__new__(cls)
 
         XformSliderWidget.__instance.val = 'XformSliderWidget'
         XformSliderWidget.__instance.app = QApplication.instance()
         return XformSliderWidget.__instance
-
+    '''
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  title='Object Inbetween',
                  text='test',
@@ -2941,15 +2955,21 @@ class XformSliderWidget(SliderWidget):
 
 class KeySliderWidget(SliderWidget):
     __instance = None
-
+    '''
     def __new__(cls):
         if KeySliderWidget.__instance is None:
-            KeySliderWidget.__instance = BaseDialog.__new__(cls)
+            if cmds.about(version=True) == '2022':
+                KeySliderWidget.__instance = BaseDialog.__new__(cls)
+            else:
+                if QTVERSION < 5:
+                    KeySliderWidget.__instance = BaseDialog.__new__(cls)
+                else:
+                    KeySliderWidget.__instance = object.__new__(cls)
 
         KeySliderWidget.__instance.val = 'KeySliderWidget'
         KeySliderWidget.__instance.app = QApplication.instance()
         return KeySliderWidget.__instance
-
+    '''
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  title='Key Inbetween',
                  text='test',
@@ -2996,14 +3016,6 @@ class GraphEdKeySliderWidget(QWidget):
     controlShiftLabel = 'controlShiftLabel'
     altLabel = 'altLabel'
     labelYOffset = 16
-
-    def __new__(cls):
-        if GraphEdKeySliderWidget.__instance is None:
-            GraphEdKeySliderWidget.__instance = BaseDialog.__new__(cls)
-
-        GraphEdKeySliderWidget.__instance.val = 'GraphEdKeySliderWidget'
-        GraphEdKeySliderWidget.__instance.app = QApplication.instance()
-        return GraphEdKeySliderWidget.__instance
 
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  title='Key Inbetween',
