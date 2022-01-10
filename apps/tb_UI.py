@@ -105,8 +105,8 @@ class BaseDialog(QDialog):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
-        self.titleText.setFont(QFont('Lucida Console', 16))
-        self.titleText.setStyleSheet("font-weight: lighter; font-size: 16px;")
+        self.titleText.setFont(QFont('Lucida Console', 12))
+        self.titleText.setStyleSheet("font-weight: lighter; font-size: 12px;")
         self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
         self.titleText.setStyleSheet("QLabel {"
                                      "border-width: 0;"

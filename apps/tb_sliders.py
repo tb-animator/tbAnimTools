@@ -2632,7 +2632,7 @@ class SliderWidget(BaseDialog):
 
     def __new__(cls):
         if SliderWidget.__instance is None:
-            SliderWidget.__instance = QDialog.__new__(cls)
+            SliderWidget.__instance = object.__new__(cls)
 
         SliderWidget.__instance.val = 'SliderWidget'
         SliderWidget.__instance.app = QApplication.instance()
@@ -2912,7 +2912,7 @@ class XformSliderWidget(SliderWidget):
 
     def __new__(cls):
         if XformSliderWidget.__instance is None:
-            XformSliderWidget.__instance = QDialog.__new__(cls)
+            XformSliderWidget.__instance = BaseDialog.__new__(cls)
 
         XformSliderWidget.__instance.val = 'XformSliderWidget'
         XformSliderWidget.__instance.app = QApplication.instance()
@@ -2944,7 +2944,7 @@ class KeySliderWidget(SliderWidget):
 
     def __new__(cls):
         if KeySliderWidget.__instance is None:
-            KeySliderWidget.__instance = QDialog.__new__(cls)
+            KeySliderWidget.__instance = BaseDialog.__new__(cls)
 
         KeySliderWidget.__instance.val = 'KeySliderWidget'
         KeySliderWidget.__instance.app = QApplication.instance()
@@ -2999,7 +2999,7 @@ class GraphEdKeySliderWidget(QWidget):
 
     def __new__(cls):
         if GraphEdKeySliderWidget.__instance is None:
-            GraphEdKeySliderWidget.__instance = QWidget.__new__(cls)
+            GraphEdKeySliderWidget.__instance = BaseDialog.__new__(cls)
 
         GraphEdKeySliderWidget.__instance.val = 'GraphEdKeySliderWidget'
         GraphEdKeySliderWidget.__instance.app = QApplication.instance()

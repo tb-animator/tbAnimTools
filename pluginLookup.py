@@ -69,6 +69,7 @@ class ClassFinder(object):
         self.applyAnimLayerTabModification()
         self.applyToolDeferredLoad()
 
+
     def loadPluginsByClass(self):
         self.allClasses = [cls for cls in
                            self.getAllModulesInFolder(self.toolsBaseDirectory, self.toolsDirectory)
@@ -103,8 +104,11 @@ class ClassFinder(object):
     def loadAllDependentPlugins(self):
         allPlugins = [x.dependentPlugins for x in self.tools.values()]
         allPlugins = [plugin for dependentPlugins in allPlugins for plugin in dependentPlugins if plugin]
+        print ('loadAllDependentPlugins', allPlugins)
+
         if not allPlugins:
             return
+
         for plugin in allPlugins:
             cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin))
             cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin))
