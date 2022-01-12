@@ -102,9 +102,11 @@ class GraphEditor(toolAbstractFactory):
             self.deferredLoadJob = cmds.scriptJob(runOnce=True,  event=('PostSceneRead', self.createPopup))
 
     def createPopup(self, *args):
+        print ('createPopup')
         if self.deferredLoadDone:
             return
         name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
+        print (name)
         popup = cmds.popupMenu(name,
                                ctrlModifier=False,
                                shiftModifier=True,
@@ -123,18 +125,24 @@ class GraphEditor(toolAbstractFactory):
         cmds.menuItem('Key Move Mode', enable=False)
         cmds.menuItem(divider=True)
 
+        constant = mode=='constant'
+        linear = mode=='linear'
+        power = mode=='power'
+        images = {True:'checkboxOn.png', False:'checkboxOff.png'}
         cmds.menuItem('Constant',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'constant'),
-                      boldFont=mode=='constant')
+                      image=images[mode=='constant'])
         cmds.menuItem('Linear',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'linear'),
-                      boldFont=mode=='linear')
+                      image=images[mode=='linear'])
         cmds.menuItem('Power',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'power'),
-                      boldFont=mode=='power')
+                      image=images[mode=='power'])
+        cmds.menuItem(parent=menuName,
+                      divider=True)
 
     def getMoveKeyMode(self):
         mode = cmds.moveKeyCtx('moveKeyContext', query=True, moveFunction=True)

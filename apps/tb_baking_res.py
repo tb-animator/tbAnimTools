@@ -1,6 +1,11 @@
 import maya
 
 maya.stringTable['y_tb_Baking.kSettingOptVar'] = u'Setting optionVar: %s=%s'
+
+maya.stringTable['y_tb_Baking.kbakeOutSelected'] = u'Bake out the selected temp controls'
+maya.stringTable['y_tb_Baking.kbakeOutAll'] = u'Bake out all the temp controls in the asset'
+maya.stringTable['y_tb_Baking.kremoveAll'] = u'Delete all the temp controls in the asset'
+
 maya.stringTable['y_tb_Baking.quickMergeAllLayers'] = u'Quickly merge all layers down to base__' \
                                                       u'Faster than a standard maya merge all layers'
 maya.stringTable['y_tb_Baking.quickMergeSelectionToNew'] = u'Quickly merge all animation from selected__' \

@@ -162,6 +162,18 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='right click menu for temp controls',
                                      category=self.category, command=['BakeTools.assetRmbCommand()'],
                                      help='Do not assign to a hotkey'))
+        self.addCommand(self.tb_hkey(name='bakeOutSelectedTempControls',
+                                     annotation='right click menu for temp controls',
+                                     category=self.category, command=['BakeTools.bakeSelectedHotkey()'],
+                                     help=maya.stringTable['y_tb_Baking.kbakeOutSelected']))
+        self.addCommand(self.tb_hkey(name='bakeOutAllTempControls',
+                                     annotation='right click menu for temp controls',
+                                     category=self.category, command=['BakeTools.bakeAllHotkey()'],
+                                     help=maya.stringTable['y_tb_Baking.kbakeOutAll']))
+        self.addCommand(self.tb_hkey(name='removeAllTempControls',
+                                     annotation='right click menu for temp controls',
+                                     category=self.category, command=['BakeTools.removeAllHotkey()'],
+                                     help=maya.stringTable['y_tb_Baking.kremoveAll']))
 
         return self.commandList
 
@@ -412,6 +424,33 @@ class BakeTools(toolAbstractFactory):
         if select:
             pm.select(locs, replace=True)
         return locs
+
+    def bakeSelectedHotkey(self):
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        asset = pm.container(query=True, findContainer=sel[0])
+        if not asset:
+            return
+        self.bakeSelectedCommand(asset, sel)
+
+    def bakeAllHotkey(self):
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        asset = pm.container(query=True, findContainer=sel[0])
+        if not asset:
+            return
+        self.bakeAllCommand(asset, sel)
+
+    def removeAllHotkey(self):
+        sel = pm.ls(sl=True)
+        if not sel:
+            return
+        asset = pm.container(query=True, findContainer=sel[0])
+        if not asset:
+            return
+        self.deleteControlsCommand(asset, sel)
 
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)

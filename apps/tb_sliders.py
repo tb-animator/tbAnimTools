@@ -2716,6 +2716,7 @@ class SliderWidget(BaseDialog):
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
 
         self.comboBox = QComboBox()
+        self.comboBox.setStyleSheet(getqss.getStyleSheet())
         if self.modeList:
             self.titleLayout.insertWidget(3, self.comboBox)
         self.overshootButton = LockButton('', self, icon='overshootOn.png',
@@ -3073,7 +3074,7 @@ class GraphEdKeySliderWidget(QWidget):
         self.mainLayout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
 
         self.comboBox = QComboBox()
-
+        self.comboBox.setStyleSheet(getqss.getStyleSheet())
         self.overshootButton = LockButton('', self, icon='overshootOn.png',
                                           unlockIcon='overshoot.png', )
         self.overshootButton.lockSignal.connect(self.toggleOvershoot)

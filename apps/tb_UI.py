@@ -113,7 +113,7 @@ class BaseDialog(QDialog):
                                      "border-radius: 4;"
                                      "border-style: solid;"
                                      "border-color: #222222;"
-                                     "font-weight: bold; font-size: 16px;}"
+                                     "font-weight: bold; font-size: 12px;}"
                                      )
 
         self.titleText.setAlignment(Qt.AlignCenter)
