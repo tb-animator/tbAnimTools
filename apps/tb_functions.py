@@ -1666,3 +1666,14 @@ class functions(object):
 
     def getAnimCurveTypesAPI(self):
         return self.apiTypes('animCurve')
+
+    def getNextFreeMultiIndex(self, attr_name, start_index=0, max_index=1000):
+        '''Find the next unconnected multi index starting at the passed in index.'''
+        # assume a max of 10 million connections
+        for index in range(start_index, max_index):
+            if len(cmds.connectionInfo('{}[{}]'.format(attr_name, index), sfd=True) or []) == 0:
+                return index
+            index += 1
+
+        # No connections means the first index is available
+        return 0

@@ -8,6 +8,7 @@ global proc module_installer()
 
 	string $sys_cmd = ("sys.path.append(\"" + $filePath + "\")");
 
+	python("import sys");
 	python($sys_cmd);
 	python("import tbtoolsInstaller as installer");
 	python("installer.install()");

@@ -190,7 +190,14 @@ class toolAbstractFactory(ABC):
         return dataCLS
 
     def saveRigData(self, dataCLS, rigName):
-        print ('save not written', dataCLS, rigName)
+        """
+        Pass in a json object
+        :param dataCLS:
+        :param rigName:
+        :return:
+        """
+        dataFile = os.path.join(self.subPath, rigName + '.json')
+        self.saveJsonFile(dataFile, dataCLS)
 
     def saveRigFileIfNew(self, refname, jsonData):
         self.subPath = os.path.join(self.dataPath, self.toolName)
