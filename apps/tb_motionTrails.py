@@ -200,6 +200,12 @@ class MotionTrails(toolAbstractFactory):
         self.createInfoNode()
         jsonData = self.funcs.getNotesAttr('motionTrailInfo')
         jsonObjectInfo = json.loads(jsonData)
+        for key, value in jsonObjectInfo["target"].items():
+            if not cmds.objExists(value):
+                jsonObjectInfo["target"].pop(key)
+                jsonObjectInfo["camera"].pop(key)
+                jsonObjectInfo["motionTrail"].pop(key)
+                jsonObjectInfo["motionTrailShape"].pop(key)
         return jsonObjectInfo
 
     def createFromSceneInfo(self, key=None):
@@ -284,7 +290,6 @@ class MotionTrails(toolAbstractFactory):
             else:
                 self.createFromSceneInfo(key=motionTrail)
                 #self.getMotionTrailInfo()
-
 
     def getCurrentCamera(self):
         view = omUI.M3dView.active3dView()
@@ -377,6 +382,8 @@ class MotionTrails(toolAbstractFactory):
         return any([cmds.nodeType(c) == 'motionTrailShape' for c in childNodes])
 
     def hasMotionTrail(self, s):
+        if not cmds.objExists(s):
+            return False
         messageConnection = cmds.listConnections(s + '.message', source=False, destination=True, plugs=False)
         if not messageConnection:
             return False
