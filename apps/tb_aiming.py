@@ -339,6 +339,8 @@ class AimTools(toolAbstractFactory):
         self.bake()
         for key in self.controlInfo.keys():
             self.constraintControls(key)
+        # select new controls
+        cmds.select(self.locators, replace=True)
 
     def aimToLocator(self, refName, name, target, data):
         asset = self.createAsset(name=name + '_asset')
@@ -698,8 +700,9 @@ class AimTools(toolAbstractFactory):
         self.clearAimAtTempControlScriptJobs()
 
         if pm.optionVar.get(self.aimTempMotionTrailOption, False):
-            cmds.select(str(aimLocator), replace=True)
             mel.eval('createMotionTrail')
+
+        cmds.select(str(aimLocator), replace=True)
 
     def constrainTargetToControl(self, control, target):
         keyTimes = self.funcs.get_object_key_times(control)
