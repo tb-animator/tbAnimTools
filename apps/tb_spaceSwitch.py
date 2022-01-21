@@ -636,7 +636,7 @@ class SpaceSwitchSetupUI(QMainWindow):
 
         if refState:
             self.namespace = cmds.referenceQuery(sel[0], namespace=True).rsplit(':')[-1]
-            pendingControls = [str(x).strip(self.namespace).split(':', 1)[-1] for x in self.pendingControls]
+            pendingControls = [str(x).split(self.namespace)[-1].split(':', 1)[-1] for x in self.pendingControls]
             self.pendingControls = pendingControls
         # get controls, look for partial space name? text input?
         channels = mel.eval('selectedChannelBoxPlugs')

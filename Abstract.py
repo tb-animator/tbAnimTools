@@ -189,15 +189,15 @@ class toolAbstractFactory(ABC):
         dataCLS.fromJson(os.path.join(subPath, rigName + '.json'))
         return dataCLS
 
-    def saveRigData(self, dataCLS, rigName):
+    def saveRigData(self, refname, jsonData):
         """
         Pass in a json object
         :param dataCLS:
         :param rigName:
         :return:
         """
-        dataFile = os.path.join(self.subPath, rigName + '.json')
-        self.saveJsonFile(dataFile, dataCLS)
+        dataFile = os.path.join(self.subPath, refname + '.json')
+        self.saveJsonFile(dataFile, json.loads(jsonData))
 
     def saveRigFileIfNew(self, refname, jsonData):
         self.subPath = os.path.join(self.dataPath, self.toolName)
