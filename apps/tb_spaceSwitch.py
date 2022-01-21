@@ -54,6 +54,31 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='tbCloseSpaceSwitchMenu',
                                      annotation='useful comment',
                                      category=self.category, command=['SpaceSwitch.closeMM()']))
+
+        self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="global")']))
+        self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedLocal',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="local")']))
+        self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedDefault',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="default")']))
+
+        self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedGlobal',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="global")']))
+        self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedLocal',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="local")']))
+        self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedDefault',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="default")']))
+
+        self.addCommand(self.tb_hkey(name='selectAllSpaceSwitchControls',
+                                     annotation='selects all space switch controls for selected rigs',
+                                     category=self.category, command=['SpaceSwitch.selectAllSpaceSwitchControls()']))
+
         self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchDataEditor',
                                      annotation='useful comment',
                                      category=self.category, command=['SpaceSwitch.openEditorWindow()']))
@@ -176,7 +201,7 @@ class SpaceSwitch(toolAbstractFactory):
                                                                                 self.bakeTimelineModes[0]),
                                                   label='Bake mode range')
 
-        infoText4 = QLabel('<b>Bake to layer</b> - An Ik/Fk bake will bake to a new override layer')
+        infoText4 = QLabel('<b>Bake to layer</b> - A space bake will bake to a new override layer')
         self.bakeLayerModeWidget = comboBoxWidget(optionVar=self.bakeToLayerModeOption,
                                                   values=self.bakeLayerModes,
                                                   defaultValue=pm.optionVar.get(self.bakeToLayerModeOption,
@@ -220,10 +245,10 @@ class SpaceSwitch(toolAbstractFactory):
 
         cmds.menuItem(label='Switch to Global',
                       image='bakeAnimation.png',
-                      command=pm.Callback(self.switchTo, selection=sel, mode='global'))
+                      command=pm.Callback(self.switchTo, selection=sel, mode='spaceGlobalValues'))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(self.bakeTo, selection=sel, mode='global'))
+                      command=pm.Callback(self.bakeTo, selection=sel, mode='spaceGlobalValues'))
 
         cmds.menuItem(label='Switch to Local',
                       image='bakeAnimation.png',
@@ -234,10 +259,10 @@ class SpaceSwitch(toolAbstractFactory):
 
         cmds.menuItem(label='Switch to Default',
                       image='bakeAnimation.png',
-                      command=pm.Callback(self.switchTo, selection=sel, mode='default'))
+                      command=pm.Callback(self.switchTo, selection=sel, mode='spaceDefaultValues'))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(self.bakeTo, selection=sel, mode='default'))
+                      command=pm.Callback(self.bakeTo, selection=sel, mode='spaceDefaultValues'))
 
         for attr in userAttrs:
             if cmds.attributeQuery(attr, node=sel[0], attributeType=True) == 'enum':
@@ -258,10 +283,15 @@ class SpaceSwitch(toolAbstractFactory):
                                   command=pm.Callback(self.bakeSpaceSwitch, node=sel[0], spaceValue=space,
                                                       spaceAttribute=attr))
         cmds.menuItem(divider=True)
-        cmds.menuItem('store current states as local',
-                      command=pm.Callback(self.storeCurrentState, sel, characters, key='local', attribute=attr))
         cmds.menuItem('store current states as global',
-                      command=pm.Callback(self.storeCurrentState, sel, characters, key='global', attribute=attr))
+                      command=pm.Callback(self.storeCurrentState, sel, key='spaceGlobalValues'))
+        cmds.menuItem('store current states as local',
+                      command=pm.Callback(self.storeCurrentState, sel, key='spaceLocalValues'))
+        cmds.menuItem('store current states as default',
+                      command=pm.Callback(self.storeCurrentState, sel, key='spaceDefaultValues'))
+        cmds.menuItem(divider=True)
+        cmds.menuItem('Select all space switch controls',
+                      command=pm.Callback(self.selectAllSpaceSwitchControls))
 
     def loadDataForCharacters(self, characters):
         namespaceToCharDict = dict()
@@ -311,15 +341,44 @@ class SpaceSwitch(toolAbstractFactory):
                 # set the tangents to stepped and flat
                 pm.keyTangent(spaceAttribute, outTangentType='step', inTangentType='linear')
 
-    def bakeTo(self, selection, mode='global'):
+    def selectAllSpaceSwitchControls(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('Nothing selected')
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
+        '''
+        print ('sel', sel)
+        print ('self.namespaceToCharDict', self.namespaceToCharDict)
+        print ('self.loadedSpaceData[refname]', self.loadedSpaceData)
+        '''
+        allControls = list()
+        for char in characters:
+            allControls.extend(
+                [char + ':' + c for c in self.loadedSpaceData[self.namespaceToCharDict[char]].spaceAttribute.keys()])
+        cmds.select(allControls, replace=True)
+
+    def switchSelection(self, mode='spaceGlobalValues'):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('Nothing selected to switch')
+        self.switchTo(sel, mode=mode)
+
+    def bakeSelection(self, mode='spaceGlobalValues'):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('Nothing selected to switch')
+        self.bakeTo(sel, mode=mode)
+
+    def bakeTo(self, selection, mode='spaceGlobalValues'):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.bakeFromData(selection, attributes, values)
 
-    def switchTo(self, selection, mode='global'):
+    def switchTo(self, selection, mode='spaceGlobalValues'):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.switchFromData(selection, attributes, values)
 
-    def makeSwitchData(self, selection=list(), mode='global'):
+    def makeSwitchData(self, selection=list(), mode='spaceGlobalValues'):
         switchAttrData = dict()
         switchValueData = dict()
         for s in selection:
@@ -329,10 +388,31 @@ class SpaceSwitch(toolAbstractFactory):
             globalValue = self.loadedSpaceData[rigName].spaceGlobalValues[control]
             localValue = self.loadedSpaceData[rigName].spaceLocalValues[control]
             defaultValue = self.loadedSpaceData[rigName].spaceDefaultValues[control]
-            switchValueData[s] = {'global': globalValue,
-                                  'local': localValue,
-                                  'default': defaultValue}[mode]
+            switchValueData[s] = {'spaceGlobalValues': globalValue,
+                                  'spaceLocalValues': localValue,
+                                  'spaceDefaultValues': defaultValue}[mode]
             switchAttrData[s] = namespace + ':' + attribute
+        return switchAttrData, switchValueData
+
+    def getSwitchDataFromScene(self, selection=list()):
+        switchAttrData = dict()
+        switchValueData = dict()
+        for s in selection:
+            namespace, control = s.split(':', 1)
+            rigName = self.namespaceToCharDict[namespace]
+            attribute = self.loadedSpaceData[rigName].spaceAttribute[control]
+            print ('attribute', attribute)
+            attributeType = cmds.getAttr(namespace + ':' + attribute, type=True)
+            if attributeType == 'enum':
+                node, attr = str(namespace + ':' + attribute).split('.', 1)
+                enumValues = cmds.attributeQuery(attr, node=node, listEnum=True)
+                enumList = enumValues[0].split(':')
+                index = cmds.getAttr(namespace + ':' + attribute)
+                value = enumList[index]
+            else:
+                value = cmds.getAttr(namespace + ':' + attribute)
+            switchValueData[control] = value
+            switchAttrData[control] = attribute
         return switchAttrData, switchValueData
 
     def getMatchRange(self, sel, timeline=False):
@@ -440,7 +520,7 @@ class SpaceSwitch(toolAbstractFactory):
 
         if len(combinedTimeList) > 1:
             with self.funcs.suspendUpdate():
-                for t in combinedTimeList:
+                for t in combinedTimeList[::-1]:
                     cmds.currentTime(t)
                     for s in selection:
                         if s not in timeDict.keys():
@@ -523,9 +603,22 @@ class SpaceSwitch(toolAbstractFactory):
         for s in sel:
             customAttrs = cmds.listAttr(s, userDefined=True)
 
-    def storeCurrentState(self, sel, characters, key='local', attribute=str()):
+    def storeCurrentState(self, sel, key='spaceLocalValues'):
         if not sel:
             return
+        print ('sel', sel)
+        print ('key', key)
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        print ('characters', characters)
+        for rigName, control in characters.items():
+            print(self.loadedSpaceData[rigName].__dict__[key])
+            attributes, values = self.getSwitchDataFromScene(selection=sel)
+            print ('attributes', attributes)
+            print ('values', values)
+            for k in attributes.keys():
+                self.loadedSpaceData[rigName].__dict__[key][k] = values[k]
+            print(self.loadedSpaceData[rigName].__dict__[key])
+            SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
         allRigs = dict()
         # get all selected rigs and collect their controls
         return
