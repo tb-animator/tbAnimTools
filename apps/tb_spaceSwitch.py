@@ -66,7 +66,7 @@ class hotkeys(hotKeyAbstractFactory):
 
 class SpaceData(object):
     def __init__(self):
-        self.spaceAttribute = {'default': 'space'}  # individual keys for unique space attribute names
+        self.spaceAttribute = {}  #
         self.spaceGlobalValues = {}  #
         self.spaceLocalValues = {}  #
         self.spaceDefaultValues = {}  #
@@ -100,6 +100,9 @@ class SpaceData(object):
     def json_serialize(self):
         returnDict = {}
         returnDict['spaceAttribute'] = self.spaceAttribute
+        returnDict['spaceGlobalValues'] = self.spaceGlobalValues
+        returnDict['spaceLocalValues'] = self.spaceLocalValues
+        returnDict['spaceDefaultValues'] = self.spaceDefaultValues
         returnDict['spacePresets'] = dict()
         return returnDict
 
@@ -107,7 +110,18 @@ class SpaceData(object):
         rawJsonData = json.load(open(data))
 
         self.spaceAttribute = rawJsonData.get('spaceAttribute', dict())
+        self.spaceGlobalValues = rawJsonData.get('spaceGlobalValues', dict())
+        self.spaceLocalValues = rawJsonData.get('spaceLocalValues', dict())
+        self.spaceDefaultValues = rawJsonData.get('spaceDefaultValues', dict())
         self.spacePresets = rawJsonData.get('spacePresets', dict())
+
+    def removeItem(self, key):
+        self.spaceAttribute.pop(key)
+        self.spaceGlobalValues.pop(key)
+        self.spaceLocalValues.pop(key)
+        self.spaceDefaultValues.pop(key)
+
+        # TODO - remove from presets as well
 
 
 class SpaceSwitch(toolAbstractFactory):
@@ -129,6 +143,7 @@ class SpaceSwitch(toolAbstractFactory):
 
     loadedSpaceData = dict()  # store loaded data per session to avoid accessing the disc all the time
     namespaceToCharDict = dict()
+    spaceDataDict = dict()
 
     def __new__(cls):
         if SpaceSwitch.__instance is None:
@@ -192,7 +207,7 @@ class SpaceSwitch(toolAbstractFactory):
         if not sel:
             return
         characters = self.funcs.splitSelectionToCharacters(sel)
-        self.namespaceToCharDict = self.loadDataForCharacters(characters)
+        self.loadDataForCharacters(characters)
 
         cmds.menuItem(label='Space Switch (temp)',
                       divider=0,
@@ -202,6 +217,28 @@ class SpaceSwitch(toolAbstractFactory):
         userAttrs = cmds.listAttr(sel[0], userDefined=True)
         if not userAttrs:
             return
+
+        cmds.menuItem(label='Switch to Global',
+                      image='bakeAnimation.png',
+                      command=pm.Callback(self.switchTo, selection=sel, mode='global'))
+        cmds.menuItem(optionBox=True,
+                      optionBoxIcon='bakeAnimation.png',
+                      command=pm.Callback(self.bakeTo, selection=sel, mode='global'))
+
+        cmds.menuItem(label='Switch to Local',
+                      image='bakeAnimation.png',
+                      command=pm.Callback(self.switchTo, selection=sel, mode='local'))
+        cmds.menuItem(optionBox=True,
+                      optionBoxIcon='bakeAnimation.png',
+                      command=pm.Callback(self.bakeTo, selection=sel, mode='local'))
+
+        cmds.menuItem(label='Switch to Default',
+                      image='bakeAnimation.png',
+                      command=pm.Callback(self.switchTo, selection=sel, mode='default'))
+        cmds.menuItem(optionBox=True,
+                      optionBoxIcon='bakeAnimation.png',
+                      command=pm.Callback(self.bakeTo, selection=sel, mode='default'))
+
         for attr in userAttrs:
             if cmds.attributeQuery(attr, node=sel[0], attributeType=True) == 'enum':
                 if not cmds.getAttr('{c}.{a}'.format(c=sel[0], a=attr), keyable=True):
@@ -210,23 +247,6 @@ class SpaceSwitch(toolAbstractFactory):
 
                 # quick bake to global/local (user defined space)
 
-                cmds.menuItem(label='Quick Bake to Global',
-                              image='bakeAnimation.png',
-                              command=pm.Callback(self.simpleSpaceSwitch, node=sel[0], spaceValue='NONE',
-                                                  spaceAttribute=attr))
-                cmds.menuItem(optionBox=True,
-                              optionBoxIcon='bakeAnimation.png',
-                              command=pm.Callback(self.bakeSpaceSwitch, node=sel[0], spaceValue='NONE',
-                                                  spaceAttribute=attr))
-
-                cmds.menuItem(label='Quick Bake to Local',
-                              image='bakeAnimation.png',
-                              command=pm.Callback(self.simpleSpaceSwitch, node=sel[0], spaceValue='NONE',
-                                                  spaceAttribute=attr))
-                cmds.menuItem(optionBox=True,
-                              optionBoxIcon='bakeAnimation.png',
-                              command=pm.Callback(self.bakeSpaceSwitch, node=sel[0], spaceValue='NONE',
-                                                  spaceAttribute=attr))
                 cmds.menuItem(divider=True)
                 for space in spaceValues:
                     cmds.menuItem(label=space,
@@ -247,13 +267,14 @@ class SpaceSwitch(toolAbstractFactory):
         namespaceToCharDict = dict()
         for key, value in characters.items():
             refname, namespace = self.funcs.getCurrentRig([value[0]])
+            if namespace.startswith(':'):
+                namespace = namespace.split(':', 1)[-1]
             namespaceToCharDict[namespace] = refname
             if refname not in self.loadedSpaceData.keys():
                 self.saveRigFileIfNew(refname, SpaceData().toJson())
                 spaceData = self.loadRigData(SpaceData(), refname)
                 self.loadedSpaceData[refname] = spaceData
-                print ('loading from disc')
-        return namespaceToCharDict
+        self.namespaceToCharDict = namespaceToCharDict
 
     def simplifySpaceKeys(self, node, spaceAttribute='space'):
         """
@@ -272,9 +293,9 @@ class SpaceSwitch(toolAbstractFactory):
                     node = pm.PyNode(node)
                 cmds.select(clear=True)
 
-                allSpaceAttrKeyTimes = sorted(list(set(pm.keyframe(node + '.' + spaceAttribute, query=True))))
+                allSpaceAttrKeyTimes = sorted(list(set(pm.keyframe(spaceAttribute, query=True))))
                 duplicateSpaceKeyTimes = []
-                spaceAttrValues = pm.keyframe(node + '.' + spaceAttribute, query=True, valueChange=True)
+                spaceAttrValues = pm.keyframe(spaceAttribute, query=True, valueChange=True)
                 for index in range(0, len(spaceAttrValues) - 1):
                     if spaceAttrValues[index] != spaceAttrValues[index + 1]:
                         continue
@@ -282,32 +303,161 @@ class SpaceSwitch(toolAbstractFactory):
 
                 # remove the duplicate values
                 for keyTime in duplicateSpaceKeyTimes:
-                    pm.cutKey(node + '.' + spaceAttribute, time=keyTime)
+                    pm.cutKey(spaceAttribute, time=keyTime)
 
                 # put this as an option
-                pm.keyframe(node + '.' + spaceAttribute, tickDrawSpecial=True)
+                pm.keyframe(spaceAttribute, tickDrawSpecial=True)
 
                 # set the tangents to stepped and flat
-                pm.keyTangent(node + '.' + spaceAttribute, outTangentType='step', inTangentType='linear')
+                pm.keyTangent(spaceAttribute, outTangentType='step', inTangentType='linear')
 
-    def bakeSpaceSwitch(self, node=str(), controlNode=str(), spaceValue=None, spaceAttribute='space'):
+    def bakeTo(self, selection, mode='global'):
+        attributes, values = self.makeSwitchData(selection=selection, mode=mode)
+        self.bakeFromData(selection, attributes, values)
+
+    def switchTo(self, selection, mode='global'):
+        attributes, values = self.makeSwitchData(selection=selection, mode=mode)
+        self.switchFromData(selection, attributes, values)
+
+    def makeSwitchData(self, selection=list(), mode='global'):
+        switchAttrData = dict()
+        switchValueData = dict()
+        for s in selection:
+            namespace, control = s.split(':', 1)
+            rigName = self.namespaceToCharDict[namespace]
+            attribute = self.loadedSpaceData[rigName].spaceAttribute[control]
+            globalValue = self.loadedSpaceData[rigName].spaceGlobalValues[control]
+            localValue = self.loadedSpaceData[rigName].spaceLocalValues[control]
+            defaultValue = self.loadedSpaceData[rigName].spaceDefaultValues[control]
+            switchValueData[s] = {'global': globalValue,
+                                  'local': localValue,
+                                  'default': defaultValue}[mode]
+            switchAttrData[s] = namespace + ':' + attribute
+        return switchAttrData, switchValueData
+
+    def getMatchRange(self, sel, timeline=False):
         """
-        Single frame space switch
-        :param node:
-        :param space:
-        :param spaceAttribute:
+        Returns a list of all key times for the input object list, if the timeline is highlighted
+        :param sel: input object list
+        :param timeline: Force visible timeline range
         :return:
         """
-        print ('node', node)
-        print ('controlNode', controlNode)
-        print ('spaceValue', spaceValue)
-        print ('spaceAttribute', spaceAttribute)
+        if timeline:
+            startTime, endTime = self.funcs.getTimelineRange()
+        elif self.funcs.isTimelineHighlighted():
+            startTime, endTime = self.funcs.getTimelineHighlightedRange()
+        else:
+            return [cmds.currentTime(query=True)]
+        return [x for x in self.funcs.get_all_key_times_for_node(sel) if x <= endTime and x >= startTime]
 
-        return cmds.warning(
-            'command not implemented yet'
-        )
+    def bakeFromData(self, selection, attributes, values):
+        resultLayer = None
+        timeRange = self.funcs.getTimelineRange()
+        bakeOption = pm.optionVar.get(self.bakeToLayerModeOption, self.bakeLayerModes[0])
+        initialTime = cmds.currentTime(query=True)
+        if bakeOption != self.bakeLayerModes[-1]:
+            resultLayer = self.createLayer()
+            # collect all attributes and bake explicitly
+            bakeAttributes = self.getAllAnimatedChannels(selection)
+            bakeAttributes.extend(attributes.values())
 
-    def simpleSpaceSwitch(self, node=str(), controlNode=str(), spaceValue=None, spaceAttribute='space'):
+        self.bakeSpaceSwitch(selection=selection,
+                             resultLayer=str(resultLayer),
+                             spaceAttributes=attributes,
+                             bakeAttributes=bakeAttributes,
+                             values=values,
+                             startTime=timeRange[0],
+                             endTime=timeRange[-1],
+                             bakeOption=bakeOption)
+
+    def bakeSpaceSwitch(self, selection=list(),
+                        resultLayer=str(),
+                        spaceAttributes=dict(),
+                        bakeAttributes=dict(),
+                        values=dict(),
+                        startTime=0,
+                        endTime=0,
+                        bakeOption=str()):
+        locators = dict()
+        tempConstraints = dict()
+        for s in selection:
+            loc = self.funcs.tempNull(name=s, suffix='space')
+            locators[s] = str(loc)
+            cmds.parentConstraint(s, str(loc))
+
+        with self.funcs.suspendUpdate():
+            cmds.bakeResults(locators.values(),
+                             time=(startTime, endTime),
+                             simulation=True,
+                             sampleBy=1)
+
+        for s in selection:
+            tempConstraints[s] = str(
+                self.funcs.safeParentConstraint(locators[s], s, orientOnly=False, maintainOffset=False))
+
+        cmds.animLayer(resultLayer, edit=True, attribute=spaceAttributes.values)
+        for key, attr in spaceAttributes.items():
+            spaceSwitchAttr = pm.Attribute(attr)
+            spaceValue = values[key]
+            if not isinstance(values[key], int) and not isinstance(values[key], float):
+                spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
+                spaceValue = spaceEnums[spaceValue.lower()]
+            cmds.setAttr(attr, spaceValue)
+
+        with self.funcs.suspendUpdate():
+            cmds.bakeResults(bakeAttributes,
+                             time=(startTime, endTime),
+                             destinationLayer=resultLayer,
+                             simulation=True,
+                             sampleBy=1)
+
+        cmds.delete(tempConstraints.values())
+        cmds.delete(locators.values())
+
+    def getAllAnimatedChannels(self, controls):
+        allAttributes = list()
+        for c in controls:
+            attributes = cmds.listAttr(c, keyable=True, settable=True)
+            allAttributes.extend([c + '.' + a for a in attributes])
+        return allAttributes
+
+    def createLayer(self):
+        newAnimLayer = pm.animLayer('SpaceSwitch',
+                                    override=True)
+        newAnimLayer.ghostColor.set(self.allTools.tools['BakeTools'].overrideLayerColour)
+        self.allTools.tools['BakeTools'].deselect_layers()
+        newAnimLayer.selected.set(True)
+        newAnimLayer.preferred.set(True)
+        newAnimLayer.scaleAccumulationMode.set(0)
+        return newAnimLayer
+
+    def switchFromData(self, selection, attributes, values):
+        timeDict = dict()
+        for s in selection:
+            timeDict[s] = self.getMatchRange(s, timeline=False)
+
+        combinedTimeList = sorted({x for v in timeDict.itervalues() for x in v})
+
+        if len(combinedTimeList) > 1:
+            with self.funcs.suspendUpdate():
+                for t in combinedTimeList:
+                    cmds.currentTime(t)
+                    for s in selection:
+                        if s not in timeDict.keys():
+                            continue
+                        self.simpleSpaceSwitch(node=s,
+                                               spaceValue=values[s],
+                                               spaceAttribute=attributes[s])
+                for control in selection:
+                    cmds.filterCurve(control + '.rotateX', control + '.rotateY', control + '.rotateZ')
+        else:
+            self.simpleSpaceSwitch(node=s,
+                                   spaceValue=values[s],
+                                   spaceAttribute=attributes[s])
+            for control in selection:
+                cmds.filterCurve(control + '.rotateX', control + '.rotateY', control + '.rotateZ')
+
+    def simpleSpaceSwitch(self, node=str(), spaceValue=None, spaceAttribute='space'):
         """
         Single frame space switch
         :param node:
@@ -318,13 +468,8 @@ class SpaceSwitch(toolAbstractFactory):
         if not cmds.objExists(node):
             return pm.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
-        if controlNode:
-            if not cmds.objExists(controlNode):
-                return pm.warning(controlNode + ' does not exist')
-        else:
-            controlNode = node
 
-        spaceSwitchAttr = pm.Attribute(controlNode + '.' + spaceAttribute)
+        spaceSwitchAttr = pm.Attribute(spaceAttribute)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
             spaceValue = spaceEnums[spaceValue.lower()]
@@ -359,7 +504,7 @@ class SpaceSwitch(toolAbstractFactory):
                 cmds.setKeyframe(node + '.rotate')
             except:
                 pass
-            cmds.setKeyframe(node + '.' + spaceAttribute)
+            cmds.setKeyframe(spaceAttribute)
         self.simplifySpaceKeys(node, spaceAttribute=spaceAttribute)
         self.deleteBlendAttributes(node)
 
@@ -377,7 +522,6 @@ class SpaceSwitch(toolAbstractFactory):
             return
         for s in sel:
             customAttrs = cmds.listAttr(s, userDefined=True)
-            print (s, customAttrs)
 
     def storeCurrentState(self, sel, characters, key='local', attribute=str()):
         if not sel:
@@ -398,7 +542,6 @@ class SpaceSwitch(toolAbstractFactory):
             if rig not in allRigs.keys():
                 allRigs[rig] = list()
             allRigs[rig].append(s)
-        print (allRigs)
         for rig in allRigs.keys():
             self.saveRigFileIfNew(rig, SpaceData().toJson())
 
@@ -411,6 +554,8 @@ class SpaceSwitchSetupUI(QMainWindow):
     def __init__(self):
         super(SpaceSwitchSetupUI, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setObjectName('SpaceSwitch_SetupUI')
+
+        self.controlWidgets = {}
         self.spaceData = SpaceData()
         self.rigName = str()
         self.namespace = str()
@@ -455,13 +600,13 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.rigLabelLayout = QHBoxLayout()
         self.rigLabelLayout.addWidget(self.currentRigLabel)
         self.rigLabelLayout.addWidget(self.currentRigNameLabel)
+        self.rigLabelLayout.addWidget(self.limbUpdateWidget)
 
         self.main_layout.addLayout(self.rigLabelLayout)
 
-        #self.controlsLayout.addWidget(SwitchableObjectWidget(self))
+        # self.controlsLayout.addWidget(SwitchableObjectWidget(self))
         self.main_layout.addWidget(self.controlsScrollArea)
-        self.main_layout.addWidget(self.limbUpdateWidget)
-
+        self.resize(1100, 200)
         # self.controlsLayout.addStretch()
         # self.controlsLayout.addWidget(SwitchableObjectWidget(self))
 
@@ -474,22 +619,6 @@ class SpaceSwitchSetupUI(QMainWindow):
     def toggleEnabledState(self, state):
         self.main_widget.setEnabled(state)
         self.limbUpdateWidget.dialog.setEnabled(True)
-
-    @Slot()
-    def selectLimb(self, inputData):
-        self.currentLimb = inputData
-        if not inputData:
-            self.limbStackedWidget.setDisabled(True)
-            return
-        self.limbStackedWidget.setDisabled(False)
-        self.limbStackedWidget.addWidget(self.spaceData.limbs[self.currentLimb].limbWidget)
-        self.limbStackedWidget.setCurrentWidget(self.spaceData.limbs[self.currentLimb].limbWidget)
-        self.spaceData.limbs[self.currentLimb].limbWidget.refresh()
-
-    @Slot()
-    def renameLimb(self, inputData):
-        pass
-        self.spaceData.limbs[inputData] = self.spaceData.limbs.pop(self.currentLimb)
 
     @Slot()
     def addNewControls(self):
@@ -507,7 +636,6 @@ class SpaceSwitchSetupUI(QMainWindow):
 
         if refState:
             self.namespace = cmds.referenceQuery(sel[0], namespace=True).rsplit(':')[-1]
-            print ('namespace', self.namespace)
             pendingControls = [str(x).strip(self.namespace).split(':', 1)[-1] for x in self.pendingControls]
             self.pendingControls = pendingControls
         # get controls, look for partial space name? text input?
@@ -520,12 +648,7 @@ class SpaceSwitchSetupUI(QMainWindow):
 
     def addNewControlsWithAttribute(self, attribute):
         self.spaceData.addControlsWithMatchingAttribute(self.namespace, self.pendingControls, attribute)
-        for widget in self.controlsLayout.children():
-            self.controlsLayout.removeWidget(widget)
-            widget.deleteLater()
-        for control in self.pendingControls:
-            self.controlsLayout.addWidget(SwitchableObjectWidget(self, control))
-        self.controlsLayout.setAlignment(Qt.AlignTop)
+        self.refreshUI()
 
     def remove(self):
         pass
@@ -548,7 +671,6 @@ class SpaceSwitchSetupUI(QMainWindow):
 
     def getCurrentRig(self):
         self.rigName, self.namespace = SpaceSwitch().funcs.getCurrentRig()
-        print ('getCurrentRig', self.rigName, self.namespace)
         SpaceSwitch().saveRigFileIfNew(self.rigName, SpaceData().toJson())
 
         self.currentRigNameLabel.setText(self.rigName)
@@ -556,9 +678,10 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.spaceData = SpaceSwitch().loadRigData(SpaceData(), self.rigName)
         if self.rigName:
             self.enableUI()
+            self.refreshUI()
 
     def save(self):
-        SpaceSwitch().saveRigData(self.spaceData.toJson(), self.rigName)
+        SpaceSwitch().saveRigData(self.rigName, self.spaceData.toJson())
 
     def enableUI(self):
         self.limbUpdateWidget.setEnabled(True)
@@ -575,6 +698,33 @@ class SpaceSwitchSetupUI(QMainWindow):
             self.enableUI()
         else:
             self.disableUI()
+
+    def refreshUI(self):
+        for key, widget in self.controlWidgets.items():
+            if key not in self.spaceData.spaceAttribute.keys():
+                self.controlsLayout.removeWidget(widget)
+                self.controlWidgets.pop(key)
+                widget.close()
+                widget.deleteLater()
+
+        for control in self.spaceData.spaceAttribute.keys():
+            if control not in self.controlWidgets.keys():
+                self.controlWidgets[control] = SwitchableObjectWidget(self, control)
+                self.controlWidgets[control].objectDeletedSignal.connect(self.deleteEntry)
+
+                self.controlsLayout.addWidget(self.controlWidgets[control])
+        self.controlsLayout.setAlignment(Qt.AlignTop)
+
+    def deleteEntry(self, key):
+        if key not in self.controlWidgets.keys():
+            return
+        widget = self.controlWidgets[key]
+        self.spaceData.removeItem(key)
+        self.controlsLayout.removeWidget(widget)
+        self.controlWidgets.pop(key)
+        widget.close()
+        widget.deleteLater()
+
     """
     Test functions
     """
@@ -591,7 +741,7 @@ class SpaceControlWidget(QWidget):
         super(SpaceControlWidget, self).__init__()
         self.setMaximumHeight(200)
         self.mainLayout = QVBoxLayout()
-        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.mainLayout.setSpacing(0)
         self.setObjectName('LimbUpdateWidget')
         self.setLayout(self.mainLayout)
@@ -604,6 +754,8 @@ class SpaceControlWidget(QWidget):
         self.sideB = QLineEdit('_R_')
         self.mirrorButton = QPushButton('Mirror Limb')
 
+        self.mainLayout.addWidget(self.addButton)
+        '''
         self.mainLayout.addLayout(self.addRemoveLayout)
         self.addRemoveLayout.addWidget(self.addButton)
         self.addRemoveLayout.addWidget(self.removeButton)
@@ -615,7 +767,7 @@ class SpaceControlWidget(QWidget):
 
         self.mainLayout.addLayout(self.mirrorLayout)
         # self.mainLayout.addStretch()
-
+        '''
         self.addButton.clicked.connect(self.addNew)
         self.mirrorButton.clicked.connect(self.mirror)
         self.sideA.textEdited.connect(self.sideUpdated)
@@ -711,6 +863,7 @@ class SwitchValuesEnumWidget(QWidget):
     def edited(self, key, value):
         self.editedSignal.emit(key, value)
 
+
 class SwitchValuesDoubleWidget(QWidget):
     editedSignal = Signal(dict)
 
@@ -739,6 +892,7 @@ class SwitchValuesDoubleWidget(QWidget):
 
 class SwitchableObjectWidget(QWidget):
     editedSignal = Signal(dict)
+    objectDeletedSignal = Signal(str)
 
     def __init__(self, cls, control):
         super(SwitchableObjectWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
@@ -766,7 +920,10 @@ class SwitchableObjectWidget(QWidget):
                                                           placeholderTest='enter condition attribute',
                                                           stripNamespace=True)
         self.spaceAttributeWidget.lineEdit.setFixedWidth(200)
+        self.deleteButton = QPushButton()
+        self.deleteButton.setIcon((QIcon(':/deleteActive.png')))
 
+        self.deleteButton.clicked.connect(lambda: self.objectDeletedSignal.emit(self.key))
         self.intValuesWidget = SwitchValuesIntWidget()
         self.doubleValuesWidget = SwitchValuesDoubleWidget()
         self.enumValuesWidget = SwitchValuesEnumWidget()
@@ -800,8 +957,10 @@ class SwitchableObjectWidget(QWidget):
         self.controlLayout.addWidget(self.intValuesWidget)
         self.controlLayout.addWidget(self.doubleValuesWidget)
         self.controlLayout.addWidget(self.enumValuesWidget)
-        self.controlLayout.addStretch()
-        #self.valuesLayout.addStretch()
+        self.controlLayout.addWidget(self.deleteButton)
+        self.controlLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        # self.controlLayout.addStretch()
+        # self.valuesLayout.addStretch()
 
         self.valuesWidgets = [
             self.intValuesWidget,
@@ -814,8 +973,6 @@ class SwitchableObjectWidget(QWidget):
         self.refresh()
 
     def refresh(self):
-        print ('refresh')
-        print ('spaceData', self.cls.spaceData.spaceAttribute[self.key])
         self.controlWidget.itemLabel.setText(self.key)
         self.spaceAttributeWidget.lineEdit.setText(self.cls.spaceData.spaceAttribute[self.key])
 
