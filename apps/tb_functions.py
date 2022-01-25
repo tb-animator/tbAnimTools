@@ -1487,7 +1487,7 @@ class functions(object):
             return
 
         # split selection by character
-        namespaces = [x.split(':', 1)[0] for x in sel if ':' in x]
+        namespaces = list(set([x.split(':', 1)[0] for x in sel if ':' in x]))
 
         characters = {k: list() for k in namespaces}
         for s in sel:

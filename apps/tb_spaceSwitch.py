@@ -606,37 +606,12 @@ class SpaceSwitch(toolAbstractFactory):
     def storeCurrentState(self, sel, key='spaceLocalValues'):
         if not sel:
             return
-        print ('sel', sel)
-        print ('key', key)
         characters = self.funcs.splitSelectionToCharacters(sel)
-        print ('characters', characters)
         for rigName, control in characters.items():
-            print(self.loadedSpaceData[rigName].__dict__[key])
             attributes, values = self.getSwitchDataFromScene(selection=sel)
-            print ('attributes', attributes)
-            print ('values', values)
             for k in attributes.keys():
                 self.loadedSpaceData[rigName].__dict__[key][k] = values[k]
-            print(self.loadedSpaceData[rigName].__dict__[key])
             SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
-        allRigs = dict()
-        # get all selected rigs and collect their controls
-        return
-        for char in characters:
-            for s in sel:
-                control = s.split(':', 1)[-1]
-                for key, limb in self.loadedSpaceData[self.namespaceToCharDict[char]].limbs.items():
-                    if limb.controlInData(control):
-                        if key in limbsToMatch[char]:
-                            continue
-                        limbsToMatch[char].append(key)
-
-            rig, namespace = self.funcs.getCurrentRig([s])
-            if rig not in allRigs.keys():
-                allRigs[rig] = list()
-            allRigs[rig].append(s)
-        for rig in allRigs.keys():
-            self.saveRigFileIfNew(rig, SpaceData().toJson())
 
     def openEditorWindow(self):
         win = SpaceSwitchSetupUI()
