@@ -57,23 +57,29 @@ class hotkeys(hotKeyAbstractFactory):
 
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceGlobalValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.switchSelection(mode="spaceGlobalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedLocal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceLocalValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.switchSelection(mode="spaceLocalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedDefault',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceDefaultValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.switchSelection(mode="spaceDefaultValues")']))
 
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedGlobal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceGlobalValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.bakeSelection(mode="spaceGlobalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedLocal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceLocalValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.bakeSelection(mode="spaceLocalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedDefault',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceDefaultValues")']))
+                                     category=self.category,
+                                     command=['SpaceSwitch.bakeSelection(mode="spaceDefaultValues")']))
 
         self.addCommand(self.tb_hkey(name='selectAllSpaceSwitchControls',
                                      annotation='selects all space switch controls for selected rigs',
@@ -169,6 +175,7 @@ class SpaceSwitch(toolAbstractFactory):
     loadedSpaceData = dict()  # store loaded data per session to avoid accessing the disc all the time
     namespaceToCharDict = dict()
     spaceDataDict = dict()
+    popupSwitchMode = False
 
     def __new__(cls):
         if SpaceSwitch.__instance is None:
@@ -233,8 +240,11 @@ class SpaceSwitch(toolAbstractFactory):
             return
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
-
-        cmds.menuItem(label='Space Switch (temp)',
+        switchFunction = {False: self.switchTo, True: self.bakeTo}[self.popupSwitchMode]
+        switchFunctionAlt = {True: self.switchTo, False: self.bakeTo}[self.popupSwitchMode]
+        switchLabel = {False: 'Switch', True: 'Bake'}[self.popupSwitchMode]
+        topLabel = {False: 'Space Switch', True: 'Bake Space Switch'}[self.popupSwitchMode]
+        cmds.menuItem(label=topLabel,
                       divider=0,
                       boldFont=True,
                       enable=False,
@@ -243,26 +253,30 @@ class SpaceSwitch(toolAbstractFactory):
         if not userAttrs:
             return
 
-        cmds.menuItem(label='Switch to Global',
-                      image='bakeAnimation.png',
-                      command=pm.Callback(self.switchTo, selection=sel, mode='spaceGlobalValues'))
-        cmds.menuItem(optionBox=True,
-                      optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(self.bakeTo, selection=sel, mode='spaceGlobalValues'))
 
-        cmds.menuItem(label='Switch to Local',
-                      image='bakeAnimation.png',
-                      command=pm.Callback(self.switchTo, selection=sel, mode='local'))
-        cmds.menuItem(optionBox=True,
-                      optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(self.bakeTo, selection=sel, mode='local'))
+        simpleFunction = {False: self.simpleSpaceSwitch, True: self.bakeSpaceSwitch}[self.popupSwitchMode]
+        simpleFunctionAlt = {True: self.simpleSpaceSwitch, False: self.bakeSpaceSwitch}[self.popupSwitchMode]
 
-        cmds.menuItem(label='Switch to Default',
+        cmds.menuItem(label='%s to Global' % switchLabel,
                       image='bakeAnimation.png',
-                      command=pm.Callback(self.switchTo, selection=sel, mode='spaceDefaultValues'))
+                      command=pm.Callback(switchFunction, selection=sel, mode='spaceGlobalValues'))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(self.bakeTo, selection=sel, mode='spaceDefaultValues'))
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='spaceGlobalValues'))
+
+        cmds.menuItem(label='%s to Local' % switchLabel,
+                      image='bakeAnimation.png',
+                      command=pm.Callback(switchFunction, selection=sel, mode='local'))
+        cmds.menuItem(optionBox=True,
+                      optionBoxIcon='bakeAnimation.png',
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='local'))
+
+        cmds.menuItem(label='%s to Default' % switchLabel,
+                      image='bakeAnimation.png',
+                      command=pm.Callback(switchFunction, selection=sel, mode='spaceDefaultValues'))
+        cmds.menuItem(optionBox=True,
+                      optionBoxIcon='bakeAnimation.png',
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='spaceDefaultValues'))
 
         for attr in userAttrs:
             if cmds.attributeQuery(attr, node=sel[0], attributeType=True) == 'enum':
@@ -273,25 +287,39 @@ class SpaceSwitch(toolAbstractFactory):
                 # quick bake to global/local (user defined space)
 
                 cmds.menuItem(divider=True)
+                cmds.menuItem(label='- %s - Attribute' % switchLabel,
+                              divider=0,
+                              boldFont=True,
+                              enable=False,
+                              )
                 for space in spaceValues:
                     cmds.menuItem(label=space,
                                   image='bakeAnimation.png',
-                                  command=pm.Callback(self.simpleSpaceSwitch, node=sel[0], spaceValue=space,
+                                  command=pm.Callback(simpleFunction, node=sel[0], spaceValue=space,
                                                       spaceAttribute=attr))
                     cmds.menuItem(optionBox=True,
                                   optionBoxIcon='bakeAnimation.png',
-                                  command=pm.Callback(self.bakeSpaceSwitch, node=sel[0], spaceValue=space,
+                                  command=pm.Callback(simpleFunctionAlt, node=sel[0], spaceValue=space,
                                                       spaceAttribute=attr))
         cmds.menuItem(divider=True)
-        cmds.menuItem('store current states as global',
+        cmds.menuItem('Store current states as global',
                       command=pm.Callback(self.storeCurrentState, sel, key='spaceGlobalValues'))
-        cmds.menuItem('store current states as local',
+        cmds.menuItem('Store current states as local',
                       command=pm.Callback(self.storeCurrentState, sel, key='spaceLocalValues'))
-        cmds.menuItem('store current states as default',
+        cmds.menuItem('Store current states as default',
                       command=pm.Callback(self.storeCurrentState, sel, key='spaceDefaultValues'))
         cmds.menuItem(divider=True)
         cmds.menuItem('Select all space switch controls',
                       command=pm.Callback(self.selectAllSpaceSwitchControls))
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Toggle switch mode',
+                      command=pm.Callback(self.togglePopupSwitchMode))
+        cmds.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
+                      command='tbOpenSpaceSwitchDataEditor', sourceType='mel')
+
+    def togglePopupSwitchMode(self):
+        print ('togglePopupSwitchMode, ', self.togglePopupSwitchMode)
+        self.popupSwitchMode = not self.popupSwitchMode
 
     def loadDataForCharacters(self, characters):
         namespaceToCharDict = dict()
