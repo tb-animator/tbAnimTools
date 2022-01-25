@@ -57,23 +57,23 @@ class hotkeys(hotKeyAbstractFactory):
 
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="global")']))
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceGlobalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedLocal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="local")']))
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceLocalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedDefault',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="default")']))
+                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="spaceDefaultValues")']))
 
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedGlobal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="global")']))
+                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceGlobalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedLocal',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="local")']))
+                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceLocalValues")']))
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedDefault',
                                      annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.switchSelection(mode="default")']))
+                                     category=self.category, command=['SpaceSwitch.bakeSelection(mode="spaceDefaultValues")']))
 
         self.addCommand(self.tb_hkey(name='selectAllSpaceSwitchControls',
                                      annotation='selects all space switch controls for selected rigs',
@@ -347,11 +347,7 @@ class SpaceSwitch(toolAbstractFactory):
             return cmds.warning('Nothing selected')
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
-        '''
-        print ('sel', sel)
-        print ('self.namespaceToCharDict', self.namespaceToCharDict)
-        print ('self.loadedSpaceData[refname]', self.loadedSpaceData)
-        '''
+
         allControls = list()
         for char in characters:
             allControls.extend(
@@ -362,12 +358,16 @@ class SpaceSwitch(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
         self.switchTo(sel, mode=mode)
 
     def bakeSelection(self, mode='spaceGlobalValues'):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
         self.bakeTo(sel, mode=mode)
 
     def bakeTo(self, selection, mode='spaceGlobalValues'):
@@ -401,7 +401,6 @@ class SpaceSwitch(toolAbstractFactory):
             namespace, control = s.split(':', 1)
             rigName = self.namespaceToCharDict[namespace]
             attribute = self.loadedSpaceData[rigName].spaceAttribute[control]
-            print ('attribute', attribute)
             attributeType = cmds.getAttr(namespace + ':' + attribute, type=True)
             if attributeType == 'enum':
                 node, attr = str(namespace + ':' + attribute).split('.', 1)
@@ -475,7 +474,7 @@ class SpaceSwitch(toolAbstractFactory):
             tempConstraints[s] = str(
                 self.funcs.safeParentConstraint(locators[s], s, orientOnly=False, maintainOffset=False))
 
-        cmds.animLayer(resultLayer, edit=True, attribute=spaceAttributes.values)
+        cmds.animLayer(resultLayer, edit=True, attribute=spaceAttributes.values())
         for key, attr in spaceAttributes.items():
             spaceSwitchAttr = pm.Attribute(attr)
             spaceValue = values[key]
