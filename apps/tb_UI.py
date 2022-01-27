@@ -1925,6 +1925,7 @@ class AnimLayerTabButton(QPushButton):
         self.setStyleSheet(getqss.getStyleSheet())
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showMenu)
+        self.pop_up_window = None
 
     def setPopupMenu(self, menuClass):
         self.pop_up_window = menuClass('name', self)

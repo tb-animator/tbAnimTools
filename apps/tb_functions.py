@@ -549,6 +549,14 @@ class functions(object):
                 keyTimes = pm.keyframe(node, query=True)
         return sorted(list(set(keyTimes)))
 
+    def getAllAnimatedChannels(self, controls):
+        print ('getAllAnimatedChannels', controls)
+        allAttributes = list()
+        for c in controls:
+            attributes = cmds.listAttr(c, keyable=True, settable=True)
+            allAttributes.extend([c + '.' + a for a in attributes])
+        return allAttributes
+
     @staticmethod
     def get_all_curves(node=pm.ls(selection=True)):
         if node:

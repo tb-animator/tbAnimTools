@@ -33,6 +33,7 @@ from Abstract import *
 from tb_UI import *
 import tb_helpStrings
 import maya
+import traceback
 
 maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
@@ -124,8 +125,6 @@ class hotkeys(hotKeyAbstractFactory):
                          category=self.category,
                          command=['BakeTools.worldOffsetSelection()'],
                          help=maya.stringTable['y_tb_Baking.worldOffsetSelection']))
-
-
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
                                      category=self.category, command=[
@@ -234,9 +233,10 @@ class BakeTools(toolAbstractFactory):
         crossSizeWidget.changedSignal.connect(self.updatePreview)
 
         constraintChannelHeader = subHeader('Constraint Channels')
-        constraintChannelInfo = infoLabel(['Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
+        constraintChannelInfo = infoLabel([
+                                              'Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
         constraintChannelWidget = optionVarBoolWidget('Constrain Highlighted Channels',
-                                                self.tempControlChannelOption)
+                                                      self.tempControlChannelOption)
 
         tempControlHeader = subHeader('Bake Simulation')
         tempControlInfo = infoLabel(['When baking many objects it is often faster to use simulation.',
@@ -250,8 +250,6 @@ class BakeTools(toolAbstractFactory):
         motionTrailInfo = infoLabel(['Add motion trails to newly created temp controls.'])
         motionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Controls',
                                                 self.tempControlMotionTrailOption)
-
-
 
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
@@ -365,65 +363,71 @@ class BakeTools(toolAbstractFactory):
             sel = pm.ls(sl=True)
         locs = []
         constraints = []
-        if sel:
-            for s in sel:
-                # loc = self.funcs.tempLocator(name=s, suffix='baked')
-                ps = pm.PyNode(s)
-                ns = ps.namespace()
-                if not cmds.objExists(ns + self.assetName):
-                    self.createAsset(ns + self.assetName, imageName=None)
-                asset = ns + self.assetName
-                loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
-                                             scale=pm.optionVar.get(self.crossSizeOption, 1))
-                pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
-                pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
-                const = pm.parentConstraint(s, loc)
-                locs.append(loc)
-                constraints.append(const)
-                pm.container(asset, edit=True,
-                             includeHierarchyBelow=True,
-                             force=True,
-                             addNode=loc)
-        if locs:
-            preContainers = set(pm.ls(type='container'))
-            pm.bakeResults(locs,
-                           simulation=pm.optionVar.get(self.quickBakeSimOption, False),
-                           sampleBy=1,
-                           oversamplingRate=1,
-                           disableImplicitControl=True,
-                           preserveOutsideKeys=False,
-                           sparseAnimCurveBake=True,
-                           removeBakedAttributeFromLayer=False,
-                           removeBakedAnimFromLayer=False,
-                           bakeOnOverrideLayer=False,
-                           minimizeRotation=True,
-                           controlPoints=False,
-                           shape=False,
-                           time=[pm.playbackOptions(query=True, minTime=True),
-                                 pm.playbackOptions(query=True, maxTime=True)],
-                           )
-            self.removeContainersPostBake(preContainers)
-            if constrain:
-                pm.delete(constraints)
-                for cnt, loc in zip(sel, locs):
-                    skipT = self.funcs.getAvailableTranslates(cnt)
-                    skipR = self.funcs.getAvailableRotates(cnt)
-                    constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                              False: [x.split('translate')[-1] for x in
-                                                                                      skipT]}[
-                        orientOnly],
-                                                     skipRotate=[x.split('rotate')[-1] for x in skipR])
-                    pm.container(asset, edit=True,
-                                 includeHierarchyBelow=True,
-                                 force=True,
-                                 addNode=constraint)
-        if pm.optionVar.get(self.tempControlMotionTrailOption, False):
-            for l in locs:
-                cmds.select(str(l), replace=True)
-                mel.eval('createMotionTrail')
-        if select:
-            pm.select(locs, replace=True)
-        return locs
+        with self.funcs.suspendUpdate():
+            try:
+                if sel:
+                    for s in sel:
+                        # loc = self.funcs.tempLocator(name=s, suffix='baked')
+                        ps = pm.PyNode(s)
+                        ns = ps.namespace()
+                        if not cmds.objExists(ns + self.assetName):
+                            self.createAsset(ns + self.assetName, imageName=None)
+                        asset = ns + self.assetName
+                        loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
+                                                     scale=pm.optionVar.get(self.crossSizeOption, 1))
+                        pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                        pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+                        const = pm.parentConstraint(s, loc)
+                        locs.append(loc)
+                        constraints.append(const)
+                        pm.container(asset, edit=True,
+                                     includeHierarchyBelow=True,
+                                     force=True,
+                                     addNode=loc)
+                if locs:
+                    preContainers = set(pm.ls(type='container'))
+                    pm.bakeResults(locs,
+                                   simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                                   sampleBy=1,
+                                   oversamplingRate=1,
+                                   disableImplicitControl=True,
+                                   preserveOutsideKeys=False,
+                                   sparseAnimCurveBake=True,
+                                   removeBakedAttributeFromLayer=False,
+                                   removeBakedAnimFromLayer=False,
+                                   bakeOnOverrideLayer=False,
+                                   minimizeRotation=True,
+                                   controlPoints=False,
+                                   shape=False,
+                                   time=[pm.playbackOptions(query=True, minTime=True),
+                                         pm.playbackOptions(query=True, maxTime=True)],
+                                   )
+                    self.removeContainersPostBake(preContainers)
+                    if constrain:
+                        pm.delete(constraints)
+                        for cnt, loc in zip(sel, locs):
+                            skipT = self.funcs.getAvailableTranslates(cnt)
+                            skipR = self.funcs.getAvailableRotates(cnt)
+                            constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                                                                                      False: [x.split('translate')[-1]
+                                                                                              for x in
+                                                                                              skipT]}[
+                                orientOnly],
+                                                             skipRotate=[x.split('rotate')[-1] for x in skipR])
+                            pm.container(asset, edit=True,
+                                         includeHierarchyBelow=True,
+                                         force=True,
+                                         addNode=constraint)
+                if pm.optionVar.get(self.tempControlMotionTrailOption, False):
+                    for l in locs:
+                        cmds.select(str(l), replace=True)
+                        mel.eval('createMotionTrail')
+                if select:
+                    pm.select(locs, replace=True)
+                return locs
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
 
     def bakeSelectedHotkey(self):
         sel = pm.ls(sl=True)
@@ -567,18 +571,23 @@ class BakeTools(toolAbstractFactory):
             startTime = pm.playbackOptions(query=True, minTime=True)
         if not endTime:
             endTime = pm.playbackOptions(query=True, maxTime=True)
-        pm.bakeResults(node,
-                       simulation=False,
-                       disableImplicitControl=False,
-                       time=[startTime,
-                             endTime],
-                       sampleBy=1)
-        if deleteConstraints:
-            if not isinstance(node, list):
-                node = [node]
-            for n in node:
-                pm.delete(n.listRelatives(type='constraint'))
-                self.clearBlendAttrs(n)
+        with self.funcs.suspendUpdate():
+            try:
+                pm.bakeResults(node,
+                               simulation=False,
+                               disableImplicitControl=False,
+                               time=[startTime,
+                                     endTime],
+                               sampleBy=1)
+                if deleteConstraints:
+                    if not isinstance(node, list):
+                        node = [node]
+                    for n in node:
+                        pm.delete(n.listRelatives(type='constraint'))
+                        self.clearBlendAttrs(n)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
 
     def addOverrideLayer(self):
         return self.add_layer(override=True)
@@ -1121,7 +1130,12 @@ class BakeTools(toolAbstractFactory):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return
-        self.worldOffset(sel)
+        with self.funcs.suspendUpdate():
+            try:
+                self.worldOffset(sel)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
 
     def worldOffset(self, sel):
         """
@@ -1136,7 +1150,6 @@ class BakeTools(toolAbstractFactory):
         rotateAnimOffsetNodes = dict()
 
         tempConstraints = list()
-
         for s in sel:
             rotationRoot = self.funcs.tempControl(name=s, suffix='worldOffset')
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
@@ -1189,14 +1202,19 @@ class BakeTools(toolAbstractFactory):
 
         channels = self.funcs.getChannels()
         for s in sel:
-            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s, orientOnly=False, maintainOffset=False, channels=channels)
+            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s, orientOnly=False, maintainOffset=False,
+                                            channels=channels)
 
     def redirectSelected(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return
-
-        self.redirect(sel)
+        with self.funcs.suspendUpdate():
+            try:
+                self.redirect(sel)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
 
     def redirect(self, sel):
         if not sel:
@@ -1209,6 +1227,7 @@ class BakeTools(toolAbstractFactory):
         translateAnimOFfsetNodes = dict()
         rotateAnimOffsetNodes = dict()
         tempConstraints = list()
+
         for s in sel:
             root = self.funcs.tempControl(name=s, suffix='Root', drawType='cross')
             rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='cross')
@@ -1223,7 +1242,6 @@ class BakeTools(toolAbstractFactory):
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
 
             self.funcs.getSetColour(s, translateAnimOFfsetNode, brightnessOffset=0.5)
-
 
             pm.parent(rotateAnimOffsetNode, rotateAnimNode)
             pm.parent(rotateAnimNode, rotationRoot)
