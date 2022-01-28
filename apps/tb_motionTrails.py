@@ -121,7 +121,7 @@ class MotionTrails(toolAbstractFactory):
         infoText = QLabel()
         infoText.setText('Motion trail display settings')
         infoText.setWordWrap(True)
-        fadeLayout = QHBoxLayout()
+        fadeLayout = QVBoxLayout()
         markerLayout = QHBoxLayout()
 
         trailFadeFramesWidget = intFieldWidget(optionVar=self.trailFadeFramesOption,
@@ -146,17 +146,24 @@ class MotionTrails(toolAbstractFactory):
                                                      minimum=1, maximum=10, step=1)
         showTicksOptionWidget = optionVarBoolWidget('Show frame markers',
                                                     self.showframeMarkerOption)
-
+        widgets = [trailFadeFramesWidget,
+                   trailPreFramesWidget,
+                   trailPostFramesWidget,
+                   trailThicknessWidget,
+                   trailframeMarkerSizesWidget,
+                   showTicksOptionWidget]
+        for wd in widgets:
+            wd.setFixedWidth(150)
         self.layout.addWidget(infoText)
 
         self.layout.addLayout(fadeLayout)
-        self.layout.addLayout(markerLayout)
+        #self.layout.addLayout(markerLayout)
         fadeLayout.addWidget(trailFadeFramesWidget)
         fadeLayout.addWidget(trailPreFramesWidget)
         fadeLayout.addWidget(trailPostFramesWidget)
-        markerLayout.addWidget(trailThicknessWidget)
-        markerLayout.addWidget(trailframeMarkerSizesWidget)
-        markerLayout.addWidget(showTicksOptionWidget)
+        fadeLayout.addWidget(trailThicknessWidget)
+        fadeLayout.addWidget(trailframeMarkerSizesWidget)
+        fadeLayout.addWidget(showTicksOptionWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -178,7 +185,6 @@ class MotionTrails(toolAbstractFactory):
             jsonObjectInfo['motionTrailShape'] = dict()
             output = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
             cmds.setAttr('motionTrailInfo.notes', output, type='string')
-
 
     def getMotionTrailInfo(self):
         self.createInfoNode()
@@ -285,11 +291,11 @@ class MotionTrails(toolAbstractFactory):
         for motionTrail in allMotionTrails:
             if disable:
                 motionTrailShape = self.getMotionTrailShape(motionTrail)
-                #self.disableMotionTrail(motionTrail, motionTrailShape[0])
+                # self.disableMotionTrail(motionTrail, motionTrailShape[0])
                 pm.delete(motionTrail, motionTrailShape[0])
             else:
                 self.createFromSceneInfo(key=motionTrail)
-                #self.getMotionTrailInfo()
+                # self.getMotionTrailInfo()
 
     def getCurrentCamera(self):
         view = omUI.M3dView.active3dView()
@@ -421,7 +427,7 @@ class MotionTrails(toolAbstractFactory):
         cmds.setAttr("{0}.nodeState".format(motionTrail), 0)
         cmds.setAttr("{0}.visibility".format(trialShape), True)
         if cmds.attributeQuery('camera', node=motionTrail, exists=True):
-           pass
+            pass
 
     def getMotionTrailShape(self, motionTrail):
         return list(set(cmds.listConnections(motionTrail, source=False, destination=True, plugs=False)))

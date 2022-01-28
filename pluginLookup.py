@@ -7,7 +7,7 @@ import pymel.core as pm
 import maya.OpenMaya as om
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as om2a
-
+import traceback
 from Abstract import *
 
 import zipfile
@@ -69,7 +69,6 @@ class ClassFinder(object):
         self.applyAnimLayerTabModification()
         self.applyToolDeferredLoad()
 
-
     def loadPluginsByClass(self):
         self.allClasses = [cls for cls in
                            self.getAllModulesInFolder(self.toolsBaseDirectory, self.toolsDirectory)
@@ -89,8 +88,10 @@ class ClassFinder(object):
             tool = None
             try:
                 tool = cls()
-            except:
-                pass
+            except Exception:
+                cmds.warning('Failing to load class ::', str(cls))
+                cmds.warning(traceback.format_exc())
+                continue
             if not tool:
                 continue
             self.tools[cls.toolName] = cls()
@@ -110,8 +111,13 @@ class ClassFinder(object):
             return
 
         for plugin in allPlugins:
-            cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin))
-            cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin))
+            try:
+                cmds.evalDeferred(
+                    'if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin))
+                cmds.evalDeferred(
+                    'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin))
+            except Exception:
+                cmds.warning('Failing to load Plugin ::', str(plugin))
 
     def getAllModulesInFolder(self, baseDirectory, toolDirectory, compiledOnly=False):
         allFiles = list()
@@ -156,7 +162,6 @@ class ClassFinder(object):
     def collectAnimLayerTabWidgets(self):
         widgets = list()
         for tool, cls in self.tools.items():
-            print (tool, cls)
             if not cls:
                 continue
             widgets.extend(cls.animLayerTabUI())
@@ -164,21 +169,22 @@ class ClassFinder(object):
 
     def applyToolDeferredLoad(self):
         for tool, cls in self.tools.items():
-            cls.deferredLoad()
-            '''
             try:
                 cls.deferredLoad()
-            except:
-                cmds.warning('deferredLoad failing for ', cls)
-            '''
+            except Exception:
+                cmds.warning('Deferred Load Failing for class ::', str(cls))
+                cmds.warning(traceback.format_exc())
 
     def applyAnimLayerTabModification(self):
-        animLayerLayouts = self.tools['LayerEditor'].modifyAnimLayerTab()
-        if not animLayerLayouts:
-            return
-        widgets = self.collectAnimLayerTabWidgets()
-        for widget in widgets:
-            animLayerLayouts[-1].insertWidget(0, widget)
+        try:
+            animLayerLayouts = self.tools['LayerEditor'].modifyAnimLayerTab()
+            if not animLayerLayouts:
+                return
+            widgets = self.collectAnimLayerTabWidgets()
+            for widget in widgets:
+                animLayerLayouts[-1].insertWidget(0, widget)
+        except Exception:
+            cmds.warning('Failing to modify animLayerTab ::', cmds.warning(traceback.format_exc()))
 
     def startupScriptJobs(self):
         if self.animLayerScriptJob is not -1:

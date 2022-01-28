@@ -1443,7 +1443,7 @@ class intFieldWidget(QWidget):
         self.setLayout(self.layout)
 
         label = QLabel(label)
-
+        spacerItem = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.spinBox = QDoubleSpinBox()
         self.spinBox.setMaximum(maximum)
         self.spinBox.setMinimum(minimum)
@@ -1453,6 +1453,7 @@ class intFieldWidget(QWidget):
             self.spinBox.setDecimals(0)
         self.spinBox.setProperty("value", self.optionValue)
         self.layout.addWidget(label)
+        self.layout.addItem(spacerItem)
         self.layout.addWidget(self.spinBox)
         self.spinBox.valueChanged.connect(self.interactivechange)
         self.layout.addStretch()
