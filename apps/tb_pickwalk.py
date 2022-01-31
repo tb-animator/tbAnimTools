@@ -37,6 +37,7 @@ from tb_UI import *
 defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
 
 saveOnUpdateOption = 'tbPickwalkSaveOnUpdate'
+autoApplyOption = 'tbPickwalkAutoApply'
 
 getStylesheet = getqss.getStyleSheet()
 
@@ -83,6 +84,7 @@ class WalkData(object):
         self.destinations = dict()
         self.jsonObjectInfo = dict()
         self.categoryKeys = dict()
+        self.mirrorNames = dict()
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
@@ -97,6 +99,7 @@ class WalkData(object):
         self.jsonObjectInfo['objectDict'] = {key.split(':')[-1]: value.toJson() for key, value in
                                              self.objectDict.items()}
         self.jsonObjectInfo['categoryKeys'] = {key: value for key, value in self.categoryKeys.items()}
+        self.jsonObjectInfo['mirrorNames'] = {key: value for key, value in self.mirrorNames.items()}
 
     def save(self, filePath):
         """
@@ -523,7 +526,9 @@ class PickwalkCreator(object):
                 self.setControlDestination(key,
                                            direction=dKey,
                                            destination=dValue)
-
+        mirrorNames = jsonObjectInfo.get('mirrorNames', dict())
+        self.walkData.mirrorNames['left'] = mirrorNames.get('left', '_L')
+        self.walkData.mirrorNames['right'] = mirrorNames.get('right', '_R')
         self.walkData._filePath = walkDataFile
         self.walkData.setName(walkDataFile)
         # print ('_filePath', self.walkData._filePath)
@@ -1652,10 +1657,6 @@ class DirectionPickButton(QWidget):
         self.mainLayout.addWidget(self.button)
         self.mainLayout.addWidget(self.contextButton)
 
-        self.button.clicked.connect(partial(self.pressedSignal.emit,
-                                            self.lineEdit.text(),
-                                            self.direction,
-                                            ))
         self.contextButton.clicked.connect(partial(self.conditionPressedSignal.emit,
                                                    self.lineEdit.text(),
                                                    self.direction,
@@ -1679,10 +1680,13 @@ class DirectionPickButton(QWidget):
         else:
             lbl = sel[0].stripNamespace()
         self.lineEdit.setText(lbl)
+        self.sendPickedSignal()
 
     def pickDestination(self):
         self.lineEdit.setText(self.mainWindow.currentDestination)
 
+    def sendPickedSignal(self):
+        self.pressedSignal.emit(self.lineEdit.text(), self.direction)
 
 class ChainPickButton(QWidget):
     pressedSignal = Signal(bool, bool)
@@ -1812,6 +1816,9 @@ class pickDirectionWidget(QFrame):
         self.setContentsMargins(2, 2, 2, 2)
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
+        self.topLayout = QHBoxLayout()
+        self.topLayout.setSpacing(0)
+        self.topLayout.setContentsMargins(0, 0, 0, 0)
         self.title = QLabel('Basic Pickwalk Setup')
         self.title.setStyleSheet("QLabel {"
                                  "border-width: 0;"
@@ -1828,7 +1835,18 @@ class pickDirectionWidget(QFrame):
                                     "border-color: #222222;"
                                     "font-weight: bold; font-size: 12px;}"
                                     )
-        self.mainLayout.addWidget(self.title)
+        self.editOnSaveCB = optionVarBoolWidget('Auto Apply', autoApplyOption)
+        self.editOnSaveCB.changedSignal.connect(self.toggleAutoApply)
+        self.editOnSaveCB.layout.setAlignment(Qt.AlignRight)
+        self.editOnSaveCB.labelText.setStyleSheet("QLabel {"
+                                                  "border-width: 0;"
+                                                  "border-radius: 4;"
+                                                  "border-style: solid;"
+                                                  "border-color: #222222;}"
+                                                  )
+        self.topLayout.addWidget(self.title)
+        self.topLayout.addWidget(self.editOnSaveCB)
+        self.mainLayout.addLayout(self.topLayout)
 
         self.objectWidget = pickObjectWidget(self.mainWindow)
         self.objectWidget.setStyleSheet(getStylesheet)
@@ -1913,10 +1931,22 @@ class pickDirectionWidget(QFrame):
             # self.leftSkipBtn,
             # self.rightSkipBtn,
         ]
-        '''
+
         for btn in self.allButtons:
-            btn.pressedSignal.connect(self.inputSignal_pickDirection)
-        '''
+            btn.pressedSignal.connect(self.autoApplyData)
+
+        self.toggleAutoApply()
+
+    def toggleAutoApply(self):
+        if pm.optionVar.get(autoApplyOption, True):
+            self.applyButton.setDisabled(True)
+        else:
+            self.applyButton.setEnabled(True)
+
+    def autoApplyData(self, *args):
+        if pm.optionVar.get(autoApplyOption, True):
+            print ('auto apply', args)
+            self.applyData()
 
     def applyData(self):
         self.mainWindow.currentDestination = self.objectWidget.currentObjLabel.text()
@@ -1924,6 +1954,7 @@ class pickDirectionWidget(QFrame):
         self.mainWindow.currentTargetDown = self.downBtn.lineEdit.text()
         self.mainWindow.currentTargetLeft = self.leftBtn.lineEdit.text()
         self.mainWindow.currentTargetRight = self.rightBtn.lineEdit.text()
+
         self.applyButtonPressedSignal.emit(self.objectWidget.currentObjLabel.text(),
                                            self.upBtn.lineEdit.text(),
                                            self.downBtn.lineEdit.text(),
@@ -3328,7 +3359,8 @@ class MirrorPickwalkPopup(BaseDialog):
                                      "font-weight: bold; font-size: 12px;}"
                                      )
 
-        self.mirrorwidget = mirrorPickwalkWidget()
+        self.mirrorwidget = mirrorPickwalkWidget(CLS=self.pickwalkCreator)
+        self.mirrorwidget.sideChangedSignal.connect(self.pickwalkWindow.saveOnUpdate)
         self.mirrorwidget.title.hide()
         self.mainLayout.addWidget(self.mirrorwidget)
 
@@ -3336,6 +3368,7 @@ class MirrorPickwalkPopup(BaseDialog):
 
         self.setStyleSheet(getqss.getStyleSheet())
 
+        self.mirrorwidget.mirrorPressed.connect(self.mirrorWalk)
 
     def setErrorHighlight(self, widget):
         widget.setStyleSheet(self.borderHighlightQSS)
@@ -3343,14 +3376,15 @@ class MirrorPickwalkPopup(BaseDialog):
     def setOKHighlight(self, widget):
         widget.setStyleSheet(getqss.getStyleSheet())
 
-    def mirrorWalk(self, direction=str()):
+    def mirrorWalk(self, fromText=str(), toText=str()):
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return pm.warning('no object selected')
         for s in sel:
-            self.pickwalkCreator.mirror(s.split(':')[-1], [self.fromInput.text(), self.toInput.text()])
+            self.pickwalkCreator.mirror(s.split(':')[-1], [fromText, toText])
         self.pickwalkWindow.saveLibrary()
         self.forceReloadData()
+
 
 class PickwalkNewConditionPopup(BaseDialog):
     destinationAdded = Signal(dict)
@@ -3571,12 +3605,15 @@ class PickwalkNewConditionPopup(BaseDialog):
 class mirrorPickwalkWidget(QFrame):
     pressed = Signal(None)
     changed = Signal(str)
-    fromInputOption = pm.optionVar.get('fromInputOption', '_L')
-    toInputOption = pm.optionVar.get('toInputOption', '_R')
-    mirrorPressed = Signal(str, str)
 
-    def __init__(self, label='Mirror Selected Controls', *args, **kwargs):
+    mirrorPressed = Signal(str, str)
+    sideChangedSignal = Signal()
+
+    def __init__(self, CLS=None, label='Mirror Selected Controls', *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
+        self.CLS = CLS
+        self.fromInputOption = self.CLS.walkData.mirrorNames.get('left', '_L')
+        self.toInputOption = self.CLS.walkData.mirrorNames.get('right', '_R')
         self.setMaximumWidth(420)
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
@@ -3611,6 +3648,7 @@ class mirrorPickwalkWidget(QFrame):
                                      "border-style: solid;"
                                      "border-color: #222222}"
                                      )
+
         self.fromInput = QLineEdit(self.fromInputOption)
         self.toInput = QLineEdit(self.toInputOption)
         self.mirrorBtn = QPushButton('Mirror selection')
@@ -3625,23 +3663,32 @@ class mirrorPickwalkWidget(QFrame):
 
         # events
         self.fromInput.textChanged.connect(self.fromChanged)
+        self.toInput.textChanged.connect(self.toChanged)
 
+        self.updateMirrorLabels()
         # line edit input mask
         # reg_ex = QRegExp("[a-z-A-Z0123456789_,]+")
         # fromInput_validator = QRegExpValidator(reg_ex, self.fromInput)
         # self.fromInput.setValidator(fromInput_validator)
 
+    def updateMirrorLabels(self):
+        print ('update mirror labesl', self.CLS.walkData.mirrorNames)
+        self.fromInputOption = self.CLS.walkData.mirrorNames.get('left', '_L')
+        self.toInputOption = self.CLS.walkData.mirrorNames.get('right', '_R')
+        self.blockSignals(True)
+        self.fromInput.setText(self.fromInputOption)
+        self.toInput.setText(self.toInputOption)
+        self.blockSignals(False)
     def sendMirrorSignal(self):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
 
-    def fromChanged(self, lineEdit):
-        pass
+    def fromChanged(self, *args):
+        self.CLS.walkData.mirrorNames['left'] = self.fromInput.text()
+        self.sideChangedSignal.emit()
 
-        # print('fromChanged', lineEdit)
-
-    def toChanged(self, lineEdit):
-        pass
-        # print('toChanged', lineEdit)
+    def toChanged(self, *args):
+        self.CLS.walkData.mirrorNames['right'] = self.toInput.text()
+        self.sideChangedSignal.emit()
 
     @Slot()
     def sendChangedSignal(self):
@@ -3840,6 +3887,9 @@ class pickwalkMainWindow(QMainWindow):
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle('tbPickwwalkSetup')
         self.titleLabel = QLabel('No current template')
+        self.editOnSaveCB = optionVarBoolWidget('Save On Edit', saveOnUpdateOption)
+        self.editOnSaveCB.layout.setAlignment(Qt.AlignRight)
+        # self.editOnSaveCB.changedSignal.connect(self.toggleSaveOnEdit)
         self.lockState = False
 
         self.hiddenLayout = QHBoxLayout()
@@ -3856,12 +3906,20 @@ class pickwalkMainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
         self.superLayout = QVBoxLayout()
+        self.superLayout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         self.main_layout = QHBoxLayout()
         self.left_layout = QHBoxLayout()
         self.left_layout.addLayout(self.left_layout)
 
         self.right_layout = QVBoxLayout()
-        self.superLayout.addWidget(self.titleLabel)
+        self.titleLayout = QHBoxLayout()
+        self.titleLayout.setSpacing(0)
+        self.titleLayout.setContentsMargins(0, 0, 0, 0)
+        self.superLayout.addLayout(self.titleLayout)
+        self.titleLayout.addWidget(self.titleLabel)
+        spacer = QSpacerItem(60, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.titleLayout.addItem(spacer)
+        self.titleLayout.addWidget(self.editOnSaveCB)
         self.superLayout.addLayout(self.main_layout)
         self.main_layout.addLayout(self.left_layout)
         self.main_layout.addLayout(self.right_layout)
@@ -3946,7 +4004,8 @@ class pickwalkMainWindow(QMainWindow):
         # self.contextPickWidget = pickContextDirectionWidget()
         self.controlListWidget = ControlListWidget(CLS=self.pickwalkCreator, label='Controls ::')
         self.destinationListWidget = DestinationListWidget(CLS=self.pickwalkCreator, label='Destinations')
-        self.mirrorWidget = mirrorPickwalkWidget()
+        self.mirrorWidget = mirrorPickwalkWidget(CLS=self.pickwalkCreator)
+        self.mirrorWidget.sideChangedSignal.connect(self.saveOnUpdate)
         self.contextWidget = contextPickwalkWidget()
 
         self.right_layout.addWidget(self.mainPickWidget)
@@ -4072,6 +4131,7 @@ class pickwalkMainWindow(QMainWindow):
 
         self.setTitleLabel(fname)
 
+
     def setTitleLabel(self, fname):
         if isinstance(fname, list):
             fname = fname[0]
@@ -4149,6 +4209,8 @@ class pickwalkMainWindow(QMainWindow):
         self.destinationListWidget.CLS = self.pickwalkCreator
         self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData, self.activeObject)
         self.updateTreeView()
+        self.mirrorWidget.updateMirrorLabels()
+
 
     def keyPressEvent(self, event):
         # print("That's a press!")
@@ -4274,6 +4336,7 @@ class pickwalkMainWindow(QMainWindow):
 
     @Slot()
     def inputSignal_applyPickwalk(self, control, up, down, left, right):
+        print ('inputSignal_applyPickwalk', control, up, down, left, right)
         self.pickwalkCreator.setControlDestination(control,
                                                    direction='up',
                                                    destination=up)
@@ -4290,7 +4353,7 @@ class pickwalkMainWindow(QMainWindow):
         self.saveOnUpdate()
 
     def saveOnUpdate(self):
-        if pm.optionVar.get(saveOnUpdateOption, False):
+        if pm.optionVar.get(saveOnUpdateOption, True):
             self.saveLibrary()
 
     def inputSignal_activeObjectSet(self):
@@ -4330,6 +4393,7 @@ class pickwalkMainWindow(QMainWindow):
         for s in sel:
             self.pickwalkCreator.mirror(s.split(':')[-1], [sideA, sideB])
         self.updateTreeView()
+        self.saveOnUpdate()
 
     def inputSignal_destinationAdded(self, input):
         # print('inputSignal_destinationAdded', input)
@@ -4400,7 +4464,7 @@ class pickwalkMainWindow(QMainWindow):
 
     def toggleSaveOnEdit(self):
         # print ('toggleSaveOnEdit', self.saveOnEdit_action.isChecked())
-        pm.optionVar[saveOnUpdateOption] = self.saveOnEdit_action.isChecked()
+        pm.optionVar[saveOnUpdateOption] = self.editOnSaveCB.isChecked.isChecked()
 
     def openDataFolder(self):
         os.startfile(self.defaultDir)

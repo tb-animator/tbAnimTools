@@ -105,7 +105,6 @@ class hotkeys(hotKeyAbstractFactory):
 
 class tweenBase(object):
     ## Get the current UI Unit
-    uiUnit = OpenMaya.MTime.uiUnit()
     keyboardModifier = None
     labelText = 'base class'
 
@@ -367,18 +366,18 @@ class WorldSpaceTween(tweenBase):
             obj = str(obj_dag_path)
             self.mfnDepNodes[str(obj_dag_path)] = objMfn
             # print objMfn
-            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, self.uiUnit))
+            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, om2.MTime.uiUnit()))
             currentTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, currentMDG)
             self.currentMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(currentTransform)
             currentParentInverseTransform = self.om_plug_worldMatrix_at_time('parentInverseMatrix', eachMob, currentMDG)
             self.currentParentInverseMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(
                 currentParentInverseTransform)
 
-            prevMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], self.uiUnit))
+            prevMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
             previousTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, prevMDG)
             self.prevMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(previousTransform)
 
-            nextMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], self.uiUnit))
+            nextMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
             nextTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, nextMDG)
             self.nextMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(nextTransform)
 
@@ -389,11 +388,11 @@ class WorldSpaceTween(tweenBase):
                 self.attrPlugs[obj][attribute] = objMfn.findPlug(attribute, False)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], self.uiUnit))
+                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
                 self.prevAttrData[obj].attributes[attribute] = self.om_plug_at_time(eachMob, attribute, currentMDG)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], self.uiUnit))
+                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
                 self.nextAttrData[obj].attributes[attribute] = self.om_plug_at_time(eachMob, attribute,
                                                                                     currentMDG)
 
@@ -665,7 +664,7 @@ class LocalSpaceTween(tweenBase):
             self.mfnDepNodes[obj] = objMfn
 
             # print objMfn
-            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, self.uiUnit))
+            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, om2.MTime.uiUnit()))
             # get all attribute values at prev, current and next
 
             for attribute, value in self.currentAttrData[obj].attributes.items():
@@ -673,11 +672,11 @@ class LocalSpaceTween(tweenBase):
                 self.attrPlugs[obj][attribute] = objMfn.findPlug(attribute, False)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], self.uiUnit))
+                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
                 self.prevAttrData[obj].attributes[attribute] = self.om_plug_at_time(MObj, attribute, currentMDG)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], self.uiUnit))
+                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
                 self.nextAttrData[obj].attributes[attribute] = self.om_plug_at_time(MObj, attribute,
                                                                                     currentMDG)
 

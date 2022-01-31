@@ -29,6 +29,12 @@ from Abstract import *
 import maya.api.OpenMaya as om2
 from difflib import SequenceMatcher
 
+str_spacePresets = 'spacePresets'
+str_spaceDefaultValues = 'spaceDefaultValues'
+str_spaceLocalValues = 'spaceLocalValues'
+str_spaceGlobalValues = 'spaceGlobalValues'
+str_spaceAttributeKey = 'spaceAttribute'
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -58,15 +64,15 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
                                      annotation='useful comment',
                                      category=self.category,
-                                     command=['SpaceSwitch.switchSelection(mode="spaceGlobalValues")']))
+                                     command=['SpaceSwitch.switchSelection(mode="{key}")'.format(key=str_spaceGlobalValues)]))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedLocal',
                                      annotation='useful comment',
                                      category=self.category,
-                                     command=['SpaceSwitch.switchSelection(mode="spaceLocalValues")']))
+                                     command=['SpaceSwitch.switchSelection(mode"{key}")'.format(key=str_spaceLocalValues)]))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedDefault',
                                      annotation='useful comment',
                                      category=self.category,
-                                     command=['SpaceSwitch.switchSelection(mode="spaceDefaultValues")']))
+                                     command=['SpaceSwitch.switchSelection(mode="{key}")'.format(key=str_spaceLocalValues)]))
 
         self.addCommand(self.tb_hkey(name='tbSpaceBakeSelectedGlobal',
                                      annotation='useful comment',
@@ -130,21 +136,21 @@ class SpaceData(object):
 
     def json_serialize(self):
         returnDict = {}
-        returnDict['spaceAttribute'] = self.spaceAttribute
-        returnDict['spaceGlobalValues'] = self.spaceGlobalValues
-        returnDict['spaceLocalValues'] = self.spaceLocalValues
-        returnDict['spaceDefaultValues'] = self.spaceDefaultValues
-        returnDict['spacePresets'] = dict()
+        returnDict[str_spaceAttributeKey] = self.spaceAttribute
+        returnDict[str_spaceGlobalValues] = self.spaceGlobalValues
+        returnDict[str_spaceLocalValues] = self.spaceLocalValues
+        returnDict[str_spaceDefaultValues] = self.spaceDefaultValues
+        returnDict[str_spacePresets] = dict()
         return returnDict
 
     def fromJson(self, data):
         rawJsonData = json.load(open(data))
 
-        self.spaceAttribute = rawJsonData.get('spaceAttribute', dict())
-        self.spaceGlobalValues = rawJsonData.get('spaceGlobalValues', dict())
-        self.spaceLocalValues = rawJsonData.get('spaceLocalValues', dict())
-        self.spaceDefaultValues = rawJsonData.get('spaceDefaultValues', dict())
-        self.spacePresets = rawJsonData.get('spacePresets', dict())
+        self.spaceAttribute = rawJsonData.get(str_spaceAttributeKey, dict())
+        self.spaceGlobalValues = rawJsonData.get(str_spaceGlobalValues, dict())
+        self.spaceLocalValues = rawJsonData.get(str_spaceLocalValues, dict())
+        self.spaceDefaultValues = rawJsonData.get(str_spaceDefaultValues, dict())
+        self.spacePresets = rawJsonData.get(str_spacePresets, dict())
 
     def removeItem(self, key):
         self.spaceAttribute.pop(key)
@@ -259,24 +265,24 @@ class SpaceSwitch(toolAbstractFactory):
 
         cmds.menuItem(label='%s to Global' % switchLabel,
                       image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode='spaceGlobalValues'))
+                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceGlobalValues))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='spaceGlobalValues'))
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceGlobalValues))
 
         cmds.menuItem(label='%s to Local' % switchLabel,
                       image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode='local'))
+                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceLocalValues))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='local'))
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceLocalValues))
 
         cmds.menuItem(label='%s to Default' % switchLabel,
                       image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode='spaceDefaultValues'))
+                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceDefaultValues))
         cmds.menuItem(optionBox=True,
                       optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode='spaceDefaultValues'))
+                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceDefaultValues))
 
         for attr in userAttrs:
             if cmds.attributeQuery(attr, node=sel[0], attributeType=True) == 'enum':
@@ -303,11 +309,11 @@ class SpaceSwitch(toolAbstractFactory):
                                                       spaceAttribute=attr))
         cmds.menuItem(divider=True)
         cmds.menuItem('Store current states as global',
-                      command=pm.Callback(self.storeCurrentState, sel, key='spaceGlobalValues'))
+                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceGlobalValues))
         cmds.menuItem('Store current states as local',
-                      command=pm.Callback(self.storeCurrentState, sel, key='spaceLocalValues'))
+                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceLocalValues))
         cmds.menuItem('Store current states as default',
-                      command=pm.Callback(self.storeCurrentState, sel, key='spaceDefaultValues'))
+                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceDefaultValues))
         cmds.menuItem(divider=True)
         cmds.menuItem('Select all space switch controls',
                       command=pm.Callback(self.selectAllSpaceSwitchControls))
@@ -382,7 +388,7 @@ class SpaceSwitch(toolAbstractFactory):
                 [char + ':' + c for c in self.loadedSpaceData[self.namespaceToCharDict[char]].spaceAttribute.keys()])
         cmds.select(allControls, replace=True)
 
-    def switchSelection(self, mode='spaceGlobalValues'):
+    def switchSelection(self, mode=str_spaceGlobalValues):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
@@ -390,7 +396,7 @@ class SpaceSwitch(toolAbstractFactory):
         self.loadDataForCharacters(characters)
         self.switchTo(sel, mode=mode)
 
-    def bakeSelection(self, mode='spaceGlobalValues'):
+    def bakeSelection(self, mode=str_spaceGlobalValues):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
@@ -398,15 +404,15 @@ class SpaceSwitch(toolAbstractFactory):
         self.loadDataForCharacters(characters)
         self.bakeTo(sel, mode=mode)
 
-    def bakeTo(self, selection, mode='spaceGlobalValues'):
+    def bakeTo(self, selection, mode=str_spaceGlobalValues):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.bakeFromData(selection, attributes, values)
 
-    def switchTo(self, selection, mode='spaceGlobalValues'):
+    def switchTo(self, selection, mode=str_spaceGlobalValues):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.switchFromData(selection, attributes, values)
 
-    def makeSwitchData(self, selection=list(), mode='spaceGlobalValues'):
+    def makeSwitchData(self, selection=list(), mode=str_spaceGlobalValues):
         switchAttrData = dict()
         switchValueData = dict()
         for s in selection:
@@ -416,9 +422,9 @@ class SpaceSwitch(toolAbstractFactory):
             globalValue = self.loadedSpaceData[rigName].spaceGlobalValues[control]
             localValue = self.loadedSpaceData[rigName].spaceLocalValues[control]
             defaultValue = self.loadedSpaceData[rigName].spaceDefaultValues[control]
-            switchValueData[s] = {'spaceGlobalValues': globalValue,
-                                  'spaceLocalValues': localValue,
-                                  'spaceDefaultValues': defaultValue}[mode]
+            switchValueData[s] = {str_spaceGlobalValues: globalValue,
+                                  str_spaceLocalValues: localValue,
+                                  str_spaceDefaultValues: defaultValue}[mode]
             switchAttrData[s] = namespace + ':' + attribute
         return switchAttrData, switchValueData
 
@@ -630,11 +636,13 @@ class SpaceSwitch(toolAbstractFactory):
         for s in sel:
             customAttrs = cmds.listAttr(s, userDefined=True)
 
-    def storeCurrentState(self, sel, key='spaceLocalValues'):
+    def storeCurrentState(self, sel, key=str_spaceLocalValues):
         if not sel:
             return
         characters = self.funcs.splitSelectionToCharacters(sel)
-        for rigName, control in characters.items():
+        self.loadDataForCharacters(characters)
+        for namespace, control in characters.items():
+            rigName = self.namespaceToCharDict[namespace]
             attributes, values = self.getSwitchDataFromScene(selection=sel)
             for k in attributes.keys():
                 self.loadedSpaceData[rigName].__dict__[key][k] = values[k]
@@ -899,22 +907,22 @@ class SpaceControlWidget(QWidget):
 
 
 class SwitchValuesIntWidget(QWidget):
-    editedSignal = Signal(dict)
+    editedSignal = Signal(str, float)
 
     def __init__(self):
         super(SwitchValuesIntWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
-        self.localIntValueWidget = intFieldWidget(key='spaceGlobalValues',
+        self.localIntValueWidget = intFieldWidget(key=str_spaceGlobalValues,
                                                   optionVar=None, defaultValue=0, label='Global value', maximum=9999,
                                                   minimum=-9999,
                                                   step=1)
-        self.globalIntValueWidget = intFieldWidget(key='spaceLocalValues',
+        self.globalIntValueWidget = intFieldWidget(key=str_spaceLocalValues,
                                                    optionVar=None, defaultValue=0, label='Local value', maximum=9999,
                                                    minimum=-9999,
                                                    step=1)
-        self.defaultIntValueWidget = intFieldWidget(key='spaceDefaultValues',
+        self.defaultIntValueWidget = intFieldWidget(key=str_spaceDefaultValues,
                                                     optionVar=None, defaultValue=0, label='Default value', maximum=9999,
                                                     minimum=-9999,
                                                     step=1)
@@ -923,6 +931,12 @@ class SwitchValuesIntWidget(QWidget):
         self.mainLayout.addWidget(self.localIntValueWidget)
         self.mainLayout.addWidget(self.defaultIntValueWidget)
 
+        self.localIntValueWidget.editedSignalKey.connect(self.edited)
+        self.globalIntValueWidget.editedSignalKey.connect(self.edited)
+        self.defaultIntValueWidget.editedSignalKey.connect(self.edited)
+
+    def edited(self, key, value):
+        self.editedSignal.emit(key, value)
 
 class SwitchValuesEnumWidget(QWidget):
     editedSignal = Signal(str, str)
@@ -932,13 +946,13 @@ class SwitchValuesEnumWidget(QWidget):
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
-        self.globalValueWidget = comboBoxWidget(key='spaceGlobalValues',
+        self.globalValueWidget = comboBoxWidget(key=str_spaceGlobalValues,
                                                 optionVar=None, values=list(), defaultValue=str(),
                                                 label='Global value')
-        self.localValueWidget = comboBoxWidget(key='spaceLocalValues',
+        self.localValueWidget = comboBoxWidget(key=str_spaceLocalValues,
                                                optionVar=None, values=list(), defaultValue=str(),
                                                label='Local value')
-        self.defaultValueWidget = comboBoxWidget(key='spaceDefaultValues',
+        self.defaultValueWidget = comboBoxWidget(key=str_spaceDefaultValues,
                                                  optionVar=None, values=list(), defaultValue=str(),
                                                  label='Default value')
         self.setLayout(self.mainLayout)
@@ -960,22 +974,22 @@ class SwitchValuesEnumWidget(QWidget):
 
 
 class SwitchValuesDoubleWidget(QWidget):
-    editedSignal = Signal(dict)
+    editedSignal = Signal(str, float)
 
     def __init__(self):
         super(SwitchValuesDoubleWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
-        self.localIntValueWidget = intFieldWidget(key='spaceGlobalValues',
+        self.localIntValueWidget = intFieldWidget(key=str_spaceGlobalValues,
                                                   optionVar=None, defaultValue=0, label='Global value', maximum=9999,
                                                   minimum=-9999,
                                                   step=0.1)
-        self.globalIntValueWidget = intFieldWidget(key='spaceLocalValues',
+        self.globalIntValueWidget = intFieldWidget(key=str_spaceLocalValues,
                                                    optionVar=None, defaultValue=0, label='Local value', maximum=9999,
                                                    minimum=-9999,
                                                    step=0.1)
-        self.defaultIntValueWidget = intFieldWidget(key='spaceDefaultValues',
+        self.defaultIntValueWidget = intFieldWidget(key=str_spaceDefaultValues,
                                                     optionVar=None, defaultValue=0, label='Default value', maximum=9999,
                                                     minimum=-9999,
                                                     step=0.1)
@@ -984,6 +998,12 @@ class SwitchValuesDoubleWidget(QWidget):
         self.mainLayout.addWidget(self.localIntValueWidget)
         self.mainLayout.addWidget(self.defaultIntValueWidget)
 
+        self.localIntValueWidget.editedSignalKey.connect(self.edited)
+        self.globalIntValueWidget.editedSignalKey.connect(self.edited)
+        self.defaultIntValueWidget.editedSignalKey.connect(self.edited)
+
+    def edited(self, key, value):
+        self.editedSignal.emit(key, value)
 
 class SwitchableObjectWidget(QWidget):
     editedSignal = Signal(dict)
@@ -1008,8 +1028,8 @@ class SwitchableObjectWidget(QWidget):
         self.controlWidget = ObjectSelectLineEdit(key='control',
                                                   label='Control',
                                                   stripNamespace=True)
-
-        self.spaceAttributeWidget = ChannelSelectLineEdit(key='spaceAttribute',
+        self.controlWidget.label.setFixedWidth(66)
+        self.spaceAttributeWidget = ChannelSelectLineEdit(key=str_spaceAttributeKey,
                                                           text='Attribute',
                                                           tooltip='Pick attribute to control ik blend.',
                                                           placeholderTest='enter condition attribute',
@@ -1031,7 +1051,7 @@ class SwitchableObjectWidget(QWidget):
         for wd in objSelectWidgets:
             wd.editedSignalKey.connect(self.updateControlName)
 
-        self.spaceAttributeWidget.editedSignalKey.connect(self.updateData)
+        #self.spaceAttributeWidget.editedSignalKey.connect(self.updateData)
         self.spaceAttributeWidget.editedSignalKey.connect(self.updateAttributeType)
 
         self.controlLayout = QHBoxLayout()
@@ -1052,6 +1072,9 @@ class SwitchableObjectWidget(QWidget):
         self.controlLayout.addWidget(self.intValuesWidget)
         self.controlLayout.addWidget(self.doubleValuesWidget)
         self.controlLayout.addWidget(self.enumValuesWidget)
+        spacer = QSpacerItem(20, 20, QSizePolicy.Maximum, QSizePolicy.Expanding)
+        self.controlLayout.addItem(spacer)
+        self.controlLayout.addStretch()
         self.controlLayout.addWidget(self.deleteButton)
         self.controlLayout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         # self.controlLayout.addStretch()
@@ -1081,14 +1104,18 @@ class SwitchableObjectWidget(QWidget):
         self.update()
 
     def showDouble(self):
+        print ('showDouble')
         self.hideAllValueWidgets()
         self.doubleValuesWidget.setVisible(True)
+        self.update()
 
     def showInt(self):
         self.hideAllValueWidgets()
         self.intValuesWidget.setVisible(True)
+        self.update()
 
     def valuesEdited(self, key, value):
+        print ('valuesEdited', key, value)
         self.cls.spaceData.__dict__[key][self.key] = value
 
     def updateControlName(self, key, value):
@@ -1097,9 +1124,11 @@ class SwitchableObjectWidget(QWidget):
                 self.cls.spaceData.__dict__[k][value] = self.cls.spaceData.__dict__[k].pop(self.key)
 
     def updateData(self, key, value):
+        print ('updateData', key, value)
         self.cls.spaceData.__dict__[key][self.key] = value
 
     def updateAttributeType(self, key, value):
+        print ('updateAttributeType', key, value)
         if value.startswith(self.key):
             value.strip(self.key)
         if '.' not in value:
@@ -1108,7 +1137,15 @@ class SwitchableObjectWidget(QWidget):
             attrName = self.cls.namespace + ':' + value
         else:
             attrName = self.key + '.' + value
+        obj, attr = attrName.split('.')
+        if not cmds.objExists(obj):
+            self.hideAllValueWidgets()
+            return False
+        if not cmds.attributeQuery(attr, node=obj, exists=True):
+            self.hideAllValueWidgets()
+            return False
         attributeType = cmds.getAttr(attrName, type=True)
+        print ('attributeType', attributeType)
         self.attributeTypeFunctions.get(attributeType, self.showDouble)()
         if attributeType == 'enum':
             node, attr = attrName.split('.', 1)
@@ -1122,6 +1159,7 @@ class SwitchableObjectWidget(QWidget):
                                               localVal,
                                               defaultVal)
         self.updateData(key, value)
+        return True
 
     def pickFK(self):
         sel = cmds.ls(sl=True)

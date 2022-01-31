@@ -1223,6 +1223,7 @@ class ChannelSelectLineEdit(QWidget):
         self.stripNamespace = stripNamespace
         self.key = key
         self.mainLayout = QHBoxLayout()
+        self.mainLayout.setAlignment(Qt.AlignLeft)
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.label = QLabel(text)
@@ -1232,9 +1233,9 @@ class ChannelSelectLineEdit(QWidget):
         self.cle_action_pick.triggered.connect(self.pickChannel)
         self.lineEdit.setPlaceholderText(placeholderTest)
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
-
         self.mainLayout.addWidget(self.label)
         self.mainLayout.addWidget(self.lineEdit)
+
         self.label.setFixedWidth(60)
 
         self.label.setStyleSheet("QFrame {"
@@ -1253,7 +1254,11 @@ class ChannelSelectLineEdit(QWidget):
         if refState:
             if self.stripNamespace:
                 refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
-                self.lineEdit.setText(channels[0].strip(refNamespace))
+                print ('refNamespace', refNamespace)
+                if refNamespace.startswith(':'):
+                    refNamespace = refNamespace[1:]
+                channel = channels[0]
+                self.lineEdit.setText(channel.replace(refNamespace, ''))
             else:
                 self.lineEdit.setText(channels[0].rsplit(':', 1)[-1])
         else:
@@ -1333,6 +1338,7 @@ class ObjectSelectLineEdit(QWidget):
         self.stripNamespace = stripNamespace
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
+        self.mainLayout.setAlignment(Qt.AlignLeft)
         self.setLayout(self.mainLayout)
         self.label = QLabel(label)
         # self.label.setFixedWidth(labelWidth)
@@ -1462,6 +1468,7 @@ class intFieldWidget(QWidget):
         if self.optionVar is not None:
             pm.optionVar[self.optionVar] = self.spinBox.value()
         self.changedSignal.emit(self.spinBox.value())
+        print ('interactiveChange', self.spinBox.value())
         self.editedSignalKey.emit(self.key, self.spinBox.value())
 
 
