@@ -675,6 +675,14 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
 
         self.controlsLayout = QVBoxLayout()
+        self.controlsSubLayout = QVBoxLayout()
+        self.controlsSpacerLayout = QVBoxLayout()
+        self.controlsSpacerLayout.addStretch()
+        spacer = QSpacerItem(20, 200, QSizePolicy.MinimumExpanding,QSizePolicy.MinimumExpanding)
+        self.controlsSpacerLayout.addItem(spacer)
+        self.controlsLayout.addLayout(self.controlsSubLayout)
+        self.controlsLayout.addLayout(self.controlsSpacerLayout)
+        self.controlsLayout.setAlignment(Qt.AlignTop)
         self.controlsFrame = QFrame()
         self.controlsScrollArea = QScrollArea()
         self.controlsScrollArea.setWidget(self.controlsFrame)
@@ -805,7 +813,7 @@ class SpaceSwitchSetupUI(QMainWindow):
     def refreshUI(self):
         for key, widget in self.controlWidgets.items():
             if key not in self.spaceData.spaceAttribute.keys():
-                self.controlsLayout.removeWidget(widget)
+                self.controlsSubLayout.removeWidget(widget)
                 self.controlWidgets.pop(key)
                 widget.close()
                 widget.deleteLater()
@@ -815,7 +823,7 @@ class SpaceSwitchSetupUI(QMainWindow):
                 self.controlWidgets[control] = SwitchableObjectWidget(self, control)
                 self.controlWidgets[control].objectDeletedSignal.connect(self.deleteEntry)
 
-                self.controlsLayout.addWidget(self.controlWidgets[control])
+                self.controlsSubLayout.addWidget(self.controlWidgets[control])
         self.controlsLayout.setAlignment(Qt.AlignTop)
 
     def deleteEntry(self, key):
