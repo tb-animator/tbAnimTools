@@ -49,7 +49,7 @@ class ClassFinder(object):
         return ClassFinder.__instance
 
     def __init__(self):
-        pass
+        self.pluginWidget = None
 
     def startup(self):
         self.directory = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +101,7 @@ class ClassFinder(object):
 
         self.loadedClasses['hotkeys'] = hotkeyClasses
         self.loadAllDependentPlugins()
+        return True
 
     def loadAllDependentPlugins(self):
         allPlugins = [x.dependentPlugins for x in self.tools.values()]
@@ -194,7 +195,7 @@ class ClassFinder(object):
         print ('colourAnimLayers')
 
     def installFromZip(self, filename):
-        print ('installFromZip', filename)
+        cmds.warning('installFromZip', filename)
         self.directory = os.path.dirname(os.path.abspath(__file__))
         self.baseDirectory = os.path.split(self.directory)[-1]
         destinationPath = os.path.join(self.directory, self.proToolsBaseDirectory)
@@ -205,11 +206,24 @@ class ClassFinder(object):
         if not os.path.isdir(destinationP3):
             os.mkdir(destinationP3)
         with zipfile.ZipFile(filename, 'r') as zip_ref:
-            print ('destinationPath', destinationPath)
             zip_ref.extractall(destinationPath)
-        self.loadPluginsByClass()
+        loadState = self.loadPluginsByClass()
+        if loadState:
+            message_state = pm.optionVar.get("inViewMessageEnable", 1)
+            pm.optionVar(intValue=("inViewMessageEnable", 1))
+            pm.inViewMessage(amg='tbAnimTools loading complete',
+                             pos='botRight',
+                             dragKill=True,
+                             fadeOutTime=10.0,
+                             fade=False)
+            pm.optionVar(intValue=("inViewMessageEnable", message_state))
+            cmds.warning('tbAnimTools loading complete')
+            try:
+                self.pluginWidget.close()
+            except Exception:
+                pass
 
     def installFromZipUI(self):
-        wd = PluginExtractor(self)
-        wd.show()
-        wd.installSignal.connect(self.installFromZip)
+        self.pluginWidget = PluginExtractor(self)
+        self.pluginWidget.show()
+        self.pluginWidget.installSignal.connect(self.installFromZip)

@@ -637,13 +637,19 @@ class TextInputWidget(QWidget):
     """
     acceptedSignal = Signal(str)
     acceptedComboSignal = Signal(str, str)
+    acceptedKeyComboSignal = Signal(str, str, str)
     acceptedCBSignal = Signal(str, bool)
     rejectedSignal = Signal()
     oldPos = None
 
-    def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(), checkBox=None,
+    def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(),
+                 checkBox=None, overlay=False, showCloseButton=True, key=str(), helpString=None,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
+        self.showCloseButton = showCloseButton
+        self.key=key
+        self.helpString = helpString
+        self.overlay=overlay
         self.setStyleSheet(getqss.getStyleSheet())
         self.checkBox = checkBox
         self.combo = combo
@@ -655,9 +661,13 @@ class TextInputWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(400, 64)
+        #self.setFixedSize(400, 64)
+        titleLayout = QHBoxLayout()
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
+
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
 
         sel = pm.ls(sl=True)
 
@@ -674,15 +684,17 @@ class TextInputWidget(QWidget):
         self.checkBoxWD.setText(self.checkBox)
 
         self.comboBox = QComboBox()
-        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
         for c in self.combo:
             self.comboBox.addItem(c)
+        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
 
         self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
         # layout.addWidget(btnSetFolder)
 
-        mainLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+        mainLayout.addLayout(titleLayout)
         mainLayout.addLayout(layout)
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
@@ -692,6 +704,10 @@ class TextInputWidget(QWidget):
             layout.addWidget(self.checkBoxWD)
         layout.addWidget(self.saveButton)
 
+        if self.helpString:
+            self.helpLabel = QLabel(self.helpString)
+            self.helpLabel.setWordWrap(True)
+            mainLayout.addWidget(self.helpLabel)
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
@@ -706,7 +722,9 @@ class TextInputWidget(QWidget):
         width = self.comboBox.minimumSizeHint().width()
         self.comboBox.view().setMinimumWidth(width)
         self.comboBox.setMinimumWidth(width)
-        self.resize(self.sizeHint())
+        self.closeButton.setVisible(self.showCloseButton)
+        self.resize(400, self.sizeHint().width())
+        #self.setFixedSize(400, 64)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -730,11 +748,14 @@ class TextInputWidget(QWidget):
     def acceptedFunction(self, *args):
         self.acceptedSignal.emit(self.lineEdit.text())
         self.acceptedComboSignal.emit(self.lineEdit.text(), self.comboBox.currentText())
+        self.acceptedKeyComboSignal.emit(self.key, self.lineEdit.text(), self.comboBox.currentText())
         self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
 
     def close(self):
         self.rejectedSignal.emit()
+        if self.overlay:
+            self.parent().close()
         super(TextInputWidget, self).close()
 
     def keyPressEvent(self, event):
@@ -749,6 +770,8 @@ class TextInputWidget(QWidget):
 
     def mouseMoveEvent(self, event):
         if not self.oldPos:
+            return
+        if self.overlay:
             return
         delta = QPoint(event.globalPos() - self.oldPos)
         self.move(self.x() + delta.x(), self.y() + delta.y())
@@ -2231,3 +2254,62 @@ class PluginExtractor(BaseDialog):
                                                        filter='Zip Files (*.zip)')
         if filename:
             self.pathLineEdit.setText(filename)
+
+
+class OverlayContents(QWidget):
+    def __init__(self, parent=None):
+        QWidget.__init__(self, parent)
+
+        self.button = QPushButton("Close Overlay")
+        self.button2 = QPushButton("Close Overlay")
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(self.button)
+        self.layout().addWidget(self.button2)
+
+        self.button.clicked.connect(self.hideOverlay)
+
+    def paintEvent(self, event):
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()), 4, 4)
+        # mask = QRegion(path.toFillPolygon().toPolygon())
+        pen = QPen(Qt.white, .2)
+        linePen = QPen(Qt.white, 2, Qt.SolidLine)
+
+        painter.setPen(linePen)
+        painter.drawLine(0, 0, 200, 200)
+
+        painter.setPen(pen)
+        painter.fillPath(path, Qt.white)
+        painter.drawPath(path)
+        painter.end()
+
+    def hideOverlay(self):
+        self.parent().hide()
+
+
+class Overlay(QWidget):
+    def __init__(self, parent, widget):
+        QWidget.__init__(self, parent)
+        palette = QPalette(self.palette())
+        palette.setColor(palette.Background, Qt.transparent)
+        self.setPalette(palette)
+
+        self.widget = widget
+        self.widget.setParent(self)
+
+    def paintEvent(self, event):
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.fillRect(event.rect(), QBrush(QColor(0, 0, 0, 127)))
+        painter.end()
+
+    def resizeEvent(self, event):
+        position_x = (self.frameGeometry().width() - self.widget.frameGeometry().width()) / 2
+        position_y = (self.frameGeometry().height() - self.widget.frameGeometry().height()) / 2
+
+        self.widget.move(position_x, position_y)
+        event.accept()

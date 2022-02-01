@@ -41,6 +41,7 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
+tbZeroChannelOptionVar = 'tbZeroChannelOptionVar'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -173,9 +174,11 @@ class Manipulators(toolAbstractFactory):
                                                 optionVar='rotate_modes',
                                                 optionList=self.rotate_modes,
                                                 classData=self.modeData)
+        zeroChannelWidget = optionVarBoolWidget('Zero channel hotkeys use channelbox selection', tbZeroChannelOptionVar)
         self.layout.addWidget(infoText)
         self.layout.addWidget(self.translateWidget)
         self.layout.addWidget(self.rotateWidget)
+        self.layout.addWidget(zeroChannelWidget)
 
         self.translateWidget.changedSignal.connect(self.updateOptions)
         self.rotateWidget.changedSignal.connect(self.updateOptions)
@@ -304,6 +307,11 @@ class Manipulators(toolAbstractFactory):
 
     def zero_channel(self, channels, value):
         sel = pm.ls(sl=True)
+        getChannels = self.funcs.getChannels()
+        channelSet = set(channels)
+        if pm.optionVar.get(tbZeroChannelOptionVar, False):
+            if getChannels:
+                channels = getChannels.intersection(channelSet)
 
         for channel in channels:
             for each in sel:
@@ -322,10 +330,10 @@ class Manipulators(toolAbstractFactory):
                     pass
 
     def zero_translates(self):
-        self.zero_channel(["translateX", "translateY", "translateZ"], 0.0)
+        self.zero_channel(["tx", "ty", "tz"], 0.0)
 
     def zero_rotates(self):
-        self.zero_channel(["rotateX", "rotateY", "rotateZ"], 0.0)
+        self.zero_channel(["rx", "ry", "rz"], 0.0)
 
     def zero_scales(self):
-        self.zero_channel(["scaleX", "scaleY", "scaleZ"], 1.0)
+        self.zero_channel(["sx", "sy", "sz"], 1.0)

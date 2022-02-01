@@ -188,7 +188,7 @@ class functions(object):
             """
             # get MObject from root layer name
             sel = om2.MSelectionList()
-            print ('layer', layer)
+            # print ('layer', layer)
             sel.add(layer)
             self.layer = sel.getDependNode(0)
             self.mfnDepNode = om2.MFnDependencyNode(self.layer)
@@ -360,7 +360,7 @@ class functions(object):
                             continue
 
                     # for testing purposes
-                    print('Attribute: %s' % plug)
+                    # print('Attribute: %s' % plug)
 
                     # benchmark_start = time.clock()
                     bestLayer = self.getBestLayerFromPlugAPI(plug)
@@ -369,7 +369,7 @@ class functions(object):
 
                     # for testing purposes
                     try:
-                        print('-> Best layer is %s' % (om.MFnDependencyNode(bestLayer).name()))
+                        print('>> Best layer is {l}'.format(l=om.MFnDependencyNode(bestLayer).name()))
                     except Exception as e:
                         pass
 
@@ -451,12 +451,13 @@ class functions(object):
         overrideState = node.overrideEnabled.get()
         if not overrideState:
             shape = node.getShape()
-            overrideState = shape.overrideEnabled.get()
-            if overrideState:
-                refObj = shape
+            if shape:
+                overrideState = shape.overrideEnabled.get()
+                if overrideState:
+                    refObj = shape
         control.overrideEnabled.set(True)
         if not refObj.overrideRGBColors.get():
-            print ('not using rgb', refObj.overrideColor.get())
+
             if refObj.overrideColor.get() == 0:
                 rgbColour = [125, 125, 125]
             else:
@@ -466,7 +467,7 @@ class functions(object):
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         control.overrideColorRGB.set(rgbColourOut)
-        print ('rgbColourOut', rgbColourOut)
+
         control.overrideRGBColors.set(True)
         # control.overrideColor.set(refObj.overrideColor.get())
         for s in control.getShapes():
@@ -550,7 +551,6 @@ class functions(object):
         return sorted(list(set(keyTimes)))
 
     def getAllAnimatedChannels(self, controls):
-        print ('getAllAnimatedChannels', controls)
         allAttributes = list()
         for c in controls:
             attributes = cmds.listAttr(c, keyable=True, settable=True)
@@ -761,7 +761,7 @@ class functions(object):
                 pm.keyTangent(curve, edit=True, lock=False, time=(e, e),
                               outAngle=tangent[state], inAngle=tangent[not state])
         else:
-            print ("no anim curves found")
+            cmds.warning("no anim curves found")
 
     def getChannels(self, *arg):
         channels = set()
@@ -773,7 +773,6 @@ class functions(object):
                  ]
         for flag in flags:
             ch = cmds.channelBox(mainChannelBox, q=True, **{flag: True})
-            print (flag, ch, channels)
             if ch: channels |= set(ch)
 
         if not len(channels):
@@ -1289,10 +1288,10 @@ class functions(object):
             # For every layer other than the base animation layer, we can just use
             # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
             # broken in Python, so we have to use MEL.
-            print ('getPlugsFromLayer', nodeAttr)
+            # print ('getPlugsFromLayer', nodeAttr)
             cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
-            print (blendNode, 'blendNode')
+            # print (blendNode, 'blendNode')
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
             history = cmds.listHistory(blendNode)
             firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
@@ -1590,8 +1589,8 @@ class functions(object):
         strippedMatches = [c.rsplit(':', 1)[-1] for c in matchingPrefix if st not in c]
         if st in strippedMatches:
             strippedMatches.remove(st)
-        print ('matchingPrefix', matchingPrefix)
-        print ('strippedMatches', strippedMatches)
+        # print ('matchingPrefix', matchingPrefix)
+        # print ('strippedMatches', strippedMatches)
         matches = get_close_matches(st, [x[:len(x) - tailLen] for x in strippedMatches], cutoff=0.5)
         opposites = [m for m in matches if m != st]
 
