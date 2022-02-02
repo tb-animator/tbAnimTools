@@ -178,8 +178,8 @@ class TimeDragger(toolAbstractFactory):
 
     def drag(self, state):
         self.update_options()
-        print (self.get_previous_ctx())
-        print ("state", state)
+        #print (self.get_previous_ctx())
+        #print ("state", state)
         cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=not state)
         if state:
             mel.eval('storeLastAction("restoreLastContext ' + self.get_previous_ctx() + '")')
@@ -206,7 +206,7 @@ class TimeDragger(toolAbstractFactory):
     def warn(self):
         self.failsafe = None
         msg = "you pressed some weird combination of alt or maybe the windows key"
-        print (msg)
+        cmds.warning(msg)
         self.funcs.errorMessage(prefix='Warning',
                                 message=' : %s' % msg,
                                 position='botRight'
@@ -221,7 +221,7 @@ class TimeDragger(toolAbstractFactory):
                 pass
             self.step = pm.optionVar.get(self.stepFrameCount_var, 1)
             self.even_only = pm.optionVar.get(self.step_optionVar, True)
-            print ("step even", self.even_only)
+            #print ("step even", self.even_only)
             cmds.setToolTo(self.step_ctx)
         else:
             mel.eval('invokeLastAction')
@@ -256,6 +256,9 @@ class TimeDragger(toolAbstractFactory):
         return pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.drag, False)])
 
     def info(self):
+        pass
+        '''
         print ("toggle background :", self.toggle_background)
         print ("background state  :", self.background_state)
         print ("previous tool     :", self.previous_tool)
+        '''

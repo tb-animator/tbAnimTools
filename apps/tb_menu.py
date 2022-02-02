@@ -87,7 +87,7 @@ class main_menu(object):
         self.updateMenuItems.append(menu)
 
     def setUpdateMode(self, mode):
-        print ('setUpdateMode', mode)
+        #print ('setUpdateMode', mode)
         pm.optionVar['tbUpdateType'] = mode
         updateMode = pm.optionVar.get('tbUpdateType', 0)
         '''
@@ -124,7 +124,7 @@ def open_anim_page(*args):
 
 
 def licenseNewPlugins(*args):
-    print ("Activate New Plugins")
+    #print ("Activate New Plugins")
     pLookupCLS = ClassFinder()
     pLookupCLS.installFromZipUI()
 

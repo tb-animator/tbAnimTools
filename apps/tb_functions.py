@@ -366,13 +366,13 @@ class functions(object):
                     bestLayer = self.getBestLayerFromPlugAPI(plug)
                     if not bestLayer:
                         continue
-
-                    # for testing purposes
+                    '''
+                    # test
                     try:
                         print('>> Best layer is {l}'.format(l=om.MFnDependencyNode(bestLayer).name()))
                     except Exception as e:
                         pass
-
+                    '''
                     curve = self.getCurvesFromLayerAPI(plug, bestLayer, animLayerCache, baseAnimLayer)
                     # animlayers.cache.benchmark += time.clock() - benchmark_start
                     if curve:
@@ -421,7 +421,7 @@ class functions(object):
         loc.getShape().overrideColorRGB.set(color)
         return loc
 
-    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb'):
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',unlockScale=False):
         drawFunction = {
             'orb': self.drawOrb,
             'cross': self.drawCross,
@@ -430,9 +430,12 @@ class functions(object):
         control.rename(name + '_' + suffix)
 
         control.rotateOrder.set(3)
-        control.scaleX.set(keyable=False, channelBox=True)
-        control.scaleY.set(keyable=False, channelBox=True)
-        control.scaleZ.set(keyable=False, channelBox=True)
+        control.scaleX.set(channelBox=True)
+        control.scaleY.set(channelBox=True)
+        control.scaleZ.set(channelBox=True)
+        control.scaleX.set(keyable=unlockScale)
+        control.scaleY.set(keyable=unlockScale)
+        control.scaleZ.set(keyable=unlockScale)
         shape.overrideEnabled.set(True)
         shape.overrideRGBColors.set(True)
         shape.overrideColorRGB.set(color)

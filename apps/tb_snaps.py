@@ -269,7 +269,7 @@ class SnapTools(toolAbstractFactory):
 
     def restore_relative_transform(self, parent, targets):
         channels = self.funcs.getChannels()
-        print ('channels', channels)
+        #print ('channels', channels)
         self.init_relative_transform_key(parent)
 
         startTime = cmds.currentTime(query=True)

@@ -33,6 +33,7 @@ import getStyleSheet as getqss
 import json
 from Abstract import *
 from tb_UI import *
+from collections import deque
 
 defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
 
@@ -342,49 +343,72 @@ class PickwalkCreator(object):
                          endOnSelf=False):
         if not controls:
             return cmds.error('no nodes defined for walk')
+
+        #print ('addPickwalkChain')
+
         if not isinstance(controls, list):
             controls = [controls]
         controls = [c.split(':')[-1] for c in controls]
-        reciprocalIndexes = [None] * len(controls)
-        destinationIndexes = [None] * len(controls)
-        # print destinationIndexes
-        # get the corresponding walk indexes
-        for index, value in enumerate(controls):
-            # if this is the last index, pick to loop or not
-            if index == (len(controls) - 1):
-                if loop:
-                    # print 'loop', index, (index + 1) % len(nodes)
-                    destinationIndexes[index] = (index + 1) % len(controls)
 
-                elif endOnSelf:
-                    # not looping so set the node to end at this object
-                    destinationIndexes[index] = index
-            else:
-                # print 'meh', index, index + 1
-                destinationIndexes[index] = index + 1
-            # get reciprocal indexes
-            if index == 0:
-                if loop:
-                    reciprocalIndexes[index] = len(controls) - 1
-            else:
-                reciprocalIndexes[index] = index - 1
+        firstControl = controls[0]
+        lastControl = controls[-1]
+        opposite = self.reciprocalDirectionsDict[direction]
+        firstContolInTarget = self.walkData.objectDict.get(firstControl,
+                                                           WalkDirectionDict()).__dict__.get(opposite, None)
+        lastControlOutTarget = self.walkData.objectDict.get(lastControl,
+                                                            WalkDirectionDict()).__dict__.get(direction, None)
+        '''
+        print (firstControl, firstContolInTarget)
+        print (lastControl, lastControlOutTarget)
+        print (str(lastControlOutTarget) == "(None,)")
+        '''
+        fwdControls = [c for c in controls]
+        bwdControls = [c for c in controls]
+        fwdControls.append(fwdControls.pop(0))
+        bwdControls.insert(0, bwdControls.pop(-1))
+        '''
+        print ('loop state', loop)
+        print ('endOnSelf state', endOnSelf)
+        '''
+        if not loop:
+            fwdControls.pop(-1)
+            fwdControls.append(None)
+            bwdControls.pop(0)
+            bwdControls.insert(0, None)
 
-        infoNodes = [None] * len(controls)
-        for index, value in enumerate(controls):
-            infoNodes[index] = value
+        if endOnSelf:
+            fwdControls.pop(-1)
+            fwdControls.append(controls[-1])
 
-        for index, value in enumerate(controls):
-            # get the next index and connect it up to this if reciprocating
-            if destinationIndexes[index] is not None:
-                self.setControlDestination(value,
+        if lastControlOutTarget:
+            fwdControls.pop(-1)
+            fwdControls.append(None)
+
+        if firstContolInTarget:
+            bwdControls.pop(0)
+            bwdControls.insert(0, None)
+
+        #print (controls)
+        #print (fwdControls)
+        #print (fwdControls)
+        for control, fwdTarget, bwdTarget in zip(controls, fwdControls, bwdControls):
+            '''
+            print (control, direction, 'to', fwdTarget)
+            print (control, opposite, 'to', bwdTarget)
+            print ('')
+            '''
+            if fwdTarget is not None:
+                self.setControlDestination(control,
                                            direction=direction,
-                                           destination=infoNodes[destinationIndexes[index]])
-        if reciprocate:
-            for index, value in enumerate(reciprocalIndexes):
-                if value is not None:
-                    self.setControlDestination(controls[index],
-                                               direction=self.reciprocalDirectionsDict[direction],
-                                               destination=infoNodes[value])
+                                           destination=fwdTarget)
+            if not reciprocate:
+                continue
+            if bwdTarget is None:
+                continue
+            self.setControlDestination(control,
+                                       direction=opposite,
+                                       destination=bwdTarget)
+
 
     def getNodeInfoFromRig(self, control):
         """
@@ -1013,18 +1037,25 @@ class Pickwalk(toolAbstractFactory):
 
         if not condition:
             if len(sel) == 1:
-                sel.append(sel[0])
-            if len(sel) == 2:
+                self.pickwalkCreator.setControlDestination(sel[0],
+                                                           direction=direction,
+                                                           destination=sel[0])
+            elif len(sel) == 2:
                 # 2 objects - create single direction pickwalk
+                '''
                 self.pickwalkCreator.setControlDestination(sel[0],
                                                            direction=direction,
                                                            destination=sel[1])
+                '''
                 if direction != 'up':
                     # if left or right, create the reverse
-                    self.pickwalkCreator.setControlDestination(sel[1],
-                                                               direction=self.pickwalkCreator.reciprocalDirectionsDict[
-                                                                   direction],
-                                                               destination=sel[0])
+                    self.pickwalkCreator.addPickwalkChain(
+                        controls=sel,
+                        direction=direction,
+                        loop=direction == 'left' or direction == 'right',
+                        reciprocate=True,
+                        endOnSelf=False)
+
             elif len(sel) > 2:
                 # add all objects in a chain
                 self.pickwalkCreator.addPickwalkChain(
@@ -1032,7 +1063,7 @@ class Pickwalk(toolAbstractFactory):
                     direction=direction,
                     loop=direction == 'left' or direction == 'right',
                     reciprocate=True,
-                    endOnSelf=direction == 'down')
+                    endOnSelf=False)
         else:
             if len(sel) == 1 or len(sel) == 2:
                 dlg = PickwalkNewConditionPopup()
@@ -1113,6 +1144,13 @@ class Pickwalk(toolAbstractFactory):
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         return refName
 
+    def queryNewRig(self, refName):
+        if refName in self.walkDataLibrary._fileToMapDict.keys():
+            return
+        if refName in self.walkDataLibrary.ignoredRigs:
+            return
+        self.queryWalkOnNewRig(refName)
+
     def dataDrivenWalk(self, direction, refName, walkObject):
         returnedControls = list()
         walkObjectStripped = walkObject.stripNamespace()
@@ -1168,6 +1206,7 @@ class Pickwalk(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected')
+
         self.loadLibraryForCurrent()
         self.pickwalkCreator.quickDownToMulti()
         self.saveLibrary()
@@ -1372,6 +1411,20 @@ class Pickwalk(toolAbstractFactory):
     Functions moved from mainwindow to here
     """
 
+    def getReferenceName(self, sel):
+        refName = None
+        if sel:
+            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            if refState:
+                # if it is referenced, check against pickwalk library entries
+                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
+            else:
+                # might just be working in the rig file itself
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        else:
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        return refName
+
     def getCurrentRig(self):
         refName = None
         mapName = None
@@ -1392,12 +1445,17 @@ class Pickwalk(toolAbstractFactory):
         if refName in self.walkDataLibrary._fileToMapDict.keys():
             mapName = self.walkDataLibrary._fileToMapDict[refName]
             fname = os.path.join(self.defaultPickwalkDir, mapName + '.json')
+
         return fname
 
     def loadLibraryForCurrent(self):
         fname = self.getCurrentRig()
         if not fname:
-            fname = self.browseToFile()
+            sel = cmds.ls(sl=True)
+            if not sel:
+                return None
+            refName = self.getReferenceName(sel)
+            self.queryNewRig(refName)
         if not fname:
             return None
 
@@ -1517,9 +1575,9 @@ class WalkDirectionDict(object):
                  right=None,
                  up=None,
                  down=None):
-        self.left = left,
-        self.right = right,
-        self.up = up,
+        self.left = left
+        self.right = right
+        self.up = up
         self.down = down
 
     def __setitem__(self, key, value):
@@ -1687,6 +1745,7 @@ class DirectionPickButton(QWidget):
 
     def sendPickedSignal(self):
         self.pressedSignal.emit(self.lineEdit.text(), self.direction)
+
 
 class ChainPickButton(QWidget):
     pressedSignal = Signal(bool, bool)
@@ -3679,6 +3738,7 @@ class mirrorPickwalkWidget(QFrame):
         self.fromInput.setText(self.fromInputOption)
         self.toInput.setText(self.toInputOption)
         self.blockSignals(False)
+
     def sendMirrorSignal(self):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
 
@@ -4131,7 +4191,6 @@ class pickwalkMainWindow(QMainWindow):
 
         self.setTitleLabel(fname)
 
-
     def setTitleLabel(self, fname):
         if isinstance(fname, list):
             fname = fname[0]
@@ -4210,7 +4269,6 @@ class pickwalkMainWindow(QMainWindow):
         self.mainPickWidget.displayCurrentData(self.pickwalkCreator.walkData, self.activeObject)
         self.updateTreeView()
         self.mirrorWidget.updateMirrorLabels()
-
 
     def keyPressEvent(self, event):
         # print("That's a press!")

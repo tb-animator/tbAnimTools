@@ -323,7 +323,7 @@ class KeyModifiers(toolAbstractFactory):
         for curve in selectedCurves:
             selectedKeyTimes = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
             selectedKeyValues = cmds.keyframe(curve, query=True, selected=True, valueChange=True)
-            print (curve, selectedKeyTimes)
+            #print (curve, selectedKeyTimes)
             pivotValue = 0
             if first:
                 pivotValue = selectedKeyValues[0]

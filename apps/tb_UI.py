@@ -638,18 +638,21 @@ class TextInputWidget(QWidget):
     acceptedSignal = Signal(str)
     acceptedComboSignal = Signal(str, str)
     acceptedKeyComboSignal = Signal(str, str, str)
+    acceptedKeySubComboSignal = Signal(str, str, str)
     acceptedCBSignal = Signal(str, bool)
     rejectedSignal = Signal()
     oldPos = None
 
     def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(),
-                 checkBox=None, overlay=False, showCloseButton=True, key=str(), helpString=None,
+                 checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
+                 helpString=None,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
-        self.key=key
+        self.key = key
+        self.subKey = subKey
         self.helpString = helpString
-        self.overlay=overlay
+        self.overlay = overlay
         self.setStyleSheet(getqss.getStyleSheet())
         self.checkBox = checkBox
         self.combo = combo
@@ -661,7 +664,7 @@ class TextInputWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        #self.setFixedSize(400, 64)
+        # self.setFixedSize(400, 64)
         titleLayout = QHBoxLayout()
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
@@ -723,8 +726,8 @@ class TextInputWidget(QWidget):
         self.comboBox.view().setMinimumWidth(width)
         self.comboBox.setMinimumWidth(width)
         self.closeButton.setVisible(self.showCloseButton)
-        self.resize(400, self.sizeHint().width())
-        #self.setFixedSize(400, 64)
+        self.resize(self.sizeHint())
+        # self.setFixedSize(400, 64)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -749,6 +752,7 @@ class TextInputWidget(QWidget):
         self.acceptedSignal.emit(self.lineEdit.text())
         self.acceptedComboSignal.emit(self.lineEdit.text(), self.comboBox.currentText())
         self.acceptedKeyComboSignal.emit(self.key, self.lineEdit.text(), self.comboBox.currentText())
+        self.acceptedKeySubComboSignal.emit(self.key, self.lineEdit.text(), self.subKey)
         self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
 
@@ -779,6 +783,7 @@ class TextInputWidget(QWidget):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
 
 class ChannelInputWidget(QWidget):
     """
@@ -887,6 +892,7 @@ class ChannelInputWidget(QWidget):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
+
 
 class ObjectInputWidget(QWidget):
     """
@@ -1142,7 +1148,7 @@ class optionVarBoolWidget(optionVarWidget):
         QWidget.__init__(self)
         self.optionVar = optionVar
         self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
         self.checkBox = QCheckBox()
@@ -1277,7 +1283,7 @@ class ChannelSelectLineEdit(QWidget):
         if refState:
             if self.stripNamespace:
                 refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
-                print ('refNamespace', refNamespace)
+                # print ('refNamespace', refNamespace)
                 if refNamespace.startswith(':'):
                     refNamespace = refNamespace[1:]
                 channel = channels[0]
@@ -1491,7 +1497,7 @@ class intFieldWidget(QWidget):
         if self.optionVar is not None:
             pm.optionVar[self.optionVar] = self.spinBox.value()
         self.changedSignal.emit(self.spinBox.value())
-        print ('interactiveChange', self.spinBox.value())
+        # print ('interactiveChange', self.spinBox.value())
         self.editedSignalKey.emit(self.key, self.spinBox.value())
 
 
@@ -2308,6 +2314,7 @@ class Overlay(QWidget):
         painter.end()
 
     def resizeEvent(self, event):
+        print ('overlay ResizeEvent')
         position_x = (self.frameGeometry().width() - self.widget.frameGeometry().width()) / 2
         position_y = (self.frameGeometry().height() - self.widget.frameGeometry().height()) / 2
 
