@@ -645,10 +645,14 @@ class TextInputWidget(QWidget):
 
     def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(),
                  checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
+                 objectLineEdit=False,
                  helpString=None,
+                 parentWidget=None,
+                 lineEditPlaceholder=str(),
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(TextInputWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
+        self.parentWidget = parentWidget
         self.key = key
         self.subKey = subKey
         self.helpString = helpString
@@ -677,11 +681,7 @@ class TextInputWidget(QWidget):
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
         self.text = QLabel(label)
-        self.lineEdit = QLineEdit(default)
-        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
-        reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
-        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
-        self.lineEdit.setValidator(input_validator)
+
 
         self.checkBoxWD = QCheckBox()
         self.checkBoxWD.setText(self.checkBox)
@@ -700,7 +700,19 @@ class TextInputWidget(QWidget):
         mainLayout.addLayout(titleLayout)
         mainLayout.addLayout(layout)
         layout.addWidget(self.text)
-        layout.addWidget(self.lineEdit)
+
+        if objectLineEdit:
+            objLineEdit = ObjectSelectLineEdit(stripNamespace=True, placeholderTest=lineEditPlaceholder)
+            self.lineEdit = objLineEdit.itemLabel
+            layout.addWidget(objLineEdit)
+        else:
+            self.lineEdit = QLineEdit(default)
+            self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+            reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
+            input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+            self.lineEdit.setValidator(input_validator)
+
+            layout.addWidget(self.lineEdit)
         if len(self.combo):
             layout.addWidget(self.comboBox)
         if self.checkBox is not None:
@@ -784,6 +796,175 @@ class TextInputWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
+    def show(self):
+        position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
+        position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
+
+        self.move(position_x, position_y)
+        super(TextInputWidget, self).show()
+
+class InfoPromptWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(str)
+    acceptedComboSignal = Signal(str, str)
+    acceptedKeyComboSignal = Signal(str, str, str)
+    acceptedKeySubComboSignal = Signal(str, str, str)
+    acceptedCBSignal = Signal(str, bool)
+    rejectedSignal = Signal()
+    oldPos = None
+
+    def __init__(self, title=str(), label=str(), buttonText=str(), default=str(), combo=list(),
+                 checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
+                 helpString=None,
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+        super(InfoPromptWidget, self).__init__(parent=parent)
+        self.showCloseButton = showCloseButton
+        self.key = key
+        self.subKey = subKey
+        self.helpString = helpString
+        self.overlay = overlay
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.checkBox = checkBox
+        self.combo = combo
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        # self.setFixedSize(400, 64)
+        titleLayout = QHBoxLayout()
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel(title)
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel(label)
+        self.lineEdit = QLineEdit(default)
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
+        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+        self.lineEdit.setValidator(input_validator)
+
+        self.checkBoxWD = QCheckBox()
+        self.checkBoxWD.setText(self.checkBox)
+
+        self.comboBox = QComboBox()
+        for c in self.combo:
+            self.comboBox.addItem(c)
+        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
+
+        self.saveButton = QPushButton(buttonText)
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        self.saveButton.clicked.connect(self.acceptedFunction)
+        # layout.addWidget(btnSetFolder)
+
+        self.helpLabel = QLabel(self.helpString)
+        self.helpLabel.setWordWrap(True)
+
+
+        titleLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+        mainLayout.addLayout(titleLayout)
+        mainLayout.addLayout(layout)
+        #layout.addWidget(self.text)
+        #layout.addWidget(self.lineEdit)
+        if len(self.combo):
+            layout.addWidget(self.comboBox)
+        if self.checkBox is not None:
+            layout.addWidget(self.checkBoxWD)
+        if self.helpString:
+            mainLayout.addWidget(self.helpLabel)
+        mainLayout.addWidget(self.saveButton)
+
+
+
+        self.setLayout(mainLayout)
+        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.show()
+        self.lineEdit.setFocus()
+        self.setStyleSheet(
+            "TextInputWidget { "
+            "border-radius: 8;"
+            "}"
+        )
+        width = self.comboBox.minimumSizeHint().width()
+        self.comboBox.view().setMinimumWidth(width)
+        self.comboBox.setMinimumWidth(width)
+        self.closeButton.setVisible(self.showCloseButton)
+        self.resize(self.sizeHint())
+        # self.setFixedSize(400, 64)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.text())
+        self.acceptedComboSignal.emit(self.lineEdit.text(), self.comboBox.currentText())
+        self.acceptedKeyComboSignal.emit(self.key, self.lineEdit.text(), self.comboBox.currentText())
+        self.acceptedKeySubComboSignal.emit(self.key, self.lineEdit.text(), self.subKey)
+        self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
+        self.close()
+
+    def close(self):
+        self.rejectedSignal.emit()
+        if self.overlay:
+            self.parent().close()
+        super(InfoPromptWidget, self).close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.acceptedFunction()
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(InfoPromptWidget, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        if self.overlay:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+
+    def show(self):
+        position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
+        position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
+
+        self.move(position_x, position_y)
+        super(InfoPromptWidget, self).show()
 
 class ChannelInputWidget(QWidget):
     """
@@ -1383,6 +1564,7 @@ class ObjectSelectLineEdit(QWidget):
         self.mainLayout.addWidget(self.itemLabel)
 
     def pickObject(self):
+        print ('pickObject')
         sel = pm.ls(sl=True)
         if not sel:
             return
