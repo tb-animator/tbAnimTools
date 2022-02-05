@@ -1428,7 +1428,7 @@ class ChannelSelectLineEdit(QWidget):
     editedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
 
-    def __init__(self, key=str(), text=str, tooltip=str(), placeholderTest=str(), stripNamespace=False):
+    def __init__(self, key=str(), text=str, tooltip=str(), lineEditWidth=200, placeholderTest=str(), stripNamespace=False):
         super(ChannelSelectLineEdit, self).__init__()
         self.stripNamespace = stripNamespace
         self.key = key
@@ -1438,12 +1438,14 @@ class ChannelSelectLineEdit(QWidget):
         self.setLayout(self.mainLayout)
         self.label = QLabel(text)
         self.lineEdit = QLineEdit()
+        self.lineEdit.setFixedWidth(lineEditWidth)
         self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(tooltip)
         self.cle_action_pick.triggered.connect(self.pickChannel)
         self.lineEdit.setPlaceholderText(placeholderTest)
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
         self.mainLayout.addWidget(self.label)
+        self.mainLayout.addStretch()
         self.mainLayout.addWidget(self.lineEdit)
 
         self.label.setFixedWidth(60)
@@ -1564,7 +1566,7 @@ class ObjectSelectLineEdit(QWidget):
         self.mainLayout.addWidget(self.itemLabel)
 
     def pickObject(self):
-        print ('pickObject')
+        #print ('pickObject')
         sel = pm.ls(sl=True)
         if not sel:
             return

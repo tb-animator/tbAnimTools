@@ -560,6 +560,81 @@ class functions(object):
             allAttributes.extend([c + '.' + a for a in attributes])
         return allAttributes
 
+    def getIntermediateNodes(self, topObject=None, bottomObject=None):
+        oobjectList = []
+        if isinstance(topObject, str):
+            topObject = pm.PyNode(topObject)
+
+        if isinstance(bottomObject, str):
+            bottomObject = pm.PyNode(bottomObject)
+        j = pm.PyNode(bottomObject)
+
+        if topObject and bottomObject:
+            while j is not topObject and j.getParent():
+                oobjectList.insert(0, j)
+                if j == topObject:
+                    break
+                else:
+                    j = j.getParent()
+        return oobjectList
+
+    def sortByParents(self, selection):
+        selection = [pm.PyNode(x) for x in selection]
+        parentDict = {}
+        for x in selection:
+            allParents = x.getAllParents()[::-1]
+            parentDict[x] = allParents
+
+        mostParentKeys = sorted(parentDict, key=lambda k: len(parentDict[k]), reverse=True)
+        leastParentKeys = sorted(parentDict, key=lambda k: len(parentDict[k]))
+
+        returnedList = [x for x in selection]
+        for key in leastParentKeys:
+            found = False
+            for p in mostParentKeys:
+                if found:
+                    continue
+                if p not in parentDict[key]:
+                    continue
+                if p in selection:
+                    found = True
+                    returnedList.insert(returnedList.index(p)+1, returnedList.pop(returnedList.index(key)))
+                if not found:
+                    returnedList.insert(0, returnedList.pop(returnedList.index(key)))
+
+        return returnedList
+
+    def splitSelectionToChains(self, selection, requiresParent=True, returnTopParent=False):
+        selection = [pm.PyNode(x) for x in selection]
+        outputDict = {}
+
+        parentDict = {}
+        # get all object parents for all objects
+        for x in selection:
+            allParents = x.getAllParents()[::-1]
+            parentDict[x] = allParents
+
+        mostParentKeys = sorted(parentDict, key=lambda k: len(parentDict[k]), reverse=True)
+        leastParentKeys = sorted(parentDict, key=lambda k: len(parentDict[k]))
+
+        discardedIntermediates = list()
+        for key in mostParentKeys:
+            found = False
+            if key in discardedIntermediates:
+                continue
+            for p in leastParentKeys:
+                if found:
+                    continue
+                if p not in parentDict[key]:
+                    continue
+                found = True
+                intermediateObjects = self.getIntermediateNodes(topObject=p, bottomObject=key)
+                discardedIntermediates.extend(intermediateObjects)
+                if returnTopParent:
+                    intermediateObjects.insert(0, intermediateObjects[0].getParent())
+                outputDict[str(p)] = [str(o) for o in intermediateObjects]
+        return outputDict
+
     @staticmethod
     def get_all_curves(node=pm.ls(selection=True)):
         if node:
@@ -1023,24 +1098,28 @@ class functions(object):
         pass
 
     # yellow info prefix highlighting
-    def infoMessage(self, position="botRight", prefix="", message="", fadeStayTime=2.0, fadeOutTime=2.0, fade=True):
+    def infoMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30, fade=True):
         prefix = '<hl>%s</hl>' % prefix
         self.enable_messages()
         pm.inViewMessage(amg=prefix + message,
                          pos=position,
+                         fadeInTime=fadeInTime,
                          fadeStayTime=fadeStayTime,
                          fadeOutTime=fadeOutTime,
+                         dragKill=True,
                          fade=fade)
         self.disable_messages()
 
     # prefix will be highlighted in red!
-    def errorMessage(self, position="botRight", prefix="", message="", fadeStayTime=0.5, fadeOutTime=4.0, fade=True):
+    def errorMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30, fade=True):
         # self.optionVar_name = "inViewMessageEnable"
         # self.optionVar_name = Message().optionVar_name
         prefix = '<span %s>%s</span>' % (self.messageColours['red'], prefix)
         self.enable_messages()
         pm.inViewMessage(amg='%s : %s' % (prefix, message),
                          pos=position,
+                         fadeInTime=fadeInTime,
+                         fadeStayTime=fadeStayTime,
                          fadeOutTime=fadeOutTime,
                          dragKill=True,
                          fade=fade)
