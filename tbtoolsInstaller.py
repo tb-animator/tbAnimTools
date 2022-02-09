@@ -35,6 +35,7 @@ import io
 from functools import partial
 
 import maya.OpenMayaUI as omUI
+import traceback
 qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
 
 def getStyleSheet():
@@ -43,7 +44,7 @@ def getStyleSheet():
         st = str(stream.readAll())
         stream.close()
     else:
-        print(stream.errorString())
+        cmds.warning(stream.errorString())
     return st
 
 qtVersion = pm.about(qtVersion=True)
@@ -73,7 +74,7 @@ class module_maker():
                         }
         self.win_versions = ['win32', 'win64'][pm.about(is64=True)]
         self.maya_version = pm.about(version=True)
-        self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
+        self.filepath = os.path.normpath(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))).replace("\\","/") # script directory
         self.python_paths = ['', 'apps', 'proApps/Python3', 'proApps/Python2']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
         self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
@@ -86,7 +87,7 @@ class module_maker():
         self.firstInstall = False
 
     def maya_module_dir(self):
-        return os.path.join(pm.internalVar(userAppDir=True) + "modules\\")
+        return os.path.normpath(os.path.join(pm.internalVar(userAppDir=True), "modules"))
 
     def module_path(self):
         return os.path.join(self.maya_module_dir(), self.module_file)
@@ -97,11 +98,11 @@ class module_maker():
                       + ' MAYAVERSION:' \
                       + self.maya_version \
                       + ' tbAnimTools 1.0 ' \
-                      + self.filepath + '\\'
+                      + self.filepath.replace("\\","/") + '/'
         return module_path
 
     def make_core_module_path_data(self):
-        module_path = '+  tbAnimTools 1.0 ' + self.filepath + '\\'
+        module_path = '+  tbAnimTools 1.0 ' + self.filepath.replace("\\","/") + '/'
         return module_path
 
     def make_core_module_data(self):
@@ -122,7 +123,7 @@ class module_maker():
 
         for paths in self.maya_plugin_paths:
             out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
-        print ('make_module_data', out_lines)
+        #print ('make_module_data', out_lines)
         return out_lines
 
     def write_module_file(self):
@@ -131,6 +132,7 @@ class module_maker():
         # shutil.copyfile(self.module_template, mod_file)
         if not self.current_module_data:
             return cmds.error('no module data to write')
+        os.chmod(os.path.join(self.module_path()), 766)
         if os.access(os.path.join(self.module_path()), os.W_OK):
             with io.open(self.module_path(), 'w') as f:
                 f.writelines(line + u'\n' for line in self.current_module_data)
@@ -149,7 +151,7 @@ class module_maker():
             for lineIndex, line in enumerate(self.current_module_data):
                 if line.startswith('+ PLATFORM'):
                     # finding a new block
-                    existingVersions.append(line)
+                    existingVersions.append(line.replace("\\","/"))
                 if 'PLATFORM:%s' % self.win_versions and 'MAYAVERSION:%s' % self.maya_version in line:
                     match = True
 
@@ -226,7 +228,7 @@ class module_maker():
         pm.showWindow(window)
 
 class installer():
-    filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "\\"  # script directory
+    filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))).replace("\\","/")  # script directory
     iconPath = os.path.join(filepath, 'Icons')
     appPath = os.path.join(filepath, 'apps')
     colours = {'red': "color:#F05A5A;",
