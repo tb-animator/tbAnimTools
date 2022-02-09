@@ -220,6 +220,8 @@ class ClassFinder(object):
             cmds.warning('tbAnimTools loading complete')
             try:
                 self.pluginWidget.close()
+                import tb_menu as tb_menu
+                tb_menu.make_ui()
             except Exception:
                 pass
 
