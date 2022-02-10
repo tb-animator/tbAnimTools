@@ -46,6 +46,7 @@ import getStyleSheet as getqss
 import os
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
+
 baseIconFile = 'checkBox.png'
 
 
@@ -631,6 +632,12 @@ class QTreeSingleViewWidget(QFrame):
     def itemChanged(self, item):
         self.itemChangedSignal.emit(item.text())
 
+    def selectItem(self, itemText):
+        for item in self.model.findItems(itemText):
+            ix = self.model.indexFromItem(item)
+            sm = self.listView.selectionModel()
+            sm.select(ix, QItemSelectionModel.Select)
+            return
 
 class TextInputWidget(QWidget):
     """
@@ -689,7 +696,7 @@ class TextInputWidget(QWidget):
         self.comboBox = QComboBox()
         for c in self.combo:
             self.comboBox.addItem(c)
-        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
+        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width() + 32)
 
         self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
@@ -726,8 +733,8 @@ class TextInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
-        self.show()
+        #self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+
         self.lineEdit.setFocus()
         self.setStyleSheet(
             "TextInputWidget { "
@@ -739,6 +746,7 @@ class TextInputWidget(QWidget):
         self.comboBox.setMinimumWidth(width)
         self.closeButton.setVisible(self.showCloseButton)
         self.resize(self.sizeHint())
+        self.show()
         # self.setFixedSize(400, 64)
 
     def paintEvent(self, event):
@@ -820,10 +828,13 @@ class InfoPromptWidget(QWidget):
                  checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
                  helpString=None,
                  image=str(),
+                 imagePath=IconPath,
                  gif=bool,
+                 error=False,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(InfoPromptWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
+        self.error=error
         self.key = key
         self.subKey = subKey
         self.helpString = helpString
@@ -852,13 +863,14 @@ class InfoPromptWidget(QWidget):
         if image:
             self.imageLabel = QLabel(self)
             if gif:
-                self.movie = QMovie(os.path.join(IconPath, 'Help', image))
+                print ('final path', os.path.join(imagePath, image))
+                self.movie = QMovie(os.path.join(imagePath, image))
 
                 self.imageLabel.setMovie(self.movie)
                 self.movie.start()
 
             else:
-                self.imagePixmap = QPixmap(os.path.join(IconPath, 'Help', image))
+                self.imagePixmap = QPixmap(os.path.join(imagePath, image))
                 self.imageLabel.setPixmap(self.imagePixmap)
 
         self.titleText = QLabel(title)
@@ -923,7 +935,10 @@ class InfoPromptWidget(QWidget):
         qp = QPainter()
         qp.begin(self)
 
-        lineColor = QColor(68, 68, 68, 128)
+        if self.error:
+            lineColor = QColor(240, 68, 68, 128)
+        else:
+            lineColor = QColor(68, 240, 68, 128)
 
         # qp.setCompositionMode(qp.CompositionMode_Clear)
         qp.setCompositionMode(qp.CompositionMode_Source)
@@ -951,6 +966,7 @@ class InfoPromptWidget(QWidget):
         if self.overlay:
             self.parent().close()
         super(InfoPromptWidget, self).close()
+        self.deleteLater()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
@@ -1521,6 +1537,9 @@ class ChannelSelectLineEditEnforced(ChannelSelectLineEdit):
         self.lineEdit.setStyleSheet(getqss.getStyleSheet())
 
     def validateText(self):
+        if not '.' in self.lineEdit.text():
+            self.errorHighlight()
+            return
         node, attr = str(self.baseNamespace + ':' + self.lineEdit.text()).split('.')
         if not cmds.objExists(node):
             self.errorHighlight()
