@@ -117,6 +117,7 @@ class toolAbstractFactory(ABC):
     dependentPlugins = list()
     deferredLoadJob = None
     deferredLoadDone = False
+    rootDirectory = os.path.dirname(__file__)
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
