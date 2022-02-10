@@ -863,7 +863,6 @@ class InfoPromptWidget(QWidget):
         if image:
             self.imageLabel = QLabel(self)
             if gif:
-                print ('final path', os.path.join(imagePath, image))
                 self.movie = QMovie(os.path.join(imagePath, image))
 
                 self.imageLabel.setMovie(self.movie)
@@ -2645,7 +2644,6 @@ class Overlay(QWidget):
         painter.end()
 
     def resizeEvent(self, event):
-        print ('overlay ResizeEvent')
         position_x = (self.frameGeometry().width() - self.widget.frameGeometry().width()) / 2
         position_y = (self.frameGeometry().height() - self.widget.frameGeometry().height()) / 2
 
