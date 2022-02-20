@@ -29,6 +29,7 @@ import maya.OpenMayaUI as omUI
 import pymel.core as pm
 from functools import partial
 import subprocess
+from maya.app.general.menuItemToShelf import menuItemToShelf
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -639,6 +640,7 @@ class QTreeSingleViewWidget(QFrame):
             sm.select(ix, QItemSelectionModel.Select)
             return
 
+
 class TextInputWidget(QWidget):
     """
     Simple prompt with text input
@@ -733,7 +735,7 @@ class TextInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        #self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
 
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -834,7 +836,7 @@ class InfoPromptWidget(QWidget):
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(InfoPromptWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
-        self.error=error
+        self.error = error
         self.key = key
         self.subKey = subKey
         self.helpString = helpString
@@ -873,6 +875,7 @@ class InfoPromptWidget(QWidget):
                 self.imageLabel.setPixmap(self.imagePixmap)
 
         self.titleText = QLabel(title)
+        self.titleText.setStyleSheet("font-weight: bold; font-size: 16px;")
         self.titleText.setAlignment(Qt.AlignCenter)
         self.text = QLabel(label)
         self.lineEdit = QLineEdit(default)
@@ -1111,12 +1114,14 @@ class ObjectInputWidget(QWidget):
     Simple prompt with text input
     """
     acceptedSignal = Signal(str)
+    acceptedDataSignal = Signal(str, list)
     oldPos = None
 
-    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
+    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept", data=None, objectType='nurbsCurve'):
         super(ObjectInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
-
+        self.data=data
+        self.objectType=objectType
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -1124,6 +1129,7 @@ class ObjectInputWidget(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.windowFlags()
         self.setWindowTitle('Custom')
+
         self.setFocusPolicy(Qt.StrongFocus)
         self.setFixedSize(300, 64)
         mainLayout = QVBoxLayout()
@@ -1187,14 +1193,28 @@ class ObjectInputWidget(QWidget):
         sel = pm.ls(sl=True)
         if not sel:
             return
-        shape = sel[0].getShape()
-        if not shape:
-            return
-        if pm.nodeType(shape) == "nurbsCurve":
+
+        if self.objectType == "nurbsCurve":
+            shape = sel[0].getShape()
+            if not shape:
+                return
+            if pm.nodeType(shape) == "nurbsCurve":
+                self.lineEdit.setText(str(sel[0]))
+        elif self.objectType == "nurbsSurface":
+            shape = sel[0].getShape()
+            if not shape:
+                return
+            if pm.nodeType(shape) == "nurbsSurface":
+                self.lineEdit.setText(str(sel[0]))
+        elif self.objectType == "transform":
+            if not cmds.objectType(str(sel[0])) == 'transform':
+                return
             self.lineEdit.setText(str(sel[0]))
+
 
     def acceptedFunction(self, *args):
         self.acceptedSignal.emit(self.lineEdit.text())
+        self.acceptedDataSignal.emit(self.lineEdit.text(), self.data)
         self.close()
 
     def keyPressEvent(self, event):
@@ -1965,6 +1985,19 @@ class LicenseWin(BaseDialog):
         widget.setStyleSheet(getqss.getStyleSheet())
 
 
+class WarningDialog(BaseDialog):
+    assignSignal = Signal(str)
+
+    def __init__(self, parent=None, title='title!!!?', text='what  what?'):
+        super(WarningDialog, self).__init__(parent=parent, title=title, text=text)
+        self.setFixedWidth(200)
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.mainLayout.addWidget(self.buttonBox)
+
+
 class PickObjectDialog(BaseDialog):
     assignSignal = Signal(str)
 
@@ -2231,6 +2264,7 @@ class MiniButton(QPushButton):
         self.setStyleSheet("background-color: transparent;border: 0px")
         self.setStyleSheet(getqss.getStyleSheet())
 
+
 class HelpButton(QPushButton):
     def __init__(self, toolTip='Help', width=32, height=32):
         super(HelpButton, self).__init__()
@@ -2246,6 +2280,93 @@ class HelpButton(QPushButton):
         self.setToolTip(toolTip)
         self.setStyleSheet("background-color: transparent;border: 0px")
         self.setStyleSheet(getqss.getStyleSheet())
+
+
+class ToolButton(QPushButton):
+    def __init__(self, toolTip='Help', width=32, height=32):
+        super(ToolButton, self).__init__()
+        # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
+        self.setFixedSize(width, height)
+
+        pixmap = QPixmap(":/help.png")
+        icon = QIcon(pixmap)
+
+        self.setIcon(icon)
+
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right;")
+        self.setStyleSheet(getqss.getStyleSheet())
+
+
+class ToolButton(QPushButton):
+    def __init__(self, text=str(), icon=str(), iconWidth=24, iconHeight=24, width=108, height=40, command=None,
+                 menuBar=None, imgLabel=str(), *args, **kwargs):
+        super(ToolButton, self).__init__(*args, **kwargs)
+        self.pixmap = None
+        self.setFixedWidth(width)
+        self.setFixedHeight(height)
+        self.setLayout(QGridLayout())
+        self.label = QLabel(text)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.label.setAttribute(Qt.WA_TransparentForMouseEvents, 1)
+        pb_layout = self.layout().addWidget(self.label)
+        self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right;")
+        self.label.setStyleSheet("margin-left: 64px;")
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 20px;}")
+        self.command = command
+        self.menuBar = menuBar
+        self.menuItem = None
+        self.imgLabel = imgLabel
+        self.menuItem = cmds.menuItem(label='Collision',
+                                      annotation='Collision On',
+                                      iol=imgLabel,
+                                      enable=False,
+                                      boldFont=True,
+                                      sourceType='mel',
+                                      command=command,
+                                      image=icon,
+                                      parent=pm.melGlobals['gMainWindowMenu'],
+                                      visible=False,
+                                      )
+        if command:
+            self.clicked.connect(lambda: mel.eval(command))
+
+        if icon:
+            self.pixmap = QPixmap(icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            self.pixmap = QPixmap()
+
+    def mousePressEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            if not self.menuItem:
+                return
+            currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
+            shelfButton = menuItemToShelf(currentShelf, self.menuItem)
+            cmds.shelfButton(shelfButton, edit=True, imageOverlayLabel=self.imgLabel,
+                             overlayLabelBackColor=(0.101, 0.101, 0.101, 0.3),
+                             overlayLabelColor=(1.0, 0.769, 0.0))
+            return
+        return super(ToolButton, self).mousePressEvent(event)
+
+    def sizeHint(self):
+        return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
+                     max(self.label.sizeHint().height(), self.pixmap.height()) + 16)
+
+    def paintEvent(self, event):
+        QPushButton.paintEvent(self, event)
+
+        pos_x = 5  # hardcoded horizontal margin
+        pos_y = (self.height() - self.pixmap.height()) / 2
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        if self.pixmap:
+            painter.drawPixmap(pos_x, pos_y, self.pixmap)
+
 
 class LockButton(MiniButton):
     lockSignal = Signal(bool)

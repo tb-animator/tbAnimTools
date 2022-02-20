@@ -45,7 +45,7 @@ class main_menu(object):
 
         pm.menuItem(label="Options", command=open_options, image='hotkeySetSettings.png', parent=self.main_menu)
         # pm.menuItem(label="download updates (experimental)",command=download_updates, parent=self.main_menu)
-        editorMenu = pm.menuItem(label='editors', subMenu=True, parent=self.main_menu)
+        editorMenu = pm.menuItem(label='Editors', subMenu=True, parent=self.main_menu)
         # find tools with UI, make list of tool keys?
         for index, tool in enumerate(sorted(tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
             if tbtoolsCLS.tools[tool] is not None:
@@ -57,9 +57,9 @@ class main_menu(object):
         pm.menuItem(label="Activate New Plugins", image='reloadPlugins.png', command=licenseNewPlugins,
                     parent=self.main_menu)
 
-        pm.menuItem(label="about", command=show_aboutWin, parent=self.main_menu)
+        pm.menuItem(label="About", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
-        pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
+        #pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
 
     def drawStoreMenu(self):
         storeMenu = pm.menuItem(label='Store', subMenu=True, parent=self.main_menu)
