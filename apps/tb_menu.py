@@ -76,12 +76,14 @@ class main_menu(object):
                       'tbIkFkTools': 'IkFkTools',
                       'tbAdjustmentBlend': 'AdjustmentBlend'}
         ignoredKeys = [x for x in proAppList.keys()]
-        '''
+
         for c in tbtoolCLS.tools.values():
             if hasattr(c, 'productID'):
-                # print ('pro app', c.productID)
+                print ('pro app', c.productID)
+                if c.productID not in ignoredKeys:
+                    continue
                 ignoredKeys.pop(ignoredKeys.index(c.productID))
-        '''
+
 
         for key in ignoredKeys:
             pm.menuItem(label=proAppList[key], command=pm.Callback(webbrowser.open, 'https://tb3d.gumroad.com/l/' + key), parent=storeMenu)
