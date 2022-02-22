@@ -106,6 +106,7 @@ class updater():
         pm.optionVar['tbUpdateType'] = self.updateTypes.index(mode)
 
     def save(self, version, release):
+        pm.optionVar['tb_version'] = version.strftime(self.dateFormat)
         jsonData = '''{}'''
         jsonObjectInfo = json.loads(jsonData)
 
