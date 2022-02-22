@@ -68,7 +68,7 @@ class tbToolLoader(object):
     def loadAllCommands(self):
         # print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
         self.allCommands = list()
-        self.instantiateHotkeyClasses()
+        #self.instantiateHotkeyClasses()
         self.getHotkeyCommandsFromLoadedClasses()
         self.allCommandNames = [command.name for command in self.allCommands]
         self.allCategories = list(set([command.category for command in self.allCommands]))
