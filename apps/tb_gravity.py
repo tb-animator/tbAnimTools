@@ -67,15 +67,15 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickJump',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.doQuickJump()'],
-                                     help=maya.stringTable['y_tb_Gravity.doQuickJump']))
+                                     help=maya.stringTable['tbCommand.doQuickJump']))
         self.addCommand(self.tb_hkey(name='jumpAllKeypairs',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpAllKeypairs()'],
-                                     help=maya.stringTable['y_tb_Gravity.doJumpAllKeypairs']))
+                                     help=maya.stringTable['tbCommand.doJumpAllKeypairs']))
         self.addCommand(self.tb_hkey(name='jumpUsingInitialFrameVelocity',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
-                                     help=maya.stringTable['y_tb_Gravity.doJumpUsingInitialFrameVelocity']))
+                                     help=maya.stringTable['tbCommand.doJumpUsingInitialFrameVelocity']))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
@@ -375,7 +375,7 @@ class GravityTools(toolAbstractFactory):
             locs[s] = self.funcs.tempLocator(name=s, suffix='gravity', scale=1.0, color=(1.0, 0.537, 0.016))
             for i in range(1, len(keyTimes)):
                 self.jumpTimeRange(s, locs[s], keyTimes[i - 1], keyTimes[i])
-            self.bakeJumpToControl(keyTimes[0], keyTimes[-1], locs, s)
+            self.bakeJumpToControl(keyTimes[0], keyTimes[-1], locs[s], s)
 
     def jumpTimeRange(self, ref, locator, start, end):
         """

@@ -52,12 +52,12 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='toggle_isolate_selection',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_isolator.toggle_isolate_selection'],
+                                     help=maya.stringTable['tbCommand.toggle_isolate_selection'],
                                      command=['isolator.toggle_isolate()']))
         self.addCommand(self.tb_hkey(name='addToIsolation',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_isolator.addToIsolation'],
+                                     help=maya.stringTable['tbCommand.addToIsolation'],
                                      command=['isolator.addToIsolation()']))
 
         return self.commandList

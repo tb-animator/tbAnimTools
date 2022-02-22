@@ -50,32 +50,32 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='shift_time_range_start',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.shift_time_range_start'],
+                                     help=maya.stringTable['tbCommand.shift_time_range_start'],
                                      command=['Timeline.shift_start()']))
         self.addCommand(self.tb_hkey(name='shift_time_range_end',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.shift_time_range_end'],
+                                     help=maya.stringTable['tbCommand.shift_time_range_end'],
                                      command=['Timeline.shift_end()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_start',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.crop_time_range_start'],
+                                     help=maya.stringTable['tbCommand.crop_time_range_start'],
                                      command=['Timeline.crop_start()']))
         self.addCommand(self.tb_hkey(name='crop_time_range_end',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.crop_time_range_end'],
+                                     help=maya.stringTable['tbCommand.crop_time_range_end'],
                                      command=['Timeline.crop_end()']))
         self.addCommand(self.tb_hkey(name='skip_forward',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.skip_forward'],
+                                     help=maya.stringTable['tbCommand.skip_forward'],
                                      command=['Timeline.skip(mode=1)']))
         self.addCommand(self.tb_hkey(name='skip_backward',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeline.skip_backward'],
+                                     help=maya.stringTable['tbCommand.skip_backward'],
                                      command=['Timeline.skip(mode=-1)']))
         return self.commandList
 

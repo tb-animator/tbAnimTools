@@ -1,17 +1,17 @@
 import maya
 
-maya.stringTable['SnapTools.store_ctrl_transform'] = u'Snapshot the current selected controls world space transform.__' \
+maya.stringTable['tbCommand.store_ctrl_transform'] = u'Snapshot the current selected controls world space transform.__' \
                                                      u'Restore it again with restore_ctrl_transform.__'
-maya.stringTable['SnapTools.restore_ctrl_transform'] = u'Restore the snapshots of the selected controls transforms.__' \
+maya.stringTable['tbCommand.restore_ctrl_transform'] = u'Restore the snapshots of the selected controls transforms.__' \
                                                        u'Works for the selected timeline, it will key the highlighted ' \
                                                        u'range.'
 maya.stringTable[
-    'SnapTools.store_relative_transform'] = u'Snapshot the transforms of the selected objects, relative to the last ' \
+    'tbCommand.store_relative_transform'] = u'Snapshot the transforms of the selected objects, relative to the last ' \
                                             u'selected object.__' \
                                             u'__' \
                                             u'Selection order can be swapped to the first object being the driver ' \
                                             u'in the options window. '
-maya.stringTable['SnapTools.restore_relative_transform'] = u'Restores the relative transform for your selection.__' \
+maya.stringTable['tbCommand.restore_relative_transform'] = u'Restores the relative transform for your selection.__' \
                                                            u'Select your controls to restore, then the driver, unless ' \
                                                            u'the order is switched in the otions.__' \
                                                            u'Works on highlighted timeline range.__' \
@@ -21,7 +21,7 @@ maya.stringTable['SnapTools.restore_relative_transform'] = u'Restores the relati
                                                            u'Hint - restore multiple poses on different layers and ' \
                                                            u'blend between them.'
 maya.stringTable[
-    'SnapTools.restore_relative_transform_last_used'] = u'Restores the relative transform for your selection.__' \
+    'tbCommand.restore_relative_transform_last_used'] = u'Restores the relative transform for your selection.__' \
                                                         u'Select your controls to restore, the driver is ' \
                                                         u'automatically picked from the last driver used to ' \
                                                         u'store a transform for the selected objects ' \
@@ -31,17 +31,17 @@ maya.stringTable[
                                                         u'without using a constraint.__' \
                                                         u'Hint - restore multiple poses on different layers and ' \
                                                         u'blend between them.'
-maya.stringTable['SnapTools.snap_objects'] = u'Snap two objects together.__' \
+maya.stringTable['tbCommand.snap_objects'] = u'Snap two objects together.__' \
                                              u'Default order is first selected object is the parent (doesn\'nt move), ' \
                                              u'second is the child (will be moved).__' \
                                              u'Order can be reversed in the options window.__' \
                                              u'Works over the selected timeline range.'
-maya.stringTable['SnapTools.point_snap_objects'] = u'Snap two objects together - Translation Only.__' \
+maya.stringTable['tbCommand.point_snap_objects'] = u'Snap two objects together - Translation Only.__' \
                                              u'Default order is first selected object is the parent (doesn\'nt move), ' \
                                              u'second is the child (will be moved).__' \
                                              u'Order can be reversed in the options window.__' \
                                              u'Works over the selected timeline range.'
-maya.stringTable['SnapTools.orient_snap_objects'] = u'Snap two objects together - Rotation Only.__' \
+maya.stringTable['tbCommand.orient_snap_objects'] = u'Snap two objects together - Rotation Only.__' \
                                              u'Default order is first selected object is the parent (doesn\'nt move), ' \
                                              u'second is the child (will be moved).__' \
                                              u'Order can be reversed in the options window.__' \

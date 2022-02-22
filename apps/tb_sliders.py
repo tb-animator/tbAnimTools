@@ -84,17 +84,17 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('sliders'))
         self.commandList = list()
         self.addCommand(self.tb_hkey(name='showControlTweener', annotation='',
-                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderRelease'],
+                                     help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
                                      category=self.category, command=['SlideTools.showXformInbetween()']))
         self.addCommand(self.tb_hkey(name='showKeyTweener', annotation='',
-                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderRelease'],
+                                     help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
                                      category=self.category, command=['SlideTools.showKeyInbetween()']))
 
         self.addCommand(self.tb_hkey(name='inbetweenSliderPress', annotation='',
-                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderPress'],
+                                     help=maya.stringTable['tbCommand.inbetweenSliderPress'],
                                      category=self.category, command=['SlideTools.inbetweenSlidePress()']))
         self.addCommand(self.tb_hkey(name='inbetweenSliderRelease', annotation='',
-                                     help=maya.stringTable['y_tb_sliders.inbetweenSliderRelease'],
+                                     help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
                                      category=self.category, command=['SlideTools.inbetweenSlideRelease()']))
 
         return self.commandList

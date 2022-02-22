@@ -52,36 +52,36 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
 
         self.addCommand(self.tb_hkey(name='store_ctrl_transform', annotation='store object transform',
-                                     help=maya.stringTable['SnapTools.store_ctrl_transform'],
+                                     help=maya.stringTable['tbCommand.store_ctrl_transform'],
                                      category=self.category, command=[
                 'SnapTools.store_transform()']))
         self.addCommand(self.tb_hkey(name='restore_ctrl_transform', annotation='restore object transform',
-                                     help=maya.stringTable['SnapTools.restore_ctrl_transform'],
+                                     help=maya.stringTable['tbCommand.restore_ctrl_transform'],
                                      category=self.category, command=[
                 'SnapTools.restore_transform()']))
         self.addCommand(self.tb_hkey(name='store_relative_transform', annotation='store relative transform',
-                                     help=maya.stringTable['SnapTools.store_relative_transform'],
+                                     help=maya.stringTable['tbCommand.store_relative_transform'],
                                      category=self.category, command=[
                 'SnapTools.store_relative_transform()']))
         self.addCommand(self.tb_hkey(name='restore_relative_transform', annotation='restore relative transform',
-                                     help=maya.stringTable['SnapTools.restore_relative_transform'],
+                                     help=maya.stringTable['tbCommand.restore_relative_transform'],
                                      category=self.category, command=[
                 'SnapTools.restore_relative_transform_for_target()']))
         self.addCommand(
             self.tb_hkey(name='restore_relative_transform_last_used', annotation='restore relative transform',
-                         help=maya.stringTable['SnapTools.restore_relative_transform_last_used'],
+                         help=maya.stringTable['tbCommand.restore_relative_transform_last_used'],
                          category=self.category, command=[
                     'SnapTools.restore_relative_transform_for_last_used_target()']))
         self.addCommand(self.tb_hkey(name='snap_objects', annotation='snap selection',
-                                     help=maya.stringTable['SnapTools.snap_objects'],
+                                     help=maya.stringTable['tbCommand.snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.snap_selection()']))
         self.addCommand(self.tb_hkey(name='point_snap_objects', annotation='point snap selection',
-                                     help=maya.stringTable['SnapTools.point_snap_objects'],
+                                     help=maya.stringTable['tbCommand.point_snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.point_snap_selection()']))
         self.addCommand(self.tb_hkey(name='orient_snap_objects', annotation='orient snap selection',
-                                     help=maya.stringTable['SnapTools.orient_snap_objects'],
+                                     help=maya.stringTable['tbCommand.orient_snap_objects'],
                                      category=self.category, command=[
                 'SnapTools.orient_snap_selection()']))
 

@@ -23,6 +23,7 @@
 *******************************************************************************
 '''
 import pymel.core as pm
+import maya
 import maya.mel as mel
 import maya.cmds as cmds
 import maya.OpenMayaUI as omUI
@@ -1117,11 +1118,12 @@ class ObjectInputWidget(QWidget):
     acceptedDataSignal = Signal(str, list)
     oldPos = None
 
-    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept", data=None, objectType='nurbsCurve'):
+    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept", data=None,
+                 objectType='nurbsCurve'):
         super(ObjectInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         self.setStyleSheet(getqss.getStyleSheet())
-        self.data=data
-        self.objectType=objectType
+        self.data = data
+        self.objectType = objectType
         self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
@@ -1210,7 +1212,6 @@ class ObjectInputWidget(QWidget):
             if not cmds.objectType(str(sel[0])) == 'transform':
                 return
             self.lineEdit.setText(str(sel[0]))
-
 
     def acceptedFunction(self, *args):
         self.acceptedSignal.emit(self.lineEdit.text())
@@ -1569,43 +1570,98 @@ class ChannelSelectLineEditEnforced(ChannelSelectLineEdit):
             self.errorHighlightRemove()
 
 
+MOD_MASK = (Qt.CTRL | Qt.ALT | Qt.SHIFT | Qt.META)
+
+
+class hotkeyLineEdit(QLineEdit):
+    keyPressed = Signal(str)
+
+    def keyPressEvent(self, event):
+        keyname = ''
+        key = event.key()
+        modifiers = int(event.modifiers())
+        if (modifiers and modifiers & MOD_MASK == modifiers and
+                key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
+                key != Qt.Key_Control and key != Qt.Key_Meta):
+
+            keyname = QKeySequence(modifiers + key).toString()
+
+            # print('event.text(): %r' % event.text())
+            # print('event.key(): %d, %#x, %s' % (key, key, keyname))
+        elif (key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
+              key != Qt.Key_Control and key != Qt.Key_Meta):
+            keyname = QKeySequence(key).toString()
+            # print('event.text(): %r' % event.text())
+        self.keyPressed.emit(keyname)
+
+
 class hotKeyWidget(QWidget):
     label = None
     lineEdit = None
-    editedSignal = Signal(str)
+    assignSignal = Signal(str, str, bool, bool)
 
-    def __init__(self, command=str(), text=str(), tooltip=str(), placeholderTest=str()):
+    def __init__(self, cls=None, command=str(), text=str(), tooltip=str(), placeholderTest=str()):
         super(hotKeyWidget, self).__init__()
-
+        # print('self.command', command)
+        self.command = command
+        self.cls = cls
+        niceCommandName = '{0}NameCommand'.format(command)
+        existingData = self.cls.commandData.get(niceCommandName, {'key': str(),
+                            'ctrl': False,
+                            'alt': False,
+                            'Command': niceCommandName,
+                            'Release': False,
+                            'KeyRepeat': True
+                            })
+        commandString = ''
+        if existingData['key']:
+            if existingData['ctrl']:
+                commandString += 'Ctrl+'
+            if existingData['alt']:
+                commandString += 'Alt+'
+            if existingData['key'].isupper():
+                commandString += 'Shift+'
+            commandString += existingData['key']
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.layout)
-        self.label = QLabel(text)
-        self.lineEdit = QLineEdit()
+        self.label = QLabel('Existing Hotkey')
+        self.lineEdit = hotkeyLineEdit(commandString)
+        self.lineEdit.keyPressed.connect(self.setLabelText)
 
-        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/arrowDown.png"), QLineEdit.TrailingPosition)
+        self.assignButton = QPushButton('Assign')
+        pixmap = QPixmap(":/arrowDown.png")
+        pixmap = pixmap.scaled(QSize(22, 22), Qt.KeepAspectRatio)
+
+        icon = QIcon(pixmap)
+        icon = QIcon(pixmap)
+        self.cle_action_pick = self.lineEdit.addAction(icon, QLineEdit.TrailingPosition)
+        # self.cle_action_clear = self.lineEdit.addAction(QIcon(":/hotkeyFieldClear.png"), QLineEdit.TrailingPosition)
+
         self.cle_action_pick.setToolTip(tooltip)
         self.cle_action_pick.triggered.connect(self.show_category_table_Popup)
         self._category_table_Popup = QMenu(self)
-        recentAction = QAction('Recent Command List', self._category_table_Popup, checkable=True, checked=True)
-        onPressAction = QAction('On Press', self._category_table_Popup, checkable=True, checked=True)
-        onReleaseAction = QAction('On Release', self._category_table_Popup, checkable=True, checked=True)
-        self._category_table_Popup.addAction(recentAction)
+        self.recentAction = QAction('Recent Command List', self._category_table_Popup, checkable=True, checked=existingData['KeyRepeat'])
+        self.onPressAction = QAction('On Press', self._category_table_Popup, checkable=True, checked=not existingData['Release'])
+        self.onReleaseAction = QAction('On Release', self._category_table_Popup, checkable=True, checked=existingData['Release'])
+        self._category_table_Popup.addAction(self.recentAction)
         self._category_table_Popup.addSeparator()
-        self._category_table_Popup.addAction(onPressAction)
-        self._category_table_Popup.addAction(onReleaseAction)
+        self._category_table_Popup.addAction(self.onPressAction)
+        self._category_table_Popup.addAction(self.onReleaseAction)
 
         self.action_group = QActionGroup(self)
-        self.action_group.addAction(onPressAction)
-        self.action_group.addAction(onReleaseAction)
         self.action_group.setExclusive(True)
+        self.action_group.addAction(self.onPressAction)
+        self.action_group.addAction(self.onReleaseAction)
 
         self.lineEdit.setPlaceholderText(placeholderTest)
-        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
+        # self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
+        self.assignButton.clicked.connect(self.assinHotkey)
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.lineEdit)
-        self.label.setFixedWidth(60)
+        self.layout.addWidget(self.assignButton)
+        # self.label.setFixedWidth(60)
 
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
@@ -1615,8 +1671,19 @@ class hotKeyWidget(QWidget):
                                  )
 
     @Slot()
+    def setLabelText(self, text):
+        self.lineEdit.setText(text)
+
+    @Slot()
     def sendtextChangedSignal(self):
-        self.editedSignal.emit(self.lineEdit.text())
+        # print ('sendtextChangedSignal', self.lineEdit.text())
+        self.editedSignal.emit(self.command, self.lineEdit.text(), self.onPressAction.isChecked(),
+                               self.recentAction.isChecked())
+
+    @Slot()
+    def assinHotkey(self):
+        self.assignSignal.emit(self.command, self.lineEdit.text(), self.onPressAction.isChecked(),
+                               self.recentAction.isChecked())
 
     @Slot()
     def show_category_table_Popup(self):
@@ -2301,11 +2368,15 @@ class ToolButton(QPushButton):
 
 class ToolButton(QPushButton):
     def __init__(self, text=str(), icon=str(), iconWidth=24, iconHeight=24, width=108, height=40, command=None,
-                 menuBar=None, imgLabel=str(), *args, **kwargs):
+                 menuBar=None, imgLabel=str(), sourceType='mel', *args, **kwargs):
         super(ToolButton, self).__init__(*args, **kwargs)
+        self.icon = icon
         self.pixmap = None
-        self.setFixedWidth(width)
-        self.setFixedHeight(height)
+        self.sourceType = sourceType
+        if width:
+            self.setFixedWidth(width)
+        if height:
+            self.setFixedHeight(height)
         self.setLayout(QGridLayout())
         self.label = QLabel(text)
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -2319,35 +2390,35 @@ class ToolButton(QPushButton):
         self.menuBar = menuBar
         self.menuItem = None
         self.imgLabel = imgLabel
-        self.menuItem = cmds.menuItem(label='Collision',
-                                      annotation='Collision On',
-                                      iol=imgLabel,
-                                      enable=False,
-                                      boldFont=True,
-                                      sourceType='mel',
-                                      command=command,
-                                      image=icon,
-                                      parent=pm.melGlobals['gMainWindowMenu'],
-                                      visible=False,
-                                      )
+
         if command:
             self.clicked.connect(lambda: mel.eval(command))
 
-        if icon:
-            self.pixmap = QPixmap(icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        if self.icon:
+            self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
             self.pixmap = QPixmap()
 
     def mousePressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
         if modifiers == Qt.ControlModifier:
-            if not self.menuItem:
-                return
+
             currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
-            shelfButton = menuItemToShelf(currentShelf, self.menuItem)
+            cmds.setParent(currentShelf)
+            shelfButton = cmds.shelfButton(image1=self.icon,
+                                           imageOverlayLabel=self.imgLabel,
+                                           label=self.imgLabel,
+                                           style=cmds.shelfLayout(currentShelf, q=True, style=True),
+                                           width=cmds.shelfLayout(currentShelf, q=True, cellWidth=True),
+                                           height=cmds.shelfLayout(currentShelf, q=True, cellHeight=True),
+                                           ann=self.imgLabel)
             cmds.shelfButton(shelfButton, edit=True, imageOverlayLabel=self.imgLabel,
                              overlayLabelBackColor=(0.101, 0.101, 0.101, 0.3),
                              overlayLabelColor=(1.0, 0.769, 0.0))
+            cmds.shelfButton(shelfButton, e=True, command=self.command, sourceType=self.sourceType)
+            return
+        elif modifiers == Qt.AltModifier:
+            print ('assign hotkey')
             return
         return super(ToolButton, self).mousePressEvent(event)
 
@@ -2661,6 +2732,36 @@ class ButtonPopup(QWidget):
             self.layout.addRow("%s:" % label, widget)
         # layout.addRow("Size:", self.size_sb)
         # layout.addRow("Opacity:", self.opacity_sb)
+
+
+class HotkeyPopup(ButtonPopup):
+    def __init__(self, name, cls=None, parent=None, command=str(), hideLabel=False):
+        super(ButtonPopup, self).__init__(parent)
+        self.hideLabel = hideLabel
+        self.setWindowTitle("{0} Options".format(name))
+        self.cls = cls
+        self.command = command
+        self.setWindowFlags(Qt.Popup)
+
+        self.layout = QFormLayout(self)
+
+        self.create_widgets()
+        self.create_layout()
+
+    def create_widgets(self):
+        print (self.cls.commandData[self.command + 'NameCommand'])
+        self.hotkeyWidget = hotKeyWidget(cls=self.cls, command=self.command, text='Hotkey')
+        self.hotkeyWidget.assignSignal.connect(self.cls.assignHotkey)
+        self.helpLabelStr = str()
+        try:
+            self.helpLabel = QLabel(maya.stringTable['tbCommand.{0}'.format(self.command)].replace('__', ' '))
+        except:
+            self.helpLabel = QLabel(self.helpLabelStr)
+        self.helpLabel.setWordWrap(True)
+
+    def create_layout(self):
+        self.layout.addRow(self.hotkeyWidget)
+        self.layout.addRow(self.helpLabel)
 
 
 class PluginExtractor(BaseDialog):

@@ -28,6 +28,7 @@ import maya.cmds as cmds
 import webbrowser
 from pluginLookup import ClassFinder
 import sys
+from functools import partial
 
 
 class main_menu(object):
@@ -44,8 +45,8 @@ class main_menu(object):
         self.main_menu = pm.menu("tbAnimTools", label="tbAnimTools", tearOff=True)
 
         pm.menuItem(label="Options", command=open_options, image='hotkeySetSettings.png', parent=self.main_menu)
-        # pm.menuItem(label="download updates (experimental)",command=download_updates, parent=self.main_menu)
-        editorMenu = pm.menuItem(label='Editors', subMenu=True, parent=self.main_menu)
+        pm.menuItem(label="Hotkeys", command=open_hotkeys, image='hotkeyFieldSearch.png', parent=self.main_menu)
+        editorMenu = pm.menuItem(label='Tools', subMenu=True, parent=self.main_menu, tearOff=True)
         # find tools with UI, make list of tool keys?
         for index, tool in enumerate(sorted(tbtoolsCLS.tools.keys(), key=lambda x: x.lower())):
             if tbtoolsCLS.tools[tool] is not None:
@@ -62,8 +63,28 @@ class main_menu(object):
         #pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
 
     def drawStoreMenu(self):
-        storeMenu = pm.menuItem(label='Store', subMenu=True, parent=self.main_menu)
+        storeMenu = pm.menuItem(label='Store', subMenu=True, parent=self.main_menu, tearOff=True)
         pm.menuItem(label="Store Main", command=open_store_main, parent=storeMenu)
+        pm.menuItem(divider=True, parent=storeMenu)
+
+        rootUrl = "https://tb3d.gumroad.com/l/"
+        tbtoolCLS = ClassFinder()
+        proAppList = {'animatedpathtool': 'Animatedpathtool',
+                      'tbCollisionTools': 'CollisionTools',
+                      'ppPjq': 'GimbalTools',
+                      'tbPhaseBake': 'PhaseBake',
+                      'tbIkFkTools': 'IkFkTools',
+                      'tbAdjustmentBlend': 'AdjustmentBlend'}
+        ignoredKeys = [x for x in proAppList.keys()]
+        '''
+        for c in tbtoolCLS.tools.values():
+            if hasattr(c, 'productID'):
+                # print ('pro app', c.productID)
+                ignoredKeys.pop(ignoredKeys.index(c.productID))
+        '''
+
+        for key in ignoredKeys:
+            pm.menuItem(label=proAppList[key], command=pm.Callback(webbrowser.open, 'https://tb3d.gumroad.com/l/' + key), parent=storeMenu)
 
     def drawUpdateMenu(self):
         updateMode = pm.optionVar.get('tbUpdateType', 0)
@@ -110,6 +131,12 @@ def open_options(*args):
     import tb_options as tbo
     tbo.showOptions()
 
+def open_hotkeys(*args):
+    pLookupCLS = ClassFinder()
+    import tb_keyCommands as keyCommands
+
+    win = keyCommands.mainHotkeyWindow(commandData=pLookupCLS.hotkeyClass.hotkeys, commandCategories=pLookupCLS.hotkeyClass.categories)
+    win.showUI()
 
 def open_discord_link(*args):
     webbrowser.open('https://discord.gg/SyUyyJb8xw')

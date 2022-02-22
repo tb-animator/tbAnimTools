@@ -52,16 +52,17 @@ class initialise(object):
             pm.error(e)
         #self.loadRMB()
         import apps.tb_optionVars as tbo
-        import apps.tb_keyCommands as tb_hotKeys
-
+        #import apps.tb_keyCommands as tb_hotKeys
+        '''
         keyLoader = tb_hotKeys.tbToolLoader()
         keyLoader.loadAllCommands()
+        '''
         if tbo.set_default_values():
             pm.optionVar(intValue=('tb_firstRun', 0))
 
         mutils.executeDeferred('import tb_menu as tb_menu;tb_menu.make_ui()')
         mutils.executeDeferred('from pluginLookup import ClassFinder')
-        mutils.executeDeferred('import apps.tb_keyCommands as tb_hotKeys;keyLoader = tb_hotKeys.tbToolLoader();keyLoader.assignHotkeysFromLoadedClasses()')
+        #mutils.executeDeferred('import apps.tb_keyCommands as tb_hotKeys;keyLoader = tb_hotKeys.tbToolLoader();keyLoader.assignHotkeysFromLoadedClasses()')
         # camera pivot update
         mutils.executeDeferred('import maya.mel as mel')
         mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')

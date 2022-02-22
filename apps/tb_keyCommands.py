@@ -22,12 +22,13 @@
 
 *******************************************************************************
 '''
+import maya
 import pymel.core as pm
 import maya.cmds as cmds
-from pluginLookup import ClassFinder
 import re
 import getStyleSheet as getqss
 import maya.OpenMayaUI as omUI
+from tb_UI import *
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -41,10 +42,12 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
+# TODO - make add to shelf button
+# TODO - add images and overlay labels to commands
+# TODO - add copy to clipboard for command/figure out drag drop to marking menu editor
 
 class tbToolLoader(object):
-    classLookup = ClassFinder()
-    classLookup.startup()
+    __instance = None
     allCommands = list()  # all user commands generated this run by tbtools scripts
     allCommandNames = list()  # names of commands generated this run by tbtools scripts
     allCategories = list()  # categories found via tbtools scripts
@@ -52,22 +55,32 @@ class tbToolLoader(object):
     extra_commands = pm.optionVar.get('tb_extra_commands', '')
     loadedHotkeyClasses = list()
 
+    hotkeys = dict()
+    categories = dict()
+
+    def __new__(cls):
+        if tbToolLoader.__instance is None:
+            tbToolLoader.__instance = object.__new__(cls)
+            tbToolLoader.__instance.val = 'tbToolLoader'
+
+        return tbToolLoader.__instance
+
     def loadAllCommands(self):
-        #print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
+        # print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
         self.allCommands = list()
         self.instantiateHotkeyClasses()
         self.getHotkeyCommandsFromLoadedClasses()
         self.allCommandNames = [command.name for command in self.allCommands]
         self.allCategories = list(set([command.category for command in self.allCommands]))
-        #print ('allCommands', self.allCommands)
-        #print ('allCategories', self.allCategories)
+        # print ('allCommands', self.allCommands)
+        # print ('allCategories', self.allCategories)
         self.getExistingCommands()
         self.updateCommands()
         self.removeBadCommands()
 
     def getHotkeyCommandsFromLoadedClasses(self):
         for cls in self.loadedHotkeyClasses:
-            #print ('loading hotkeys from class:: ', cls)
+            # print ('loading hotkeys from class:: ', cls)
             self.allCommands.extend(cls.createHotkeyCommands())
 
     def instantiateHotkeyClasses(self):
@@ -76,7 +89,7 @@ class tbToolLoader(object):
 
     def assignHotkeysFromLoadedClasses(self):
         for cls in self.loadedHotkeyClasses:
-            #print ('assigning hotkeys from class:: ', cls)
+            # print ('assigning hotkeys from class:: ', cls)
             cls.assignHotkeys()
 
     def getExistingCommands(self):
@@ -159,9 +172,9 @@ class tbToolLoader(object):
                 allHotkeyCategories[category] = list()
 
             if 0 < len(keyString) and keyString[0] != "NONE":
-                allHotkeys[commandName] = {'key': None,
+                allHotkeys[commandName] = {'key': keyString[0],
                                            'ctrl': "1" == keyString[2],
-                                           'Alt': "1" == keyString[1],
+                                           'alt': "1" == keyString[1],
                                            'Command': "1" == keyString[5],
                                            'Release': "1" == keyString[3],
                                            'KeyRepeat': "1" == keyString[4]
@@ -169,18 +182,20 @@ class tbToolLoader(object):
             else:
                 allHotkeys[commandName] = {'key': None,
                                            'ctrl': False,
-                                           'Alt': False,
+                                           'alt': False,
                                            'Command': False,
                                            'Release': False,
                                            'KeyRepeat': False
                                            }
             allHotkeyCategories[category].append(commandName)
-
+        self.hotkeys = allHotkeys
+        self.categories = allHotkeyCategories
         return allHotkeys, allHotkeyCategories
 
 
 def getMainWindow():
     return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+
 
 class SearchProxyModel(QSortFilterProxyModel):
     def setFilterRegExp(self, pattern):
@@ -201,6 +216,7 @@ class SearchProxyModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, sourceRow, sourceParent):
         idx = self.sourceModel().index(sourceRow, 0, sourceParent)
         return self._accept_index(idx)
+
 
 class mainHotkeyWindow(QMainWindow):
     """
@@ -237,8 +253,9 @@ class mainHotkeyWindow(QMainWindow):
     def buildUI(self):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
-        self.win.setWindowTitle('tbAnimTools - commands')
-        self.win.setMinimumWidth(700)
+        self.win.setWindowTitle('tbAnimTools - Commands WIP')
+        self.win.setMinimumWidth(600)
+        self.win.setMinimumHeight(400)
         # self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
 
@@ -257,14 +274,14 @@ class mainHotkeyWindow(QMainWindow):
         self.proxyModel = SearchProxyModel()
         self.proxyModel.setDynamicSortFilter(True)
 
-
         self.model = QStandardItemModel()
-        #self.model.setHorizontalHeaderLabels(['Destination'])
+        # self.model.setHorizontalHeaderLabels(['Destination'])
         self.proxyModel.setSourceModel(self.model)
         self.treeView.setModel(self.proxyModel)
 
+        # self.treeView.currentRowChanged.connect(self.itemClicked)
         self.treeView.clicked.connect(self.itemClicked)
-        self.model.itemChanged.connect(self.itemChanged)
+        # self.model.itemChanged.connect(self.itemChanged)
         self.filterLineEdit.textChanged.connect(self.filterRegExpChanged)
         # self.treeView.setSizeAdjustPolicy(QListWidget.AdjustToContents)
         self.treeView.setSelectionBehavior(QAbstractItemView.SelectItems)
@@ -280,12 +297,15 @@ class mainHotkeyWindow(QMainWindow):
         self.toolWidget = QListWidget()
         self.toolTypeScrollArea.setWidget(self.treeView)
         self.toolTypeScrollArea.setWidgetResizable(True)
-        #self.toolTypeScrollArea.setFixedWidth(148)
+        self.toolTypeScrollArea.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.MinimumExpanding)
+
+        self.toolTypeScrollArea.setFixedWidth(320)
+        self.filterLineEdit.setFixedWidth(320)
         self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.optionUIScrollArea = QScrollArea()
         self.optionUIScrollArea.setWidgetResizable(True)
-        self.optionUIScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.optionUIScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.optionUIScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.toolLayout = QVBoxLayout()
@@ -298,8 +318,12 @@ class mainHotkeyWindow(QMainWindow):
         self.leftLayout.addWidget(self.filterLineEdit)
         self.leftLayout.addWidget(self.toolTypeScrollArea)
 
+        self.rightLayout = QVBoxLayout()
+        self.rightLayout.addWidget(self.optionUIScrollArea)
+
         self.win.setLayout(self.mainLayout)
         self.mainLayout.addLayout(self.leftLayout)
+        self.mainLayout.addLayout(self.rightLayout)
 
         self.update()
         self.resize(self.sizeHint())
@@ -323,15 +347,13 @@ class mainHotkeyWindow(QMainWindow):
             self.treeView.collapseAll()
 
     def itemClicked(self, index):
-        modifiers = QApplication.keyboardModifiers()
-        # print 'itemClicked', index
+        index = self.treeView.selectedIndexes()[0]
         item = self.model.itemFromIndex(self.proxyModel.mapToSource(index))
-        # print item
-        # print item.text(
-        if modifiers == Qt.ControlModifier:
-            self.pressedSignal.emit(item.text())
-        else:
-            self.selectedSignal.emit(item.text())
+        print (item.text())
+        if item.text() + 'NameCommand' in self.commandData.keys():
+            commandWidget = CommandHelpWidget(item.text(), cls=self)
+            self.optionUIScrollArea.setWidget(commandWidget)
+        # self.toolOptionStack.setCurrentIndex(index)
 
     def applyToSelected(self):
         index = self.treeView.selectedIndexes()[0]
@@ -357,6 +379,65 @@ class mainHotkeyWindow(QMainWindow):
             # span container columns
             self.treeView.setFirstColumnSpanned(index, self.treeView.rootIndex(), True)
 
+    def assignHotkey(self, commandName=str(), commandString=str(), onPress=bool, commandRepeat=bool):
+        commandLower = commandString.lower()
+        niceCommandName = '{0}NameCommand'.format(commandName)
+        existingData = self.commandData.get(niceCommandName, None)
+
+        if existingData:
+            # remove the old hotkey
+            if existingData['key']:
+                print ('existingData')
+                print (existingData['key'])
+                cmds.hotkey(keyShortcut=existingData['key'],
+                            shiftModifier=existingData['key'].isupper(),
+                            altModifier=existingData['alt'],
+                            ctrlModifier=existingData['ctrl'],
+                            name='')
+                self.commandData.pop(niceCommandName)
+        # assign a new hotkey
+        if onPress:
+            print ('assignHotkey')
+            print ('commandName', commandName)
+            print ('commandString', commandString)
+            print ('commandRepeat', commandRepeat)
+            print ('onPress', onPress)
+            cmds.hotkey(keyShortcut=commandString.split('+')[-1].lower(),
+                        shiftModifier='shift' in commandLower,
+                        altModifier='alt' in commandLower,
+                        ctrlModifier='ctrl' in commandLower,
+                        pressCommandRepeat=commandRepeat,
+                        name=niceCommandName)
+        else:
+            cmds.hotkey(keyShortcut=commandString.split('+')[-1].lower(),
+                        shiftModifier='shift' in commandLower,
+                        altModifier='alt' in commandLower,
+                        ctrlModifier='ctrl' in commandLower,
+                        releaseCommandRepeat=commandRepeat,
+                        releaseName=niceCommandName)
+        self.commandData[niceCommandName] = {'key': commandString.split('+')[-1],
+                                           'ctrl': 'ctrl' in commandLower,
+                                           'alt': 'alt' in commandLower,
+                                           'Command': niceCommandName,
+                                           'Release': not onPress,
+                                           'KeyRepeat': commandRepeat
+                                           }
+
+
+class CommandHelpWidget(QWidget):
+    def __init__(self, name, parent=None, cls=None):
+        super(CommandHelpWidget, self).__init__(parent)
+        self.titleLabel = subHeader(name)
+        self.mainLayout = QVBoxLayout()
+        self.setLayout(self.mainLayout)
+
+        self.hotkeyPopup = HotkeyPopup(name, command=name, cls=cls)
+
+        self.mainLayout.addWidget(self.titleLabel)
+        self.mainLayout.addWidget(self.hotkeyPopup)
+        self.mainLayout.addStretch(100)
+
+
 # class for holding hotkey command info
 class tb_hkey(object):
     def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""]):
@@ -373,69 +454,11 @@ class tb_hkey(object):
         return cmd
 
 
-def make_command_list():
-    command_list = []
-
-    # keyframing tools
-    cat = 'tbtools_importExport'
-    command_list.append(tb_hkey(name='mocapImporter', annotation='mocap import window',
-                                category=cat, command=['import apps.rig.mocapLinker.mocapImporter as mi',
-                                                       'reload(mi)',
-                                                       'mWindow = mi.mocapWindow(mi.mayaMainWindow())',
-                                                       'mWindow.show()']))
-    cat = 'tbtools_keyframing'
-    command_list.append(tb_hkey(name='flatten_control', annotation='flattens the control out',
-                                category=cat, command=['import tb_flatten as tbf',
-                                                       'reload(tbf)',
-                                                       'tbf.level()']))
-    command_list.append(tb_hkey(name='lazy_cycle_anim', annotation='lazy_cycle_maker',
-                                category=cat, command=['import animCycle.tb_cycler as tbs',
-                                                       'reload(tbs)',
-                                                       'tbs.cycler().go()']))
-
-    command_list.append(tb_hkey(name='smart_frame_curves', annotation='smart framing of keys, or focus on selection',
-                                category=cat, command=['import tb_graphEditor as ge',
-                                                       'reload(ge)',
-                                                       'ge.graphEditor().smart_frame()']))
-    command_list.append(
-        tb_hkey(name='smart_open_graphEditor', annotation='smart framing of keys, and opens the graph editor',
-                category=cat, command=['import tb_graphEditor as ge',
-                                       'reload(ge)',
-                                       'ge.graphEditor().open_graph_editor()']))
-
-    # push and pull
-    command_list.append(
-        tb_hkey(name='tb_pull_left', annotation='scale values down, from left',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().push_and_pull(\"pull\", \"left\")']))
-    command_list.append(
-        tb_hkey(name='tb_pull_right', annotation='scale values down, from left',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().push_and_pull(\"pull\", \"right\")']))
-    command_list.append(
-        tb_hkey(name='tb_push_left', annotation='scale values down, from left',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().push_and_pull(\"push\", \"left\")']))
-    command_list.append(
-        tb_hkey(name='tb_push_right', annotation='scale values down, from right',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().push_and_pull(\"push\", \"right\")']))
-    command_list.append(
-        tb_hkey(name='tb_negate_left', annotation='flip values, from left',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().negate_keys(\"left\")']))
-    command_list.append(
-        tb_hkey(name='tb_negate_right', annotation='flip values, from right',
-                category=cat, command=['import tb_keyMod as tbkm',
-                                       'reload(tbkm)',
-                                       'tbkm.keyTools().negate_keys(\"right\")']))
-
-    return command_list
+def assignHotkey(commandName=str(), keyString=str(), repeat=False, onPress=True):
+    print (commandName,
+           keyString,
+           repeat,
+           onPress)
 
 
 class hotkey_cleanup(object):

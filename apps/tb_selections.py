@@ -59,18 +59,18 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='select_all_character',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_selections.select_all_character'],
+                                     help=maya.stringTable['tbCommand.select_all_character'],
                                      command=['SelectionTools.selectAllCharacter()']))
         self.addCommand(self.tb_hkey(name='select_all_anim_curves',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_selections.select_all_anim_curves'],
+                                     help=maya.stringTable['tbCommand.select_all_anim_curves'],
                                      command=['SelectionTools.select_all_non_referenced_curves()']))
         # char set selector
         self.addCommand(self.tb_hkey(name='select_character_set_objs',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_selections.select_character_set_objs'],
+                                     help=maya.stringTable['tbCommand.select_character_set_objs'],
                                      command=[
                                               'SelectionTools.select_cheracter_set()']))
         return self.commandList

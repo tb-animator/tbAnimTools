@@ -8,6 +8,7 @@ import maya.OpenMaya as om
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as om2a
 import traceback
+import apps.tb_keyCommands as tb_keyCommands
 from Abstract import *
 
 import zipfile
@@ -41,10 +42,13 @@ class ClassFinder(object):
     animLayerTabLeftLayout = None
     animLayerTabRightLayout = None
 
+    hotkeyClass = None
+
     def __new__(cls):
         if ClassFinder.__instance is None:
             ClassFinder.__instance = object.__new__(cls)
-
+            ClassFinder.__instance.hotkeyClass = tb_keyCommands.tbToolLoader()
+            ClassFinder.__instance.startup()
         ClassFinder.__instance.val = 'classFinder'
         return ClassFinder.__instance
 
@@ -68,6 +72,10 @@ class ClassFinder(object):
         self.loadPluginsByClass()
         self.applyAnimLayerTabModification()
         self.applyToolDeferredLoad()
+        self.hotkeyClass.classLookup = self
+        self.hotkeyClass.loadAllCommands()
+        self.hotkeyClass.getCommandAssignment()
+        self.hotkeyClass.assignHotkeysFromLoadedClasses()
 
     def loadPluginsByClass(self):
         self.allClasses = [cls for cls in

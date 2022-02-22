@@ -55,22 +55,22 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_on'],
+                                     help=maya.stringTable['tbCommand.smooth_drag_timeline_on'],
                                      command=['TimeDragger.drag(True)']))
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeDragger.smooth_drag_timeline_off'],
+                                     help=maya.stringTable['tbCommand.smooth_drag_timeline_off'],
                                      command=['TimeDragger.drag(False)']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_on'],
+                                     help=maya.stringTable['tbCommand.step_drag_timeline_on'],
                                      command=['TimeDragger.stepDrag()']))
         self.addCommand(self.tb_hkey(name='step_drag_timeline_off',
                                      annotation='set to same hotkey as ON, but tick release',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_timeDragger.step_drag_timeline_off'],
+                                     help=maya.stringTable['tbCommand.step_drag_timeline_off'],
                                      command=['TimeDragger.stepDrag(state=False)']))
         return self.commandList
 

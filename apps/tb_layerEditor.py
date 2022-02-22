@@ -56,7 +56,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='select_best_layer',
                                      annotation='',
                                      category=self.category,
-                                     help=maya.stringTable['y_tb_layerEditor.select_best_layer'],
+                                     help=maya.stringTable['tbCommand.select_best_layer'],
                                      command=['LayerEditor.selectBestLayer()']))
 
         return self.commandList
