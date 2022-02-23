@@ -2,6 +2,7 @@ import maya
 
 maya.stringTable['tbCommand.store_ctrl_transform'] = u'Snapshot the current selected controls world space transform.__' \
                                                      u'Restore it again with restore_ctrl_transform.__'
+
 maya.stringTable['tbCommand.restore_ctrl_transform'] = u'Restore the snapshots of the selected controls transforms.__' \
                                                        u'Works for the selected timeline, it will key the highlighted ' \
                                                        u'range.'
@@ -31,11 +32,11 @@ maya.stringTable[
                                                         u'without using a constraint.__' \
                                                         u'Hint - restore multiple poses on different layers and ' \
                                                         u'blend between them.'
-maya.stringTable['tbCommand.snap_objects'] = u'Snap two objects together.__' \
-                                             u'Default order is first selected object is the parent (doesn\'nt move), ' \
-                                             u'second is the child (will be moved).__' \
-                                             u'Order can be reversed in the options window.__' \
-                                             u'Works over the selected timeline range.'
+maya.stringTable['tbCommand.snap_objects'] = u'Snap two objects together.__\n' \
+                                             u'Default order is first selected object is the parent (doesn\'t move), ' \
+                                             u'second is the child (will be moved).__\n\n' \
+                                             u'Order can be reversed in the options window.__\n\n' \
+                                             u'Works over the selected timeline range.\n'
 maya.stringTable['tbCommand.point_snap_objects'] = u'Snap two objects together - Translation Only.__' \
                                              u'Default order is first selected object is the parent (doesn\'nt move), ' \
                                              u'second is the child (will be moved).__' \

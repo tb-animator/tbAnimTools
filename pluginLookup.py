@@ -43,6 +43,7 @@ class ClassFinder(object):
     animLayerTabRightLayout = None
 
     hotkeyClass = None
+    classLookup = None
 
     def __new__(cls):
         if ClassFinder.__instance is None:

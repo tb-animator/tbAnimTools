@@ -47,7 +47,9 @@ else:
 import getStyleSheet as getqss
 import os
 
+scriptLocation = os.path.dirname(os.path.realpath(__file__))
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
+helpPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Help'))
 
 baseIconFile = 'checkBox.png'
 
@@ -2749,7 +2751,6 @@ class HotkeyPopup(ButtonPopup):
         self.create_layout()
 
     def create_widgets(self):
-        print (self.cls.commandData[self.command + 'NameCommand'])
         self.hotkeyWidget = hotKeyWidget(cls=self.cls, command=self.command, text='Hotkey')
         self.hotkeyWidget.assignSignal.connect(self.cls.assignHotkey)
         self.helpLabelStr = str()
@@ -2758,10 +2759,24 @@ class HotkeyPopup(ButtonPopup):
         except:
             self.helpLabel = QLabel(self.helpLabelStr)
         self.helpLabel.setWordWrap(True)
+        self.imageGif = os.path.join(helpPath, self.command + '.gif')
+        self.imageJpeg = os.path.join(helpPath, self.command + '.jpeg')
+        self.imageLabel = QLabel(self)
+
+
+        if os.path.isfile(self.imageGif):
+
+            self.movie = QMovie(os.path.join(helpPath, self.imageGif))
+            self.imageLabel.setMovie(self.movie)
+            self.movie.start()
+        elif os.path.isfile(self.imageJpeg):
+            self.imagePixmap = QPixmap(os.path.join(helpPath, self.imageGif))
+            self.imageLabel.setPixmap(self.imagePixmap)
 
     def create_layout(self):
         self.layout.addRow(self.hotkeyWidget)
         self.layout.addRow(self.helpLabel)
+        self.layout.addRow(self.imageLabel)
 
 
 class PluginExtractor(BaseDialog):

@@ -260,8 +260,8 @@ class SpaceSwitch(toolAbstractFactory):
             return
 
 
-        simpleFunction = {False: self.simpleSpaceSwitch, True: self.bakeSpaceSwitch}[self.popupSwitchMode]
-        simpleFunctionAlt = {True: self.simpleSpaceSwitch, False: self.bakeSpaceSwitch}[self.popupSwitchMode]
+        simpleFunction = {False: self.simpleSpaceSwitch, True: self.simpleSpaceBake}[self.popupSwitchMode]
+        simpleFunctionAlt = {True: self.simpleSpaceSwitch, False: self.simpleSpaceBake}[self.popupSwitchMode]
 
         cmds.menuItem(label='%s to Global' % switchLabel,
                       image='bakeAnimation.png',
@@ -353,13 +353,14 @@ class SpaceSwitch(toolAbstractFactory):
                 nodes = [node]
 
             for node in nodes:
+                spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
                 if not isinstance(node, pm.nodetypes.Transform):
                     node = pm.PyNode(node)
                 cmds.select(clear=True)
 
-                allSpaceAttrKeyTimes = sorted(list(set(pm.keyframe(spaceAttribute, query=True))))
+                allSpaceAttrKeyTimes = sorted(list(set(pm.keyframe(spaceSwitchAttr, query=True))))
                 duplicateSpaceKeyTimes = []
-                spaceAttrValues = pm.keyframe(spaceAttribute, query=True, valueChange=True)
+                spaceAttrValues = pm.keyframe(spaceSwitchAttr, query=True, valueChange=True)
                 for index in range(0, len(spaceAttrValues) - 1):
                     if spaceAttrValues[index] != spaceAttrValues[index + 1]:
                         continue
@@ -367,13 +368,13 @@ class SpaceSwitch(toolAbstractFactory):
 
                 # remove the duplicate values
                 for keyTime in duplicateSpaceKeyTimes:
-                    pm.cutKey(spaceAttribute, time=keyTime)
+                    pm.cutKey(spaceSwitchAttr, time=keyTime)
 
                 # put this as an option
-                pm.keyframe(spaceAttribute, tickDrawSpecial=True)
+                pm.keyframe(spaceSwitchAttr, tickDrawSpecial=True)
 
                 # set the tangents to stepped and flat
-                pm.keyTangent(spaceAttribute, outTangentType='step', inTangentType='linear')
+                pm.keyTangent(spaceSwitchAttr, outTangentType='step', inTangentType='linear')
 
     def selectAllSpaceSwitchControls(self):
         sel = cmds.ls(sl=True)
@@ -493,6 +494,8 @@ class SpaceSwitch(toolAbstractFactory):
                         bakeOption=str()):
         locators = dict()
         tempConstraints = dict()
+        if not isinstance(selection, list):
+            selection = [selection]
         for s in selection:
             loc = self.funcs.tempNull(name=s, suffix='space')
             locators[s] = str(loc)
@@ -510,12 +513,13 @@ class SpaceSwitch(toolAbstractFactory):
 
         cmds.animLayer(resultLayer, edit=True, attribute=spaceAttributes.values())
         for key, attr in spaceAttributes.items():
-            spaceSwitchAttr = pm.Attribute(attr)
+
+            spaceSwitchAttr = pm.Attribute(key + '.' + attr)
             spaceValue = values[key]
             if not isinstance(values[key], int) and not isinstance(values[key], float):
                 spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
                 spaceValue = spaceEnums[spaceValue.lower()]
-            cmds.setAttr(attr, spaceValue)
+            cmds.setAttr(key + '.' + attr, spaceValue)
 
         with self.funcs.suspendUpdate():
             cmds.bakeResults(bakeAttributes,
@@ -570,6 +574,40 @@ class SpaceSwitch(toolAbstractFactory):
             for control in selection:
                 cmds.filterCurve(control + '.rotateX', control + '.rotateY', control + '.rotateZ')
 
+    def simpleSpaceBake(self, node=str(), spaceValue=None, spaceAttribute='space'):
+        """
+        Single frame space switch
+        :param node:
+        :param space:
+        :param spaceAttribute:
+        :return:
+        """
+        if not cmds.objExists(node):
+            return pm.warning(node + ' does not exist')
+        if not isinstance(node, list):
+            node = [node]
+        resultLayer = None
+        timeRange = self.funcs.getTimelineRange()
+        bakeOption = pm.optionVar.get(self.bakeToLayerModeOption, self.bakeLayerModes[0])
+        initialTime = cmds.currentTime(query=True)
+        if bakeOption != self.bakeLayerModes[-1]:
+            resultLayer = self.createLayer()
+            # collect all attributes and bake explicitly
+            bakeAttributes = self.getAllAnimatedChannels(node)
+            bakeAttributes.append(node[0] + '.' + spaceAttribute)
+        print ('bakeAttributes', bakeAttributes)
+        print ('spaceAttribute', spaceAttribute)
+        self.bakeSpaceSwitch(selection=node,
+                             resultLayer=str(resultLayer),
+                             spaceAttributes={node[0]:spaceAttribute},
+                             bakeAttributes=bakeAttributes,
+                             values={node[0]:spaceValue},
+                             startTime=timeRange[0],
+                             endTime=timeRange[-1],
+                             bakeOption=bakeOption)
+        cmds.currentTime(initialTime)
+
+
     def simpleSpaceSwitch(self, node=str(), spaceValue=None, spaceAttribute='space'):
         """
         Single frame space switch
@@ -582,7 +620,7 @@ class SpaceSwitch(toolAbstractFactory):
             return pm.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
 
-        spaceSwitchAttr = pm.Attribute(spaceAttribute)
+        spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
             spaceValue = spaceEnums[spaceValue.lower()]
@@ -593,7 +631,7 @@ class SpaceSwitch(toolAbstractFactory):
         # get the world pivot
         prePivot = dt.Vector(pm.xform(node, query=True, worldSpace=True, rotatePivot=True))
 
-        spaceSwitchAttr.set(spaceValue)
+        pm.setAttr(spaceSwitchAttr, spaceValue)
         resultRelativeTranslation = dt.Vector(
             pm.xform(node, query=True, relative=True, worldSpace=True, translation=True))
         postPivot = dt.Vector(pm.xform(node, query=True, worldSpace=True, rotatePivot=True))
@@ -602,11 +640,11 @@ class SpaceSwitch(toolAbstractFactory):
 
         # reset the position
         # maya has a persistent bug where it sometimes ignores an xform command, so we perform it twice here
-        pm.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
-        pm.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
+        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
+        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
         # reset the orientation
-        pm.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
-        pm.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
+        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
+        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
 
         if pm.keyframe(node, query=True) and pm.autoKeyframe(state=True, q=True):
             try:
@@ -617,7 +655,7 @@ class SpaceSwitch(toolAbstractFactory):
                 cmds.setKeyframe(node + '.rotate')
             except:
                 pass
-            cmds.setKeyframe(spaceAttribute)
+            cmds.setKeyframe(str(spaceSwitchAttr))
         self.simplifySpaceKeys(node, spaceAttribute=spaceAttribute)
         self.deleteBlendAttributes(node)
 
