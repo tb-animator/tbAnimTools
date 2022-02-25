@@ -807,7 +807,7 @@ class functions(object):
                 if not len(keyTimes) > 1:
                     continue
                 if keyTimes[0] is None: keyTimes[0] = times[0]
-                if keyTimes[1] is None: keyTimes[0] = times[-1]
+                if keyTimes[1] is None: keyTimes[1] = times[-1]
                 if times[0] < keyTimes[0]: keyTimes[0] = times[0]
                 if times[-1] > keyTimes[1]: keyTimes[1] = times[-1]
                 cmds.animLayer(layer, edit=True, selected=False),
@@ -815,16 +815,13 @@ class functions(object):
             for layer in layers:
                 cmds.animLayer(layer, edit=True, selected=layerStates[layer][0]),
                 cmds.animLayer(layer, edit=True, preferred=layerStates[layer][1])
+        if not keyTimes[0]:
+            keyTimes[0] = cmds.playbackOptions(query=True, minTime=True)
+        if not keyTimes[1]:
+            keyTimes[1] = cmds.playbackOptions(query=True, maxTime=True)
         return keyTimes
 
     def match(self, data):
-        ## match tangents for looping animations
-        #
-        # from tb_keyframe import key_mod
-        # key_mod().match("start")
-        # or
-        # key_mod().match("end")
-        #
         __dict = {'start': True, 'end': False
                   }
         state = __dict[data]

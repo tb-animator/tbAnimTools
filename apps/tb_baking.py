@@ -1061,7 +1061,8 @@ class BakeTools(toolAbstractFactory):
                                  shape=False)
 
                 cmds.delete(allLayers)
-        except Exception as e:
+        except Exception:
+            cmds.warning(traceback.format_exc())
             self.funcs.resumeSkinning()
 
     def quickMergeSelectionToNew(self):

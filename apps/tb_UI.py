@@ -192,6 +192,18 @@ class BaseDialog(QDialog):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
+    def wheelEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            opacity = self.windowOpacity()
+            opacity += event.delta() * 0.001
+            opacity = min(max(opacity, 0.2), 1)
+            self.setWindowOpacity(opacity)
+        #cmds.warning(self.x(), event.delta() / 120.0 * 25)
+        #self.setValue(self.value() + event.delta() / 120.0 * 25)
+        # super(PySlider, self).wheelEvent(event)
+        #self.wheelSignal.emit(self.value())
+
     def togglePinState(self, pinState):
         self.lockState = pinState
         self.closeButton.setVisible(True)
@@ -1499,11 +1511,13 @@ class ChannelSelectLineEdit(QWidget):
         self.cle_action_pick.triggered.connect(self.pickChannel)
         self.lineEdit.setPlaceholderText(placeholderTest)
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
-        self.mainLayout.addWidget(self.label)
+        if text:
+            self.mainLayout.addWidget(self.label)
         self.mainLayout.addStretch()
         self.mainLayout.addWidget(self.lineEdit)
 
-        self.label.setFixedWidth(60)
+        if text:
+            self.label.setFixedWidth(60)
 
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
@@ -1869,6 +1883,8 @@ class intFieldWidget(QWidget):
         # print ('interactiveChange', self.spinBox.value())
         self.editedSignalKey.emit(self.key, self.spinBox.value())
 
+    def updateValues(self, value):
+        self.spinBox.setValue(value)
 
 class radioGroupWidget(QWidget):
     layout = None
