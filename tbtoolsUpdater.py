@@ -102,6 +102,23 @@ class updater():
             else:
                 pass
 
+    def downloadHelpImages(self):
+        try:
+            zipUrl = 'https://www.dropbox.com/s/1jwhpe0wsakw6bd/HelpImages.zip?dl=1'
+
+            filedata = urlopen(zipUrl)
+            datatowrite = filedata.read()
+            zipFile = os.path.normpath(os.path.join(self.base_dir, 'HelpImages.zip'))
+            with open(zipFile, 'wb') as f:
+                f.write(datatowrite)
+
+            destinationPath = os.path.normpath(os.path.join(self.base_dir))
+
+            with zipfile.ZipFile(zipFile, 'r') as zip_ref:
+                zip_ref.extractall(destinationPath)
+        except:
+            cmds.warning('failed to download help images')
+
     def assignUpdateType(self, mode, blank):
         pm.optionVar['tbUpdateType'] = self.updateTypes.index(mode)
 
@@ -138,6 +155,7 @@ class updater():
         if updateWin.exec_() != 1:
             return
         self.download_project_files(self.latestZip)
+        self.downloadHelpImages()
         self.save(self.lastPush, self.latestRelease)
 
     def check_version(self):
@@ -162,6 +180,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.releaseZip)
+                self.downloadHelpImages()
                 self.save(self.lastPush,  self.latestRelease)
 
         elif self.updateType == 1:
@@ -180,6 +199,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.latestZip)
+                self.downloadHelpImages()
                 self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):

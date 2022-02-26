@@ -58,6 +58,7 @@ class main_menu(object):
         pm.menuItem(label="Activate New Plugins", image='reloadPlugins.png', command=licenseNewPlugins,
                     parent=self.main_menu)
 
+        pm.menuItem(label="Download Help Images", command=downloadHelp, parent=self.main_menu)
         pm.menuItem(label="About", command=show_aboutWin, parent=self.main_menu)
         pm.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
         #pm.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
@@ -83,7 +84,6 @@ class main_menu(object):
                 if c.productID not in ignoredKeys:
                     continue
                 ignoredKeys.pop(ignoredKeys.index(c.productID))
-
 
         for key in ignoredKeys:
             pm.menuItem(label=proAppList[key], command=pm.Callback(webbrowser.open, 'https://tb3d.gumroad.com/l/' + key), parent=storeMenu)
@@ -123,6 +123,7 @@ class main_menu(object):
         import tbtoolsUpdater as upd
         updater = upd.updater()
         updater.forceUpdate()
+
 
 
 def make_ui():
@@ -175,3 +176,8 @@ class about_win(object):
 
         pm.button(label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
         pm.showWindow(window)
+
+def downloadHelp(*args):
+    import tbtoolsUpdater as upd
+    c = upd.updater()
+    c.downloadHelpImages()
