@@ -180,7 +180,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.releaseZip)
-                self.downloadHelpImages()
+                #self.downloadHelpImages()
                 self.save(self.lastPush,  self.latestRelease)
 
         elif self.updateType == 1:
@@ -199,7 +199,7 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(self.latestZip)
-                self.downloadHelpImages()
+                #self.downloadHelpImages()
                 self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):
