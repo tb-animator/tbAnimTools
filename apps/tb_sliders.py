@@ -100,7 +100,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class tweenBase(object):
@@ -881,18 +881,6 @@ class SlideTools(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
-    def deferredLoad(self):
-        try:
-            self.showGraphEdKeyInbetween()
-        except:
-            self.deferredLoadJob = cmds.scriptJob(runOnce=True, event=('PostSceneRead', self.loadGraphEditorWidget))
-
-    def loadGraphEditorWidget(self, *args):
-        if self.deferredLoadDone:
-            return
-        self.showGraphEdKeyInbetween()
-        self.deferredLoadDone = True
-
     def pickInbetweenClass(self):
         # TODO - don't pick the slider class like this, pick it in init for UI
         selectedKeys = cmds.keyframe(query=True, selected=True)
@@ -948,7 +936,7 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
     # graphed key tween
-    def showGraphEdKeyInbetween(self):
+    def showGraphEdKeyInbetween(self, graphEditor):
         # check tween classes
         '''
 
@@ -961,27 +949,31 @@ class SlideTools(toolAbstractFactory):
             if not self.keyTweenMethods[key].instance:
                 self.keyTweenMethods[key].instance = value()
         '''
-        if not self.graphEditKeyWidget:
-            #print ('new instance')
-            self.graphEditKeyWidget = GraphEdKeySliderWidget()
-            self.graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
-            self.graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
-            self.graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
-            self.graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
-            self.graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
-            uiButton = "curvesPostInfinityCycleOffsetButton"
-            PControl = wrapInstance(int(omui.MQtUtil.findControl(uiButton)), QPushButton)
+        if not hasattr(graphEditor, 'hasSlider'):
+            setattr(graphEditor, 'hasSlider', False)
+        if getattr(graphEditor, 'hasSlider'):
+            return
 
-            UIParent = PControl.parent()
-            UIParent.objectName()
+        graphEditKeyWidget = GraphEdKeySliderWidget()
+        graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
+        graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+        graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
+        graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
+        graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
+        uiButton = "curvesPostInfinityCycleOffsetButton"
+        PControl = wrapInstance(int(omui.MQtUtil.findControl(uiButton)), QPushButton)
 
-            phLayout = wrapInstance(int(omui.MQtUtil.findControl(UIParent.objectName())), QWidget)
+        UIParent = PControl.parent()
+        UIParent.objectName()
 
-            self.graphEditKeyWidget.setParent(phLayout)
-            self.graphEditKeyWidget.move(PControl.pos().x() + PControl.width() + 8, 2)
+        phLayout = wrapInstance(int(omui.MQtUtil.findControl(UIParent.objectName())), QWidget)
 
-            self.graphEditKeyWidget.show()
-            self.graphEditKeyWidget.raise_()
+        graphEditKeyWidget.setParent(phLayout)
+        graphEditKeyWidget.move(PControl.pos().x() + PControl.width() + 8, 2)
+
+        graphEditKeyWidget.show()
+        graphEditKeyWidget.raise_()
+
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -3103,6 +3095,7 @@ class GraphEdKeySliderWidget(QWidget):
         self.labelYPos = 6
         self.overlayLabel.setAlignment(Qt.AlignLeft)
         self.overlayLabel.move(10, self.labelYPos)
+        self.setFocusPolicy(Qt.NoFocus)
 
     def show(self):
         super(GraphEdKeySliderWidget, self).show()
@@ -3140,14 +3133,23 @@ class GraphEdKeySliderWidget(QWidget):
                         self.shiftPressed()
         if not self.invokedKey or self.invokedKey == event.key():
             return
-        super(QWidget, self).keyPressEvent(event)
+        event.ignore()
+
 
     def keyReleaseEvent(self, event):
+        """
+
+        :param event:
+        :return:
+        """
+        '''
         if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
             if not self.lockState:
                 if not self.invokedKey or self.invokedKey == event.key():
                     SlideTools().removeKeyPressHandlers()
                     self.hide()
+        '''
+
         if event.type() == event.KeyRelease:
             modifiers = QApplication.keyboardModifiers()
 
@@ -3163,23 +3165,30 @@ class GraphEdKeySliderWidget(QWidget):
                     self.controlPressed()
                 else:
                     self.modifierReleased()
+        event.ignore()
 
     def modifierReleased(self):
+        return
         self.infoText.setText(self.baseLabel)
 
     def controlReleased(self):
+        return
         self.infoText.setText(self.baseLabel)
 
     def controlPressed(self):
+        return
         self.infoText.setText(self.controlLabel)
 
     def controlShiftPressed(self):
+        return
         self.infoText.setText(self.controlShiftLabel)
 
     def shiftPressed(self):
+        return
         self.infoText.setText(self.shiftLabel)
 
     def altPressed(self):
+        return
         self.infoText.setText(self.altLabel)
 
     def mousePressEvent(self, event):

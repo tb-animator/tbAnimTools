@@ -40,7 +40,7 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
-
+import maya.OpenMayaUI as omui
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -55,7 +55,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class GraphEditor(toolAbstractFactory):
@@ -96,17 +96,22 @@ class GraphEditor(toolAbstractFactory):
         return None
 
     def deferredLoad(self):
-        try:
-            self.createPopup()
-        except:
-            self.deferredLoadJob = cmds.scriptJob(runOnce=True,  event=('PostSceneRead', self.createPopup))
+        self.deferredLoadJob = cmds.scriptJob(event=('graphEditorChanged', self.loadGraphEditorModifications))
 
-    def createPopup(self, *args):
-        print ('createPopup')
-        if self.deferredLoadDone:
+    def loadGraphEditorModifications(self, *args):
+        ge = cmds.getPanel(scriptType="graphEditor")
+        for g in ge:
+            pge = wrapInstance(int(omui.MQtUtil.findControl(g)), QWidget)
+            self.allTools.tools['SlideTools'].showGraphEdKeyInbetween(pge)
+            self.createPopup(pge)
+
+    def createPopup(self, graphEditor):
+        if not hasattr(graphEditor, 'hasShiftPopup'):
+            setattr(graphEditor, 'hasShiftPopup', False)
+        if getattr(graphEditor, 'hasShiftPopup'):
             return
+
         name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
-        print (name)
         popup = cmds.popupMenu(name,
                                ctrlModifier=False,
                                shiftModifier=True,
@@ -116,7 +121,7 @@ class GraphEditor(toolAbstractFactory):
                                markingMenu=True,
                                postMenuCommandOnce=False,
                                postMenuCommand=partial(self.graphEditorMenu))
-        self.deferredLoadDone = True
+        setattr(graphEditor, 'hasShiftPopup', True)
 
     def graphEditorMenu(self, menuName, *args):
         mode = self.getMoveKeyMode()

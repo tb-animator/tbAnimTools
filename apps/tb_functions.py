@@ -1166,7 +1166,8 @@ class functions(object):
             state = cmds.workspaceControl(GraphEdWindow, query=True, collapse=True)
         else:
             mel.eval('GraphEditor;')
-        cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
+        if GraphEdWindow:
+            cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
 
     @contextmanager
     def undoNoQueue(self):
@@ -1237,8 +1238,7 @@ class functions(object):
     # time unit conversion
     @staticmethod
     def time_conversion():
-        conversion = {'game': 15, 'film': 24, 'pal': 25, 'ntsc': 30, 'show': 48, 'palf': 50, 'ntscf': 60}
-        return float(conversion[pm.currentUnit(query=True, time=True)])
+        return mel.eval('getCadenceLineWorkingUnitInFPS')
 
     def getRefName(self, obj):
         refState = cmds.referenceQuery(str(obj), isNodeReferenced=True)

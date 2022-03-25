@@ -37,7 +37,7 @@ import json
 import datetime
 import zipfile
 from distutils.dir_util import copy_tree
-
+import ssl
 from apps.tb_UI import *
 
 qtVersion = pm.about(qtVersion=True)
@@ -203,13 +203,21 @@ class updater():
                 self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):
-        response = urlopen(self.datUrl)
+        try:
+            gcontext = ssl.SSLContext()
+            response = urlopen(self.datUrl, context=gcontext)
+        except:
+            response = urlopen(self.datUrl)
         data = json.load(response)
         return data
 
     def getLatestReleaseVersion(self):
         releasesUrl = self.data['releases_url'].split('{/id}')[0]
-        response = urlopen(releasesUrl)
+        try:
+            gcontext = ssl.SSLContext()
+            response = urlopen(releasesUrl, context=gcontext)
+        except:
+            response = urlopen(releasesUrl)
         data = json.load(response)
 
         releases = {}

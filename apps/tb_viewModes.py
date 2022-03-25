@@ -23,7 +23,8 @@
 *******************************************************************************
 '''
 import pymel.core as pm
-
+import maya
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -83,31 +84,39 @@ class hotkeys(hotKeyAbstractFactory):
 
         self.addCommand(self.tb_hkey(name='ViewMode_xray_joints', annotation='',
                                      category=self.category,
+                                     help=maya.stringTable['tbCommand.ViewMode_xray_joints'],
                                      command=['ViewModes.toggleXrayJoints()']))
         self.addCommand(self.tb_hkey(name='ViewMode_xray',
                                      annotation='',
                                      category=self.category,
+                                     help=maya.stringTable['tbCommand.ViewMode_xray'],
                                      command=['ViewModes.toggleXray()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_Joints',
                                      annotation='',
                                      category=self.category,
+                                     help=maya.stringTable['tbCommand.ViewMode_Objects_Joints'],
                                      command=['ViewModes.viewControls()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_Meshes',
                                      annotation='',
                                      category=self.category,
+                                     help=maya.stringTable['tbCommand.ViewMode_Objects_Meshes'],
                                      command=['ViewModes.viewMeshes()']))
         self.addCommand(self.tb_hkey(name='ViewMode_Objects_All',
                                      annotation='',
                                      category=self.category,
+                                     help=maya.stringTable['tbCommand.ViewMode_Objects_All'],
                                      command=['ViewModes.viewAll()']))
         self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
+                                     help=maya.stringTable['tbCommand.toggleDockedGraphEditor'],
                                      annotation='Toggle the collapsed state of the graph editor - if docked',
                                      category=self.category, command=['ViewModes.toggleDockedGraphEd()']))
         self.addCommand(self.tb_hkey(name='toggleDockedOutliner',
+                                     help=maya.stringTable['tbCommand.toggleDockedOutliner'],
                                      annotation='Toggle the collapsed state of the outliner - if docked',
                                      category=self.category, command=['ViewModes.toggleDockedOutliner()']))
 
         self.addCommand(self.tb_hkey(name='toggleMenuBarVisibility',
+                                     help=maya.stringTable['tbCommand.toggleMenuBarVisibility'],
                                      annotation='Toggles the state of all the menu bars and top toolbar',
                                      category=self.category,
                                      command=['ViewModes.toggleMenuBarVisibility()']))
@@ -116,7 +125,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class ViewModeTool(toolAbstractFactory):

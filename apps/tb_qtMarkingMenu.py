@@ -139,12 +139,21 @@ class QtMarkingMenu(QObject):
         self.keyMod = None
         self.node = None
         self.isRaised = False
+        self.isPressed = False
+        self.pressedTimer = 0
 
     def eventFilter(self, obj, event):
         self.keyMod = QApplication.keyboardModifiers()
         # print event.type(), obj, self.keyMod
+        if event.type() == QEvent.MouseButtonRelease:
+            self.isPressed = False
+            self.pressedTimer = 0
         if event.type() == QEvent.MouseButtonPress:
             print ('press')
+            if not self.isPressed:
+                self.isPressed = True
+                self.pressedTimer = 0
+
         try:
             # is the menu raised?
             '''
@@ -168,7 +177,9 @@ class QtMarkingMenu(QObject):
                 return True
             '''
             if self.isRightClick(event):
-                print ('isRightClick')
+                if Qt.AltModifier == self.keyMod:
+                    return False
+                #print ('isRightClick')
                 from pluginLookup import ClassFinder
                 tbtoolCLS = ClassFinder()
 
@@ -178,7 +189,7 @@ class QtMarkingMenu(QObject):
                 if not selection:
                     return False
                 menuDataDict = tbtoolCLS.collectQtMarkingMenuData(selection)
-
+                #print menuDataDict
                 self.isRaised = True
                 EventFilterManager().markingMenuClass.rebuild(menuData=menuDataDict['IkFkTools'])
                 EventFilterManager().markingMenuClass.reveal()
@@ -360,15 +371,15 @@ class _pMap(QGraphicsPixmapItem):
         self.no_hover_brush = QColor(82, 82, 82)
         self.borderPen = QColor(50, 50, 50)
         self.current_brush = self.no_hover_brush
-        self.drawWidth = 100
-        self.drawHeight = 18
+        self.drawWidth = holder.width
+        self.drawHeight = holder.height
         self.xOffset = 0
         self.yOffset = 0
         # font = QtGui.QFont('Comic Sans MS')
         self.dot1 = _textItem(self.label, self.textColour, self)
         self.dot1.setFont(self.font)
-        self.dot1.setPos(-0, -0)
-        self.drawWidth = self.dot1.boundingRect().width()
+        self.dot1.setPos(self.dot1.boundingRect().width()/2, self.dot1.boundingRect().height()/2)
+        #self.drawWidth = self.dot1.boundingRect().width()
         print (self.dot1.boundingRect().width())
         print (self.boundingRect().width())
 
@@ -383,7 +394,7 @@ class _pMap(QGraphicsPixmapItem):
         painter.setBrush(self.current_brush)
         painter.setPen(self.borderPen)
         # painter.setPen(QtGui.Qt.NoPen)
-        painter.drawRoundedRect(self.xOffset, self.yOffset, 200, self.drawHeight, 4, 4)
+        painter.drawRoundedRect(self.xOffset, self.yOffset, self.drawWidth, self.drawHeight,self.drawWidth/2, self.drawWidth/2)
         self.setOpacity(0.75)
 
         pass
@@ -427,10 +438,11 @@ class centre_image(QObject):
         return QPoint(int(self.pixmap_item.pos().x()), int(self.pixmap_item.pos().y()))
 
 
-class picButton(QObject):
+class ViewportButton(QObject):
     def __init__(self, pix, menuItem, parent):
-        super(picButton, self).__init__()
-
+        super(ViewportButton, self).__init__()
+        self.width = 48
+        self.height = 48
         self.menuItem = menuItem
         self.parent = parent
         self.label = menuItem.label
@@ -442,6 +454,8 @@ class picButton(QObject):
         #self.pixmap_item.setScale(4)
         menu_filter = markingMenu_filter()
         self.installEventFilter(menu_filter)
+
+
 
     def paint(self, painter, option, widget):
         '''
@@ -455,7 +469,7 @@ class picButton(QObject):
         painter.setPen(QColor(82, 133, 166))
 
         # painter.setPen(QtGui.Qt.NoPen)
-        painter.drawRoundedRect(0, 0, 200, 20, 4, 4)
+        painter.drawRoundedRect(0, 0, self.width, self.height, self.width/2, self.width/2)
         self.setOpacity(0.75)
 
         pass
@@ -475,6 +489,7 @@ class picButton(QObject):
         yPos = pos.y() - self.get_int_pos().y() - 350
         pos = QPoint(xPos, yPos)
         bb = QRect(0, 0, self.pixmap_item.drawWidth, self.pixmap_item.drawHeight + 1)
+        bb = QRect(0, 1, self.width, self.height)
         return bb.contains(pos)
 
     def removeItem(self):
@@ -512,7 +527,7 @@ class radial_info(object):
 class animated_scene(QWidget):
     def __init__(self, itemList=[]):
         super(animated_scene, self).__init__()
-
+        self.all_items = list()
         self.setStyleSheet("""QGraphicsView { border-style: none; \n
                            background: transparent }; \n
                            QGraphicsItem { border-style: none; \n
@@ -594,6 +609,11 @@ class animated_scene(QWidget):
 
     def rebuild(self, menuData=MarkingMenuData()):
         # clear the menu
+        for item in self.all_items:
+            self.scene.removeItem(item.pixmap_item)
+            item.deleteLater()
+
+        self.scene.clear()
         self.menuData = menuData
         self.all_items = list()
         self.specific_radial_items = []
@@ -606,7 +626,7 @@ class animated_scene(QWidget):
         # create all button objects
         for i, menu_item in enumerate(self.menuData):
 
-            item = picButton(kineticPix, menu_item, self)
+            item = ViewportButton(kineticPix, menu_item, self)
             #item.pixmap_item.setOffset(-kineticPix.width() / 2, -kineticPix.height() / 2)
             item.pixmap_item.setZValue(i)
             item.index = i
@@ -621,6 +641,7 @@ class animated_scene(QWidget):
             self.scene.addItem(item.pixmap_item)
 
         if len(self.radial_items):
+            print ('radial_items',self.radial_items)
             # animation state Values.
             arc = 360.0 / len(self.radial_items)
             # out state UI positions
@@ -771,7 +792,7 @@ class animated_scene(QWidget):
         else:
             self.closest_item = -1
             self.closest_index = -1
-        # self.highlight_item()
+        #self.highlight_item()
 
     def highlight_item(self):
         # print self.closest_item, self.closest_index

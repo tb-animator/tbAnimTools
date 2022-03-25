@@ -91,6 +91,8 @@ QLineEdit
     border-radius: 5;
 }
 
+
+
 QPushButton
 {
     color: #b1b1b1;

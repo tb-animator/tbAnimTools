@@ -86,7 +86,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class GravityTools(toolAbstractFactory):
@@ -433,9 +433,10 @@ class GravityTools(toolAbstractFactory):
         return arcX, arcY, arcZ
 
     def arcCalc(self, x0, v0, durationFrames, gravity):
+        units = self.funcs.time_conversion()
         outVals = list()
         for x in range(0, int(durationFrames + 1)):
-            timeStep = float(x / self.funcs.time_conversion())
+            timeStep = float(x / units)
             outVals.append((x0 + v0 * timeStep + 0.5 * (timeStep * timeStep * gravity)))
         return outVals
 

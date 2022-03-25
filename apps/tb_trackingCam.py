@@ -61,7 +61,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class TrackingCamera(toolAbstractFactory):

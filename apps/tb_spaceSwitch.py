@@ -35,6 +35,8 @@ str_spaceLocalValues = 'spaceLocalValues'
 str_spaceGlobalValues = 'spaceGlobalValues'
 str_spaceControlKey = 'spaceControl'
 
+IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -101,7 +103,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class SpaceData(object):
@@ -168,6 +170,9 @@ class SpaceData(object):
         self.spaceDefaultValues.pop(key)
 
         # TODO - remove from presets as well
+
+
+
 
 
 class SpaceSwitch(toolAbstractFactory):
@@ -249,87 +254,94 @@ class SpaceSwitch(toolAbstractFactory):
                     command='tbOpenSpaceSwitchDataEditor', sourceType='mel',
                     parent=parentMenu)
 
-    def build_MM(self):
+    def openMM(self):
+        self.build_MM()
+        self.markingMenuWidget.show()
+
+    def build_MM(self, parentMenu=None):
+        menuDict = {'NE': list(),
+                    'NW': list(),
+                    'SE': list(),
+                    'SW': list()
+                    }
+
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+
         sel = cmds.ls(sl=True)
         if not sel:
             return
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
-        switchFunction = {False: self.switchTo, True: self.bakeTo}[self.popupSwitchMode]
-        switchFunctionAlt = {True: self.switchTo, False: self.bakeTo}[self.popupSwitchMode]
-        switchLabel = {False: 'Switch', True: 'Bake'}[self.popupSwitchMode]
-        topLabel = {False: 'Space Switch', True: 'Bake Space Switch'}[self.popupSwitchMode]
-        cmds.menuItem(label=topLabel,
-                      divider=0,
-                      boldFont=True,
-                      enable=False,
-                      )
-        userAttrs = cmds.listAttr(sel[0], userDefined=True)
-        if not userAttrs:
-            return
+        # make this better...?
+        if sel:
+            menuDict['NE'].append(ToolboxButton(label='switch to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                icon=IconPath + '\local_base.png',
+                                                command=lambda: self.switchTo(sel, mode=str_spaceLocalValues),
+                                                closeOnPress=True))
+            menuDict['NE'].append(ToolboxButton(label='switch to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                icon=IconPath + '\world_base.png',
+                                                command=lambda: self.switchTo(sel, mode=str_spaceGlobalValues),
+                                                closeOnPress=True))
+            menuDict['NE'].append(ToolboxButton(label='switch to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                command=lambda: self.switchTo(sel, mode=str_spaceDefaultValues),
+                                                closeOnPress=True))
 
-        simpleFunction = {False: self.simpleSpaceSwitch, True: self.simpleSpaceBake}[self.popupSwitchMode]
-        simpleFunctionAlt = {True: self.simpleSpaceSwitch, False: self.simpleSpaceBake}[self.popupSwitchMode]
+            menuDict['NW'].append(ToolboxButton(label='bake to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                command=lambda: self.bakeTo(sel, mode=str_spaceLocalValues),
+                                                closeOnPress=True))
+            menuDict['NW'].append(ToolboxButton(label='bake to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                command=lambda: self.bakeTo(sel, mode=str_spaceGlobalValues),
+                                                closeOnPress=True))
+            menuDict['NW'].append(ToolboxButton(label='bake to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                command=lambda: self.bakeTo(sel, mode=str_spaceDefaultValues),
+                                                closeOnPress=True))
 
-        cmds.menuItem(label='%s to Global' % switchLabel,
-                      image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceGlobalValues))
-        cmds.menuItem(optionBox=True,
-                      optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceGlobalValues))
+            menuDict['SW'].append(ToolboxButton(label='Select all SpaceSwitch Controls',
+                                                parent=self.markingMenuWidget,
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: SpaceSwitch().selectAllSpaceSwitchControls(),
+                                                closeOnPress=True))
+            menuDict['SW'].append(ToolboxButton(label='Select all Global Controls',
+                                                parent=self.markingMenuWidget,
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: SpaceSwitch().selectAllGlobalSpaceControls(),
+                                                closeOnPress=True))
 
-        cmds.menuItem(label='%s to Local' % switchLabel,
-                      image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceLocalValues))
-        cmds.menuItem(optionBox=True,
-                      optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceLocalValues))
 
-        cmds.menuItem(label='%s to Default' % switchLabel,
-                      image='bakeAnimation.png',
-                      command=pm.Callback(switchFunction, selection=sel, mode=str_spaceDefaultValues))
-        cmds.menuItem(optionBox=True,
-                      optionBoxIcon='bakeAnimation.png',
-                      command=pm.Callback(switchFunctionAlt, selection=sel, mode=str_spaceDefaultValues))
+            attrDict, enumNames = self.getSpaceDataForSelection()
 
-        for attr in userAttrs:
-            if cmds.attributeQuery(attr, node=sel[0], attributeType=True) == 'enum':
-                if not cmds.getAttr('{c}.{a}'.format(c=sel[0], a=attr), keyable=True):
-                    continue
-                spaceValues = cmds.attributeQuery(attr, node=sel[0], listEnum=True)[0].split(':')
+            for space in enumNames:
+                valueDict = {k: space for k in attrDict.keys()}
+                button = ToolboxButton(label='Switch', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                       command=pm.Callback(self.switchFromData, attrDict, valueDict),
+                                       closeOnPress=True)
+                altButton = ToolboxButton(label='Bake', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                          command=pm.Callback(self.bakeFromData, attrDict, valueDict),
+                                          closeOnPress=True)
+                menuDict['SE'].append(ToolboxDoubleButton(space,
+                                                          self.markingMenuWidget,
+                                                          cls=self.markingMenuWidget,
+                                                          buttons=[button, altButton]))
 
-                # quick bake to global/local (user defined space)
-
-                cmds.menuItem(divider=True)
-                cmds.menuItem(label='- %s - Attribute' % switchLabel,
-                              divider=0,
-                              boldFont=True,
-                              enable=False,
-                              )
-                for space in spaceValues:
-                    cmds.menuItem(label=space,
-                                  image='bakeAnimation.png',
-                                  command=pm.Callback(simpleFunction, node=sel[0], spaceValue=space,
-                                                      spaceAttribute=attr))
-                    cmds.menuItem(optionBox=True,
-                                  optionBoxIcon='bakeAnimation.png',
-                                  command=pm.Callback(simpleFunctionAlt, node=sel[0], spaceValue=space,
-                                                      spaceAttribute=attr))
-        cmds.menuItem(divider=True)
-        cmds.menuItem('Store current states as global',
-                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceGlobalValues))
-        cmds.menuItem('Store current states as local',
-                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceLocalValues))
-        cmds.menuItem('Store current states as default',
-                      command=pm.Callback(self.storeCurrentState, sel, key=str_spaceDefaultValues))
-        cmds.menuItem(divider=True)
-        cmds.menuItem('Select all space switch controls',
-                      command=pm.Callback(self.selectAllSpaceSwitchControls))
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label='Toggle switch mode',
-                      command=pm.Callback(self.togglePopupSwitchMode))
-        cmds.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
-                      command='tbOpenSpaceSwitchDataEditor', sourceType='mel')
+                '''
+                menuDict['SE'].append(ToolboxButton(label=space, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                    command=lambda: self.simpleSpaceSwitch(node=sel[0],
+                                                                                   spaceValue=space,
+                                                                                   spaceAttribute=attr),
+                                                    closeOnPress=True))
+                menuDict['SE'].append(ToolboxButton(label=space, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                                    command=lambda: self.simpleSpaceBake(node=sel[0],
+                                                                                   spaceValue=space,
+                                                                                   spaceAttribute=attr),
+                                                    closeOnPress=True))
+                '''
+            #self.markingMenuWidget.show()
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Open SpaceSwitch Data Editor',
+                                            parent=self.markingMenuWidget,
+                                            cls=self.markingMenuWidget,
+                                            command=lambda: SpaceSwitch().openEditorWindow(),
+                                            closeOnPress=True))
 
     def togglePopupSwitchMode(self):
         self.popupSwitchMode = not self.popupSwitchMode
@@ -337,12 +349,17 @@ class SpaceSwitch(toolAbstractFactory):
     def loadDataForCharacters(self, characters):
         namespaceToCharDict = dict()
         for key, value in characters.items():
+            print ('key', key)
+            if not key:
+                continue  # skip non referenced chars
             refname, namespace = self.funcs.getCurrentRig([value[0]])
             if namespace.startswith(':'):
                 namespace = namespace.split(':', 1)[-1]
             namespaceToCharDict[namespace] = refname
+
             if refname not in self.loadedSpaceData.keys():
                 self.saveRigFileIfNew(refname, SpaceData().toJson())
+
             spaceData = self.loadRigData(SpaceData(), refname)
             self.loadedSpaceData[refname] = spaceData
         self.namespaceToCharDict = namespaceToCharDict
@@ -410,6 +427,12 @@ class SpaceSwitch(toolAbstractFactory):
         return outDict, characters
 
     def selectAllSpaceSwitchControls(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('Nothing selected')
+        cmds.select(self.getAllSpaceSwitchControls(), replace=True)
+
+    def selectAllGlobalSpaceControls(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected')
@@ -563,6 +586,7 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.animLayer(resultLayer, edit=True, selected=True)
         cmds.animLayer(resultLayer, edit=True, preferred=True)
         for key, attr in spaceAttributes.items():
+            print ('key, attr', key, attr)
             spaceSwitchAttr = pm.Attribute(key)
             spaceValue = values[key]
             if not isinstance(values[key], int) and not isinstance(values[key], float):
@@ -588,6 +612,82 @@ class SpaceSwitch(toolAbstractFactory):
             allAttributes.extend([c + '.' + a for a in attributes])
         return allAttributes
 
+    def getSpaceDataForSelection(self):
+        sel = cmds.ls(sl=True)
+
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
+
+        dataControls = dict()
+        allAttrNames = list()
+        dataValues = dict()
+        valueSet = set()
+        ordered_spaces = []
+        all_spaces = list()
+        finalSpaceList = list()
+        unknownControls = list()
+        for s in sel:
+            node = pm.PyNode(s)
+            if not ':' in s:
+                namespace = ''
+                control = s
+            else:
+                namespace, control = s.split(':', 1)
+            rigName = self.namespaceToCharDict.get(namespace, None)
+            # print (namespace, control, rigName)
+            if not rigName:
+                unknownControls.append(s)
+            else:
+                if rigName not in self.loadedSpaceData.keys():
+                    unknownControls.append(s)
+                    continue
+                for attr, c in self.loadedSpaceData[rigName].spaceControl.items():
+                    if control == c:
+                        attrName = attr.split('.')[-1]
+                        p_attr = pm.Attribute(s + '.' + attrName)
+                        if not cmds.attributeQuery(attrName, node=s, attributeType=True) == 'enum':
+                            continue
+
+                        spaceValues = p_attr.getEnums()
+                        all_spaces.append(spaceValues)
+
+                        print (control, 'in', spaceValues)
+                        allAttrNames.append(attrName)
+                        dataValues[namespace + ':' + attr] = spaceValues
+                        dataControls[namespace + ':' + attr] = namespace + ':' + c
+
+        # print ('unknownControls', unknownControls)
+        # print ('allAttrNames', allAttrNames)
+        allAttrNames = set(allAttrNames)
+        for c in unknownControls:
+            if not ':' in c:
+                namespace = ''
+                control = c
+            else:
+                namespace, control = s.split(':', 1)
+            userAttrs = cmds.listAttr(c, userDefined=True, keyable=True)
+            intersection = allAttrNames.intersection(set(userAttrs))
+            if not intersection:
+                continue
+            attrName = list(intersection)[0]
+            p_attr = pm.Attribute(control + '.' + attrName)
+            spaceValues = p_attr.getEnums()
+            all_spaces.append(spaceValues)
+            dataValues[attr] = spaceValues
+            dataControls[attr] = namespace + ':' + c
+
+        for space in all_spaces:
+            ordered_sub_space = []
+            for index in range(len(space)):
+                ordered_sub_space.append(space.key(index))
+            ordered_spaces.append(ordered_sub_space)
+
+        if ordered_spaces:
+            finalSpaceList = list(
+                sorted(set(ordered_spaces[0]).intersection(*ordered_spaces), key=ordered_spaces[0].index))
+            # print ('finalSpaceList', finalSpaceList)
+        return dataControls, finalSpaceList
+
     def createLayer(self):
         newAnimLayer = pm.animLayer('SpaceSwitch',
                                     override=True)
@@ -599,7 +699,8 @@ class SpaceSwitch(toolAbstractFactory):
         return newAnimLayer
 
     def switchFromData(self, attributes, values):
-        ## print ('switchFromData', attributes, values)
+        print ('switchFromData attributes', attributes)
+        print ('switchFromData values', values)
         timeDict = dict()
         selection = attributes.values()
         for s in selection:
@@ -653,14 +754,16 @@ class SpaceSwitch(toolAbstractFactory):
             bakeAttributes = self.getAllAnimatedChannels(node)
             bakeAttributes.append(node[0] + '.' + spaceAttribute)
         spaceAttributeDict = dict()
+        spaceValueDict = dict()
         for n in node:
-            spaceAttributeDict[n] = n + '.' + spaceAttribute
+            spaceAttributeDict[n + '.' + spaceAttribute] = n
+            spaceValueDict[n + '.' + spaceAttribute] = spaceValue
 
         self.bakeSpaceSwitch(selection=node,
                              resultLayer=str(resultLayer),
                              spaceAttributes=spaceAttributeDict,
                              bakeAttributes=bakeAttributes,
-                             values={node[0]: spaceValue},
+                             values=spaceValueDict,
                              startTime=timeRange[0],
                              endTime=timeRange[-1],
                              bakeOption=bakeOption)
@@ -679,8 +782,8 @@ class SpaceSwitch(toolAbstractFactory):
         if not cmds.objExists(node):
             return pm.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
-
-        spaceSwitchAttr = pm.Attribute(spaceAttribute)
+        print ('simpleSpaceSwitch', node, spaceAttribute)
+        spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
             spaceValue = spaceEnums[spaceValue.lower()]
@@ -716,7 +819,7 @@ class SpaceSwitch(toolAbstractFactory):
             except:
                 pass
             cmds.setKeyframe(str(spaceSwitchAttr))
-        self.simplifySpaceKeys(spaceAttribute=spaceAttribute)
+        self.simplifySpaceKeys(spaceAttribute=spaceSwitchAttr)
         self.deleteBlendAttributes(node)
 
     def deleteBlendAttributes(self, node):
@@ -763,6 +866,48 @@ class SpaceSwitch(toolAbstractFactory):
     def openEditorWindow(self):
         win = SpaceSwitchSetupUI()
         win.show()
+
+'''
+import tb_UI as tbui
+
+reload(tbui)
+from tb_UI import *
+'''
+
+class ToolboxWidget(ViewportDialog):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), menuDict=dict()):
+        super(ToolboxWidget, self).__init__(parent=parent)
+        # TODO - make this part of the space switch class, add buttons to the base dialog class
+        # TODO - move custom code here into maain class
+        # TODO - fix double action
+        self.app = QApplication.instance()
+        self.keyPressHandler = markingMenuKeypressHandler(UI=self)
+        self.app.installEventFilter(self.keyPressHandler)
+
+
+
+class SubToolboxWidget(ViewportDialog):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parentMenu=None):
+        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+        print ('SubToolboxWidget', self.parentMenu)
+        if self.parentMenu:
+            self.parentMenu.setEnabled(False)
+        self.addButton(quad='NE', button=ToolboxButton(label='SubMENU NE', parent=self, cls=self,
+                                                       command=None,
+                                                       closeOnPress=True))
+
+        self.addButton(quad='NW', button=ToolboxButton(label='SubMENU NW', parent=self, cls=self, command=None,
+                                                       closeOnPress=True))
+
+        self.addButton(quad='SE', button=ToolboxButton(label='SubMENU SE', parent=self, cls=self, command=None,
+                                                       closeOnPress=True))
+
+        self.addButton(quad='SW', button=ToolboxButton(label='SubMENU SW', parent=self, cls=self, command=None,
+                                                       closeOnPress=True,
+                                                       subMenuClass=SubToolboxWidget,
+                                                       popupSubMenu=True
+                                                       ))
 
 
 class SpaceSwitchSetupUI(QMainWindow):
@@ -854,7 +999,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         # self.controlsLayout.addStretch()
         # self.controlsLayout.addWidget(SwitchableObjectWidget(self))
 
-    @ Slot()
+    @Slot()
     def getSideChangedSignal(self, sideA, sideB):
         self.spaceData.sideA = sideA
         self.spaceData.sideB = sideB
@@ -1442,32 +1587,6 @@ class SwitchableObjectWidget(QWidget):
         # print (key, value)
         # self.updateData(key, value)
         return True
-
-    def pickFK(self):
-        sel = cmds.ls(sl=True)
-        if not len(sel) == 3:
-            return cmds.warning('Please select all three fk controls')
-        sel = [s.split(':', 1)[-1] for s in sel]
-        self.fkUpper.itemLabel.setText(sel[0])
-        self.fkMid.itemLabel.setText(sel[1])
-        self.fkEnd.itemLabel.setText(sel[2])
-
-    def pickIK(self):
-        sel = cmds.ls(sl=True)
-        if not len(sel) == 2:
-            return cmds.warning('Please select the pole vector and ik controls')
-        sel = [s.split(':', 1)[-1] for s in sel]
-        self.ikPV.itemLabel.setText(sel[0])
-        self.ikEnd.itemLabel.setText(sel[1])
-
-    def pickJoints(self):
-        sel = cmds.ls(sl=True)
-        if not len(sel) == 3:
-            return cmds.warning('Please select all three joints')
-        sel = [s.split(':', 1)[-1] for s in sel]
-        self.controlWidget.itemLabel.setText(sel[0])
-        self.skeletonMid.itemLabel.setText(sel[1])
-        self.skeletonEnd.itemLabel.setText(sel[2])
 
 
 """

@@ -93,8 +93,7 @@ class module_maker():
         return os.path.join(self.maya_module_dir(), self.module_file)
 
     def make_module_path_data(self):
-        module_path = '+ PLATFORM:' \
-                      + self.win_versions \
+        module_path = '+ ' \
                       + ' MAYAVERSION:' \
                       + self.maya_version \
                       + ' tbAnimTools 1.0 ' \
@@ -102,11 +101,12 @@ class module_maker():
         return module_path
 
     def make_core_module_path_data(self):
-        module_path = '+  tbAnimTools 1.0 ' + self.filepath.replace("\\","/") + '/'
-        return module_path
+        module_path64 = '+ PLATFORM:win64  tbAnimTools 1.0 ' + self.filepath.replace("\\","/") + '/'
+        return [module_path64]
 
     def make_core_module_data(self):
-        out_lines = [self.make_core_module_path_data()]
+        out_lines = self.make_core_module_path_data()
+
         for paths in self.python_paths:
             out_lines.append('PYTHONPATH+:=' + paths)
         for paths in self.maya_script_paths:
@@ -132,18 +132,20 @@ class module_maker():
         # shutil.copyfile(self.module_template, mod_file)
         if not self.current_module_data:
             return cmds.error('no module data to write')
-        os.chmod(os.path.join(self.module_path()), 766)
+        os.chmod(os.path.join(self.module_path()), 777)
         if os.access(os.path.join(self.module_path()), os.W_OK):
+            os.chmod(os.path.join(self.maya_module_dir()), 777)
             with io.open(self.module_path(), 'w') as f:
                 f.writelines(line + u'\n' for line in self.current_module_data)
+                os.chmod(os.path.join(self.module_path()), 777)
                 return True
-                io.close(self.module_path())
         else:
             return False
 
     def read_module_file(self):
         existingVersions = list()
         if os.path.isfile(self.module_path()):
+            os.chmod(os.path.join(self.module_path()), 777)
             f = open(self.module_path(), 'r')
             self.current_module_data = f.read().splitlines()
             match = False
@@ -179,11 +181,17 @@ class module_maker():
 
     def check_module_file(self):
         # file doesn't exist yet so create one
+        st = os.stat(self.maya_module_dir())
+        os.chmod(str(self.maya_module_dir()), st.st_mode | stat.S_IWOTH)
+        st = os.stat(self.module_path())
+        os.chmod(str(self.module_path()), st.st_mode | stat.S_IWOTH)
         if not os.path.isfile(self.module_path()):
             self.firstInstall = True
-            f = open(str(self.module_path()), 'a+')  # open file in append mode
-            f.writelines('')
-            f.close()
+            with io.open(self.module_path(), 'a+') as f:
+                f.writelines(line + u'\n' for line in self.current_module_data)
+                os.chmod(os.path.join(self.module_path()), 777)
+                return True
+
         if os.path.isfile(self.module_path()):
             os.chmod(self.module_path(), stat.S_IWRITE)
             return False
@@ -193,8 +201,10 @@ class module_maker():
     def make_module_folder(self):
         if not os.path.isdir(self.maya_module_dir()):
             os.mkdir(self.maya_module_dir())
+            os.chmod(os.path.join(self.maya_module_dir()), 766)
         else:
             os.chmod(self.maya_module_dir(), stat.S_IWRITE)
+            os.chmod(os.path.join(self.maya_module_dir()), 766)
 
     def install(self):
         # create module folder if not existing

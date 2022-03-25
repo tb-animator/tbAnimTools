@@ -163,7 +163,7 @@ class ClassFinder(object):
         if not selection:
             return None
         for tool, cls in self.tools.items():
-            print (tool, cls)
+            #print (tool, cls)
             if not cls:
                 continue
             menuDataDict[tool] = cls.qtMarkingMenu(selection)

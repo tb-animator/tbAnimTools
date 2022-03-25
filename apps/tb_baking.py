@@ -177,7 +177,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class BakeTools(toolAbstractFactory):

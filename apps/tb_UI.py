@@ -23,14 +23,16 @@
 *******************************************************************************
 '''
 import pymel.core as pm
+import math
 import maya
 import maya.mel as mel
 import maya.cmds as cmds
 import maya.OpenMayaUI as omUI
+import maya.api.OpenMaya as om2
+import maya.api.OpenMayaUI as omui2
 import pymel.core as pm
 from functools import partial
 import subprocess
-from maya.app.general.menuItemToShelf import menuItemToShelf
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -199,14 +201,595 @@ class BaseDialog(QDialog):
             opacity += event.delta() * 0.001
             opacity = min(max(opacity, 0.2), 1)
             self.setWindowOpacity(opacity)
-        #cmds.warning(self.x(), event.delta() / 120.0 * 25)
-        #self.setValue(self.value() + event.delta() / 120.0 * 25)
+        # cmds.warning(self.x(), event.delta() / 120.0 * 25)
+        # self.setValue(self.value() + event.delta() / 120.0 * 25)
         # super(PySlider, self).wheelEvent(event)
-        #self.wheelSignal.emit(self.value())
+        # self.wheelSignal.emit(self.value())
 
     def togglePinState(self, pinState):
         self.lockState = pinState
         self.closeButton.setVisible(True)
+
+
+class markingMenu_filter(QObject):
+    '''A simple event filter to catch MouseMove events'''
+
+    def eventFilter(self, obj, event):
+        print (event.type())
+
+
+class markingMenuKeypressHandler(QObject):
+    def __init__(self, UI=None):
+        super(markingMenuKeypressHandler, self).__init__()
+        self.UI = UI
+
+    def eventFilter(self, target, event):
+        if event.type() == event.KeyRelease:
+            if event.isAutoRepeat():
+                return True
+            self.UI.keyReleaseEvent(event)
+            return False
+        elif event.type() == event.KeyPress:
+            self.UI.keyPressEvent(event)
+            return False
+        return False
+
+
+class ViewportDialog(QDialog):
+    def __init__(self, parent=None, parentMenu=None, menuDict=dict(), *args, **kwargs):
+        super(ViewportDialog, self).__init__(parent=parent)
+        self.app = QApplication.instance()
+        self.keyPressHandler = None
+
+        self.menuDict = menuDict
+        self.parentMenu = parentMenu
+        self.invokedKey = None
+        self.returnButton = None
+
+        self.recentlyOpened = False
+        self.activeButton = None
+        self.centralRadius = 16
+        self.scalar = math.cos(math.radians(45)) * self.centralRadius
+        self.allButtons = list()
+        self.widgets = {'NE': list(),
+                        'NW': list(),
+                        'SE': list(),
+                        'SW': list(),
+                        }
+        self.setMouseTracking(True)
+        self.stylesheet = getqss.getStyleSheet()
+        self.setStyleSheet(self.stylesheet)
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        screen = QDesktopWidget().availableGeometry()
+        self.cursorPos = QCursor.pos()
+        self.currentCursorPos = QCursor.pos()
+        self.setFixedSize(screen.width(), screen.height())
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        if self.parentMenu:
+            self.invokedKey = self.parentMenu.invokedKey
+            self.returnButton = ReturnButton(label='', parent=self, cls=self)
+            # print ('parent pos', self.parentMenu.cursorPos)
+            distance = self.distance(self.cursorPos, self.parentMenu.cursorPos)
+            delta = self.parentMenu.cursorPos - self.cursorPos
+            delta = om2.MVector(delta.x(), delta.y(), 0).normal()
+            # print ('returnButton', delta)
+            self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
+        else:
+            self.keyPressHandler = markingMenuKeypressHandler(UI=self)
+            self.app.installEventFilter(self.keyPressHandler)
+
+    def addAllButtons(self):
+        for key, items in self.menuDict.items():
+            for item in items:
+                self.addButton(quad=key,
+                               button=item)
+
+    def addButton(self, quad='NE', button=QWidget):
+        if not self.widgets[quad]:
+            existingPos = self.cursorPos + {'NE': QPoint(0, -self.scalar),
+                                            'NW': QPoint(0, -self.scalar),
+                                            'SE': QPoint(0, self.scalar),
+                                            'SW': QPoint(0, self.scalar),
+                                            }[quad]
+            existingSize = QSize(0, 0)
+        else:
+            existingButton = self.widgets[quad][-1]
+            existingPos = existingButton.pos()
+            existingSize = existingButton.size()
+
+        offsetX = {'NE': self.cursorPos.x() + self.scalar,
+                   'NW': self.cursorPos.x() - button.width() - self.scalar,
+                   'SE': self.cursorPos.x() + self.scalar,
+                   'SW': self.cursorPos.x() - button.width() - self.scalar,
+                   }
+        offsetY = {'NE': existingPos.y() - button.height(),
+                   'NW': existingPos.y() - button.height(),
+                   'SE': existingPos.y() + existingSize.height(),
+                   'SW': existingPos.y() + existingSize.height(),
+                   }
+        # print (quad, offsetX[quad], offsetY[quad])
+        button.move(offsetX[quad], offsetY[quad])
+
+        if isinstance(button, ToolboxButton):
+            self.widgets[quad].append(button)
+            button.absPos = button.pos()
+            self.allButtons.append(button)
+            button.hoverSignal.connect(self.buttonHovered)
+        elif isinstance(button, ToolboDivider):
+            self.widgets[quad].append(button)
+        elif isinstance(button, ToolboxDoubleButton):
+            self.widgets[quad].append(button)
+            for b in button.buttons:
+                b.hoverSignal.connect(self.buttonHovered)
+                b.absPos = button.pos()  # + b.parent().pos()
+                self.allButtons.append(b)
+
+    def moveAll(self):
+        if self.returnButton:
+            return
+        cursorPos = QCursor.pos()  # or event.getCursor()
+
+        offset = self.mapToGlobal(self.cursorPos) - cursorPos
+        for c in self.children():
+            c.move(c.pos().x() - offset.x(), c.pos().y() - offset.y())
+            c.absPos = c.pos()
+        self.cursorPos = QCursor.pos()
+
+    def buttonHovered(self, widget):
+        for w in self.allButtons:
+            if w is not widget:
+                w.setNonHoverSS()
+        self.activeButton = widget
+        self.update()
+        # print ('buttonHovered', widget)
+
+    def show(self):
+        if not self.parentMenu:
+            self.recentlyOpened = True
+        self.moveToCursor()
+        # self.grabKeyboard()
+        super(ViewportDialog, self).show()
+        self.setFocus()
+        self.addAllButtons()
+
+    def closeMenu(self):
+        print ('closeMenu', self, self.parentMenu)
+        if self.parentMenu:
+            self.parentMenu.closeMenu()
+        self.hide()
+        self.releaseKeyboard()
+
+    def close(self):
+        if self.keyPressHandler:
+            self.app.removeEventFilter(self.keyPressHandler)
+        super(ViewportDialog, self).close()
+
+    def hideCurrentLayer(self):
+        self.close()
+        self.parentMenu.setEnabled(True)
+        event = QMouseEvent(QEvent.MouseButtonPress,
+                            self.parentMenu.cursorPos,
+                            Qt.MouseButton.LeftButton,
+                            Qt.MouseButton.LeftButton,
+                            Qt.NoModifier)
+
+        QApplication.instance().sendEvent(self.parentMenu, event)
+        self.parentMenu.setFocusPolicy(Qt.StrongFocus)
+        self.parentMenu.setFocus()
+
+        self.parentMenu.moveAll()
+
+    def moveToCursor(self):
+        pos = QCursor.pos()
+        xOffset = 10  # border?
+        # self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
+        self.move(0, 0)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        lineColor = QColor(68, 68, 68, 128)
+        linePenColor = QColor(255, 160, 47, 255)
+        blank = QColor(124, 124, 124, 64)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.drawRoundedRect(0, 0, self.width(), 20, 8, 8)
+
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setBrush(QBrush(blank))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.setBrush(QBrush(lineColor))
+        qp.drawEllipse(self.cursorPos.x() - self.centralRadius / 2,
+                       self.cursorPos.y() - self.centralRadius / 2,
+                       self.centralRadius,
+                       self.centralRadius)
+        # print (self.currentCursorPos.x(), self.currentCursorPos.y())
+
+        if self.activeButton:
+            qp.setPen(QPen(QBrush(linePenColor), 4))
+            offset = 0
+            buttonPos = self.activeButton.absPos
+            '''
+            if isinstance(self.activeButton.parent(), ToolboxDoubleButton):
+                buttonPos += self.activeButton.parent().pos()
+            '''
+            if buttonPos.x() < self.cursorPos.x():
+                offset = self.activeButton.width()
+            endPoint = QPoint(buttonPos.x() + offset,
+                              buttonPos.y() + self.activeButton.height() / 2)
+            angle = math.atan2(self.cursorPos.x() - endPoint.x(), self.cursorPos.y() - endPoint.y())
+            # print ('angle', angle)
+            # print (math.cos(angle) * (self.centralRadius/2))
+            # print (math.sin(angle) * (self.centralRadius/2))
+
+            qp.drawLine(endPoint.x(),
+                        endPoint.y(),
+                        self.cursorPos.x() - (math.sin(angle) * (self.centralRadius / 1.5)),
+                        self.cursorPos.y() - (math.cos(angle) * (self.centralRadius / 1.5)))
+        '''
+        qp.setPen(QPen(QBrush(blank), 0))
+        qp.setBrush(QBrush(blank))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        '''
+        # super(ViewportDialog, self).paintEvent(event)
+        qp.end()
+
+    def mouseMoveEvent(self, event):
+        # print ('mouseMoveEvent', event.pos())
+        self.currentCursorPos = self.mapFromGlobal(event.globalPos())
+        self.getClosesWidget()
+        self.update()
+
+    def mousePressEvent(self, event):
+        print ('mousePressEvent', event)
+        event.accept()
+        '''
+        event = QKeyEvent(QEvent.KeyPress,
+                              self.invokedKey)
+        QApplication.instance().sendEvent(self, event)
+        '''
+
+    def getClosesWidget(self):
+        # print ('getClosesWidget')
+        distance = self.distance(self.cursorPos, self.currentCursorPos)
+        for w in self.allButtons:
+            w.setNonHoverSS()
+        if distance < self.scalar:
+            self.activeButton = None
+            return
+        if self.allButtons:
+            closest = 9999
+            closestWidget = None
+            for w in self.allButtons:
+                if not isinstance(w, ToolboxButton):
+                    print ('skip', w)
+                    continue
+                # w.setNonHoverSS()
+                widgetPos = QPoint(w.absPos.x() + w.width() / 2, w.absPos.y() + w.height() / 2)
+                distance = self.distance(widgetPos, self.currentCursorPos)
+                if distance < closest:
+                    closestWidget = w
+                    closest = distance
+
+                # print (widgetPos, distance)
+            # print ('closest', closestWidget)
+            self.activeButton = closestWidget
+            if self.activeButton:
+                self.activeButton.setHoverSS()
+            self.update()
+
+    def distance(self, point_a, point_b):
+        distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
+        return distance
+
+    def keyPressEvent(self, event):
+        if event.type() == event.KeyPress:
+            if self.recentlyOpened:
+                if event.key() is not None:
+                    self.invokedKey = event.key()
+                    self.recentlyOpened = False
+
+        if not self.invokedKey or self.invokedKey == event.key():
+            return
+        super(ViewportDialog, self).keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if event.isAutoRepeat():
+            return
+        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
+            if not self.invokedKey or self.invokedKey == event.key():
+                if self.activeButton:
+                    if isinstance(self.activeButton, ToolboxButton):
+                        self.activeButton.executeCommand()
+
+                self.close()
+                if self.parentMenu:
+                    print ('sending keyreleaseevent')
+                    self.parentMenu.keyReleaseEvent(event)
+                self.invokedKey = None
+
+    def wheelEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            opacity = self.windowOpacity()
+            opacity += event.delta() * 0.001
+            opacity = min(max(opacity, 0.2), 1)
+            self.setWindowOpacity(opacity)
+
+
+class ReturnButton(QPushButton):
+    hoverSignal = Signal(object)
+
+    def __init__(self, label, parent, cls=None, closeOnPress=True):
+        super(ReturnButton, self).__init__(label, parent)
+        self.setIcon(QIcon(':\polySpinEdgeBackward.png'))
+        self.setFixedSize(32, 32)
+        self.cls = cls
+
+        self.closeOnPress = closeOnPress
+        self.clicked.connect(self.buttonClicked)
+        self.setNonHoverSS()
+        self.setMouseTracking(True)
+
+    def buttonClicked(self):
+        self.executeCommand()
+        if self.closeOnPress:
+            print ('closeOnPress', self.cls)
+            self.cls.closeMenu()
+            self.cls.deleteLater()
+
+    def inBoundingBox(self, pos):
+        bb = QRect(0, 0, self.width, self.height)
+        return bb.contains(pos)
+
+    def setHoverSS(self):
+        self.setStyleSheet("ReturnButton{"
+                           "border-color: #ffa02f;"
+                           "border-radius: 16;"
+                           "}"
+                           )
+
+    def setNonHoverSS(self):
+        self.setStyleSheet("ReturnButton{"
+                           "color: #b1b1b1;"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
+                           "border-width: 1px;"
+                           "border-color: #1e1e1e;"
+                           "border-radius: 16;"
+                           "}"
+                           )
+
+    def mouseMoveEvent(self, event):
+        self.setHoverSS()
+        self.hoverSignal.emit(self)
+        self.cls.hideCurrentLayer()
+
+    def executeCommand(self):
+        pass
+
+
+class ToolboxButton(QPushButton):
+    hoverSignal = Signal(object)
+
+    def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
+                 subMenuClass=None,
+                 iconWidth=16, iconHeight=16,
+                 ):
+        super(ToolboxButton, self).__init__(label, parent)
+
+        self.subMenu = None  # sub menu instance
+        self.subMenuClass = subMenuClass  # sub menu class for button
+        self.setFixedSize(48, 22)
+
+        self.labelText = label
+        self.cls = cls
+        self.command = command
+        self.closeOnPress = closeOnPress
+        self.clicked.connect(self.buttonClicked)
+        self.setNonHoverSS()
+        self.setMouseTracking(True)
+        self.popupSubMenu = popupSubMenu
+        fontWidth = self.fontMetrics().boundingRect(self.text()).width()
+        self.setText(str())
+        self.setFixedSize(max(48, ((fontWidth / 64) * 64) + 64), 24)
+        self.icon = icon
+        if self.icon:
+            self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            self.pixmap = QPixmap()
+        # self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+    def buttonClicked(self):
+        try:
+            self.executeCommand()
+        except:
+            pass
+        if self.closeOnPress:
+            print ('closeOnPress', self.cls)
+            self.cls.closeMenu()
+            self.cls.deleteLater()
+
+    def inBoundingBox(self, pos):
+        bb = QRect(0, 0, self.width, self.height)
+        return bb.contains(pos)
+
+    def setHoverSS(self):
+        self.setStyleSheet("ToolboxButton {"
+                           "text-align:left;"
+                           "border-color: #ffa02f}"
+                           )
+
+    def setNonHoverSS(self):
+        self.setStyleSheet("ToolboxButton {"
+                           "color: #b1b1b1;"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
+                           "border-width: 1px;"
+                           "border-color: #1e1e1e;"
+                           "border-style: solid;"
+                           "border-radius: 6;"
+                           "padding: 3px;"
+                           "font-size: 12px;"
+                           "text-align:left;"
+                           "padding-left: 5px;"
+                           "padding-right: 5px;"
+                           "}"
+                           )
+
+    def mouseMoveEvent(self, event):
+        self.setHoverSS()
+        if self.popupSubMenu:
+            if not self.subMenu:
+                print ('creating submenu, ', self.cls)
+                self.subMenu = self.subMenuClass(parentMenu=self.cls)
+            self.subMenu.show()
+        self.hoverSignal.emit(self)
+
+    def executeCommand(self):
+        if self.command:
+            self.command()
+            if self.subMenu:
+                self.cls.closeMenu()
+
+    def paintEvent(self, event):
+        QPushButton.paintEvent(self, event)
+
+        pos_x = 5  # hardcoded horizontal margin
+        pos_y = (self.height() - self.pixmap.height()) / 2
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        if self.pixmap:
+            painter.drawPixmap(pos_x, pos_y, self.pixmap)
+        font = painter.font()
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(self.pixmap.width() + 12, 16, self.labelText)  # fifth option
+
+
+class ToolboxDoubleButton(QWidget):
+    hoverSignal = Signal(object)
+
+    def __init__(self, label, parent, cls=None, buttons=list(), labelWidth=128
+                 ):
+        super(ToolboxDoubleButton, self).__init__(parent)
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.mainLayout)
+
+        self.label = QLabel(label)
+        self.label.setStyleSheet("background-color:transparent")
+        self.label.setFixedWidth(labelWidth)
+        self.buttons = buttons
+        for button in self.buttons:
+            self.mainLayout.addWidget(button)
+        self.mainLayout.addWidget(self.label)
+
+    def buttonClicked(self):
+        self.executeCommand()
+        if self.closeOnPress:
+            print ('closeOnPress', self.cls)
+            self.cls.closeMenu()
+            self.cls.deleteLater()
+
+    def inBoundingBox(self, pos):
+        bb = QRect(0, 0, self.width, self.height)
+        return bb.contains(pos)
+
+    def setHoverSS(self):
+        self.setStyleSheet("ToolboxButton {"
+                           "text-align:left;"
+                           "border-color: #ffa02f}"
+                           )
+
+    def setNonHoverSS(self):
+        self.setStyleSheet("ToolboxButton {"
+                           "color: #b1b1b1;"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
+                           "border-width: 1px;"
+                           "border-color: #1e1e1e;"
+                           "border-style: solid;"
+                           "border-radius: 6;"
+                           "padding: 3px;"
+                           "font-size: 12px;"
+                           "text-align:left;"
+                           "padding-left: 5px;"
+                           "padding-right: 5px;"
+                           "}"
+                           )
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        lineColor = QColor(68, 68, 68, 128)
+        linePenColor = QColor(255, 160, 47, 255)
+        blank = QColor(124, 124, 124, 64)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 0))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
+
+        qp.end()
+
+    def mouseMoveEvent(self, event):
+        self.setHoverSS()
+        if self.popupSubMenu:
+            if not self.subMenu:
+                print ('creating submenu, ', self.cls)
+                self.subMenu = self.subMenuClass(parentMenu=self.cls)
+            self.subMenu.show()
+        self.hoverSignal.emit(self)
+
+    def executeCommand(self):
+        if self.command:
+            self.command()
+            if self.subMenu:
+                self.cls.closeMenu()
+
+
+class ToolboDivider(QLabel):
+    hoverSignal = Signal(object)
+
+    def __init__(self, label, parent, cls=None):
+        super(ToolboDivider, self).__init__(label, parent)
+        self.setFixedSize(128, 22)
+        self.cls = cls
+        self.setMouseTracking(True)
+        self.setStyleSheet("background-color: transparent;")
+
+    def inBoundingBox(self, pos):
+        bb = QRect(0, 0, self.width, self.height)
+        return bb.contains(pos)
+
+    def setHoverSS(self):
+        pass
+
+    def setNonHoverSS(self):
+        pass
 
 
 class AimAxisWidget(QWidget):
@@ -1623,12 +2206,12 @@ class hotKeyWidget(QWidget):
         self.cls = cls
         niceCommandName = '{0}NameCommand'.format(command)
         existingData = self.cls.commandData.get(niceCommandName, {'key': str(),
-                            'ctrl': False,
-                            'alt': False,
-                            'Command': niceCommandName,
-                            'Release': False,
-                            'KeyRepeat': True
-                            })
+                                                                  'ctrl': False,
+                                                                  'alt': False,
+                                                                  'Command': niceCommandName,
+                                                                  'Release': False,
+                                                                  'KeyRepeat': True
+                                                                  })
         commandString = ''
         if existingData['key']:
             if existingData['ctrl']:
@@ -1646,6 +2229,15 @@ class hotKeyWidget(QWidget):
         self.lineEdit.keyPressed.connect(self.setLabelText)
 
         self.assignButton = QPushButton('Assign')
+        self.toolButton = HotkeyToolButton(text='test',
+                                           imgLabel=command,
+                                           width=64,
+                                           height=22,
+                                           icon=":/pythonFamily.png",
+                                           command=command)
+        self.clipboardButton = QPushButton()
+        self.clipboardButton.setIcon(QIcon(':/menuIconCopy.png'))
+        self.clipboardButton.clicked.connect(self.copyText)
         pixmap = QPixmap(":/arrowDown.png")
         pixmap = pixmap.scaled(QSize(22, 22), Qt.KeepAspectRatio)
 
@@ -1657,9 +2249,12 @@ class hotKeyWidget(QWidget):
         self.cle_action_pick.setToolTip(tooltip)
         self.cle_action_pick.triggered.connect(self.show_category_table_Popup)
         self._category_table_Popup = QMenu(self)
-        self.recentAction = QAction('Recent Command List', self._category_table_Popup, checkable=True, checked=existingData['KeyRepeat'])
-        self.onPressAction = QAction('On Press', self._category_table_Popup, checkable=True, checked=not existingData['Release'])
-        self.onReleaseAction = QAction('On Release', self._category_table_Popup, checkable=True, checked=existingData['Release'])
+        self.recentAction = QAction('Recent Command List', self._category_table_Popup, checkable=True,
+                                    checked=existingData['KeyRepeat'])
+        self.onPressAction = QAction('On Press', self._category_table_Popup, checkable=True,
+                                     checked=not existingData['Release'])
+        self.onReleaseAction = QAction('On Release', self._category_table_Popup, checkable=True,
+                                       checked=existingData['Release'])
         self._category_table_Popup.addAction(self.recentAction)
         self._category_table_Popup.addSeparator()
         self._category_table_Popup.addAction(self.onPressAction)
@@ -1677,6 +2272,9 @@ class hotKeyWidget(QWidget):
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.lineEdit)
         self.layout.addWidget(self.assignButton)
+        self.layout.addWidget(self.toolButton)
+        self.layout.addWidget(self.clipboardButton)
+
         # self.label.setFixedWidth(60)
 
         self.label.setStyleSheet("QFrame {"
@@ -1685,6 +2283,10 @@ class hotKeyWidget(QWidget):
                                  "border-style: solid;"
                                  "border-color: #222222}"
                                  )
+
+    def copyText(self):
+        cmd = 'echo ' + self.command + '|clip'
+        return subprocess.check_call(cmd, shell=True)
 
     @Slot()
     def setLabelText(self, text):
@@ -1885,6 +2487,7 @@ class intFieldWidget(QWidget):
 
     def updateValues(self, value):
         self.spinBox.setValue(value)
+
 
 class radioGroupWidget(QWidget):
     layout = None
@@ -2457,6 +3060,85 @@ class ToolButton(QPushButton):
             painter.drawPixmap(pos_x, pos_y, self.pixmap)
 
 
+class HotkeyToolButton(QPushButton):
+    def __init__(self, text=str(), icon=str(), iconWidth=24, iconHeight=24, width=108, height=40, command=None,
+                 menuBar=None, imgLabel=str(), sourceType='mel', *args, **kwargs):
+        super(HotkeyToolButton, self).__init__(*args, **kwargs)
+        self.icon = icon
+        self.pixmap = None
+        self.labelText = text
+        self.sourceType = sourceType
+        if width:
+            self.setFixedWidth(width)
+        if height:
+            self.setFixedHeight(height)
+        self.gridLayout = QGridLayout()
+        self.gridLayout.setSpacing(0)
+        self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(QGridLayout())
+        self.label = QLabel(text)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.label.setAttribute(Qt.WA_TransparentForMouseEvents, 1)
+        # pb_layout = self.layout().addWidget(self.label)
+        self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right;")
+        self.label.setStyleSheet("margin-left: 64px;margin-top: 0px;")
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 20px;}")
+        self.command = command
+        self.menuBar = menuBar
+        self.menuItem = None
+        self.imgLabel = imgLabel
+
+        if command:
+            self.clicked.connect(lambda: mel.eval(command))
+
+        if self.icon:
+            self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            self.pixmap = QPixmap()
+
+    def mousePressEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
+            cmds.setParent(currentShelf)
+            shelfButton = cmds.shelfButton(image1=self.icon,
+                                           imageOverlayLabel=self.imgLabel,
+                                           label=self.imgLabel,
+                                           style=cmds.shelfLayout(currentShelf, q=True, style=True),
+                                           width=cmds.shelfLayout(currentShelf, q=True, cellWidth=True),
+                                           height=cmds.shelfLayout(currentShelf, q=True, cellHeight=True),
+                                           ann=self.imgLabel)
+            cmds.shelfButton(shelfButton, edit=True, imageOverlayLabel=self.imgLabel,
+                             overlayLabelBackColor=(0.101, 0.101, 0.101, 0.3),
+                             overlayLabelColor=(1.0, 0.769, 0.0))
+            cmds.shelfButton(shelfButton, e=True, command=self.command, sourceType=self.sourceType)
+            return
+        if self.sourceType == 'mel':
+            mel.eval(self.command)
+        return super(ToolButton, self).mousePressEvent(event)
+
+    def sizeHint(self):
+        return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
+                     max(self.label.sizeHint().height(), self.pixmap.height()) + 16)
+
+    def paintEvent(self, event):
+        QPushButton.paintEvent(self, event)
+
+        pos_x = 5  # hardcoded horizontal margin
+        pos_y = 5 + (self.height() - self.pixmap.height()) / 2
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        if self.pixmap:
+            painter.drawPixmap(pos_x, pos_y, self.pixmap)
+        font = painter.font()
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(self.pixmap.width() + 12, 15, self.labelText)  # fifth option
+
+
 class LockButton(MiniButton):
     lockSignal = Signal(bool)
 
@@ -2779,9 +3461,7 @@ class HotkeyPopup(ButtonPopup):
         self.imageJpeg = os.path.join(helpPath, self.command + '.jpeg')
         self.imageLabel = QLabel(self)
 
-
         if os.path.isfile(self.imageGif):
-
             self.movie = QMovie(os.path.join(helpPath, self.imageGif))
             self.imageLabel.setMovie(self.movie)
             self.movie.start()

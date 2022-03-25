@@ -254,7 +254,7 @@ class mainHotkeyWindow(QMainWindow):
         self.win = QDialog(parent=self.appWin)
         self.win.setStyleSheet(getqss.getStyleSheet())
         self.win.setWindowTitle('tbAnimTools - Commands WIP')
-        self.win.setMinimumWidth(600)
+        self.win.setMinimumWidth(900)
         self.win.setMinimumHeight(400)
         # self.win.setMinimumHeight(300)
         self.mainLayout = QHBoxLayout()
@@ -366,11 +366,11 @@ class mainHotkeyWindow(QMainWindow):
         # print 'new value', item.text()
 
     def populateTreeView(self):
-        for index, cat in enumerate(self.commandCategories.keys()):
+        for index, cat in enumerate(sorted(self.commandCategories.keys())):
             categoryItem = QStandardItem(cat)
             categoryItem.setEditable(False)
 
-            for command in self.commandCategories[cat]:
+            for command in sorted(self.commandCategories[cat]):
                 hotkey = QStandardItem(command.replace('NameCommand', ''))
                 hotkey.setEditable(False)
 
