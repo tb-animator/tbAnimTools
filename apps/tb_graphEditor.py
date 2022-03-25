@@ -27,6 +27,7 @@ import maya.cmds as cmds
 
 from Abstract import *
 from functools import partial
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -41,6 +42,7 @@ else:
     from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 import maya.OpenMayaUI as omui
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -67,8 +69,6 @@ class GraphEditor(toolAbstractFactory):
     toolName = 'Graph Editor'
     hotkeyClass = hotkeys()
     funcs = functions()
-
-
 
     def __new__(cls):
         if GraphEditor.__instance is None:
@@ -110,18 +110,21 @@ class GraphEditor(toolAbstractFactory):
             setattr(graphEditor, 'hasShiftPopup', False)
         if getattr(graphEditor, 'hasShiftPopup'):
             return
-
         name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
-        popup = cmds.popupMenu(name,
-                               ctrlModifier=False,
-                               shiftModifier=True,
-                               button=3,
-                               allowOptionBoxes=False,
-                               parent='graphEditor1GraphEd',
-                               markingMenu=True,
-                               postMenuCommandOnce=False,
-                               postMenuCommand=partial(self.graphEditorMenu))
-        setattr(graphEditor, 'hasShiftPopup', True)
+        try:
+            if cmds.popupMenu(name, query=True, exists=True):
+                popup = cmds.popupMenu(name,
+                                       ctrlModifier=False,
+                                       shiftModifier=True,
+                                       button=3,
+                                       allowOptionBoxes=False,
+                                       parent='graphEditor1GraphEd',
+                                       markingMenu=True,
+                                       postMenuCommandOnce=False,
+                                       postMenuCommand=partial(self.graphEditorMenu, name))
+                setattr(graphEditor, 'hasShiftPopup', True)
+        except:
+            pass
 
     def graphEditorMenu(self, menuName, *args):
         mode = self.getMoveKeyMode()
@@ -130,22 +133,22 @@ class GraphEditor(toolAbstractFactory):
         cmds.menuItem('Key Move Mode', enable=False)
         cmds.menuItem(divider=True)
 
-        constant = mode=='constant'
-        linear = mode=='linear'
-        power = mode=='power'
-        images = {True:'checkboxOn.png', False:'checkboxOff.png'}
+        constant = mode == 'constant'
+        linear = mode == 'linear'
+        power = mode == 'power'
+        images = {True: 'checkboxOn.png', False: 'checkboxOff.png'}
         cmds.menuItem('Constant',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'constant'),
-                      image=images[mode=='constant'])
+                      image=images[mode == 'constant'])
         cmds.menuItem('Linear',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'linear'),
-                      image=images[mode=='linear'])
+                      image=images[mode == 'linear'])
         cmds.menuItem('Power',
                       parent=menuName,
                       command=partial(self.setMoveKeyMode, 'power'),
-                      image=images[mode=='power'])
+                      image=images[mode == 'power'])
         cmds.menuItem(parent=menuName,
                       divider=True)
 

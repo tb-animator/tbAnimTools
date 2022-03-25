@@ -3109,63 +3109,6 @@ class GraphEdKeySliderWidget(QWidget):
         xOffset = 10  # border?
         self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
 
-    def keyPressEvent(self, event):
-        if event.type() == event.KeyPress:
-            if self.recentlyOpened:
-                if event.key() is not None:
-                    self.invokedKey = event.key()
-                    self.recentlyOpened = False
-            modifiers = QApplication.keyboardModifiers()
-
-            if not event.isAutoRepeat():
-                if event.key() == Qt.Key_Alt:
-                    self.altPressed()
-                    return
-                if event.key() == Qt.Key_Control:
-                    if modifiers == Qt.ShiftModifier:
-                        self.controlShiftPressed()
-                    else:
-                        self.controlPressed()
-                elif event.key() == Qt.Key_Shift:
-                    if modifiers == Qt.ControlModifier:
-                        self.controlShiftPressed()
-                    else:
-                        self.shiftPressed()
-        if not self.invokedKey or self.invokedKey == event.key():
-            return
-        event.ignore()
-
-
-    def keyReleaseEvent(self, event):
-        """
-
-        :param event:
-        :return:
-        """
-        '''
-        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
-            if not self.lockState:
-                if not self.invokedKey or self.invokedKey == event.key():
-                    SlideTools().removeKeyPressHandlers()
-                    self.hide()
-        '''
-
-        if event.type() == event.KeyRelease:
-            modifiers = QApplication.keyboardModifiers()
-
-            if event.key() == Qt.Key_Alt:
-                self.modifierReleased()
-            if event.key() == Qt.Key_Control:
-                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
-                    self.shiftPressed()
-                else:
-                    self.modifierReleased()
-            elif event.key() == Qt.Key_Shift:
-                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
-                    self.controlPressed()
-                else:
-                    self.modifierReleased()
-        event.ignore()
 
     def modifierReleased(self):
         return

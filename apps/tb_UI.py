@@ -595,7 +595,7 @@ class ToolboxButton(QPushButton):
         self.subMenu = None  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
         self.setFixedSize(48, 22)
-
+        self.executed = False
         self.labelText = label
         self.cls = cls
         self.command = command
@@ -654,14 +654,16 @@ class ToolboxButton(QPushButton):
         self.setHoverSS()
         if self.popupSubMenu:
             if not self.subMenu:
-                print ('creating submenu, ', self.cls)
                 self.subMenu = self.subMenuClass(parentMenu=self.cls)
             self.subMenu.show()
         self.hoverSignal.emit(self)
 
     def executeCommand(self):
         if self.command:
-            self.command()
+            if not self.executed:
+                self.command()
+            if self.closeOnPress:
+                self.executed = True
             if self.subMenu:
                 self.cls.closeMenu()
 
