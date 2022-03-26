@@ -953,6 +953,11 @@ class SlideTools(toolAbstractFactory):
             setattr(graphEditor, 'hasSlider', False)
         if getattr(graphEditor, 'hasSlider'):
             return
+        uiButton = "curvesPostInfinityCycleOffsetButton"
+        pUiButton = omui.MQtUtil.findControl(uiButton)
+        if not pUiButton:
+            return
+        PControl = wrapInstance(int(pUiButton), QPushButton)
 
         graphEditKeyWidget = GraphEdKeySliderWidget()
         graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
@@ -960,8 +965,7 @@ class SlideTools(toolAbstractFactory):
         graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
         graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
         graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
-        uiButton = "curvesPostInfinityCycleOffsetButton"
-        PControl = wrapInstance(int(omui.MQtUtil.findControl(uiButton)), QPushButton)
+
 
         UIParent = PControl.parent()
         UIParent.objectName()
@@ -973,6 +977,7 @@ class SlideTools(toolAbstractFactory):
 
         graphEditKeyWidget.show()
         graphEditKeyWidget.raise_()
+        setattr(graphEditor, 'hasSlider', True)
 
 
     def graphEditKeySliderModeChangeSignal(self, key):
