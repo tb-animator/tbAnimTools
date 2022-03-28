@@ -70,6 +70,8 @@ class GraphEditor(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+    graphEditorToolbarOption = 'tbGraphEditorToolbarOption'
+
     def __new__(cls):
         if GraphEditor.__instance is None:
             GraphEditor.__instance = object.__new__(cls)
@@ -87,7 +89,12 @@ class GraphEditor(toolAbstractFactory):
     """
 
     def optionUI(self):
-        return super(GraphEditor, self).optionUI()
+        super(GraphEditor, self).optionUI()
+        useTumbleOptionWidget = optionVarBoolWidget('Use modified graph editor toolbar ', self.graphEditorToolbarOption)
+        self.layout.addWidget(useTumbleOptionWidget)
+        # connect the checkbox changed event to the function that handles removing/adding the camera scriptJobs
+        self.layout.addStretch()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -102,15 +109,16 @@ class GraphEditor(toolAbstractFactory):
         ge = cmds.getPanel(scriptType="graphEditor")
         for g in ge:
             pge = wrapInstance(int(omui.MQtUtil.findControl(g)), QWidget)
-            self.allTools.tools['SlideTools'].showGraphEdKeyInbetween(pge)
-            self.createPopup(pge)
+            if pm.optionVar.get(self.graphEditorToolbarOption, False):
+                self.allTools.tools['SlideTools'].modifyGraphEditorToolbar(pge)
+            #self.createPopup(pge)
 
     def createPopup(self, graphEditor):
         if not hasattr(graphEditor, 'hasShiftPopup'):
             setattr(graphEditor, 'hasShiftPopup', False)
         if getattr(graphEditor, 'hasShiftPopup'):
             return
-        name = 'canvasLayout|graphEditor1GraphEdanimCurveEditorMenu'
+        name = 'graphEditor1GraphEdanimCurveEditorMenu'
         try:
             if cmds.popupMenu(name, query=True, exists=True):
                 popup = cmds.popupMenu(name,

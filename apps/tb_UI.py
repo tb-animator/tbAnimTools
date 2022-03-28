@@ -497,6 +497,9 @@ class ViewportDialog(QDialog):
         distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
         return distance
 
+    def tabletEvent(self, e):
+        print(e.pressure())
+        
     def keyPressEvent(self, event):
         if event.type() == event.KeyPress:
             if self.recentlyOpened:
@@ -3751,3 +3754,102 @@ class OfflineActivateInputWidget(QWidget):
 
         self.move(position_x, position_y)
         super(OfflineActivateInputWidget, self).show()
+
+
+class CollapsibleBox(QWidget):
+    collapsedIcon = QIcon(":openBar.png")
+    expandedIcon = QIcon(":closeBar.png")
+
+    def __init__(self, title="", parent=None, isCollapsed=False, optionVar=str()):
+        super(CollapsibleBox, self).__init__(parent)
+        self.optionVar = optionVar
+        self.toggleButton = QToolButton(
+            text=title, checkable=True, checked=isCollapsed
+        )
+        self.toggleButton.setStyleSheet("QToolButton { border: none; }")
+        self.toggleButton.setFixedSize(12, 22)
+        self.toggleButton.setToolButtonStyle(
+            Qt.ToolButtonTextBesideIcon
+        )
+        self.toggleButton.setIcon(
+            self.collapsedIcon if not isCollapsed else self.expandedIcon
+        )
+        self.toggleButton.clicked.connect(self.on_pressed)
+
+        self.toggleAnimation = QParallelAnimationGroup(self)
+
+        self.contentArea = QScrollArea(
+            maximumWidth=0, minimumWidth=0,
+
+        )
+        self.contentArea.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Fixed
+        )
+        self.contentArea.setFrameShape(QFrame.NoFrame)
+
+        lay = QHBoxLayout(self)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self.toggleButton)
+        lay.addWidget(self.contentArea)
+
+        anim = QPropertyAnimation(self, b"minimumWidth")
+        anim.setEasingCurve(QEasingCurve.OutBack)
+        self.toggleAnimation.addAnimation(
+            anim
+        )
+        anim = QPropertyAnimation(self, b"maximumWidth")
+        anim.setEasingCurve(QEasingCurve.OutBack)
+        self.toggleAnimation.addAnimation(
+            anim
+        )
+        anim = QPropertyAnimation(self.contentArea, b"maximumWidth")
+        anim.setEasingCurve(QEasingCurve.OutBack)
+        self.toggleAnimation.addAnimation(
+            anim
+        )
+        self.toggleAnimation.setDirection(
+            QAbstractAnimation.Forward
+            if not isCollapsed
+            else QAbstractAnimation.Backward
+        )
+        self.toggleAnimation.start()
+
+    @Slot()
+    def on_pressed(self):
+        checked = self.toggleButton.isChecked()
+        print ('checked', checked)
+        self.toggleButton.setIcon(
+            self.collapsedIcon if not checked else self.expandedIcon
+        )
+        self.toggleAnimation.setDirection(
+            QAbstractAnimation.Forward
+            if not checked
+            else QAbstractAnimation.Backward
+        )
+        self.toggleAnimation.start()
+        pm.optionVar[self.optionVar] = checked
+
+    def setContentLayout(self, layout):
+        lay = self.contentArea.layout()
+        del lay
+        self.contentArea.setLayout(layout)
+        collapsed_width = (self.sizeHint().width() - self.contentArea.maximumWidth())
+        content_width = layout.sizeHint().width()
+        for i in range(self.toggleAnimation.animationCount()):
+            animation = self.toggleAnimation.animationAt(i)
+            animation.setDuration(100)
+            animation.setStartValue(collapsed_width)
+            animation.setEndValue(collapsed_width + content_width)
+
+        content_animation = self.toggleAnimation.animationAt(
+            self.toggleAnimation.animationCount() - 1
+        )
+        content_animation.setDuration(100)
+        content_animation.setStartValue(0)
+        content_animation.setEndValue(content_width)
+
+    def show(self):
+        super(CollapsibleBox, self).show()
+        self.toggleAnimation.setDirection(QAbstractAnimation.Backward)
+        self.toggleAnimation.start()

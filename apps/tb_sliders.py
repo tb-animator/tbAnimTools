@@ -936,7 +936,7 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
     # graphed key tween
-    def showGraphEdKeyInbetween(self, graphEditor):
+    def modifyGraphEditorToolbar(self, graphEditor):
         # check tween classes
         '''
 
@@ -949,16 +949,13 @@ class SlideTools(toolAbstractFactory):
             if not self.keyTweenMethods[key].instance:
                 self.keyTweenMethods[key].instance = value()
         '''
-        if not hasattr(graphEditor, 'hasSlider'):
-            setattr(graphEditor, 'hasSlider', False)
-        if getattr(graphEditor, 'hasSlider'):
-            return
-        uiButton = "curvesPostInfinityCycleOffsetButton"
-        pUiButton = omui.MQtUtil.findControl(uiButton)
-        if not pUiButton:
-            return
-        PControl = wrapInstance(int(pUiButton), QPushButton)
 
+
+        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
+        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
+        print (widgets)
+        if any([isinstance(x, CollapsibleBox) for x in widgets]):
+            return
         graphEditKeyWidget = GraphEdKeySliderWidget()
         graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
         graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
@@ -967,17 +964,50 @@ class SlideTools(toolAbstractFactory):
         graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
 
 
-        UIParent = PControl.parent()
-        UIParent.objectName()
+        widgets[0].addWidget(graphEditKeyWidget) #.setParent(phLayout)
 
-        phLayout = wrapInstance(int(omui.MQtUtil.findControl(UIParent.objectName())), QWidget)
+        parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]
+        #parentWidget.setFixedHeight(24)
+        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
 
-        graphEditKeyWidget.setParent(phLayout)
-        graphEditKeyWidget.move(PControl.pos().x() + PControl.width() + 8, 2)
+        layout = widgets[0]
+        buttons = widgets[1:]
 
-        graphEditKeyWidget.show()
-        graphEditKeyWidget.raise_()
-        setattr(graphEditor, 'hasSlider', True)
+        index = 0
+        buttonList = [[]]
+        for x in widgets:
+            if (type(x) == QFrame):
+                index += 1
+                buttonList.append(list())
+            buttonList[-1].append(x)
+        buttonList[2][0].objectName()
+        for index, grp in enumerate(buttonList):
+            optionVarName = grp[0].objectName() + '_collapseState'
+            state = pm.optionVar.get(optionVarName, False)
+            cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
+            cBox.setFixedHeight(24)
+            cBoxLayout = QHBoxLayout()
+            cBoxLayout.setAlignment(Qt.AlignLeft)
+            cBoxLayout.setContentsMargins(0, 0, 0, 0)
+            cBoxLayout.setSpacing(0)
+
+            for button in grp:
+                if type(button) == QLayout:
+                    continue
+                if type(button) == QFrame:
+                    button.deleteLater()
+                    continue
+                if type(button) == QButtonGroup:
+                    continue
+                if index == 0:
+                    button.setFixedSize(22, 22)
+                cBoxLayout.addWidget(button)
+
+            cBox.setContentLayout(cBoxLayout)
+
+            layout.addWidget(cBox)
+
+        #print ('added a slider')
 
 
     def graphEditKeySliderModeChangeSignal(self, key):
