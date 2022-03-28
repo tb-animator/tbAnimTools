@@ -953,7 +953,7 @@ class SlideTools(toolAbstractFactory):
 
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
-        print (widgets)
+
         if any([isinstance(x, CollapsibleBox) for x in widgets]):
             return
         graphEditKeyWidget = GraphEdKeySliderWidget()
