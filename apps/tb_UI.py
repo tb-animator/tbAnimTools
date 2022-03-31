@@ -265,10 +265,19 @@ class ViewportDialog(QDialog):
         self.autoFillBackground = True
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        screen = QDesktopWidget().availableGeometry()
+        #screen = QDesktopWidget().availableGeometry()
+        screens = QApplication.screens()
+        for s in screens:
+            if s.availableGeometry().contains(QCursor.pos()):
+                screen = s
+
+        self.screenGeo = screen.availableGeometry()
+        print ('screenGeo', self.screenGeo.left(), self.screenGeo.top())
+        print ('QCursor', QCursor.pos())
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
-        self.setFixedSize(screen.width(), screen.height())
+        self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
+
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
         self.mainLayout.setContentsMargins(4, 4, 4, 4)
@@ -390,7 +399,7 @@ class ViewportDialog(QDialog):
         pos = QCursor.pos()
         xOffset = 10  # border?
         # self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
-        self.move(0, 0)
+        self.move(self.screenGeo.left(), self.screenGeo.top())
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -3794,12 +3803,12 @@ class CollapsibleBox(QWidget):
         lay.addWidget(self.contentArea)
 
         anim = QPropertyAnimation(self, b"minimumWidth")
-        anim.setEasingCurve(QEasingCurve.OutBack)
+        anim.setEasingCurve(QEasingCurve.InCubic)
         self.toggleAnimation.addAnimation(
             anim
         )
         anim = QPropertyAnimation(self, b"maximumWidth")
-        anim.setEasingCurve(QEasingCurve.OutBack)
+        anim.setEasingCurve(QEasingCurve.InCubic)
         self.toggleAnimation.addAnimation(
             anim
         )
@@ -3808,33 +3817,40 @@ class CollapsibleBox(QWidget):
         self.toggleAnimation.addAnimation(
             anim
         )
-        self.toggleAnimation.setDirection(
-            QAbstractAnimation.Forward
-            if not isCollapsed
-            else QAbstractAnimation.Backward
-        )
-        self.toggleAnimation.start()
 
-    @Slot()
-    def on_pressed(self):
+
+
+    def playAnimationByState(self):
         checked = self.toggleButton.isChecked()
-        print ('checked', checked)
-        self.toggleButton.setIcon(
-            self.collapsedIcon if not checked else self.expandedIcon
-        )
         self.toggleAnimation.setDirection(
             QAbstractAnimation.Forward
             if not checked
             else QAbstractAnimation.Backward
         )
         self.toggleAnimation.start()
+
+    @Slot()
+    def on_pressed(self):
+        self.setIconByState()
+        self.playAnimationByState()
+        self.setOptionVarByState()
+
+    def setOptionVarByState(self):
+        checked = self.toggleButton.isChecked()
         pm.optionVar[self.optionVar] = checked
+
+    def setIconByState(self):
+        checked = self.toggleButton.isChecked()
+        self.toggleButton.setIcon(
+            self.collapsedIcon if not checked else self.expandedIcon
+        )
+        return checked
 
     def setContentLayout(self, layout):
         lay = self.contentArea.layout()
         del lay
         self.contentArea.setLayout(layout)
-        collapsed_width = (self.sizeHint().width() - self.contentArea.maximumWidth())
+        collapsed_width = 16
         content_width = layout.sizeHint().width()
         for i in range(self.toggleAnimation.animationCount()):
             animation = self.toggleAnimation.animationAt(i)
@@ -3848,8 +3864,8 @@ class CollapsibleBox(QWidget):
         content_animation.setDuration(100)
         content_animation.setStartValue(0)
         content_animation.setEndValue(content_width)
+        self.playAnimationByState()
 
     def show(self):
         super(CollapsibleBox, self).show()
-        self.toggleAnimation.setDirection(QAbstractAnimation.Backward)
-        self.toggleAnimation.start()
+        #self.playAnimationByState()

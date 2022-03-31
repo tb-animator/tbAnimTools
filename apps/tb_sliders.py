@@ -31,7 +31,7 @@ import maya.OpenMayaUI as omUI
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
 from maya.api import OpenMaya
-
+from copy import deepcopy
 fn_SMOOTH = 'Smooth'
 fn_BLOAT = 'Bloat'
 fn_BREAKDOWN = 'Tween'
@@ -950,7 +950,6 @@ class SlideTools(toolAbstractFactory):
                 self.keyTweenMethods[key].instance = value()
         '''
 
-
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
 
@@ -963,11 +962,10 @@ class SlideTools(toolAbstractFactory):
         graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
         graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
 
-
-        widgets[0].addWidget(graphEditKeyWidget) #.setParent(phLayout)
+        widgets[0].addWidget(graphEditKeyWidget)  # .setParent(phLayout)
 
         parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]
-        #parentWidget.setFixedHeight(24)
+        # parentWidget.setFixedHeight(24)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
 
         layout = widgets[0]
@@ -981,10 +979,12 @@ class SlideTools(toolAbstractFactory):
                 buttonList.append(list())
             buttonList[-1].append(x)
         buttonList[2][0].objectName()
+        collapsedWidgets = list()
         for index, grp in enumerate(buttonList):
             optionVarName = grp[0].objectName() + '_collapseState'
             state = pm.optionVar.get(optionVarName, False)
             cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
+            collapsedWidgets.append(cBox)
             cBox.setFixedHeight(24)
             cBoxLayout = QHBoxLayout()
             cBoxLayout.setAlignment(Qt.AlignLeft)
@@ -1006,9 +1006,9 @@ class SlideTools(toolAbstractFactory):
             cBox.setContentLayout(cBoxLayout)
 
             layout.addWidget(cBox)
-
-        #print ('added a slider')
-
+        for widget in collapsedWidgets:
+            widget.show()
+        # print ('added a slider')
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -1033,7 +1033,7 @@ class SlideTools(toolAbstractFactory):
                 self.keyTweenMethods[key].instance = value()
         '''
         if not self.keyWidget:
-            #print ('new instance')
+            # print ('new instance')
             self.keyWidget = KeySliderWidget()
             self.keyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
             self.keyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
@@ -1158,8 +1158,10 @@ class SlideTools(toolAbstractFactory):
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.tweenPreviousNextGroupKey(alpha=alpha,
                                                           currentValue=keyframeData.keyValues[i],
-                                                          previousValue=keyframeData.previousValues[keyframeData.keyIndexes[0]],
-                                                          nextValue=keyframeData.nextValues[keyframeData.keyIndexes[-1]],
+                                                          previousValue=keyframeData.previousValues[
+                                                              keyframeData.keyIndexes[0]],
+                                                          nextValue=keyframeData.nextValues[
+                                                              keyframeData.keyIndexes[-1]],
                                                           startValue=keyframeData.keyValues[0],
                                                           endValue=keyframeData.keyValues[-1])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
@@ -1215,29 +1217,49 @@ class SlideTools(toolAbstractFactory):
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
         if not self.keyframeData:
             return
-        for x in range(200):
-            for curve, keyframeData in self.keyframeData.iteritems():
-                smoothList = [0.0] * len(keyframeData.keyIndexes)
+
+        for curve, keyframeData in self.keyframeData.iteritems():
+            if keyframeData.isCached:
+                continue
+            for x in range(10):
                 for i in range(len(keyframeData.keyIndexes)):
                     """
                     Smooth values towards midpoint of nearest neighbours +/-
                     Smooth the key values based on their spacing, 
                     also update the previous/next values for the next iteration
                     """
+
                     # full weight target inbetween previous and next keys, lerp current towards that?
                     # make this take into account the time between keys
-                    average = self.tweenPreviousNextKey(0.5,
-                                                        keyframeData.previousValues[keyframeData.keyIndexes[i]],
-                                                        keyframeData.nextValues[keyframeData.keyIndexes[i]])
-                    smoothList[i] = lerpFloat(average, keyframeData.keyValues[i], 0.5)
+                    # print ('previousValues', keyframeData.previousValues[keyframeData.keyIndexes[i]],'keyValues', keyframeData.keyValues[i],'nextValues', keyframeData.nextValues[keyframeData.keyIndexes[i]])
+                    average = self.tweenPreviousNextKeyTimeAware(alpha=0.5,
+                                                  previousValue=keyframeData.previousValues[keyframeData.keyIndexes[i]],
+                                                  nextValue=keyframeData.nextValues[keyframeData.keyIndexes[i]],
+                                                  previousTime=keyframeData.previousKeyTimes[keyframeData.keyIndexes[i]],
+                                                  nextTime=keyframeData.nextKeyTimes[keyframeData.keyIndexes[i]],
+                                                  currentValue= keyframeData.keyValues[i],
+                                                  currentTime= keyframeData.keyTimes[i])
 
-                keyframeData.keyValues = smoothList
-                for i in range(len(keyframeData.keyIndexes)):
-                    if keyframeData.keyIndexes[i] in keyframeData.previouskeyIndexes.keys():
-                        keyframeData.previousValues[keyframeData.keyIndexes[i]] = keyframeData.keyValues[i]
-                    if keyframeData.keyIndexes[i] in keyframeData.nextkeyIndexes.keys():
-                        keyframeData.nextValues[keyframeData.keyIndexes[i]] = keyframeData.keyValues[i]
-                self.tweenSmoothNeighboursKey(keyframeData=keyframeData)
+                    keyframeData.keyValues[i] = average
+
+                    if keyframeData.keyIndexes[i] in keyframeData.previouskeyIndexes.values():
+                        key = keyframeData.previouskeyIndexes.keys()[
+                            keyframeData.previouskeyIndexes.values().index(keyframeData.keyIndexes[i])]
+
+                        # key = keyframeData.previouskeyIndexes.values().index(keyframeData.keyIndexes[i])
+                        # print ('previouskeyIndexes', index, keyframeData.keyIndexes[i])
+                        # print (keyframeData.previousValues[index], smoothList[i])
+                        keyframeData.previousValues[key] = keyframeData.keyValues[i]
+                    if keyframeData.keyIndexes[i] in keyframeData.nextkeyIndexes.values():
+                        index = keyframeData.nextkeyIndexes.values().index(keyframeData.keyIndexes[i])
+                        key = keyframeData.nextkeyIndexes.keys()[
+                            keyframeData.nextkeyIndexes.values().index(keyframeData.keyIndexes[i])]
+                        # print ('nextkeyIndexes', index, keyframeData.keyIndexes[i])
+                        keyframeData.nextValues[key] = keyframeData.keyValues[i]
+
+                    self.tweenSmoothNeighboursKey(keyframeData=keyframeData)
+
+            keyframeData.isCached = True
 
         for curve, keyframeData in self.keyframeData.iteritems():
             for i in range(len(keyframeData.keyIndexes)):
@@ -1252,7 +1274,8 @@ class SlideTools(toolAbstractFactory):
         :return:
         """
 
-    def tweenPreviousNextGroupKey(self, alpha=0.5, currentValue=0, previousValue=0, nextValue=0, startValue=0, endValue=0):
+    def tweenPreviousNextGroupKey(self, alpha=0.5, currentValue=0, previousValue=0, nextValue=0, startValue=0,
+                                  endValue=0):
         """
 
         :param alpha:
@@ -1277,6 +1300,24 @@ class SlideTools(toolAbstractFactory):
         """
         alpha = self.normalizeAlpha(alpha, -100, 100)
         return previousValue + (nextValue - previousValue) * alpha
+
+    def tweenPreviousNextKeyTimeAware(self, alpha=float(),
+                                      previousValue=float(),
+                                      nextValue=float(),
+                                      previousTime=float(),
+                                      nextTime=float(),
+                                      currentValue=float(),
+                                      currentTime=float()):
+        """
+        :param alpha:
+        :param previousValue:
+        :param nextValue:
+        :return:
+        """
+        t = 1 - ((currentTime - previousTime) / (nextTime - previousTime))
+        baseValue = nextValue + (previousValue - nextValue) * t
+        return currentValue + (baseValue - currentValue) * (alpha)
+
 
     def tweenPreviousCurrentNextKey(self, alpha, previousValue, currentValue, nextValue):
         """
@@ -1502,7 +1543,7 @@ class KeyframeData(object):
         self.inTangents = inTangents
         self.outTangents = outTangents
         self.bezierTangents = bezierTangents
-
+        self.isCached = False
 
 class keypressHandler(QObject):
 
@@ -1715,7 +1756,7 @@ class DragButton(QLabel):
         self.__mousePressPos = None
         self.__mouseMovePos = None
         if self.uiParent.isDragging:
-            #print ('mousePressEvent when already dragging')
+            # print ('mousePressEvent when already dragging')
             return super(DragButton, self).mousePressEvent(event)
         else:
             self.uiParent.startDrag(event.button())
@@ -2571,7 +2612,7 @@ class PySlider(QSlider):
             self.resetStyle()
 
     def wheelEvent(self, event):
-        #cmds.warning(self.x(), event.delta() / 120.0 * 25)
+        # cmds.warning(self.x(), event.delta() / 120.0 * 25)
         self.setValue(self.value() + event.delta() / 120.0 * 25)
         # super(PySlider, self).wheelEvent(event)
         self.wheelSignal.emit(self.value())
@@ -2671,6 +2712,7 @@ class SliderWidget(BaseDialog):
         SliderWidget.__instance.app = QApplication.instance()
         return SliderWidget.__instance
     '''
+
     def __init__(self,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  showLockButton=True, showCloseButton=False,
@@ -2959,6 +3001,7 @@ class XformSliderWidget(SliderWidget):
         XformSliderWidget.__instance.app = QApplication.instance()
         return XformSliderWidget.__instance
     '''
+
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  title='Object Inbetween',
                  text='test',
@@ -2997,6 +3040,7 @@ class KeySliderWidget(SliderWidget):
         KeySliderWidget.__instance.app = QApplication.instance()
         return KeySliderWidget.__instance
     '''
+
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  title='Key Inbetween',
                  text='test',
@@ -3143,7 +3187,6 @@ class GraphEdKeySliderWidget(QWidget):
         pos = QCursor.pos()
         xOffset = 10  # border?
         self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
-
 
     def modifierReleased(self):
         return
