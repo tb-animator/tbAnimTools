@@ -829,13 +829,25 @@ class SlideTools(toolAbstractFactory):
     xformTweenDict = {'World': WorldSpaceTween,
                       'Local': LocalSpaceTween,
                       }
-    xformTweenClasses = {'World': None,
-                         'Local': None,
+    xformTweenClasses = {'World': WorldSpaceTween(),
+                         'Local': LocalSpaceTween(),
                          }
     # stop here, maybe put anim cache in each mode?
     keyTweenDict = {'World': WorldSpaceTween,
                     'Local': LocalSpaceTween,
                     }
+
+    keyTweenIcons = {
+        fn_BREAKDOWN: 'tweenKey.png',
+        fn_BREAKDOWNGROUP: 'tweenGroup.png',
+        fn_BLOAT: 'tweenAmp.png',
+        fn_SMOOTH: 'tweenSmooth.png'
+    }
+    keyTweenKeys = [fn_BREAKDOWN,
+                    fn_BREAKDOWNGROUP,
+                    fn_SMOOTH,
+                    fn_BLOAT
+                    ]
     keyTweenMethods = {}
     xformWidget = None
     keyWidget = None
@@ -858,6 +870,10 @@ class SlideTools(toolAbstractFactory):
             fn_BLOAT: SlideTools.__instance.tweenBloat,
             fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours
         }
+
+        handler = keypressHandler(None, None)
+        SlideTools.__instance.keyPressHandler = handler
+        SlideTools.__instance.app.installEventFilter(handler)
         # slideTools.__instance.xformWidget = XformSliderWidget()
 
         return SlideTools.__instance
@@ -915,9 +931,9 @@ class SlideTools(toolAbstractFactory):
             self.xformWidget.moveToCursor()
         self.xformWidget.show()
         self.xformWidget.raise_()
-
-        self.keyPressHandler = keypressHandler(None, self.xformWidget)
         self.app.installEventFilter(self.keyPressHandler)
+        self.keyPressHandler.addUI(self.xformWidget)
+
 
     def xformSliderBeginSignal(self, key, value):
         self.xformTweenClasses[key].startDrag(value)
@@ -963,6 +979,17 @@ class SlideTools(toolAbstractFactory):
         graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
 
         widgets[0].addWidget(graphEditKeyWidget)  # .setParent(phLayout)
+
+        for i in self.keyTweenKeys:
+            mode = self.keyTweenMethods[i]
+            xformWidget = ButtonWidget(closeOnRelease=True, mode=i, altMode=i,
+                                       icon=self.keyTweenIcons[i], altIcon='tweenEase.png')
+            xformWidget.setPopupMenu(SliderButtonPopupMenu)
+            xformWidget.popup.sliderBeginSignal.connect(self.keySliderBeginSignal)
+            xformWidget.popup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+            xformWidget.popup.sliderEndedSignal.connect(self.keySliderEndSignal)
+            #self.keyPressHandler.addUI(xformWidget)
+            widgets[0].addWidget(xformWidget)  # .setParent(phLayout)
 
         parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]
         # parentWidget.setFixedHeight(24)
@@ -1546,24 +1573,33 @@ class KeyframeData(object):
         self.isCached = False
 
 class keypressHandler(QObject):
-
     def __init__(self, tweenClass=None, UI=None):
         super(keypressHandler, self).__init__()
         self.tweenClass = tweenClass
-        self.UI = UI
+        self.UI = [UI]
 
     def eventFilter(self, target, event):
         if event.type() == event.KeyRelease:
             if event.isAutoRepeat():
                 return True
-            self.UI.keyReleaseEvent(event)
+            for ui in self.UI:
+                try:
+                    ui.keyReleaseEvent(event)
+                except:
+                    continue
             return False
         elif event.type() == event.KeyPress:
-            self.UI.keyPressEvent(event)
+            for ui in self.UI:
+                try:
+                    ui.keyPressEvent(event)
+                except:
+                    continue
             return False
         return False
         # return super(keypressHandler, self).eventFilter(target, event)
 
+    def addUI(self, ui):
+        self.UI.append(ui)
 
 class attrData(object):
     """
@@ -2918,6 +2954,7 @@ class SliderWidget(BaseDialog):
             self.overlayLabel.setAlignment(Qt.AlignRight)
         self.overlayLabel.setText(str(self.slider_2.value() * 0.01))
         self.sliderUpdateSignal.emit(self.currentMode, self.slider_2.value())
+        #print (self.currentMode, self.slider_2.value())
         # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
 
     def sliderPressed(self):
@@ -3092,7 +3129,7 @@ class GraphEdKeySliderWidget(QWidget):
                  title='Key Inbetween',
                  text='test',
                  showLockButton=True, showCloseButton=False,
-                 modeList=SlideTools().keyTweenMethods.keys(),
+                 modeList=SlideTools().keyTweenKeys,
                  showInfo=False,
 
                  ):
@@ -3320,3 +3357,5 @@ class SliderButtonPopup(ButtonPopup):
             self.layout.addRow(widget)
         # layout.addRow("Size:", self.size_sb)
         # layout.addRow("Opacity:", self.opacity_sb)
+
+

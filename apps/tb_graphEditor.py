@@ -108,7 +108,10 @@ class GraphEditor(toolAbstractFactory):
     def loadGraphEditorModifications(self, *args):
         ge = cmds.getPanel(scriptType="graphEditor")
         for g in ge:
-            pge = wrapInstance(int(omui.MQtUtil.findControl(g)), QWidget)
+            control = omui.MQtUtil.findControl(g)
+            if not control:
+                continue
+            pge = wrapInstance(int(control), QWidget)
             if pm.optionVar.get(self.graphEditorToolbarOption, False):
                 self.allTools.tools['SlideTools'].modifyGraphEditorToolbar(pge)
             #self.createPopup(pge)
