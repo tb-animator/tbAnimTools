@@ -135,10 +135,11 @@ class module_maker():
         os.chmod(os.path.join(self.module_path()), 777)
         if os.access(os.path.join(self.module_path()), os.W_OK):
             os.chmod(os.path.join(self.maya_module_dir()), 777)
-            with io.open(self.module_path(), 'w') as f:
-                f.writelines(line + u'\n' for line in self.current_module_data)
-                os.chmod(os.path.join(self.module_path()), 777)
-                return True
+            if self.current_module_data:
+                with io.open(self.module_path(), 'w') as f:
+                    f.writelines(line + u'\n' for line in self.current_module_data)
+                    os.chmod(os.path.join(self.module_path()), 777)
+                    return True
         else:
             return False
 
