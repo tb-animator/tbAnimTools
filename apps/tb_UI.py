@@ -272,8 +272,7 @@ class ViewportDialog(QDialog):
                 screen = s
 
         self.screenGeo = screen.availableGeometry()
-        print ('screenGeo', self.screenGeo.left(), self.screenGeo.top())
-        print ('QCursor', QCursor.pos())
+
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
         self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
@@ -369,7 +368,7 @@ class ViewportDialog(QDialog):
         self.addAllButtons()
 
     def closeMenu(self):
-        print ('closeMenu', self, self.parentMenu)
+        # print ('closeMenu', self, self.parentMenu)
         if self.parentMenu:
             self.parentMenu.closeMenu()
         self.hide()
@@ -465,7 +464,7 @@ class ViewportDialog(QDialog):
         self.update()
 
     def mousePressEvent(self, event):
-        print ('mousePressEvent', event)
+        # print ('mousePressEvent', event)
         event.accept()
         '''
         event = QKeyEvent(QEvent.KeyPress,
@@ -486,7 +485,7 @@ class ViewportDialog(QDialog):
             closestWidget = None
             for w in self.allButtons:
                 if not isinstance(w, ToolboxButton):
-                    print ('skip', w)
+                    # print ('skip', w)
                     continue
                 # w.setNonHoverSS()
                 widgetPos = QPoint(w.absPos.x() + w.width() / 2, w.absPos.y() + w.height() / 2)
@@ -531,7 +530,7 @@ class ViewportDialog(QDialog):
 
                 self.close()
                 if self.parentMenu:
-                    print ('sending keyreleaseevent')
+                    # print ('sending keyreleaseevent')
                     self.parentMenu.keyReleaseEvent(event)
                 self.invokedKey = None
 
@@ -561,7 +560,7 @@ class ReturnButton(QPushButton):
     def buttonClicked(self):
         self.executeCommand()
         if self.closeOnPress:
-            print ('closeOnPress', self.cls)
+            # print ('closeOnPress', self.cls)
             self.cls.closeMenu()
             self.cls.deleteLater()
 
@@ -632,7 +631,7 @@ class ToolboxButton(QPushButton):
         except:
             pass
         if self.closeOnPress:
-            print ('closeOnPress', self.cls)
+            # print ('closeOnPress', self.cls)
             self.cls.closeMenu()
             self.cls.deleteLater()
 
@@ -718,7 +717,7 @@ class ToolboxDoubleButton(QWidget):
     def buttonClicked(self):
         self.executeCommand()
         if self.closeOnPress:
-            print ('closeOnPress', self.cls)
+            # print ('closeOnPress', self.cls)
             self.cls.closeMenu()
             self.cls.deleteLater()
 
@@ -773,7 +772,7 @@ class ToolboxDoubleButton(QWidget):
         self.setHoverSS()
         if self.popupSubMenu:
             if not self.subMenu:
-                print ('creating submenu, ', self.cls)
+                # print ('creating submenu, ', self.cls)
                 self.subMenu = self.subMenuClass(parentMenu=self.cls)
             self.subMenu.show()
         self.hoverSignal.emit(self)
@@ -3885,13 +3884,15 @@ class PopupSlider(QWidget):
         self.closeOnRelease = closeOnRelease
         self.mode = mode
         self.altMode = altMode
-
+        self.lastMode = None
+        self.lastAlpha = 0.0
+        self.outAlpha = 0.0
         layout = QHBoxLayout()
         self.overshootState = False
         self.button = QLabel('B')
         pixmap = QPixmap(os.path.join(IconPath, icon))
         self.button.setPixmap(pixmap.scaled(24, 24))
-
+        self.overlayLabelAlignment = Qt.AlignLeft
         self.button.setStyleSheet("QLabel {border-radius: 6;}")
         self.minValue = minValue
         self.overshootMin = overshootMin
@@ -3946,9 +3947,11 @@ class PopupSlider(QWidget):
     def mouseReleaseEvent(self, event):
         if self.closeOnRelease:
             self.hide()
-        print ('release', self.outAlpha)
-        # TODO - move the cursor back to the button
+
         self.sliderEndedSignal.emit(self.mode, self.outAlpha)
+        self.lastMode = str(self.mode)
+        self.lastAlpha = float(self.outAlpha)
+
 
     def paintEvent(self, event):
         lightGrey = QColor(196, 196, 196, 255)
@@ -4001,7 +4004,6 @@ class PopupSlider(QWidget):
         size = self.size()
 
         self.move(QPoint(pos.x() - (size.width() * 0.5), pos.y() - size.height() * 0.5))
-        print (QPoint(pos.x() - (size.width() * 0.5), pos.y() - size.height() * 0.5))
         self.button.move(self.mapFromGlobal(pos).x() - self.button.width() * 0.5, self.button.pos().y())
         self.sliderBeginSignal.emit(self.mode, 0.0)
 
@@ -4100,13 +4102,14 @@ class ButtonWidget(QWidget):
                                  icon=icon, altIcon=altIcon)
 
         self.button.clicked.connect(self.raisePopup)
-        self.button.middleClicked.connect(self.raisePopup)
+        self.button.middleClicked.connect(self.repeatLast)
         self.button.rightClicked.connect(self.raisePopup)
+        self.popup.sliderEndedSignal.connect(self.resetCursor)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
 
         pos = QCursor.pos()
         size = self.sizeHint() * 0.5
-
+        self.cachedCursorPos = QPoint(0,0)
         self.move(pos.x() - size.width(), pos.y() - size.height())
 
     def keyPressEvent(self, event):
@@ -4114,7 +4117,6 @@ class ButtonWidget(QWidget):
 
     def keyReleaseEvent(self, event):
         self.button.keyReleaseEvent(event)
-
 
     def raisePopup(self):
         self.popup.setIcon(self.button.currentIcon)
@@ -4124,10 +4126,19 @@ class ButtonWidget(QWidget):
         pos = self.mapToGlobal(self.pos())
         screenPos = self.mapToGlobal(self.button.pos())
         pos = (self.button.pos())
-        finalpos = QPoint(screenPos.x() + (self.button.width() * 0.5), screenPos.y() + (self.button.height() * 0.5))
-        QCursor.setPos(finalpos)
-
+        self.cachedCursorPos = QPoint(screenPos.x() + (self.button.width() * 0.5), screenPos.y() + (self.button.height() * 0.5))
+        QCursor.setPos(self.cachedCursorPos)
         self.popup.moveToCursor()
+
+    def resetCursor(self, *args):
+        QCursor.setPos(self.cachedCursorPos)
+
+    def repeatLast(self):
+        if not self.popup.lastMode:
+            return
+        self.popup.sliderBeginSignal.emit(self.popup.lastMode, self.popup.lastAlpha)
+        self.popup.sliderUpdateSignal.emit(self.popup.lastMode, self.popup.lastAlpha)
+        self.popup.sliderEndedSignal.emit(self.popup.lastMode, self.popup.lastAlpha)
 
     def setPopupMenu(self, menuClass):
         self.button.setPopupMenu(menuClass)
