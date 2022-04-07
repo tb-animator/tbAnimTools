@@ -181,10 +181,16 @@ class module_maker():
 
     def check_module_file(self):
         # file doesn't exist yet so create one
-        st = os.stat(self.maya_module_dir())
-        os.chmod(str(self.maya_module_dir()), st.st_mode | stat.S_IWOTH)
-        st = os.stat(self.module_path())
-        os.chmod(str(self.module_path()), st.st_mode | stat.S_IWOTH)
+        try:
+            st = os.stat(self.maya_module_dir())
+            os.chmod(str(self.maya_module_dir()), st.st_mode | stat.S_IWOTH)
+        except:
+            pass
+        try:
+            st = os.stat(self.module_path())
+            os.chmod(str(self.module_path()), st.st_mode | stat.S_IWOTH)
+        except:
+            pass
         if not os.path.isfile(self.module_path()):
             self.firstInstall = True
             with io.open(self.module_path(), 'a+') as f:
