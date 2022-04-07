@@ -35,7 +35,6 @@ import io
 from functools import partial
 
 import maya.OpenMayaUI as omUI
-import traceback
 qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
 
 def getStyleSheet():
@@ -44,7 +43,7 @@ def getStyleSheet():
         st = str(stream.readAll())
         stream.close()
     else:
-        cmds.warning(stream.errorString())
+        print(stream.errorString())
     return st
 
 qtVersion = pm.about(qtVersion=True)
@@ -74,7 +73,7 @@ class module_maker():
                         }
         self.win_versions = ['win32', 'win64'][pm.about(is64=True)]
         self.maya_version = pm.about(version=True)
-        self.filepath = os.path.normpath(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))).replace("\\","/") # script directory
+        self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
         self.python_paths = ['', 'apps', 'proApps/Python3', 'proApps/Python2']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
         self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
@@ -87,26 +86,26 @@ class module_maker():
         self.firstInstall = False
 
     def maya_module_dir(self):
-        return os.path.normpath(os.path.join(pm.internalVar(userAppDir=True), "modules"))
+        return os.path.join(pm.internalVar(userAppDir=True) + "modules\\")
 
     def module_path(self):
         return os.path.join(self.maya_module_dir(), self.module_file)
 
     def make_module_path_data(self):
-        module_path = '+ ' \
+        module_path = '+ PLATFORM:' \
+                      + self.win_versions \
                       + ' MAYAVERSION:' \
                       + self.maya_version \
                       + ' tbAnimTools 1.0 ' \
-                      + self.filepath.replace("\\","/") + '/'
+                      + self.filepath + '\\'
         return module_path
 
     def make_core_module_path_data(self):
-        module_path64 = '+ PLATFORM:win64  tbAnimTools 1.0 ' + self.filepath.replace("\\","/") + '/'
-        return [module_path64]
+        module_path = '+  tbAnimTools 1.0 ' + self.filepath + '\\'
+        return module_path
 
     def make_core_module_data(self):
-        out_lines = self.make_core_module_path_data()
-
+        out_lines = [self.make_core_module_path_data()]
         for paths in self.python_paths:
             out_lines.append('PYTHONPATH+:=' + paths)
         for paths in self.maya_script_paths:
@@ -123,7 +122,7 @@ class module_maker():
 
         for paths in self.maya_plugin_paths:
             out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
-        #print ('make_module_data', out_lines)
+        print ('make_module_data', out_lines)
         return out_lines
 
     def write_module_file(self):
@@ -132,21 +131,17 @@ class module_maker():
         # shutil.copyfile(self.module_template, mod_file)
         if not self.current_module_data:
             return cmds.error('no module data to write')
-        os.chmod(os.path.join(self.module_path()), 777)
         if os.access(os.path.join(self.module_path()), os.W_OK):
-            os.chmod(os.path.join(self.maya_module_dir()), 777)
-            if self.current_module_data:
-                with io.open(self.module_path(), 'w') as f:
-                    f.writelines(line + u'\n' for line in self.current_module_data)
-                    os.chmod(os.path.join(self.module_path()), 777)
-                    return True
+            with io.open(self.module_path(), 'w') as f:
+                f.writelines(line + u'\n' for line in self.current_module_data)
+                return True
+                io.close(self.module_path())
         else:
             return False
 
     def read_module_file(self):
         existingVersions = list()
         if os.path.isfile(self.module_path()):
-            os.chmod(os.path.join(self.module_path()), 777)
             f = open(self.module_path(), 'r')
             self.current_module_data = f.read().splitlines()
             match = False
@@ -154,7 +149,7 @@ class module_maker():
             for lineIndex, line in enumerate(self.current_module_data):
                 if line.startswith('+ PLATFORM'):
                     # finding a new block
-                    existingVersions.append(line.replace("\\","/"))
+                    existingVersions.append(line)
                 if 'PLATFORM:%s' % self.win_versions and 'MAYAVERSION:%s' % self.maya_version in line:
                     match = True
 
@@ -196,10 +191,8 @@ class module_maker():
     def make_module_folder(self):
         if not os.path.isdir(self.maya_module_dir()):
             os.mkdir(self.maya_module_dir())
-            os.chmod(os.path.join(self.maya_module_dir()), 766)
         else:
             os.chmod(self.maya_module_dir(), stat.S_IWRITE)
-            os.chmod(os.path.join(self.maya_module_dir()), 766)
 
     def install(self):
         # create module folder if not existing
@@ -233,7 +226,7 @@ class module_maker():
         pm.showWindow(window)
 
 class installer():
-    filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))).replace("\\","/")  # script directory
+    filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "\\"  # script directory
     iconPath = os.path.join(filepath, 'Icons')
     appPath = os.path.join(filepath, 'apps')
     colours = {'red': "color:#F05A5A;",
