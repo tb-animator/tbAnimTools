@@ -1178,6 +1178,8 @@ class SlideTools(toolAbstractFactory):
         self.keyTweenMethods[mode](alpha)
 
     def tweenPreviousNextGroup(self, alpha):
+        if not self.keyframeData:
+            return
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
@@ -1202,9 +1204,13 @@ class SlideTools(toolAbstractFactory):
         '''
 
     def tweenPreviousCurrentNext(self, alpha):
+        if not self.keyframeData:
+            return
         if not self.keyframeData.items():
             return
         for curve, keyframeData in self.keyframeData.iteritems():
+            if not keyframeData.keyIndexes:
+                continue
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.tweenPreviousCurrentNextKey(alpha,
                                                             keyframeData.previousValues[keyframeData.keyIndexes[i]],
@@ -1214,6 +1220,8 @@ class SlideTools(toolAbstractFactory):
                                                        change=self.animCurveChange)
 
     def tweenBloat(self, alpha):
+        if not self.keyframeData:
+            return
         if not self.keyframeData.items():
             return
         for curve, keyframeData in self.keyframeData.iteritems():
