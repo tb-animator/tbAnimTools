@@ -215,7 +215,7 @@ class markingMenu_filter(QObject):
     '''A simple event filter to catch MouseMove events'''
 
     def eventFilter(self, obj, event):
-        print (event.type())
+        return
 
 
 class markingMenuKeypressHandler(QObject):
@@ -265,7 +265,7 @@ class ViewportDialog(QDialog):
         self.autoFillBackground = True
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        #screen = QDesktopWidget().availableGeometry()
+        # screen = QDesktopWidget().availableGeometry()
         screens = QApplication.screens()
         for s in screens:
             if s.availableGeometry().contains(QCursor.pos()):
@@ -507,7 +507,7 @@ class ViewportDialog(QDialog):
 
     def tabletEvent(self, e):
         print(e.pressure())
-        
+
     def keyPressEvent(self, event):
         if event.type() == event.KeyPress:
             if self.recentlyOpened:
@@ -1444,7 +1444,9 @@ class InfoPromptWidget(QWidget):
                  imagePath=IconPath,
                  gif=bool,
                  error=False,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 show=True,
+                 showButton=True):
         super(InfoPromptWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
         self.error = error
@@ -1467,9 +1469,6 @@ class InfoPromptWidget(QWidget):
         titleLayout = QHBoxLayout()
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
-
-        self.closeButton = MiniButton()
-        self.closeButton.clicked.connect(self.close)
 
         sel = pm.ls(sl=True)
 
@@ -1503,15 +1502,16 @@ class InfoPromptWidget(QWidget):
             self.comboBox.addItem(c)
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
 
-        self.saveButton = QPushButton(buttonText)
-        self.saveButton.setStyleSheet(getqss.getStyleSheet())
-        self.saveButton.clicked.connect(self.acceptedFunction)
+
         # layout.addWidget(btnSetFolder)
 
         self.helpLabel = QLabel(self.helpString)
         self.helpLabel.setWordWrap(True)
 
         titleLayout.addWidget(self.titleText)
+
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
         titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
         mainLayout.addLayout(titleLayout)
         mainLayout.addLayout(layout)
@@ -1526,11 +1526,15 @@ class InfoPromptWidget(QWidget):
             mainLayout.addWidget(self.helpLabel)
         if image:
             mainLayout.addWidget(self.imageLabel)
-        mainLayout.addWidget(self.saveButton)
+        if showButton:
+            self.saveButton = QPushButton(buttonText)
+            self.saveButton.setStyleSheet(getqss.getStyleSheet())
+            self.saveButton.clicked.connect(self.acceptedFunction)
+            mainLayout.addWidget(self.saveButton)
 
         self.setLayout(mainLayout)
         self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
-        self.show()
+
         self.lineEdit.setFocus()
         self.setStyleSheet(
             "TextInputWidget { "
@@ -1543,6 +1547,8 @@ class InfoPromptWidget(QWidget):
         self.closeButton.setVisible(self.showCloseButton)
         self.resize(self.sizeHint())
         # self.setFixedSize(400, 64)
+        if show:
+            self.show()
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -1563,7 +1569,7 @@ class InfoPromptWidget(QWidget):
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 8, 8)
         qp.end()
 
     def acceptedFunction(self, *args):
@@ -1573,6 +1579,32 @@ class InfoPromptWidget(QWidget):
         self.acceptedKeySubComboSignal.emit(self.key, self.lineEdit.text(), self.subKey)
         self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
+
+    def showRelative(self, screenPos=QPoint(0,0), widgetSize=QPoint(0,0)):
+
+
+        screens = QApplication.screens()
+        for s in screens:
+            if s.availableGeometry().contains(QCursor.pos()):
+                screen = s
+
+        screenGeo = screen.availableGeometry()
+        screenGeo.width()
+        screenGeo.height()
+        finalPos = QPoint(0,0)
+
+        if screenPos.y() + widgetSize.height() + self.height() > screenGeo.height():
+            finalPos.setY(screenPos.y() - self.height())
+        else:
+            finalPos.setY(screenPos.y() + widgetSize.height())
+
+        if screenPos.x() + widgetSize.width() + self.width() > screenGeo.width():
+            finalPos.setX(screenPos.x() + widgetSize.width() - self.width())
+        else:
+            finalPos.setX(screenPos.x())
+
+        self.move(finalPos)
+        self.show(auto=False)
 
     def close(self):
         self.rejectedSignal.emit()
@@ -1603,11 +1635,12 @@ class InfoPromptWidget(QWidget):
     def mouseReleaseEvent(self, event):
         self.oldPos = None
 
-    def show(self):
-        position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
-        position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
+    def show(self, auto=True):
+        if auto:
+            position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
+            position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
 
-        self.move(position_x, position_y)
+            self.move(position_x, position_y)
         super(InfoPromptWidget, self).show()
 
 
@@ -3817,8 +3850,6 @@ class CollapsibleBox(QWidget):
             anim
         )
 
-
-
     def playAnimationByState(self):
         checked = self.toggleButton.isChecked()
         self.toggleAnimation.setDirection(
@@ -3867,40 +3898,41 @@ class CollapsibleBox(QWidget):
 
     def show(self):
         super(CollapsibleBox, self).show()
-        #self.playAnimationByState()
+        # self.playAnimationByState()
+
 
 class PopupSlider(QWidget):
-    sliderBeginSignal = Signal(str, float)
-    sliderUpdateSignal = Signal(str, float)
-    sliderEndedSignal = Signal(str, float)
+    sliderBeginSignal = Signal(str, float, float)
+    sliderUpdateSignal = Signal(str, float, float)
+    sliderEndedSignal = Signal(str, float, float)
 
-    def __init__(self, width=400, minValue=-100, maxValue=100, overshootMin=-200, overshootMax=200, closeOnRelease=False,
+    def __init__(self, width=400, minValue=-100, maxValue=100, overshootMin=-200, overshootMax=200,
+                 closeOnRelease=False,
                  mode=str(),
+                 vertical=False,
                  altMode=str(),
-                 icon=str(),
-                 altIcon=str()):
+                 icon=str()):
         super(PopupSlider, self).__init__()
         layout = QHBoxLayout()
         self.closeOnRelease = closeOnRelease
         self.mode = mode
-        self.altMode = altMode
+        self.vertical = vertical
         self.lastMode = None
-        self.lastAlpha = 0.0
-        self.outAlpha = 0.0
+
         layout = QHBoxLayout()
         self.overshootState = False
-        self.button = QLabel('B')
         pixmap = QPixmap(os.path.join(IconPath, icon))
-        self.button.setPixmap(pixmap.scaled(24, 24))
+        self.button = QLabel('B')
         self.overlayLabelAlignment = Qt.AlignLeft
+        self.button.setPixmap(pixmap.scaled(24, 24))
         self.button.setStyleSheet("QLabel {border-radius: 6;}")
+        self.button.setFixedSize(24, 24)
         self.minValue = minValue
         self.overshootMin = overshootMin
         self.maxValue = maxValue
         self.overshootMax = overshootMax
         self.range = maxValue - minValue
         self.overshootRange = overshootMax - overshootMin
-        self.button.setFixedSize(24, 24)
         self.setLayout(layout)
         self.margin = 2
         self.padding = 4
@@ -3908,34 +3940,64 @@ class PopupSlider(QWidget):
         layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
         layout.addWidget(self.button)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
-        self.resize(width + self.button.width() + self.margin + self.margin, self.button.height() + self.padding)
+        if self.vertical:
+            self.resize(width + self.button.width() + self.margin + self.margin, width + self.button.height() + self.padding)
+        else:
+            self.resize(width + self.button.width() + self.margin + self.margin, self.button.height() + self.padding)
+        self.setFixedWidth(width + self.button.width() + self.margin + self.margin)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
         self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
         # self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.currentAlpha = 0.0
+        self.currentAlphaY = 0.0
+        self.outAlphaY = 0.0
+        self.lastAlpha = 0.0
+        self.outAlpha = 0.0
 
     def setIcon(self, icon):
         pixmap = QPixmap(os.path.join(IconPath, icon))
         self.button.setPixmap(pixmap.scaled(24, 24))
 
+    def mousePressEvent(self, event):
+        self.setFocus()
+        self.updatePosition(event)
+
     def mouseMoveEvent(self, event):
         self.setFocus()
+        self.updatePosition(event)
+
+    def updatePosition(self, event):
         x = event.pos().x()
+        y = event.pos().y()
+
         minX = abs(self.overshootMin - self.minValue)
         maxX = self.range + minX
+
         halfWidth = self.button.width() * 0.5
         overshootX = max(min(x - self.button.width() * 0.5, self.overshootRange), 0)
         regularX = max(min(x - self.button.width() * 0.5, maxX), minX)
+
+        regularY = max(min(y - self.button.height() * 0.5, maxX), minX)
+        overshootY = max(min(y - self.button.height() * 0.5, self.overshootRange), 0)
 
         alpha = regularX - self.overshootRange * 0.5
         regularAlpha = regularX - self.overshootRange * 0.5
         overshootAlpha = overshootX - self.overshootRange * 0.5
         self.currentAlpha = overshootX if self.overshootState else regularX
         self.outAlpha = overshootAlpha if self.overshootState else regularAlpha
-        self.button.move(self.currentAlpha + self.margin, self.button.pos().y())
-        self.sliderUpdateSignal.emit(self.mode, self.outAlpha)
+
+        regularAlphaY = regularY - self.overshootRange * 0.5
+        overshootAlphaY = overshootY - self.overshootRange * 0.5
+        self.currentAlphaY = overshootY if self.overshootState else regularY
+        self.outAlphaY = overshootAlphaY if self.overshootState else regularAlphaY
+
+        if self.vertical:
+            self.button.move(self.currentAlpha + self.margin, self.currentAlphaY + self.margin)
+        else:
+            self.button.move(self.currentAlpha + self.margin,  self.button.pos().y())
+        self.sliderUpdateSignal.emit(self.mode, self.outAlpha, self.outAlphaY)
 
         if self.outAlpha > self.minValue * 0.6:
             self.overlayLabelPos = self.margin + abs(self.overshootMin - self.minValue)
@@ -3948,18 +4010,19 @@ class PopupSlider(QWidget):
         if self.closeOnRelease:
             self.hide()
 
-        self.sliderEndedSignal.emit(self.mode, self.outAlpha)
+        self.sliderEndedSignal.emit(self.mode, self.outAlpha, 0.0)
         self.lastMode = str(self.mode)
         self.lastAlpha = float(self.outAlpha)
+        self.button.move(self.width() * 0.5 - self.button.width() * 0.5, self.height() * 0.5 - self.button.height() * 0.5)
+        self.outAlpha = 0.0
+        self.outAlphaY = 0.0
 
-
-    def paintEvent(self, event):
+    def drawHorizontalBar(self, qp):
         lightGrey = QColor(196, 196, 196, 255)
         darkGrey = QColor(32, 32, 32, 124)
         midGrey = QColor(64, 64, 64, 124)
         red = QColor(255, 0, 0, 96)
 
-        qp = QPainter()
         qp.begin(self)
         pen = QPen(lightGrey, 4, Qt.SolidLine)
         self.drawWidth = 200
@@ -3968,10 +4031,14 @@ class PopupSlider(QWidget):
         righBarPos = self.width() - self.margin - self.overshootMax + self.maxValue
         qp.setCompositionMode(qp.CompositionMode_SourceAtop)
         qp.setPen(pen)
-        qp.setFont(QFont('Console', 12))
+        qp.setFont(QFont('Console', 10))
 
-        qp.drawText(leftBarPos + 2, 0, self.range + self.button.width() - self.margin - self.margin, self.height(), Qt.AlignLeft | Qt.AlignVCenter, self.mode)
-        qp.drawText(0,0, self.width(), self.height(), self.overlayLabelAlignment | Qt.AlignVCenter, '{}'.format(self.outAlpha * 0.01))
+        qp.drawText(leftBarPos + 2, 0, self.range + self.button.width() - self.margin - self.margin, self.height(),
+                    Qt.AlignLeft | Qt.AlignVCenter, self.mode)
+
+        qp.drawText(0, 0, self.width(), self.height(), self.overlayLabelAlignment | Qt.AlignVCenter,
+                    '{}'.format(self.outAlpha * 0.01))
+
 
         redTransparent = QColor(255, 0, 0, 32)
         g = QLinearGradient(0.0, 0.0, 0.0, self.height())
@@ -3979,7 +4046,6 @@ class PopupSlider(QWidget):
         g.setColorAt(0.25, midGrey)
         g.setColorAt(0.75, midGrey)
         g.setColorAt(1, darkGrey)
-
 
         qp.fillRect(0, 0, self.width(), self.height(), g)
 
@@ -3994,6 +4060,75 @@ class PopupSlider(QWidget):
         qp.drawRect(0, 0, leftBarPos, self.height())
         qp.drawRect(righBarPos, 0, righBarPos, self.height())
 
+    def drawBox(self, qp):
+        lightGrey = QColor(196, 196, 196, 255)
+        darkGrey = QColor(32, 32, 32, 124)
+        midGrey = QColor(64, 64, 64, 124)
+        red = QColor(255, 0, 0, 96)
+
+        qp.begin(self)
+        pen = QPen(lightGrey, 4, Qt.SolidLine)
+        self.drawWidth = 200
+        self.drawHeight = 32
+        leftBarPos = self.margin + abs(self.overshootMin - self.minValue)
+        righBarPos = self.width() - self.margin - self.overshootMax + self.maxValue
+        qp.setCompositionMode(qp.CompositionMode_SourceAtop)
+        qp.setPen(pen)
+        qp.setFont(QFont('Console', 10))
+
+        qp.drawText(leftBarPos + 2, 0, self.range + self.button.width() - self.margin - self.margin, self.height(),
+                    Qt.AlignLeft | Qt.AlignVCenter, self.mode)
+        qp.drawText(0, self.height() * 0.5 + -22 - self.button.height(), self.width(), 22, self.overlayLabelAlignment | Qt.AlignVCenter,
+                    '{}'.format(self.outAlpha * 0.01))
+        qp.drawText(0, self.height() * 0.5 - self.button.height(), self.width(), 22, self.overlayLabelAlignment | Qt.AlignVCenter,
+                    '{}'.format(self.outAlphaY * 0.01))
+        redTransparent = QColor(255, 0, 0, 32)
+        g = QLinearGradient(0.0, 0.0, 0.0, self.height())
+        g.setColorAt(0, darkGrey)
+        g.setColorAt(0.25, midGrey)
+        g.setColorAt(0.75, midGrey)
+        g.setColorAt(1, darkGrey)
+
+        qp.fillRect(0, 0, self.width(), self.height(), g)
+
+        lineColor = QColor(68, 68, 68, 64)
+        qp.setPen(QPen(QBrush(lineColor), 0))
+        qp.setBrush(QBrush(lineColor))
+        qp.setCompositionMode(qp.CompositionMode_Overlay)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+
+        r1 = QRegion(QRect(0, 0, self.width(), self.height()))
+        r2 = QRect(leftBarPos, leftBarPos, self.range+self.button.width(), self.range+self.button.height())  # r2: rectangular region
+        r3 = r1.subtracted(r2)
+        qp.setClipRegion(r3)
+        #qp.drawRect(0, 0, self.width(), self.height())
+
+        #qp.drawLine(righBarPos, 0, righBarPos, self.height())
+        #qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
+        qp.drawRect(0, 0, self.width(), self.height())
+        #qp.drawRect(righBarPos, 0, leftBarPos, self.height())
+        #qp.drawRect(leftBarPos, 0, righBarPos-leftBarPos, leftBarPos)
+        #qp.drawRect(righBarPos, 0, righBarPos, self.height())
+
+    def moveToCursor(self):
+        modifiers = QApplication.keyboardModifiers()
+        self.overshootState = modifiers == Qt.ControlModifier
+        pos = QCursor.pos()
+        size = self.size()
+
+        self.move(QPoint(pos.x() - (size.width() * 0.5), pos.y() - size.height() * 0.5))
+        self.button.move(self.mapFromGlobal(pos).x() - self.button.width() * 0.5, self.button.pos().y())
+        self.sliderBeginSignal.emit(self.mode, 0.0, 0.0)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        if self.vertical:
+            self.drawBox(qp)
+        else:
+            self.drawHorizontalBar(qp)
+
         qp.end()
         self.update()
 
@@ -4005,7 +4140,7 @@ class PopupSlider(QWidget):
 
         self.move(QPoint(pos.x() - (size.width() * 0.5), pos.y() - size.height() * 0.5))
         self.button.move(self.mapFromGlobal(pos).x() - self.button.width() * 0.5, self.button.pos().y())
-        self.sliderBeginSignal.emit(self.mode, 0.0)
+        self.sliderBeginSignal.emit(self.mode, 0.0, 0.0)
 
     def keyPressEvent(self, event):
         if event.type() == event.KeyPress:
@@ -4028,31 +4163,110 @@ class ToolbarButton(QLabel):
     middleClicked = Signal()
     rightClicked = Signal()
 
-    def __init__(self, icon=str(), altIcon=str()):
+    def __init__(self, icon=str(), altIcon=str(),
+                 width=26,
+                 height=24,
+                 iconHeight=24,
+                 iconWidth=26):
         super(ToolbarButton, self).__init__()
+        self.tooltipState = False
+        self.tooltipRaised = False
         self.icon = icon
         self.altIcon = altIcon
         self.currentIcon = icon
+        self.baseWidth=width
+        self.baseHeight=height
+        self.iconWidth=iconWidth
+        self.iconHeight=iconHeight
         self.pixmap = QPixmap(os.path.join(IconPath, icon))
         self.altPixmap = QPixmap(os.path.join(IconPath, altIcon))
-        self.setPixmap(self.pixmap.scaled(22, 22))
+        self.setPixmap(self.pixmap.scaled(self.iconWidth, self.iconHeight))
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        self.setFixedSize(24, 24)
+        self.setFixedSize(self.baseWidth, self.baseHeight)
         self.setStyleSheet(getqss.getStyleSheet())
         self.setMouseTracking(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showMenu)
-        #self.setPopupMenu(SliderButtonPopupMenu)
+        self.shiftState = False
+        self.altState = False
+        self.controlState = False
+        self.hoverState = False
+        # self.setPopupMenu(SliderButtonPopupMenu)
+        self.helpWidget = InfoPromptWidget(title='Some helpful thing',
+                                           buttonText='Ok',
+                                           imagePath='',
+                                           error=False,
+                                           image='',
+                                           gif='',
+                                           helpString='Test help string',
+                                           showCloseButton=False,
+                                           show=False,
+                                           showButton=False)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Control:
+        self.tooltipState = self.getTooltipState()
+        if event.key() == Qt.Key_Shift:
+            self.shiftState = True
             self.currentIcon = self.altIcon
-            self.setPixmap(self.altPixmap.scaled(18, 18))
+            self.setPixmap(self.altPixmap.scaled(self.iconWidth, self.iconHeight))
+        if event.key() == Qt.Key_Alt:
+            self.altState = True
+        if event.key() == Qt.Key_Control:
+            self.controlState = True
+
+
+        self.raiseToolTip()
 
     def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Control:
+        if event.key() == Qt.Key_Shift:
+            self.shiftState = False
             self.currentIcon = self.icon
-            self.setPixmap(self.pixmap.scaled(18, 18))
+            self.setPixmap(self.pixmap.scaled(self.iconWidth, self.iconHeight))
+        if event.key() == Qt.Key_Control:
+            self.controlState = False
+        if event.key() == Qt.Key_Alt:
+            self.altState = False
+
+        self.hideToolTip()
+
+    def raiseToolTip(self):
+        if not self.getTooltipState():
+            return
+        if not self.hoverState:
+            return
+        if self.tooltipRaised:
+            return
+        self.tooltipRaised = True
+        # + QPoint(0, self.height())
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(self.pos()), widgetSize=self.size())
+
+    def hideToolTip(self):
+        if self.getTooltipState():
+            return
+        if not self.tooltipRaised:
+            return
+        self.tooltipRaised = False
+        self.helpWidget.hide()
+
+    def getTooltipState(self):
+        if self.altState and self.controlState:
+            return True
+        else:
+            return False
+
+    def mouseMoveEvent(self, event):
+        if self.getTooltipState():
+            if self.tooltipRaised:
+                return
+            self.tooltipRaised = True
+
+    def enterEvent(self, event):
+        self.hoverState = True
+        return super(ToolbarButton, self).enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.hoverState = False
+        return super(ToolbarButton, self).enterEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -4084,6 +4298,8 @@ class ToolbarButton(QLabel):
 
 class ButtonWidget(QWidget):
     def __init__(self, closeOnRelease=False, mode=str(), altMode=str(),
+                 sliderIsDual=False,
+                 altSliderIsDual=False,
                  icon=str(), altIcon=str()):
         super(ButtonWidget, self).__init__()
         layout = QHBoxLayout()
@@ -4098,9 +4314,8 @@ class ButtonWidget(QWidget):
         layout.addWidget(self.button)
 
         self.setMouseTracking(True)
-        self.popup = PopupSlider(closeOnRelease=closeOnRelease, mode=mode, altMode=altMode,
-                                 icon=icon, altIcon=altIcon)
-
+        self.popup = PopupSlider(closeOnRelease=closeOnRelease, mode=mode, icon=icon, vertical=sliderIsDual)
+        self.altPopup = PopupSlider(closeOnRelease=closeOnRelease, mode=altMode, icon=altIcon, vertical=altSliderIsDual)
         self.button.clicked.connect(self.raisePopup)
         self.button.middleClicked.connect(self.repeatLast)
         self.button.rightClicked.connect(self.raisePopup)
@@ -4109,26 +4324,33 @@ class ButtonWidget(QWidget):
 
         pos = QCursor.pos()
         size = self.sizeHint() * 0.5
-        self.cachedCursorPos = QPoint(0,0)
+        self.cachedCursorPos = QPoint(0, 0)
         self.move(pos.x() - size.width(), pos.y() - size.height())
 
     def keyPressEvent(self, event):
         self.button.keyPressEvent(event)
+        self.popup.keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
         self.button.keyReleaseEvent(event)
+        self.popup.keyReleaseEvent(event)
 
     def raisePopup(self):
-        self.popup.setIcon(self.button.currentIcon)
-        self.popup.show()
-        self.popup.setFocus()
+        if QApplication.keyboardModifiers() == Qt.ShiftModifier:
+            popup = self.altPopup
+        else:
+            popup = self.popup
+        popup.setIcon(self.button.currentIcon)
+        popup.show()
+        popup.setFocus()
 
         pos = self.mapToGlobal(self.pos())
         screenPos = self.mapToGlobal(self.button.pos())
         pos = (self.button.pos())
-        self.cachedCursorPos = QPoint(screenPos.x() + (self.button.width() * 0.5), screenPos.y() + (self.button.height() * 0.5))
+        self.cachedCursorPos = QPoint(screenPos.x() + (self.button.width() * 0.5),
+                                      screenPos.y() + (self.button.height() * 0.5))
         QCursor.setPos(self.cachedCursorPos)
-        self.popup.moveToCursor()
+        popup.moveToCursor()
 
     def resetCursor(self, *args):
         QCursor.setPos(self.cachedCursorPos)
@@ -4162,7 +4384,7 @@ class SliderButtonPopupMenu(ButtonPopup):
                                              tooltips=['example 1',
                                                        'example 2'],
                                              optionVarList=['example 1',
-                                                       'example 2'],
+                                                            'example 2'],
                                              optionVar='test_variable',
                                              defaultValue="Simple",
                                              label=str())
