@@ -1,0 +1,58 @@
+{
+  "toolbarSliders": [
+    {
+      "closeOnRelease": true,
+      "mode": "Tween",
+      "altMode": "TweenGrp",
+      "icon": "tweenKey.png",
+      "altIcon": "tweenGroup.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    },
+    {
+      "closeOnRelease": true,
+      "mode": "Smooth",
+      "altMode": "Smooth",
+      "icon": "tweenSmooth.png",
+      "altIcon": "tweenSmooth.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    },
+    {
+      "closeOnRelease": true,
+      "mode": "Amplify",
+      "altMode": "Amplify",
+      "icon": "tweenAmp.png",
+      "altIcon": "tweenAmp.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    },
+    {
+      "closeOnRelease": true,
+      "mode": "ScaleFromFirst",
+      "altMode": "ScaleFromFirst",
+      "icon": "tweenScaleFirst.png",
+      "altIcon": "tweenScaleFirst.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    },
+        {
+      "closeOnRelease": true,
+      "mode": "ScaleFromLast",
+      "altMode": "ScaleFromLast",
+      "icon": "tweenScaleLast.png",
+      "altIcon": "tweenScaleLast.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    },
+            {
+      "closeOnRelease": true,
+      "mode": "Fill Gap",
+      "altMode": "Fill Gap",
+      "icon": "tweenFill.png",
+      "altIcon": "tweenFill.png",
+      "sliderIsDual": false,
+      "altSliderIsDual": false
+    }
+  ]
+  }
