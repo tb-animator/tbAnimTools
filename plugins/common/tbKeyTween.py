@@ -20,10 +20,12 @@ class KeyTweenCommand(om.MPxCommand):
     NAME_FLAG = ["-n", "-name"]
 
     ALPHA_FLAG = ["-a", "-alpha"]
+    ALPHA2_FLAG = ["-ab", "-alphaB"]
     BLENDMODE_FLAG = ["-b", "-blendMode"]
     CLEARCACHE_FLAG = ["-c", "-clearCache"]
 
     alpha = 0.0
+    alphaB = 0.0
     blendMode = None
     clearCache = True
     animCurveChange = None
@@ -44,6 +46,8 @@ class KeyTweenCommand(om.MPxCommand):
             return
         if arg_db.isFlagSet(KeyTweenCommand.ALPHA_FLAG[0]):
             self.alpha = arg_db.flagArgumentDouble(KeyTweenCommand.ALPHA_FLAG[0], 0)
+        if arg_db.isFlagSet(KeyTweenCommand.ALPHA_FLAG[0]):
+            self.alphaB = arg_db.flagArgumentDouble(KeyTweenCommand.ALPHA2_FLAG[0], 0)
         if arg_db.isFlagSet(KeyTweenCommand.BLENDMODE_FLAG[0]):
             self.blendMode = arg_db.flagArgumentString(KeyTweenCommand.BLENDMODE_FLAG[0], 0)
         if arg_db.isFlagSet(KeyTweenCommand.CLEARCACHE_FLAG[0]):
@@ -59,7 +63,7 @@ class KeyTweenCommand(om.MPxCommand):
             slideTool.cacheKeyData()
             cmds.undoInfo(stateWithoutFlush=True)
 
-        slideTool.doKeyTween(self.alpha, self.blendMode)
+        slideTool.doKeyTween(self.alpha, self.alphaB, self.blendMode)
 
     def undoIt(self):
         SlideTools().animCurveChange.undoIt()
@@ -82,6 +86,7 @@ class KeyTweenCommand(om.MPxCommand):
         # add all the flags
         # blend alpha amount
         syntax.addFlag(KeyTweenCommand.ALPHA_FLAG[0], KeyTweenCommand.ALPHA_FLAG[1], om.MSyntax.kDouble)
+        syntax.addFlag(KeyTweenCommand.ALPHA2_FLAG[0], KeyTweenCommand.ALPHA2_FLAG[1], om.MSyntax.kDouble)
         # blend method
         syntax.addFlag(KeyTweenCommand.BLENDMODE_FLAG[0], KeyTweenCommand.BLENDMODE_FLAG[1], om.MSyntax.kString)
         # recache base values
