@@ -1,58 +1,129 @@
 {
   "toolbarSliders": [
     {
-      "closeOnRelease": true,
-      "mode": "Tween",
-      "altMode": "TweenGrp",
-      "icon": "tweenKey.png",
-      "altIcon": "tweenGroup.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+      "sliderData": {
+        "mode": "Tween",
+        "label": "Tween",
+        "icon": "tweenKey.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "TweenGrp",
+        "label": "TweenGrp",
+        "icon": "tweenGroup.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "<b>LMB</b> Inbetween<br><b>Shift + LMB</b> Inbetween Group"
     },
     {
-      "closeOnRelease": true,
-      "mode": "Smooth",
-      "altMode": "Smooth",
-      "icon": "tweenSmooth.png",
-      "altIcon": "tweenSmooth.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+      "sliderData": {
+        "mode": "Smooth",
+        "label": "Smooth",
+        "icon": "tweenSmooth.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Smooth",
+        "label": "Smooth",
+        "icon": "tweenSmooth.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Smooth nearest neighbours"
     },
     {
-      "closeOnRelease": true,
-      "mode": "Amplify",
-      "altMode": "Amplify",
-      "icon": "tweenAmp.png",
-      "altIcon": "tweenAmp.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+      "sliderData": {
+        "mode": "Noise",
+        "label": "Noise",
+        "axisLabelX": "Freq",
+        "axisLabelY": "Amp",
+        "icon": "tweenNoise.png",
+        "vertical": true,
+        "closeOnRelease": true,
+        "width": 250
+      },
+      "altSliderData": {
+        "mode": "NoiseLoop",
+        "label": "NoiseLoop",
+        "axisLabelX": "Freq",
+        "axisLabelY": "Amp",
+        "icon": "tweenNoiseLoop.png",
+        "vertical": true,
+        "closeOnRelease": true,
+        "width": 250
+      },
+      "toolTipSmall": "<b>LMB</b> Add noise<br><b>Shift + LMB</b> add noise looped"
     },
     {
-      "closeOnRelease": true,
-      "mode": "ScaleFromFirst",
-      "altMode": "ScaleFromFirst",
-      "icon": "tweenScaleFirst.png",
-      "altIcon": "tweenScaleFirst.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+      "sliderData": {
+        "mode": "Amplify",
+        "label": "Amplify",
+        "icon": "tweenAmp.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Amplify",
+        "label": "Amplify",
+        "icon": "tweenAmp.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Amplify animation from linear start>end"
     },
-        {
-      "closeOnRelease": true,
-      "mode": "ScaleFromLast",
-      "altMode": "ScaleFromLast",
-      "icon": "tweenScaleLast.png",
-      "altIcon": "tweenScaleLast.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+    {
+      "sliderData": {
+        "mode": "ScaleFromFirst",
+        "label": "ScaleFirst",
+        "icon": "tweenScaleFirst.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "ScaleFromFirst",
+        "label": "ScaleFirst",
+        "icon": "tweenScaleFirst.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Scale keys from first value"
     },
-            {
-      "closeOnRelease": true,
-      "mode": "Fill Gap",
-      "altMode": "Fill Gap",
-      "icon": "tweenFill.png",
-      "altIcon": "tweenFill.png",
-      "sliderIsDual": false,
-      "altSliderIsDual": false
+    {
+      "sliderData": {
+        "mode": "ScaleFromLast",
+        "label": "ScaleLast",
+        "icon": "tweenScaleLast.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "ScaleFromLast",
+        "label": "ScaleLast",
+        "icon": "tweenScaleLast.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Scale keys from last value"
+    },
+    {
+      "sliderData": {
+        "mode": "Fill Gap",
+        "label": "Fill Gap",
+        "icon": "tweenFill.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Fill Gap",
+        "label": "Fill Gap",
+        "icon": "tweenFill.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Close gap between first+previous or last+next keys"
     }
   ]
-  }
+}

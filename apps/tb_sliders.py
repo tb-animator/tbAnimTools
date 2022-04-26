@@ -26,7 +26,8 @@
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import maya.cmds as cmds
-
+import random
+import maya.mel as mel
 import maya.OpenMayaUI as omUI
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
@@ -39,6 +40,8 @@ fn_SCALEFROMLAST = 'ScaleFromLast'
 fn_CLOSEGAP = 'Fill Gap'
 fn_BLOAT = 'Amplify'
 fn_BREAKDOWN = 'Tween'
+fn_NOISE = 'Noise'
+fn_NOISELOOP = 'NoiseLoop'
 fn_BREAKDOWNGROUP = 'TweenGrp'
 
 tt_SMOOTH = 'Smooth'
@@ -873,6 +876,7 @@ class SlideTools(toolAbstractFactory):
                     fn_BREAKDOWNGROUP,
                     fn_SMOOTH,
                     fn_BLOAT,
+                    fn_NOISE,
                     fn_SCALEFROMFIRST,
                     fn_SCALEFROMLAST,
                     fn_CLOSEGAP
@@ -904,6 +908,8 @@ class SlideTools(toolAbstractFactory):
             fn_BREAKDOWN: SlideTools.__instance.tweenPreviousCurrentNext,
             fn_BREAKDOWNGROUP: SlideTools.__instance.tweenPreviousNextGroup,
             fn_BLOAT: SlideTools.__instance.tweenBloat,
+            fn_NOISE: SlideTools.__instance.tweenNoise,
+            fn_NOISELOOP: SlideTools.__instance.tweenNoiseLoop,
             fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours,
             fn_SCALEFROMFIRST: SlideTools.__instance.scaleFromFirstKey,
             fn_SCALEFROMLAST: SlideTools.__instance.scaleFromLastKey,
@@ -1143,16 +1149,16 @@ class SlideTools(toolAbstractFactory):
 
     def keySliderBeginSignal(self, key, value, value2):
         cmds.undoInfo(openChunk=True, chunkName="tbInbetween")
-        cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=True)
+        cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=True)
         # self.keyTweenClasses[key].startDrag(value)
 
     def keySliderUpdateSignal(self, key, value, value2):
         cmds.undoInfo(stateWithoutFlush=False)
-        cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=False)
+        cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=False)
         cmds.undoInfo(stateWithoutFlush=True)
 
     def keySliderEndSignal(self, key, value, value2):
-        cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=False)
+        cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=False)
         cmds.undoInfo(closeChunk=True)
 
     def keySliderCancelSignal(self):
@@ -1238,10 +1244,10 @@ class SlideTools(toolAbstractFactory):
         """
         return range[0] + (range[1] - range[0]) * ((alpha - minVal) / (maxVal - minVal))
 
-    def doKeyTween(self, alpha=float(), mode=str()):
-        self.keyTweenMethods[mode](alpha)
+    def doKeyTween(self, alpha=float(), alphaB=float(), mode=str()):
+        self.keyTweenMethods[mode](alpha, alphaB)
 
-    def tweenPreviousNextGroup(self, alpha):
+    def tweenPreviousNextGroup(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1267,7 +1273,7 @@ class SlideTools(toolAbstractFactory):
                                                        change=self.animCurveChange)
         '''
 
-    def closeGapFirstKey(self, alpha):
+    def closeGapFirstKey(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1299,7 +1305,7 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def scaleFromFirstKey(self, alpha):
+    def scaleFromFirstKey(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1313,7 +1319,7 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def scaleFromLastKey(self, alpha):
+    def scaleFromLastKey(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1327,7 +1333,7 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def tweenPreviousCurrentNext(self, alpha):
+    def tweenPreviousCurrentNext(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1343,7 +1349,44 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def tweenBloat(self, alpha):
+    def tweenNoiseLoop(self, alpha, alpha2):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.iteritems():
+            outValues = list()
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.tweenNoiseKey(ampAlpha=alpha2,
+                                              freqAlpha=alpha,
+                                              seed=keyframeData.seed,
+                                              currentValue=keyframeData.keyValues[i],
+                                              currentTime=keyframeData.keyTimes[i])
+                outValues.append(outValue)
+
+            startDelta = outValues[0] - keyframeData.keyValues[0]
+            endDelta = outValues[-1] - keyframeData.keyValues[-1]
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = outValues[i] - (startDelta * (1-keyframeData.timeAlpha[i])) - (keyframeData.timeAlpha[i] * endDelta)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+
+    def tweenNoise(self, alpha, alpha2):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.iteritems():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.tweenNoiseKey(ampAlpha=alpha2,
+                                              freqAlpha=alpha,
+                                              seed=keyframeData.seed,
+                                              currentValue=keyframeData.keyValues[i],
+                                              currentTime=keyframeData.keyTimes[i])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+
+    def tweenBloat(self, alpha, alphaB):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1364,7 +1407,7 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def tweenSmoothNeighbours(self, alpha):
+    def tweenSmoothNeighbours(self, alpha, alphaB):
         """
         # TODO - actually do it
         Smooths keys to nearest neighbours, taking spacing into account
@@ -1530,6 +1573,20 @@ class SlideTools(toolAbstractFactory):
             return currentValue + (previousValue - currentValue) * (alpha * -1)
         return currentValue + (nextValue - currentValue) * alpha
 
+    def tweenNoiseKey(self, ampAlpha=float(),
+                      freqAlpha=float(),
+                      seed=float(),
+                      currentValue=float(),
+                      currentTime=float()):
+        """
+        :param ampAlpha:
+        :param previousValue:
+        :param nextValue:
+        :return:
+        """
+        freq = seed + (currentTime  * (freqAlpha * 0.1))
+        return mel.eval('noise({x})'.format(x=freq)) * (ampAlpha*0.01) + currentValue
+
     def tweenBloatKey(self, alpha=float(),
                       firstValue=float(),
                       lastValue=float(),
@@ -1654,6 +1711,9 @@ class SlideTools(toolAbstractFactory):
                                                                outTangents[index - 1])
                     bezierTangents.append([leftTangent, rightTangent])
 
+            # assign a 0-1 value for the time range of keys
+            timeAlphas = [float(x - keyTimes[0]) / float(keyTimes[-1] - keyTimes[0]) for x in keyTimes]
+
             keyframeData = KeyframeData(keyTimes=keyTimes,
                                         keyValues=keyValues,
                                         keyIndexes=keyIndexes,
@@ -1666,7 +1726,9 @@ class SlideTools(toolAbstractFactory):
                                         defaultValue=None,
                                         inTangents=inTangents,
                                         outTangents=outTangents,
-                                        bezierTangents=bezierTangents)
+                                        bezierTangents=bezierTangents,
+                                        timeAlpha=timeAlphas
+                                        )
             # duplicate of the data, to use for multiple iterations of smoothing
             keyframeRefData = KeyframeData(keyTimes=[x for x in keyTimes],
                                            keyValues=[x for x in keyValues],
@@ -1680,7 +1742,8 @@ class SlideTools(toolAbstractFactory):
                                            defaultValue=None,
                                            inTangents=[x for x in inTangents],
                                            outTangents=[x for x in outTangents],
-                                           bezierTangents=[x for x in bezierTangents])
+                                           bezierTangents=[x for x in bezierTangents],
+                                           timeAlpha=[x for x in timeAlphas])
             curveDataDict[curveName] = keyframeData
             curveRefDataDict[curveName] = keyframeRefData
         return curveDataDict, curveRefDataDict
@@ -1723,7 +1786,10 @@ class KeyframeData(object):
                  defaultValue=None,
                  inTangents=list(),
                  outTangents=list(),
-                 bezierTangents=list()):
+                 bezierTangents=list(),
+                 timeAlpha=list()
+                 ):
+        self.seed=random.random() * 9999
         self.keyTimes = keyTimes
         self.keyValues = keyValues
         self.keyIndexes = keyIndexes
@@ -1742,6 +1808,7 @@ class KeyframeData(object):
         self.outTangents = outTangents
         self.bezierTangents = bezierTangents
         self.isCached = False
+        self.timeAlpha = timeAlpha
 
 
 class keypressHandler(QObject):
