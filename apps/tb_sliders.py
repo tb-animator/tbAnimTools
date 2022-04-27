@@ -38,6 +38,7 @@ fn_SMOOTH = 'Smooth'
 fn_SCALEFROMFIRST = 'ScaleFromFirst'
 fn_SCALEFROMLAST = 'ScaleFromLast'
 fn_CLOSEGAP = 'Fill Gap'
+fn_EASE = 'Ease'
 fn_BLOAT = 'Amplify'
 fn_BREAKDOWN = 'Tween'
 fn_NOISE = 'Noise'
@@ -913,7 +914,9 @@ class SlideTools(toolAbstractFactory):
             fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours,
             fn_SCALEFROMFIRST: SlideTools.__instance.scaleFromFirstKey,
             fn_SCALEFROMLAST: SlideTools.__instance.scaleFromLastKey,
-            fn_CLOSEGAP: SlideTools.__instance.closeGapFirstKey
+            fn_CLOSEGAP: SlideTools.__instance.closeGapFirstKey,
+            fn_EASE: SlideTools.__instance.tweenEaseOffset,
+
         }
 
         handler = keypressHandler(None, None)
@@ -1253,7 +1256,7 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.tweenPreviousNextGroupKey(alpha=alpha,
                                                           currentValue=keyframeData.keyValues[i],
@@ -1266,7 +1269,7 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
         '''
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
@@ -1279,7 +1282,7 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.closeGapKey(alpha=alpha,
                                             currentValue=keyframeData.keyValues[i],
@@ -1297,7 +1300,7 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.scaleFromValueKey(alpha=alpha,
                                                   currentValue=keyframeData.keyValues[i],
@@ -1311,7 +1314,7 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.scaleFromValueKey(alpha=alpha,
                                                   currentValue=keyframeData.keyValues[i],
@@ -1325,7 +1328,7 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.scaleFromValueKey(alpha=alpha,
                                                   currentValue=keyframeData.keyValues[i],
@@ -1338,7 +1341,7 @@ class SlideTools(toolAbstractFactory):
             return
         if not self.keyframeData.items():
             return
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             if not keyframeData.keyIndexes:
                 continue
             for i in range(len(keyframeData.keyIndexes)):
@@ -1354,7 +1357,7 @@ class SlideTools(toolAbstractFactory):
             return
         if not self.keyframeData.items():
             return
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             outValues = list()
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.tweenNoiseKey(ampAlpha=alpha2,
@@ -1367,6 +1370,7 @@ class SlideTools(toolAbstractFactory):
             startDelta = outValues[0] - keyframeData.keyValues[0]
             endDelta = outValues[-1] - keyframeData.keyValues[-1]
             for i in range(len(keyframeData.keyIndexes)):
+                # time alpha in 0-1 range
                 outValue = outValues[i] - (startDelta * (1-keyframeData.timeAlpha[i])) - (keyframeData.timeAlpha[i] * endDelta)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
@@ -1376,7 +1380,7 @@ class SlideTools(toolAbstractFactory):
             return
         if not self.keyframeData.items():
             return
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = self.tweenNoiseKey(ampAlpha=alpha2,
                                               freqAlpha=alpha,
@@ -1386,41 +1390,14 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=self.animCurveChange)
 
-    def tweenBloat(self, alpha, alphaB):
+    def tweenEaseOffset(self, alpha, alpha2):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
             return
-        for curve, keyframeData in self.keyframeData.iteritems():
-            firstIndex = keyframeData.keyIndexes[0]
-            lastIndex = keyframeData.keyIndexes[-1]
-            for i in range(len(keyframeData.keyIndexes)):
-                # index = keyframeData.keyIndexes[i]
-                currentIndex = keyframeData.keyIndexes[i]
-                outValue = self.tweenBloatKey(alpha=alpha,
-                                              firstValue=keyframeData.previousValues[firstIndex],
-                                              lastValue=keyframeData.nextValues[lastIndex],
-                                              firstTime=keyframeData.previousKeyTimes[firstIndex],
-                                              lastTime=keyframeData.nextKeyTimes[lastIndex],
-                                              currentValue=keyframeData.keyValues[i],
-                                              currentTime=keyframeData.keyTimes[i])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
 
-    def tweenSmoothNeighbours(self, alpha, alphaB):
-        """
-        # TODO - actually do it
-        Smooths keys to nearest neighbours, taking spacing into account
-        :param alpha:
-        :return:
-        """
-        # self.keyframeRefData
-        # smooth iteration pass
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        if not self.keyframeData:
-            return
-
-        for curve, keyframeData in self.keyframeData.iteritems():
+        # re-use of smooth nearest neighbours, get a base value for all the keys
+        for curve, keyframeData in self.keyframeData.items():
             if keyframeData.isCached:
                 continue
             for x in range(10):
@@ -1449,17 +1426,170 @@ class SlideTools(toolAbstractFactory):
                     keyframeData.keyValues[i] = average
 
                     if keyframeData.keyIndexes[i] in keyframeData.previouskeyIndexes.values():
-                        key = keyframeData.previouskeyIndexes.keys()[
-                            keyframeData.previouskeyIndexes.values().index(keyframeData.keyIndexes[i])]
+                        key = list(keyframeData.previouskeyIndexes.keys())[
+                            list(keyframeData.previouskeyIndexes.values()).index(keyframeData.keyIndexes[i])]
 
                         # key = keyframeData.previouskeyIndexes.values().index(keyframeData.keyIndexes[i])
                         # print ('previouskeyIndexes', index, keyframeData.keyIndexes[i])
                         # print (keyframeData.previousValues[index], smoothList[i])
                         keyframeData.previousValues[key] = keyframeData.keyValues[i]
                     if keyframeData.keyIndexes[i] in keyframeData.nextkeyIndexes.values():
-                        index = keyframeData.nextkeyIndexes.values().index(keyframeData.keyIndexes[i])
-                        key = keyframeData.nextkeyIndexes.keys()[
-                            keyframeData.nextkeyIndexes.values().index(keyframeData.keyIndexes[i])]
+                        index = list(keyframeData.nextkeyIndexes.values()).index(keyframeData.keyIndexes[i])
+                        key = list(keyframeData.nextkeyIndexes.keys())[
+                            list(keyframeData.nextkeyIndexes.values()).index(keyframeData.keyIndexes[i])]
+                        # print ('nextkeyIndexes', index, keyframeData.keyIndexes[i])
+                        keyframeData.nextValues[key] = keyframeData.keyValues[i]
+
+                    self.tweenSmoothNeighboursKey(keyframeData=keyframeData)
+
+            keyframeData.isCached = True
+        '''
+        alphaX = alpha
+        alphaY = alpha2
+        if alpha >= 0:
+            if alpha2 > 0:
+                outAlpha = self.mapValue(alpha2, 0, 100, 1, 10)
+            elif alpha2 < 0:
+                outAlpha = self.mapValue(alpha2, -100, 0, 10, 1)
+            else:
+                outAlpha = 1.0
+        else:
+            if alpha2 > 0:
+                outAlpha = self.mapValue(alpha2, 0, 100, 1, 10)
+            elif alpha2 < 0:
+                outAlpha = self.mapValue(alpha2, -100, 0, 10, 1)
+            else:
+                outAlpha = 1.0
+        # flipping this to <= 0 makes an interesting overshoot
+        if alpha >= 0:
+            alphaBlend = self.mapValue(alpha, 0, 100, 0, 1)
+        else:
+            alphaBlend = self.mapValue(alpha, -100, 0, 1, 0)
+
+        '''
+        if alpha2 >= 0:
+            if alpha > 0:
+                outAlpha = self.mapValue(alpha, 0, 100, 1, 10)
+            elif alpha < 0:
+                outAlpha = self.mapValue(alpha, -100, 0, 10, 1)
+            else:
+                outAlpha = 1.0
+        else:
+            if alpha > 0:
+                outAlpha = self.mapValue(alpha, 0, 100, 1, 10)
+            elif alpha < 0:
+                outAlpha = self.mapValue(alpha, -100, 0, 10, 1)
+            else:
+                outAlpha = 1.0
+        # flipping this to <= 0 makes an interesting overshoot
+        if alpha2 >= 0:
+            alphaBlend = self.mapValue(alpha2, 0, 100, 0, 1)
+        else:
+            alphaBlend = self.mapValue(alpha2, -100, 0, -1, 0)
+        alphaBlend = self.mapValue(alpha2, -100, 100, 1, -1)
+        alpha = -alpha
+        for curve, keyframeData in self.keyframeData.items():
+            startValue = self.keyframeRefData[curve].keyValues[0]
+            endValue = self.keyframeRefData[curve].keyValues[-1]
+            for i in range(len(keyframeData.keyIndexes)):
+                # time alpha in 0-1 range
+                #outValue = (startDelta * (1-keyframeData.timeAlpha[i])) - (keyframeData.timeAlpha[i] * endDelta)
+
+                #print (i, '{:2f}'.format(alpha*0.01), keyframeData.timeAlpha[i], math.pow(keyframeData.timeAlpha[i], alpha))
+                if alpha2 <= 0:
+                    if alpha <= 0:
+                        outVal = math.pow(keyframeData.timeAlpha[i], outAlpha)
+                    else:
+                        outVal = 1-math.pow(1-keyframeData.timeAlpha[i], outAlpha)
+                else:
+                    if alpha >= 0:
+                        outVal = math.pow(1-keyframeData.timeAlpha[i], outAlpha)
+                    else:
+                        outVal = 1-math.pow(keyframeData.timeAlpha[i], outAlpha)
+                if alpha <= 0:
+                    outVal = math.pow(keyframeData.timeAlpha[i], outAlpha)
+                else:
+                    outVal = 1-math.pow(1-keyframeData.timeAlpha[i], outAlpha)
+                keyValue = lerpFloat(endValue, startValue, outVal)
+
+                outValue = lerpFloat(keyValue, self.keyframeRefData[curve].keyValues[i], alphaBlend)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+
+    def tweenBloat(self, alpha, alphaB):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.items():
+            firstIndex = keyframeData.keyIndexes[0]
+            lastIndex = keyframeData.keyIndexes[-1]
+            for i in range(len(keyframeData.keyIndexes)):
+                # index = keyframeData.keyIndexes[i]
+                currentIndex = keyframeData.keyIndexes[i]
+                outValue = self.tweenBloatKey(alpha=alpha,
+                                              firstValue=keyframeData.previousValues[firstIndex],
+                                              lastValue=keyframeData.nextValues[lastIndex],
+                                              firstTime=keyframeData.previousKeyTimes[firstIndex],
+                                              lastTime=keyframeData.nextKeyTimes[lastIndex],
+                                              currentValue=keyframeData.keyValues[i],
+                                              currentTime=keyframeData.keyTimes[i])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+
+    def tweenSmoothNeighbours(self, alpha, alphaB):
+        """
+        # TODO - actually do it
+        Smooths keys to nearest neighbours, taking spacing into account
+        :param alpha:
+        :return:
+        """
+        # self.keyframeRefData
+        # smooth iteration pass
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        if not self.keyframeData:
+            return
+
+        for curve, keyframeData in self.keyframeData.items():
+            if keyframeData.isCached:
+                continue
+            for x in range(10):
+                for i in range(len(keyframeData.keyIndexes)):
+                    """
+                    Smooth values towards midpoint of nearest neighbours +/-
+                    Smooth the key values based on their spacing, 
+                    also update the previous/next values for the next iteration
+                    """
+
+                    # full weight target inbetween previous and next keys, lerp current towards that?
+                    # make this take into account the time between keys
+                    # print ('previousValues', keyframeData.previousValues[keyframeData.keyIndexes[i]],'keyValues', keyframeData.keyValues[i],'nextValues', keyframeData.nextValues[keyframeData.keyIndexes[i]])
+                    average = self.tweenPreviousNextKeyTimeAware(alpha=0.5,
+                                                                 previousValue=keyframeData.previousValues[
+                                                                     keyframeData.keyIndexes[i]],
+                                                                 nextValue=keyframeData.nextValues[
+                                                                     keyframeData.keyIndexes[i]],
+                                                                 previousTime=keyframeData.previousKeyTimes[
+                                                                     keyframeData.keyIndexes[i]],
+                                                                 nextTime=keyframeData.nextKeyTimes[
+                                                                     keyframeData.keyIndexes[i]],
+                                                                 currentValue=keyframeData.keyValues[i],
+                                                                 currentTime=keyframeData.keyTimes[i])
+
+                    keyframeData.keyValues[i] = average
+
+                    if keyframeData.keyIndexes[i] in keyframeData.previouskeyIndexes.values():
+                        key = list(keyframeData.previouskeyIndexes.keys())[
+                            list(keyframeData.previouskeyIndexes.values()).index(keyframeData.keyIndexes[i])]
+
+                        # key = keyframeData.previouskeyIndexes.values().index(keyframeData.keyIndexes[i])
+                        # print ('previouskeyIndexes', index, keyframeData.keyIndexes[i])
+                        # print (keyframeData.previousValues[index], smoothList[i])
+                        keyframeData.previousValues[key] = keyframeData.keyValues[i]
+                    if keyframeData.keyIndexes[i] in keyframeData.nextkeyIndexes.values():
+                        index = list(keyframeData.nextkeyIndexes.values()).index(keyframeData.keyIndexes[i])
+                        key = list(keyframeData.nextkeyIndexes.keys())[
+                            list(keyframeData.nextkeyIndexes.values()).index(keyframeData.keyIndexes[i])]
                         # print ('nextkeyIndexes', index, keyframeData.keyIndexes[i])
                         keyframeData.nextValues[key] = keyframeData.keyValues[i]
 
@@ -1467,7 +1597,7 @@ class SlideTools(toolAbstractFactory):
 
             keyframeData.isCached = True
 
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
@@ -1609,7 +1739,7 @@ class SlideTools(toolAbstractFactory):
         return currentValue + (currentValue - baseValue) * alpha
 
     def testLerp(self):
-        for curve, keyframeData in self.keyframeData.iteritems():
+        for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 # print (keyframeData.keyValues[i])
                 newValue = keyframeData.keyValues[i] + 1
@@ -1642,7 +1772,7 @@ class SlideTools(toolAbstractFactory):
     def getAnimCurveData(self, selectedAnimCurveDict, minTime, maxTime):
         curveDataDict = {}
         curveRefDataDict = {}
-        for curveName, curve in selectedAnimCurveDict.iteritems():
+        for curveName, curve in selectedAnimCurveDict.items():
             keyTimes = list()
             keyValues = list()
             keyIndexes = cmds.keyframe(curveName, q=True, selected=True, indexValue=True)
@@ -1712,7 +1842,10 @@ class SlideTools(toolAbstractFactory):
                     bezierTangents.append([leftTangent, rightTangent])
 
             # assign a 0-1 value for the time range of keys
-            timeAlphas = [float(x - keyTimes[0]) / float(keyTimes[-1] - keyTimes[0]) for x in keyTimes]
+            if len(keyTimes) > 1:
+                timeAlphas = [float(x - keyTimes[0]) / float(keyTimes[-1] - keyTimes[0]) for x in keyTimes]
+            else:
+                timeAlphas
 
             keyframeData = KeyframeData(keyTimes=keyTimes,
                                         keyValues=keyValues,
@@ -1763,6 +1896,8 @@ class SlideTools(toolAbstractFactory):
 
         return [b1, b2, b3, b4]
 
+    def mapValue(self, value, inMin, inMax, outMin, outMax):
+        return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin)
 
 class KeyframeData(object):
     """

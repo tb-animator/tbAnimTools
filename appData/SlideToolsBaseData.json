@@ -124,6 +124,27 @@
         "closeOnRelease": true
       },
       "toolTipSmall": "Close gap between first+previous or last+next keys"
+    },
+        {
+      "sliderData": {
+        "mode": "Ease",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEase.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEase.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "WIP"
     }
   ]
 }
