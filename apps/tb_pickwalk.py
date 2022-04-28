@@ -1056,6 +1056,7 @@ class Pickwalk(toolAbstractFactory):
                         reciprocate=True,
                         endOnSelf=False)
 
+
             elif len(sel) > 2:
                 # add all objects in a chain
                 self.pickwalkCreator.addPickwalkChain(
