@@ -1502,7 +1502,6 @@ class InfoPromptWidget(QWidget):
             self.comboBox.addItem(c)
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
 
-
         # layout.addWidget(btnSetFolder)
 
         self.helpLabel = QLabel(self.helpString)
@@ -1580,8 +1579,7 @@ class InfoPromptWidget(QWidget):
         self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
 
-    def showRelative(self, screenPos=QPoint(0,0), widgetSize=QPoint(0,0)):
-
+    def showRelative(self, screenPos=QPoint(0, 0), widgetSize=QPoint(0, 0)):
 
         screens = QApplication.screens()
         for s in screens:
@@ -1591,7 +1589,7 @@ class InfoPromptWidget(QWidget):
         screenGeo = screen.availableGeometry()
         screenGeo.width()
         screenGeo.height()
-        finalPos = QPoint(0,0)
+        finalPos = QPoint(0, 0)
 
         if screenPos.y() + widgetSize.height() + self.height() > screenGeo.height():
             finalPos.setY(screenPos.y() - self.height())
@@ -3914,6 +3912,7 @@ class PopupSlider(QWidget):
                  altMode=str(),
                  axisLabelX='',
                  axisLabelY='',
+                 opacity=128,
                  icon=str()):
         super(PopupSlider, self).__init__()
 
@@ -3950,7 +3949,7 @@ class PopupSlider(QWidget):
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
-        #self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
+        # self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
         self.button.setStyleSheet("QLabel {"
                                   "background-color: rgba(128, 128, 128, 196);"
                                   "border-radius: 6;"
@@ -3990,15 +3989,12 @@ class PopupSlider(QWidget):
         self.darkestGrey = QColor(32, 32, 32, 255)
         self.midGrey = QColor(128, 128, 128, 128)
         self.midGreyFaint = QColor(128, 128, 128, self.brushOpacity)
-        self.background = QColor(96, 96, 96, self.brushOpacity)
+        self.background = QColor(96, 96, 96, opacity)
         self.overshootColour = QColor(128, 128, 128, 255)
         self.red = QColor(255, 0, 0, 96)
         self.clear = QColor(255, 0, 0, 0)
         self.textPen = QPen(self.text, 1, Qt.SolidLine)
-
-        #blur_effect = QGraphicsBlurEffect(blurRadius=15)
-        #blur_effect.setBlurHints(QGraphicsBlurEffect.QualityHint)
-        #self.setGraphicsEffect(blur_effect)
+        self.resetButton()
 
     def setIcon(self, icon):
         pixmap = QPixmap(os.path.join(IconPath, icon))
@@ -4025,10 +4021,12 @@ class PopupSlider(QWidget):
         clampedOvershootY = min(max(y, self.overshootMin), self.overshootMax)
 
         regularX = self.mapValue(clampedX, self.minValue, self.maxValue, self.outMin, self.outMax)
-        overshootX = self.mapValue(clampedOvershootX, self.overshootMin, self.overshootMax, self.outOvershootMin, self.outOvershootMax)
+        overshootX = self.mapValue(clampedOvershootX, self.overshootMin, self.overshootMax, self.outOvershootMin,
+                                   self.outOvershootMax)
 
         regularY = self.mapValue(clampedY, self.minValue, self.maxValue, self.outMin, self.outMax)
-        overshootY = self.mapValue(clampedOvershootY, self.overshootMin, self.overshootMax, self.outOvershootMin, self.outOvershootMax)
+        overshootY = self.mapValue(clampedOvershootY, self.overshootMin, self.overshootMax, self.outOvershootMin,
+                                   self.outOvershootMax)
 
         self.currentAlpha = clampedOvershootX if self.overshootState else clampedX
         self.outAlpha = overshootX if self.overshootState else regularX
@@ -4037,10 +4035,10 @@ class PopupSlider(QWidget):
         self.outAlphaY = overshootY if self.overshootState else regularY
 
         if self.vertical:
-            self.button.move(self.currentAlpha + self.margin - self.button.width() * 0.5, self.currentAlphaY + self.margin - self.button.height() * 0.5)
+            self.button.move(self.currentAlpha + self.margin - self.button.width() * 0.5,
+                             self.currentAlphaY + self.margin - self.button.height() * 0.5)
         else:
-            self.button.move(self.currentAlpha + self.margin - self.button.width() * 0.5,  self.button.pos().y())
-        self.sliderUpdateSignal.emit(self.mode, self.outAlpha, self.outAlphaY)
+            self.button.move(self.currentAlpha + self.margin - self.button.width() * 0.5, self.button.pos().y())
 
         if self.outAlpha > self.minValue * 0.6:
             self.overlayLabelPos = self.margin + abs(self.overshootMin - self.minValue)
@@ -4049,21 +4047,28 @@ class PopupSlider(QWidget):
             self.overlayLabelPos = 100
             self.overlayLabelAlignment = Qt.AlignRight
 
+        self.sliderUpdateSignal.emit(self.mode, self.outAlpha, self.outAlphaY)
+
     def mouseReleaseEvent(self, event):
         if self.closeOnRelease:
             self.hide()
 
         self.sliderEndedSignal.emit(self.mode, self.outAlpha, self.outAlphaY)
+
         self.lastMode = str(self.mode)
         self.lastAlpha = float(self.outAlpha)
         self.lastAlphaY = float(self.outAlphaY)
-        self.button.move(self.width() * 0.5 - self.button.width() * 0.5, self.height() * 0.5 - self.button.height() * 0.5)
+        self.resetButton()
         self.outAlpha = 0.0
         self.outAlphaY = 0.0
 
+    def resetButton(self):
+        self.button.move(self.width() * 0.5 - self.button.width() * 0.5,
+                         self.height() * 0.5 - self.button.height() * 0.5)
+
     def drawHorizontalBar(self, qp):
         leftBarPos = self.minValue
-        righBarPos = self.rightBorder - self.leftBorder + 2
+        righBarPos = self.rightBorder - self.leftBorder + 4
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setBrush(QBrush(self.midGrey))
         qp.setPen(QPen(QBrush(self.midGrey), 2))
@@ -4072,15 +4077,15 @@ class PopupSlider(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setBrush(QBrush(self.darkGrey))
         r1 = QRegion(QRect(0, 0, self.width(), self.height()))
         r2 = QRect(self.leftBorder, 0, righBarPos, self.height())  # r2: rectangular region
         r3 = r1.subtracted(r2)
         qp.setClipRegion(r3)
-        #qp.drawRect(0, 0, self.width(), self.height())
+        # qp.drawRect(0, 0, self.width(), self.height())
 
-        #qp.drawLine(righBarPos, 0, righBarPos, self.height())
-        #qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
+        # qp.drawLine(righBarPos, 0, righBarPos, self.height())
+        # qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
+        qp.setBrush(QBrush(self.background))
         qp.drawRect(0, 0, self.width(), self.height())
 
         qp.setClipRegion(QRect(0, 0, self.width(), self.height()))
@@ -4089,8 +4094,8 @@ class PopupSlider(QWidget):
         qp.setPen(QPen(QBrush(self.clear), 0))
         backgroundGradient = QLinearGradient(0.0, 0.0, 0.0, self.height())
         backgroundGradient.setColorAt(0, self.midGreyFaint)
-        backgroundGradient.setColorAt(6.0/self.height(), self.clear)
-        backgroundGradient.setColorAt((self.height()-6.0)/self.height(), self.clear)
+        backgroundGradient.setColorAt(6.0 / self.height(), self.clear)
+        backgroundGradient.setColorAt((self.height() - 6.0) / self.height(), self.clear)
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
         qp.drawRoundedRect(0, 0, self.width(), self.height(), 2, 2)
@@ -4105,11 +4110,11 @@ class PopupSlider(QWidget):
 
         backgroundGradient = QLinearGradient(self.leftBorder, 0.0, self.rightBorder + 2, 0)
         backgroundGradient.setColorAt(0, self.midGreyFaint)
-        backgroundGradient.setColorAt(6.0 / self.width(), self.clear)
-        backgroundGradient.setColorAt((self.width() - 6.0) / self.width(), self.clear)
+        backgroundGradient.setColorAt(6.0 / self.height(), self.clear)
+        backgroundGradient.setColorAt((self.height() - 6.0) / self.height(), self.clear)
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
-        #qp.setBrush(QBrush(self.red))
+        # qp.setBrush(QBrush(self.red))
         qp.drawRoundedRect(self.leftBorder, 0, righBarPos, self.height(), 2, 2)
 
         lineColor = QColor(68, 68, 68, 64)
@@ -4117,8 +4122,8 @@ class PopupSlider(QWidget):
         qp.setBrush(QBrush(lineColor))
         qp.setCompositionMode(qp.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
-        #qp.drawLine(righBarPos, 0, righBarPos, self.height())
-        #qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
+        # qp.drawLine(righBarPos, 0, righBarPos, self.height())
+        # qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
         qp.setBrush(QBrush(self.darkGrey))
 
         path = QPainterPath()
@@ -4152,7 +4157,6 @@ class PopupSlider(QWidget):
         '''
         qp.setPen(self.textPen)
 
-
         '''
         qp.drawText(leftBarPos + 2, 2, self.range + self.button.width() - self.margin - self.margin, self.height(),
                     Qt.AlignLeft, self.mode)
@@ -4182,10 +4186,10 @@ class PopupSlider(QWidget):
         r2 = QRect(self.leftBorder, self.leftBorder, righBarPos, righBarPos)  # r2: rectangular region
         r3 = r1.subtracted(r2)
         qp.setClipRegion(r3)
-        #qp.drawRect(0, 0, self.width(), self.height())
+        # qp.drawRect(0, 0, self.width(), self.height())
 
-        #qp.drawLine(righBarPos, 0, righBarPos, self.height())
-        #qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
+        # qp.drawLine(righBarPos, 0, righBarPos, self.height())
+        # qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
         qp.drawRect(0, 0, self.width(), self.height())
 
         qp.setClipRegion(QRect(0, 0, self.width(), self.height()))
@@ -4215,7 +4219,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt((self.range - 6.0) / self.range, self.clear)
         backgroundGradient.setColorAt(1, self.midGrey)
         qp.setBrush(QBrush(backgroundGradient))
-        #qp.setBrush(QBrush(self.red))
+        # qp.setBrush(QBrush(self.red))
         qp.drawRect(self.leftBorder, self.leftBorder, righBarPos, righBarPos)
 
         backgroundGradient = QLinearGradient(self.leftBorder, self.leftBorder, self.rightBorder, self.leftBorder)
@@ -4245,7 +4249,7 @@ class PopupSlider(QWidget):
 
         labelStr = ' {}'.format(self.label)
         xAxisStr = ' {}'.format("{} {:.2f}".format(self.axisLabelX, self.outAlpha * 0.01))
-        yAxisStr = ' {}'.format("{} {:.2f}".format(self.axisLabelY, self.outAlphaY * 0.01))
+        yAxisStr = ' {}'.format("{} {:.2f}".format(self.axisLabelY, self.outAlphaY * -0.01))
 
         fontMetrics = QFontMetrics(font)
         pixelsWide = fontMetrics.width(xAxisStr)
@@ -4270,16 +4274,6 @@ class PopupSlider(QWidget):
         qp.drawText(0, pixelsHigh + 38, self.width(), 16, Qt.AlignLeft | Qt.AlignTop,
                     ' {}'.format("{} {:.2f}".format('self.axisLabelY', self.outAlphaY * 0.01)))
         '''
-
-    def moveToCursor(self):
-        modifiers = QApplication.keyboardModifiers()
-        self.overshootState = modifiers == Qt.ControlModifier
-        pos = QCursor.pos()
-        size = self.size()
-
-        self.move(QPoint(pos.x() - (size.width() * 0.5), pos.y() - size.height() * 0.5))
-        self.button.move(self.mapFromGlobal(pos).x() - self.button.width() * 0.5, self.button.pos().y())
-        self.sliderBeginSignal.emit(self.mode, 0.0, 0.0)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -4334,10 +4328,10 @@ class ToolbarButton(QLabel):
         self.icon = icon
         self.altIcon = altIcon
         self.currentIcon = icon
-        self.baseWidth=width
-        self.baseHeight=height
-        self.iconWidth=iconWidth
-        self.iconHeight=iconHeight
+        self.baseWidth = width
+        self.baseHeight = height
+        self.iconWidth = iconWidth
+        self.iconHeight = iconHeight
         self.pixmap = QPixmap(os.path.join(IconPath, icon))
         self.altPixmap = QPixmap(os.path.join(IconPath, altIcon))
         self.setPixmap(self.pixmap.scaled(self.iconWidth, self.iconHeight))
@@ -4373,7 +4367,6 @@ class ToolbarButton(QLabel):
             self.altState = True
         if event.key() == Qt.Key_Control:
             self.controlState = True
-
 
         self.raiseToolTip()
 
@@ -4524,9 +4517,12 @@ class ButtonWidget(QWidget):
         if QApplication.keyboardModifiers() == Qt.ShiftModifier:
             if not self.altPopup.lastMode:
                 return
-            self.altPopup.sliderBeginSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha, self.altPopup.lastAlphaY)
-            self.altPopup.sliderUpdateSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha, self.altPopup.lastAlphaY)
-            self.altPopup.sliderEndedSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha, self.altPopup.lastAlphaY)
+            self.altPopup.sliderBeginSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha,
+                                                 self.altPopup.lastAlphaY)
+            self.altPopup.sliderUpdateSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha,
+                                                  self.altPopup.lastAlphaY)
+            self.altPopup.sliderEndedSignal.emit(self.altPopup.lastMode, self.altPopup.lastAlpha,
+                                                 self.altPopup.lastAlphaY)
         else:
             if not self.popup.lastMode:
                 return

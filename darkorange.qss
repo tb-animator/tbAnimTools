@@ -99,11 +99,11 @@ ToolbarButton
     border-width: 1px;
     border-color: #1e1e1e;
     border-style: solid;
-    border-radius: 6;
-    padding: 1px;
+    border-radius: 4;
+    padding: 0px;
     font-size: 12px;
-    padding-left: 1px;
-    padding-right: 1px;
+    padding-left: 0px;
+    padding-right: 0px;
 }
 
 ToolbarButton:pressed

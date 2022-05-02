@@ -132,15 +132,16 @@
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
         "icon": "tweenEase.png",
-        "vertical": true,
+        "vertical": false,
         "closeOnRelease": true
       },
       "altSliderData": {
-        "mode": "Ease",
+        "mode": "Ease2D",
         "label": "Ease",
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
-        "icon": "tweenEase.png",
+        "icon": "tweenEase2D.png",
+        "icon": "tweenEase2D.png",
         "vertical": true,
         "closeOnRelease": true
       },
