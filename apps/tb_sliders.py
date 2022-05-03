@@ -33,7 +33,10 @@ import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
 from maya.api import OpenMaya
 from copy import deepcopy
+'''
+blend to magnet (relative pose)
 
+'''
 fn_SMOOTH = 'Smooth'
 fn_SCALEFROMFIRST = 'ScaleFromFirst'
 fn_SCALEFROMLAST = 'ScaleFromLast'
@@ -3940,8 +3943,8 @@ class GraphEdKeySliderWidget(QWidget):
 
     def modeChanged(self, *args):
         self.currentMode = self.comboBox.currentText()
+        self.slider.mode = self.comboBox.currentText()
         self.slider.setIcon(SlideTools().keyTweenIcons[self.currentMode])
-        print ('modeChanged', SlideTools().keyTweenIcons[self.currentMode])
         self.modeChangedSignal.emit(self.currentMode)
 
 
