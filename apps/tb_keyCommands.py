@@ -367,7 +367,7 @@ class mainHotkeyWindow(QMainWindow):
 
     def populateTreeView(self):
         for index, cat in enumerate(sorted(self.commandCategories.keys())):
-            categoryItem = QStandardItem(cat)
+            categoryItem = QStandardItem(cat.split('tbAnimTools_')[-1])
             categoryItem.setEditable(False)
 
             for command in sorted(self.commandCategories[cat]):

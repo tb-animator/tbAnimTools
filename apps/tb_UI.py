@@ -236,7 +236,7 @@ class markingMenuKeypressHandler(QObject):
 
 
 class ViewportDialog(QDialog):
-    def __init__(self, parent=None, parentMenu=None, menuDict=dict(), *args, **kwargs):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(), *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
         self.keyPressHandler = None
@@ -274,6 +274,7 @@ class ViewportDialog(QDialog):
         self.screenGeo = screen.availableGeometry()
 
         self.cursorPos = QCursor.pos()
+
         self.currentCursorPos = QCursor.pos()
         self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
 
@@ -367,8 +368,11 @@ class ViewportDialog(QDialog):
         self.setFocus()
         self.addAllButtons()
 
+    def hide(self):
+        #print ('being hidden', self)
+        super(ViewportDialog, self).hide()
+
     def closeMenu(self):
-        # print ('closeMenu', self, self.parentMenu)
         if self.parentMenu:
             self.parentMenu.closeMenu()
         self.hide()
@@ -398,6 +402,9 @@ class ViewportDialog(QDialog):
         pos = QCursor.pos()
         xOffset = 10  # border?
         # self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
+        #print ('self.cursorPos', self.cursorPos)
+        #print self.mapFromGlobal(self.cursorPos)
+        self.cursorPos = QPoint(self.cursorPos.x() - self.screenGeo.left(), self.cursorPos.y() - self.screenGeo.top())
         self.move(self.screenGeo.left(), self.screenGeo.top())
 
     def paintEvent(self, event):
@@ -405,7 +412,7 @@ class ViewportDialog(QDialog):
         qp.begin(self)
         lineColor = QColor(68, 68, 68, 128)
         linePenColor = QColor(255, 160, 47, 255)
-        blank = QColor(124, 124, 124, 64)
+        blank = QColor(124, 124, 124, 32)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
         grad = QLinearGradient(200, 0, 200, 32)
@@ -572,6 +579,8 @@ class ReturnButton(QPushButton):
         self.setStyleSheet("ReturnButton{"
                            "border-color: #ffa02f;"
                            "border-radius: 16;"
+                           "border-width: 4px;"
+                           "border-color: #1e1e1e;"
                            "}"
                            )
 
@@ -579,7 +588,7 @@ class ReturnButton(QPushButton):
         self.setStyleSheet("ReturnButton{"
                            "color: #b1b1b1;"
                            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
-                           "border-width: 1px;"
+                           "border-width: 4px;"
                            "border-color: #1e1e1e;"
                            "border-radius: 16;"
                            "}"
@@ -588,6 +597,7 @@ class ReturnButton(QPushButton):
     def mouseMoveEvent(self, event):
         self.setHoverSS()
         self.hoverSignal.emit(self)
+        #print ('hover hide current', self.cls)
         self.cls.hideCurrentLayer()
 
     def executeCommand(self):
@@ -599,11 +609,12 @@ class ToolboxButton(QPushButton):
 
     def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
                  subMenuClass=None,
+                 subMenu=None,
                  iconWidth=16, iconHeight=16,
                  ):
         super(ToolboxButton, self).__init__(label, parent)
 
-        self.subMenu = None  # sub menu instance
+        self.subMenu = subMenu  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
         self.setFixedSize(48, 22)
         self.executed = False
@@ -615,10 +626,16 @@ class ToolboxButton(QPushButton):
         self.setNonHoverSS()
         self.setMouseTracking(True)
         self.popupSubMenu = popupSubMenu
-        fontWidth = self.fontMetrics().boundingRect(self.text()).width()
+        fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
+        if icon:
+            fontWidth += iconWidth
         self.setText(str())
         self.setFixedSize(max(48, ((fontWidth / 64) * 64) + 64), 24)
-        self.icon = icon
+        if popupSubMenu:
+            self.icon = IconPath + '\popupMenu.png'
+        else:
+            self.icon = icon
+
         if self.icon:
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
@@ -2403,6 +2420,14 @@ class ObjectSelectLineEdit(QWidget):
     @Slot()
     def textEdited(self):
         self.editedSignalKey.emit(self.key, self.itemLabel.text())
+
+    def errorHighlight(self):
+        borderHighlightQSS = "QLineEdit {border: 1px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
+
+        self.itemLabel.setStyleSheet(borderHighlightQSS)
+
+    def errorHighlightRemove(self):
+        self.itemLabel.setStyleSheet(getqss.getStyleSheet())
 
 
 class ObjectSelectLineEditEnforced(ObjectSelectLineEdit):

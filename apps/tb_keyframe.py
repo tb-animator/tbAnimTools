@@ -102,6 +102,12 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='eulerFilterSelection',
                                      annotation='euler filter your current keyframe selection',
                                      category=self.category, command=['KeyModifiers.eulerFilterSelectedKeys()']))
+        self.addCommand(self.tb_hkey(name='quickCopyKeys',
+                                     annotation='copy selected keys to the current frame',
+                                     category=self.category, command=['KeyModifiers.quickCopyKeys()']))
+        self.addCommand(self.tb_hkey(name='quickCopyKeysConnect',
+                                     annotation='copy-connect selected keys to the current frame',
+                                     category=self.category, command=['KeyModifiers.quickCopyKeys(connect=True)']))
 
         return self.commandList
 
@@ -235,6 +241,13 @@ class KeyModifiers(toolAbstractFactory):
                             outTangentType=input,
                             time=timeRange)
             self.funcs.infoMessage(prefix="Tangent :: ", message=input)
+
+    def quickCopyKeys(self, connect=False):
+        cmds.copyKey()
+        if connect:
+            cmds.pasteKey(option='merge', time=(cmds.currentTime(query=True),), copies=1, connect=connect)
+        else:
+            cmds.pasteKey(option='merge', time=(cmds.currentTime(query=True),), copies=1)
 
     def eulerFilterSelectedKeys(self):
         self.objects = cmds.ls(selection=True)
