@@ -201,6 +201,7 @@ class BakeTools(toolAbstractFactory):
     assetCommandName = 'tempControlCommand'
 
     crossSizeOption = 'tbBakeLocatorSize'
+    worldOffsetSizeOption = 'tbBakeWorldOffsetSize'
     assetName = 'TempControls'
     worldOffsetAssetName = 'WorldOffsetControls'
     constraintTargetAttr = 'constraintTarget'
@@ -226,11 +227,17 @@ class BakeTools(toolAbstractFactory):
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
         containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
                                                     self.quickBakeRemoveContainerOption)
+
         crossSizeWidget = intFieldWidget(optionVar=self.crossSizeOption,
                                          defaultValue=1.0,
                                          label='Baked locator control size',
                                          minimum=0.1, maximum=100, step=0.1)
+        worldOffsetSizeWidget = intFieldWidget(optionVar=self.worldOffsetSizeOption,
+                                         defaultValue=0.5,
+                                         label='World offset control size',
+                                         minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
+        worldOffsetSizeWidget.changedSignal.connect(self.updatePreview)
 
         constraintChannelHeader = subHeader('Constraint Channels')
         constraintChannelInfo = infoLabel([
@@ -254,6 +261,7 @@ class BakeTools(toolAbstractFactory):
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
+        self.layout.addWidget(worldOffsetSizeWidget)
 
         self.layout.addWidget(constraintChannelHeader)
         self.layout.addWidget(constraintChannelInfo)
@@ -1155,7 +1163,7 @@ class BakeTools(toolAbstractFactory):
         for s in sel:
             rotationRoot = self.funcs.tempControl(name=s, suffix='worldOffset')
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
-            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='localOffset', scale=0.5)
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='localOffset', scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
