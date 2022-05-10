@@ -424,18 +424,12 @@ class TempPivot(toolAbstractFactory):
             keyRangeStart = cmds.playbackOptions(query=True, min=True)
             keyRangeEnd = cmds.playbackOptions(query=True, max=True)
 
+            pm.bakeResults(tempControls,
+                           time=(keyRangeStart, keyRangeEnd),
+                           simulation=False,
+                           sampleBy=1)
+            self.funcs.resumeSkinning()
 
-
-
-            try:
-                self.funcs.suspendSkinning()
-                pm.bakeResults(tempControls,
-                               time=(keyRangeStart, keyRangeEnd),
-                               simulation=True,
-                               sampleBy=1)
-                self.funcs.resumeSkinning()
-            except:
-                self.funcs.resumeSkinning()
             pm.delete(constraints)
 
             for t in targets:
