@@ -106,6 +106,7 @@ class SnapTools(toolAbstractFactory):
     relativeTransformLastParent = str()
     relativeTransformLastControls = list()
     transformRotateDict = dict()
+    transformMatrixDict = dict()
 
     selectionOrderOption = 'tbSnapSelectionOrder'
     relativeSelectionOrderOption = 'tbRelativeSnapSelectionOrder'
@@ -306,11 +307,14 @@ class SnapTools(toolAbstractFactory):
         for s in sel:
             pos = self.get_world_space(s)
             rot = self.get_world_rotation(s)
+            mtx = self.funcs.getMatrix(s)
             self.transformTranslateDict[s] = pos
             self.transformRotateDict[s] = rot
+            self.transformMatrixDict[s] = mtx
 
         self.transformTranslateDict['LASTUSED'] = pos
         self.transformRotateDict['LASTUSED'] = rot
+        self.transformMatrixDict['LASTUSED'] = mtx
         pass
 
     def restore_transform(self):
@@ -329,18 +333,40 @@ class SnapTools(toolAbstractFactory):
         if len(sel) == 1:
             pos = self.transformTranslateDict.get('LASTUSED', None)
             rot = self.transformRotateDict.get('LASTUSED', None)
-            if pos:
-                self.set_world_translation(sel[0], pos)
+            storedMtx = self.transformMatrixDict.get('LASTUSED', None)
+            postMtx = self.funcs.getMatrix(sel[0])
+            parentMtx = self.funcs.getMatrix(sel[0], matrix='parentMatrix')
+
+            pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
             if rot:
-                self.set_world_rotation(sel[0], rot)
+                #self.set_world_rotation(sel[0], rot)
+                cmds.xform(sel[0], relative=True, rotation=rot)
+            postMtx = self.funcs.getMatrix(sel[0])
+            parentMtx = self.funcs.getMatrix(sel[0], matrix='parentMatrix')
+            pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+
+            if pos:
+                #self.set_world_translation(sel[0], pos)
+                cmds.xform(sel[0], relative=True, translation=pos)
             return
         for s in sel:
             pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
             rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
-            if pos:
-                self.set_world_translation(s, pos)
+            storedMtx = self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None))
             if rot:
-                self.set_world_rotation(s, rot)
+                #self.set_world_rotation(s, rot)
+                postMtx = self.funcs.getMatrix(s)
+                parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
+                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                cmds.xform(s, relative=True, rotation=rot)
+
+            if pos:
+                #self.set_world_translation(s, pos)
+                postMtx = self.funcs.getMatrix(s)
+                parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
+                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                cmds.xform(s, relative=True, translation=pos)
+
 
     def get_world_pivot(self, node):
         # get the world pivot

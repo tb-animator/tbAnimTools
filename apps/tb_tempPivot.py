@@ -53,6 +53,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['TempPivot.createTempPivotFromSelection()']))
+        self.addCommand(self.tb_hkey(name='createTempPivotHierarchy',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.createTempPivotHierarchy()']))
         self.addCommand(self.tb_hkey(name='createTempParent', annotation='',
                                      category=self.category, command=['TempPivot.tempParent()']))
         self.addCommand(self.tb_hkey(name=assetCommandName,
@@ -133,7 +137,6 @@ class TempPivot(toolAbstractFactory):
         # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
         cmds.menuItem(label='Delete all temp pivots', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
-
 
     def bakeSelectedCommand(self, asset, sel):
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
@@ -343,6 +346,103 @@ class TempPivot(toolAbstractFactory):
                     pm.scriptJob(kill=j)
                 except:
                     pass
+
+    def createTempPivotHierarchy(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+        with self.funcs.undoChunk():
+            self.createTempPivotForHierarchy(sel)
+
+    def createTempPivotForHierarchy(self, sel):
+        mainControl = sel[-1]
+
+        loc = self.createControl(mainControl)
+        frame = cmds.currentTime(query=True)
+        cmds.MoveTool()
+        cmds.manipMoveContext('Move', edit=True, mode=0)
+        cmds.setToolTo(cmds.currentCtx())
+        cmds.ctxEditMode()
+        self.completedHierarchyScriptJob(sel, loc, frame)
+
+    def completedHierarchyScriptJob(self, targets, loc, frame):
+        self.scriptJobs.append(
+            pm.scriptJob(runOnce=True,
+                         event=['SelectionChanged', partial(self.bakeTempHierarchy, targets, loc, frame)]))
+        self.scriptJobs.append(
+            pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.bakeTempHierarchy, targets, loc, frame)]))
+        # self.scriptJobs.append(pm.scriptJob(runOnce=True, timeChange=partial(self.bake, targets, loc, frame)))
+
+    def bakeTempHierarchy(self, targets, loc, frame):
+        self.clearScriptJobs()
+
+        with self.funcs.undoChunk():
+            cmds.currentTime(frame)
+            mainTarget = targets[-1]
+            constraints = list()
+            tempControls = list()
+            targetParents = dict()
+            targetConstraints = dict()
+            bakeTargets = dict()
+            ps = pm.PyNode(targets[-1])
+            ns = ps.namespace()
+            if not cmds.objExists(ns + self.assetName):
+                self.createAsset(ns + self.assetName, imageName=None)
+            asset = ns + self.assetName
+
+            targetDict = dict()
+            mainControl = self.funcs.tempControl(name=mainTarget, suffix='PivotControl', drawType='orb',
+                                                 scale=pm.optionVar.get(self.crossSizeOption, 0.25))
+            pm.container(asset, edit=True,
+                         includeHierarchyBelow=True,
+                         force=True,
+                         addNode=mainControl)
+            pm.delete(pm.parentConstraint(loc, mainControl))
+            pm.delete(loc)
+
+            for s in targets:
+                control = self.funcs.tempControl(name=s, suffix='_pivot', scale=0.25)
+                targetParents[s] = control
+                tempControls.append(control)
+                constraint = pm.parentConstraint(s, control)
+                constraints.append(constraint)
+                pm.container(asset, edit=True,
+                             includeHierarchyBelow=True,
+                             force=True,
+                             addNode=control)
+            for index, c in enumerate(tempControls[::-1]):
+                if index > 0:
+                    pm.parent(c, tempControls[index - 1])
+
+            constraints.append(pm.parentConstraint(targets[-1], mainControl, maintainOffset=True))
+            pm.parent(tempControls[-1], mainControl)
+            tempControls.append(mainControl)
+
+            keyRangeStart = cmds.playbackOptions(query=True, min=True)
+            keyRangeEnd = cmds.playbackOptions(query=True, max=True)
+
+            '''
+            pm.addAttr(control, ln=self.constraintTargetAttr, at='message')
+            pm.connectAttr(targets[-1] + '.message', control + '.' + self.constraintTargetAttr)
+            '''
+
+            print (constraints)
+
+            try:
+                self.funcs.suspendSkinning()
+                pm.bakeResults(tempControls,
+                               time=(keyRangeStart, keyRangeEnd),
+                               simulation=True,
+                               sampleBy=1)
+                self.funcs.resumeSkinning()
+            except:
+                self.funcs.resumeSkinning()
+            pm.delete(constraints)
+
+            for t in targets:
+                pm.parentConstraint(targetParents[t], t)
+            pm.select(mainControl, replace=True)
+
 
 # cls = temp()
 # cls.createTempPivot(cmds.ls(sl=True))
