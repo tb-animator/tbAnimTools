@@ -406,6 +406,9 @@ class TempPivot(toolAbstractFactory):
                 tempControls.append(control)
                 constraint = pm.parentConstraint(s, control)
                 constraints.append(constraint)
+                pm.addAttr(control, ln=self.constraintTargetAttr, at='message')
+                pm.connectAttr(s + '.message', control + '.' + self.constraintTargetAttr)
+
                 pm.container(asset, edit=True,
                              includeHierarchyBelow=True,
                              force=True,
@@ -421,12 +424,8 @@ class TempPivot(toolAbstractFactory):
             keyRangeStart = cmds.playbackOptions(query=True, min=True)
             keyRangeEnd = cmds.playbackOptions(query=True, max=True)
 
-            '''
-            pm.addAttr(control, ln=self.constraintTargetAttr, at='message')
-            pm.connectAttr(targets[-1] + '.message', control + '.' + self.constraintTargetAttr)
-            '''
 
-            print (constraints)
+
 
             try:
                 self.funcs.suspendSkinning()
