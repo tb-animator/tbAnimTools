@@ -276,7 +276,7 @@ class KeyModifiers(toolAbstractFactory):
             cmds.filterCurve()
 
     @staticmethod
-    def getMatrix(node):
+    def getMatrix(node, matrix = "worldMatrix"):
         '''
         Gets the world matrix of an object based on name.
         '''
@@ -295,11 +295,14 @@ class KeyModifiers(toolAbstractFactory):
         fnThisNode = om2.MFnDependencyNode(MObjectA)
 
         # Get it's world matrix plug
-        worldMatrixAttr = fnThisNode.attribute("worldMatrix")
+        worldMatrixAttr = fnThisNode.attribute(matrix)
 
         # Getting mPlug by plugging in our MObject and attribute
         matrixPlug = om2.MPlug(MObjectA, worldMatrixAttr)
-        matrixPlug = matrixPlug.elementByLogicalIndex(0)
+        try:
+            matrixPlug = matrixPlug.elementByLogicalIndex(0)
+        except:
+            pass
 
         # Get matrix plug as MObject so we can get it's data.
         matrixObject = matrixPlug.asMObject()

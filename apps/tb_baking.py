@@ -609,6 +609,7 @@ class BakeTools(toolAbstractFactory):
 
         newAnimLayer.ghostColor.set(colour[override])
         newAnimLayer.scaleAccumulationMode.set(not override)
+        newAnimLayer.roationAccumulationMode.set(True)
         self.deselect_layers()
         newAnimLayer.selected.set(True)
         newAnimLayer.preferred.set(True)

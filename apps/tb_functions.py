@@ -25,7 +25,7 @@
 import pymel.core as pm
 import maya.cmds as cmds
 import maya.OpenMayaAnim as oma
-
+import math
 import maya.mel as mel
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omUI
@@ -1498,6 +1498,59 @@ class functions(object):
         selList = om2.MSelectionList()
         selList.add(node)
         return selList.getDependNode(0)
+
+    @staticmethod
+    def getMatrix(node, matrix="worldMatrix"):
+        '''
+        Gets the world matrix of an object based on name.
+        '''
+        # TODO - have this use a shared function from self.funcs
+        # Selection list object and MObject for our matrix
+        selection = om2.MSelectionList()
+        matrixObject = om2.MObject()
+
+        # Adding object
+        selection.add(node)
+
+        # New api is nice since it will just return an MObject instead of taking two arguments.
+        MObjectA = selection.getDependNode(0)
+
+        # Dependency node so we can get the worldMatrix attribute
+        fnThisNode = om2.MFnDependencyNode(MObjectA)
+
+        # Get it's world matrix plug
+        worldMatrixAttr = fnThisNode.attribute(matrix)
+
+        # Getting mPlug by plugging in our MObject and attribute
+        matrixPlug = om2.MPlug(MObjectA, worldMatrixAttr)
+        try:
+            matrixPlug = matrixPlug.elementByLogicalIndex(0)
+        except:
+            pass
+
+        # Get matrix plug as MObject so we can get it's data.
+        matrixObject = matrixPlug.asMObject()
+
+        # Finally get the data
+        worldMatrixData = om2.MFnMatrixData(matrixObject)
+        worldMatrix = worldMatrixData.matrix()
+
+        return worldMatrix
+
+    def getMatrixOffset(self, node, storedMtx, postMtx, parentMtx):
+        offset = parentMtx * (postMtx.inverse() * storedMtx) * parentMtx.inverse()
+
+        transformMatrixObj = om2.MTransformationMatrix(offset)
+        resultTranslate = transformMatrixObj.translation(om2.MSpace.kWorld)
+        resultRotate = transformMatrixObj.rotation(asQuaternion=False)
+        rotOrder = cmds.getAttr('%s.rotateOrder' % node)
+        resultRotate.reorderIt(rotOrder)
+        angles = [math.degrees(angle) for angle in (resultRotate.x, resultRotate.y, resultRotate.z)]
+
+        resultScale = transformMatrixObj.scale(om2.MSpace.kWorld)
+        return resultTranslate, angles
+        #pm.xform('pCube1', relative=True, translation=resultTranslate)
+        #pm.xform('pCube1', relative=True, rotation=angles)
 
     @staticmethod
     def getMFnCurveFromPlug(plug):
