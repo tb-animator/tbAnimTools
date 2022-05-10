@@ -167,7 +167,9 @@ class SelectionTools(toolAbstractFactory):
 
         if matchingPrefix:
             cmds.select(matchingPrefix, replace=True)
+            cmds.select(sel, add=True)
             self.lastSelected = sel[0]
+
 
     def getOppositeControl(self, name, constraint=False, shape=True):
         namespace, control = name.rsplit(':', 1)
