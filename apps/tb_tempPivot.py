@@ -381,6 +381,7 @@ class TempPivot(toolAbstractFactory):
             mainTarget = targets[-1]
             constraints = list()
             tempControls = list()
+            tempControlsGrps = list()
             targetParents = dict()
             targetConstraints = dict()
             bakeTargets = dict()
@@ -402,7 +403,6 @@ class TempPivot(toolAbstractFactory):
 
             for s in targets:
                 control = self.funcs.tempControl(name=s, suffix='_pivot', scale=0.25)
-                targetParents[s] = control
                 tempControls.append(control)
                 constraint = pm.parentConstraint(s, control)
                 constraints.append(constraint)
@@ -412,14 +412,39 @@ class TempPivot(toolAbstractFactory):
                 pm.container(asset, edit=True,
                              includeHierarchyBelow=True,
                              force=True,
-                             addNode=control)
-            for index, c in enumerate(tempControls[::-1]):
-                if index > 0:
-                    pm.parent(c, tempControls[index - 1])
+                             addNode=[control])
+
+            for index in range(len(tempControls)-1):
+                pm.parent(tempControls[index], tempControls[index + 1])
 
             constraints.append(pm.parentConstraint(targets[-1], mainControl, maintainOffset=True))
             pm.parent(tempControls[-1], mainControl)
             tempControls.append(mainControl)
+
+            for index, c in enumerate(tempControls):
+                cmds.select(clear=True)
+                pivotNull = cmds.group(empty=True, world=True, name="%s_pivotNull" % c)
+                tempControlsGrps.append(pivotNull)
+                targetParents[index] = pivotNull
+                pm.delete(pm.parentConstraint(tempControls[index], pivotNull))
+            pm.container(asset, edit=True,
+                         includeHierarchyBelow=True,
+                         force=True,
+                         addNode=tempControlsGrps)
+            controlsReversed = list(reversed(tempControls))
+            for index, c in enumerate(tempControlsGrps[1:]):
+                pm.parent(tempControlsGrps[index], tempControlsGrps[index + 1])
+
+            for index in range(len(tempControlsGrps) - 1, -1, -1):
+                pm.pointConstraint(tempControls[index], tempControlsGrps[index])
+                if index > 0:
+                    aimConstraint = pm.aimConstraint(tempControls[index-1], tempControlsGrps[index],
+                                                     worldUpObject=tempControls[index],
+                                                     aimVector=[1,0,0],
+                                                     upVector=[0,1,0],
+                                                     worldUpVector=[0,1,0],
+                                                     worldUpType='objectrotation')
+
 
             keyRangeStart = cmds.playbackOptions(query=True, min=True)
             keyRangeEnd = cmds.playbackOptions(query=True, max=True)
@@ -432,10 +457,10 @@ class TempPivot(toolAbstractFactory):
 
             pm.delete(constraints)
 
-            for t in targets:
-                pm.parentConstraint(targetParents[t], t)
-            pm.select(mainControl, replace=True)
+            for index, t in enumerate(targets):
+                self.funcs.safeParentConstraint(tempControlsGrps[index+1], t, orientOnly=False, maintainOffset=True)
 
+            pm.select(mainControl, replace=True)
 
 # cls = temp()
 # cls.createTempPivot(cmds.ls(sl=True))

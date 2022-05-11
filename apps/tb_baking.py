@@ -1025,6 +1025,25 @@ class BakeTools(toolAbstractFactory):
         # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
         return
 
+    def getLayerNodesAndConstraints(self):
+        allLayers = cmds.ls(type='animLayer')
+        if 'BaseAnimation' in allLayers:
+            allLayers.pop(allLayers.index('BaseAnimation'))
+
+        allNodes = list()
+        for layer in allLayers:
+            attrs = cmds.animLayer(layer, query=True, attribute=True)
+            nodes = [mel.eval('plugNode("%s")' % attr) for attr in attrs]
+            allNodes.extend(list(set(nodes)))
+
+        filteredTargets = [item for sublist in [cmds.listRelatives(n, type='constraint') or [] for n in nodes] for item
+                           in sublist if item]
+        filteredNodes = list(set([n for n in allNodes if not cmds.referenceQuery(n, isNodeReferenced=True)]))
+        filteredConstraints = list(
+            set([c for c in filteredTargets if not cmds.referenceQuery(c, isNodeReferenced=True)]))
+
+        return filteredNodes, filteredConstraints
+
     def quickMergeAllLayers(self):
         try:
             with self.funcs.suspendUpdate():
@@ -1043,7 +1062,10 @@ class BakeTools(toolAbstractFactory):
                         node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
                         if node not in allNodes:
                             allNodes.append(node)
-
+                allConstraints = [item for sublist in [cmds.listRelatives(n, type='constraint') or [] for n in allNodes] for item in sublist if item]
+                filteredConstraints = list(
+                    set([c for c in allConstraints if not cmds.referenceQuery(c, isNodeReferenced=True)]))
+                unreferencedNodes = list(set([n for n in allNodes if not cmds.referenceQuery(n, isNodeReferenced=True)]))
                 allLayers.remove(rootLayer)
                 if not allNodes:
                     return cmds.warning('No controls found in layers, aborting')
@@ -1070,6 +1092,9 @@ class BakeTools(toolAbstractFactory):
                                  shape=False)
 
                 cmds.delete(allLayers)
+                cmds.delete(unreferencedNodes)
+                cmds.delete(filteredConstraints)
+
         except Exception:
             cmds.warning(traceback.format_exc())
             self.funcs.resumeSkinning()
