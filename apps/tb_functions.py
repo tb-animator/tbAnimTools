@@ -1494,6 +1494,14 @@ class functions(object):
         return selList.getDagPath(0)
 
     @staticmethod
+    def getDagNode(node):
+        selList = om.MSelectionList()
+        selList.add(node)
+        nodeDagPath = om.MDagPath()
+        selList.getDagPath(0, nodeDagPath)
+        return nodeDagPath
+
+    @staticmethod
     def getMObject(node):
         selList = om2.MSelectionList()
         selList.add(node)
@@ -1551,6 +1559,28 @@ class functions(object):
         return resultTranslate, angles
         #pm.xform('pCube1', relative=True, translation=resultTranslate)
         #pm.xform('pCube1', relative=True, rotation=angles)
+
+    def getVectorToTarget(self, target, control):
+        tempNode = cmds.createNode('transform')
+        cmds.delete(cmds.parentConstraint(control, tempNode))
+        controlMatrix = self.getMatrix(tempNode)
+        targetMatrix = self.getMatrix(target)
+
+        offset = targetMatrix * controlMatrix.inverse()
+        mTransformMtx = om2.MTransformationMatrix(offset)
+        trans = mTransformMtx.translation(om2.MSpace.kWorld)
+        cmds.delete(tempNode)
+        return trans
+
+    def getWorldSpaceVectorOffset(self, control, target, vec=om.MVector.yAxis):
+        controlNode = self.getDagNode(control)
+        controlMatrix = controlNode.inclusiveMatrix()
+
+        targetNode = self.getDagNode(target)
+        targetMatrix = targetNode.inclusiveMatrix()
+
+        vec = ((vec * controlMatrix) * targetMatrix.inverse()).normal()
+        return dt.Vector(vec.x, vec.y, vec.z)
 
     @staticmethod
     def getMFnCurveFromPlug(plug):

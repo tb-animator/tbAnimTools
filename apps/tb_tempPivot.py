@@ -39,11 +39,23 @@ else:
     from PySide2.QtCore import *
     # from pyside2uic import *
     from shiboken2 import wrapInstance
+
+import pymel.core.datatypes as dt
+import maya.OpenMaya as om
+
+xAx = om.MVector.xAxis
+yAx = om.MVector.yAxis
+zAx = om.MVector.zAxis
+rad_to_deg = 57.2958
+axisMapping = {
+    0: xAx,
+    1: yAx,
+    2: zAx
+}
+
 __author__ = 'tom.bailey'
 
 assetCommandName = 'tempPivotControlCommand'
-
-
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('tempPivot'))
@@ -438,13 +450,17 @@ class TempPivot(toolAbstractFactory):
             for index in range(len(tempControlsGrps) - 1, -1, -1):
                 pm.pointConstraint(tempControls[index], tempControlsGrps[index])
                 if index > 0:
+                    constraint = self.constrainAimToTarget(constrainedControl = str(tempControlsGrps[index]),
+                                                           aimTarget = str(tempControls[index-1]),
+                                                           upObject = str(tempControls[index]))
+                    '''
                     aimConstraint = pm.aimConstraint(tempControls[index-1], tempControlsGrps[index],
                                                      worldUpObject=tempControls[index],
                                                      aimVector=[1,0,0],
                                                      upVector=[0,1,0],
                                                      worldUpVector=[0,1,0],
                                                      worldUpType='objectrotation')
-
+                    '''
 
             keyRangeStart = cmds.playbackOptions(query=True, min=True)
             keyRangeEnd = cmds.playbackOptions(query=True, max=True)
@@ -462,5 +478,34 @@ class TempPivot(toolAbstractFactory):
 
             pm.select(mainControl, replace=True)
 
+
+    def constrainAimToTarget(self, constrainedControl=str(), aimTarget=str(), upObject=str()):
+        locatorPos = dt.Vector(pm.xform(aimTarget, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        controlPos = dt.Vector(pm.xform(constrainedControl, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        aimVec = (locatorPos - controlPos).normal()
+
+        xDot = aimVec * om.MVector.xAxis
+        yDot = aimVec * om.MVector.yAxis
+        zDot = aimVec * om.MVector.zAxis
+
+        axisList = [abs(xDot), abs(yDot), abs(zDot)]
+        localAxisVecList = [dt.Vector(1, 0, 0), dt.Vector(0, 1, 0), dt.Vector(0, 0, 1)]
+        upXxisIndex = axisList.index(min(axisList))
+
+        aimVector = self.funcs.getVectorToTarget(aimTarget, constrainedControl)
+        upVector = localAxisVecList[upXxisIndex]
+        worldUpVector = self.funcs.getWorldSpaceVectorOffset(constrainedControl, upObject, vec=axisMapping[upXxisIndex])
+        aimConstraint = pm.aimConstraint(aimTarget, constrainedControl,
+                                         aimVector=aimVector,
+                                         worldUpObject=aimTarget,
+                                         worldUpVector=worldUpVector,
+                                         upVector=upVector,
+                                         worldUpType='objectRotation',
+                                         maintainOffset=False)
+        return aimConstraint
 # cls = temp()
 # cls.createTempPivot(cmds.ls(sl=True))
