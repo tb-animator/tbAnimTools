@@ -1092,8 +1092,8 @@ class BakeTools(toolAbstractFactory):
                                  shape=False)
 
                 cmds.delete(allLayers)
-                cmds.delete(unreferencedNodes)
-                cmds.delete(filteredConstraints)
+                #cmds.delete(unreferencedNodes)
+                #cmds.delete(filteredConstraints)
 
         except Exception:
             cmds.warning(traceback.format_exc())
