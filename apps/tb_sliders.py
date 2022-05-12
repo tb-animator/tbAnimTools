@@ -1256,10 +1256,10 @@ class SlideTools(toolAbstractFactory):
         """
         return range[0] + (range[1] - range[0]) * ((alpha - minVal) / (maxVal - minVal))
 
-    def doKeyTween(self, alpha=float(), alphaB=float(), mode=str()):
-        self.keyTweenMethods[mode](alpha, alphaB)
+    def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(), animCurveChange=None):
+        self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
 
-    def tweenPreviousNextGroup(self, alpha, alphaB):
+    def tweenPreviousNextGroup(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1276,7 +1276,7 @@ class SlideTools(toolAbstractFactory):
                                                           startValue=keyframeData.keyValues[0],
                                                           endValue=keyframeData.keyValues[-1])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
         '''
         for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
@@ -1285,7 +1285,7 @@ class SlideTools(toolAbstractFactory):
                                                        change=self.animCurveChange)
         '''
 
-    def closeGapFirstKey(self, alpha, alphaB):
+    def closeGapFirstKey(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1301,9 +1301,9 @@ class SlideTools(toolAbstractFactory):
                                             lastValue=keyframeData.keyValues[-1],
                                             )
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def closeGapLastKey(self, alpha):
+    def closeGapLastKey(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1315,9 +1315,9 @@ class SlideTools(toolAbstractFactory):
                                                   currentValue=keyframeData.keyValues[i],
                                                   referenceValue=keyframeData.nextValues[-1])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def scaleFromFirstKey(self, alpha, alphaB):
+    def scaleFromFirstKey(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1329,9 +1329,9 @@ class SlideTools(toolAbstractFactory):
                                                   currentValue=keyframeData.keyValues[i],
                                                   referenceValue=keyframeData.keyValues[0])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def scaleFromLastKey(self, alpha, alphaB):
+    def scaleFromLastKey(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1343,9 +1343,9 @@ class SlideTools(toolAbstractFactory):
                                                   currentValue=keyframeData.keyValues[i],
                                                   referenceValue=keyframeData.keyValues[-1])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenPreviousCurrentNext(self, alpha, alphaB):
+    def tweenPreviousCurrentNext(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1359,9 +1359,9 @@ class SlideTools(toolAbstractFactory):
                                                             keyframeData.keyValues[i],
                                                             keyframeData.nextValues[keyframeData.keyIndexes[i]])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenNoiseLoop(self, alpha, alpha2):
+    def tweenNoiseLoop(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1383,9 +1383,9 @@ class SlideTools(toolAbstractFactory):
                 outValue = outValues[i] - (startDelta * (1 - keyframeData.timeAlpha[i])) - (
                             keyframeData.timeAlpha[i] * endDelta)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenNoise(self, alpha, alpha2):
+    def tweenNoise(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1398,9 +1398,9 @@ class SlideTools(toolAbstractFactory):
                                               currentValue=keyframeData.keyValues[i],
                                               currentTime=keyframeData.keyTimes[i])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenEase2D(self, powerAlpha, blendAlpha):
+    def tweenEase2D(self, powerAlpha, blendAlpha, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1444,9 +1444,9 @@ class SlideTools(toolAbstractFactory):
 
                 outValue = lerpFloat(keyValue, self.keyframeRefData[curve].keyValues[i], alphaBlend)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenEase(self, alpha, alpha2):
+    def tweenEase(self, alpha, alphaB, animCurveChange):
         """
         Blend to ease, overshoot will increase the power
         :param alpha:
@@ -1488,9 +1488,9 @@ class SlideTools(toolAbstractFactory):
 
                 outValue = lerpFloat(keyValue, self.keyframeRefData[curve].keyValues[i], outAlpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenEaseOffset(self, alpha, alpha2):
+    def tweenEaseOffset(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1617,9 +1617,9 @@ class SlideTools(toolAbstractFactory):
 
                 outValue = lerpFloat(keyValue, self.keyframeRefData[curve].keyValues[i], alphaBlend)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenBloat(self, alpha, alphaB):
+    def tweenBloat(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
             return
         if not self.keyframeData.items():
@@ -1638,9 +1638,9 @@ class SlideTools(toolAbstractFactory):
                                               currentValue=keyframeData.keyValues[i],
                                               currentTime=keyframeData.keyTimes[i])
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
-    def tweenSmoothNeighbours(self, alpha, alphaB):
+    def tweenSmoothNeighbours(self, alpha, alphaB, animCurveChange):
         """
         # TODO - actually do it
         Smooths keys to nearest neighbours, taking spacing into account
@@ -1704,7 +1704,7 @@ class SlideTools(toolAbstractFactory):
             for i in range(len(keyframeData.keyIndexes)):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
 
     def tweenSmoothNeighboursKey(self, keyframeData):
         """
@@ -1847,18 +1847,17 @@ class SlideTools(toolAbstractFactory):
 
         return currentValue + (currentValue - baseValue) * alpha
 
+    '''
     def testLerp(self):
         for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 # print (keyframeData.keyValues[i])
                 newValue = keyframeData.keyValues[i] + 1
-                '''
-                new_value = lerp_towards(keyframeData.prev_value[i],
-                                         keyframeData.next_value[i], t,
-                                         keyframeData.value[i])
-                '''
+ 
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], newValue,
-                                                       change=self.animCurveChange)
+                                                       change=animCurveChange)
+    '''
+
 
     def getAnimCurveSelectionAPI(self):
         om2SelectionList = om2.MGlobal.getActiveSelectionList()

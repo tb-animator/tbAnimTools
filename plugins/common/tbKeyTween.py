@@ -59,17 +59,17 @@ class KeyTweenCommand(om.MPxCommand):
             self.displayInfo('clearCache')
             cmds.undoInfo(stateWithoutFlush=False)
             self.animCurveChange = oma.MAnimCurveChange()
-            slideTool.animCurveChange = self.animCurveChange
+            #slideTool.animCurveChange = oma.MAnimCurveChange()
             slideTool.cacheKeyData()
             cmds.undoInfo(stateWithoutFlush=True)
 
-        slideTool.doKeyTween(self.alpha, self.alphaB, self.blendMode)
+        slideTool.doKeyTween(self.alpha, self.alphaB, self.blendMode, self.animCurveChange)
 
     def undoIt(self):
-        SlideTools().animCurveChange.undoIt()
+        self.animCurveChange.undoIt()
 
     def redoIt(self):
-        SlideTools().animCurveChange.redoIt()
+        self.animCurveChange.redoIt()
 
     def isUndoable(self):
         # self.displayInfo("Info: isUndoable() method called")
