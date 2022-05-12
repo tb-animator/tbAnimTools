@@ -24,7 +24,7 @@
 '''
 import pymel.core as pm
 import maya.cmds as cmds
-
+import maya.mel as mel
 from Abstract import *
 from functools import partial
 
@@ -48,12 +48,22 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('keying'))
         self.commandList = list()
-        '''
-        self.addCommand(self.tb_hkey(name='example',
+
+        self.addCommand(self.tb_hkey(name='tbSetMoveKeyConstant',
                                      annotation='',
+                                     ctx='graphEditor',
                                      category=self.category,
-                                     command=['example.exampleFunc()']))
-        '''
+                                     command=['GraphEditor.setMoveKeyConstant()']))
+        self.addCommand(self.tb_hkey(name='tbSetMoveKeyLinear',
+                                     annotation='',
+                                     ctx='graphEditor',
+                                     category=self.category,
+                                     command=['GraphEditor.setMoveKeyLinear()']))
+        self.addCommand(self.tb_hkey(name='tbSetMoveKeyPower',
+                                     annotation='',
+                                     ctx='graphEditor',
+                                     category=self.category,
+                                     command=['GraphEditor.setMoveKeyPower()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -66,7 +76,7 @@ class GraphEditor(toolAbstractFactory):
     """
     # __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'Graph Editor'
+    toolName = 'GraphEditor'
     hotkeyClass = hotkeys()
     funcs = functions()
 
@@ -169,3 +179,18 @@ class GraphEditor(toolAbstractFactory):
 
     def setMoveKeyMode(self, mode, *args):
         cmds.moveKeyCtx('moveKeyContext', edit=True, moveFunction=mode)
+
+    def setMoveKeyLinear(self):
+        cmds.setToolTo('moveKeyContext')
+        mel.eval("setToolTo $gMove;")
+        self.setMoveKeyMode('linear')
+
+    def setMoveKeyConstant(self):
+        cmds.setToolTo('moveKeyContext')
+        mel.eval("setToolTo $gMove;")
+        self.setMoveKeyMode('constant')
+
+    def setMoveKeyPower(self):
+        mel.eval("setToolTo $gMove;")
+        cmds.setToolTo('moveKeyContext')
+        self.setMoveKeyMode('power')

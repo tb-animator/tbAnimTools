@@ -120,6 +120,7 @@ class tbToolLoader(object):
                               # edit=True,
                               annotation=command.annotation,
                               category=command.category,
+                              hotkeyCtx=command.ctx,
                               commandLanguage=command.language,
                               command=command.command)
             cmds.nameCommand(command.name + 'NameCommand',

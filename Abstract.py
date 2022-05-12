@@ -58,9 +58,15 @@ class hotKeyAbstractFactory(ABC):
         return cmds.warning(self, 'assignHotkeys', ' function not implemented')
 
     class tb_hkey(object):
-        def __init__(self, name="", annotation="", category="tb_tools", language='python', command=[""], help=str()):
+        def __init__(self, name="",
+                     annotation="",
+                     category="tb_tools",
+                     ctx=str(),
+                     language='python',
+                     command=[""], help=str()):
             self.name = name
             self.annotation = annotation
+            self.ctx = ctx
             self.category = category
             self.language = language
             self.command = self.collapse_command_list(command, help)
