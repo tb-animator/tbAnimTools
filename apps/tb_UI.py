@@ -3271,9 +3271,10 @@ class AnimLayerTabButton(QPushButton):
 
     def _showMenu(self, pos):
         pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
-        self.pop_up_window.move(pop_up_pos)
+        if self.pop_up_window:
+            self.pop_up_window.move(pop_up_pos)
 
-        self.pop_up_window.show()
+            self.pop_up_window.show()
 
 
 sliderStylesheet = """
@@ -4378,6 +4379,7 @@ class ToolbarButton(QLabel):
         self.altState = False
         self.controlState = False
         self.hoverState = False
+        self.pop_up_window = None
         # self.setPopupMenu(SliderButtonPopupMenu)
         self.helpWidget = InfoPromptWidget(title='Some helpful thing',
                                            buttonText='Ok',
@@ -4478,9 +4480,10 @@ class ToolbarButton(QLabel):
 
     def _showMenu(self, pos):
         pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
-        self.pop_up_window.move(pop_up_pos)
+        if self.pop_up_window:
+            self.pop_up_window.move(pop_up_pos)
 
-        self.pop_up_window.show()
+            self.pop_up_window.show()
 
 
 class ButtonWidget(QWidget):
