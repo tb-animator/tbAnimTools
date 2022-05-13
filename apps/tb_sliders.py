@@ -1060,7 +1060,8 @@ class SlideTools(toolAbstractFactory):
             # xformWidget.setToolTip(self.keyTweenToolTips[mode])
             # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
             # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
-            xformWidget.setPopupMenu(SliderButtonPopupMenu)
+            #xformWidget.setPopupMenu(SliderButtonPopupMenu)
+            #xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
             xformWidget.popup.sliderBeginSignal.connect(self.keySliderBeginSignal)
             xformWidget.popup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
             xformWidget.popup.sliderEndedSignal.connect(self.keySliderEndSignal)
@@ -1256,7 +1257,8 @@ class SlideTools(toolAbstractFactory):
         """
         return range[0] + (range[1] - range[0]) * ((alpha - minVal) / (maxVal - minVal))
 
-    def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(), animCurveChange=None):
+    def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(),
+                   animCurveChange=None):
         self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
 
     def tweenPreviousNextGroup(self, alpha, alphaB, animCurveChange):

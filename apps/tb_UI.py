@@ -2565,6 +2565,7 @@ class radioGroupWidget(QWidget):
     optionVarList = list()
     optionVar = str()
     optionValue = str()
+    editedSignal = Signal()
 
     def __init__(self, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str()):
         super(radioGroupWidget, self).__init__()
@@ -2579,16 +2580,20 @@ class radioGroupWidget(QWidget):
         label = QLabel(label)
         btnGrp = QButtonGroup()  # Letter group
         layout.addWidget(label)
-        for option in self.optionVarList:
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
             btn = QRadioButton(option)
             btn.toggled.connect(lambda: self.extBtnState(btn))
+            self.buttons.append(btn)
             btnGrp.addButton(btn)
             layout.addWidget(btn)
             btn.setChecked(self.optionValue == option)
 
-    def extBtnState(self, b):
-        pm.optionVar[self.optionVar] = b.text()
-
+    def extBtnState(self, button):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                pm.optionVar[self.optionVar] = button.text()
+        self.editedSignal.emit()
 
 class radioGroupVertical(object):
     layout = None
@@ -3072,8 +3077,9 @@ class ToolButton(QPushButton):
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.label.setAttribute(Qt.WA_TransparentForMouseEvents, 1)
         pb_layout = self.layout().addWidget(self.label)
-        self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right;")
-        self.label.setStyleSheet("margin-left: 64px;")
+        self.layout().setContentsMargins(0,0,0,0)
+        self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right; margin: 0px;")
+        self.label.setStyleSheet("margin-left: 68px;margin-top:0px;margin-right:0px;margin-bottom:0px")
         self.setStyleSheet(getqss.getStyleSheet())
         self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 20px;}")
         self.command = command
@@ -3082,8 +3088,10 @@ class ToolButton(QPushButton):
         self.imgLabel = imgLabel
 
         if command:
-            self.clicked.connect(lambda: mel.eval(command))
-
+            if self.sourceType == 'mel':
+                self.clicked.connect(lambda: mel.eval(command))
+            else:
+                self.clicked.connect(lambda: self.command)
         if self.icon:
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
@@ -4453,6 +4461,7 @@ class ToolbarButton(QLabel):
         if event.button() == Qt.MiddleButton:
             self.middleClicked.emit()
             return
+        return
         if event.button() == Qt.RightButton:
             modifiers = QApplication.keyboardModifiers()
 
@@ -4501,7 +4510,7 @@ class ButtonWidget(QWidget):
         self.altPopup = PopupSlider(**altSliderData)
         self.button.clicked.connect(self.raisePopup)
         self.button.middleClicked.connect(self.repeatLast)
-        self.button.rightClicked.connect(self.raisePopup)
+        #self.button.rightClicked.connect(self.raisePopup)
         self.popup.sliderEndedSignal.connect(self.resetCursor)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
 

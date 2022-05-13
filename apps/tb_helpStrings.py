@@ -17,6 +17,7 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
             'constraints': '%s_Constraints' % tbAnimTools,
             'footpath': '%s_FootPath' % tbAnimTools,
             'ikfk': '%s_IKFK' % tbAnimTools,
+            'noise': '%s_Noise' % tbAnimTools,
             }
 quickMergeSelectionToNew = 'Fast bake currently selected objects to a new layer'
 quickMergeSelectionToBase = 'Fast bake currently selected objects to the base layer'

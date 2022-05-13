@@ -22,11 +22,13 @@ class KeyTweenCommand(om.MPxCommand):
     ALPHA_FLAG = ["-a", "-alpha"]
     ALPHA2_FLAG = ["-ab", "-alphaB"]
     BLENDMODE_FLAG = ["-b", "-blendMode"]
+    ID_FLAG = ["-id", "-identity"]
     CLEARCACHE_FLAG = ["-c", "-clearCache"]
 
     alpha = 0.0
     alphaB = 0.0
     blendMode = None
+    id = 'default'
     clearCache = True
     animCurveChange = None
 
@@ -34,6 +36,8 @@ class KeyTweenCommand(om.MPxCommand):
         super(KeyTweenCommand, self).__init__()
 
         self.undoable = True
+        self.keyframeData = None
+        self.keyframeRefData = None
 
     def doIt(self, arg_list):
         try:
@@ -50,6 +54,8 @@ class KeyTweenCommand(om.MPxCommand):
             self.alphaB = arg_db.flagArgumentDouble(KeyTweenCommand.ALPHA2_FLAG[0], 0)
         if arg_db.isFlagSet(KeyTweenCommand.BLENDMODE_FLAG[0]):
             self.blendMode = arg_db.flagArgumentString(KeyTweenCommand.BLENDMODE_FLAG[0], 0)
+        if arg_db.isFlagSet(KeyTweenCommand.ID_FLAG[0]):
+            self.id = arg_db.flagArgumentString(KeyTweenCommand.ID_FLAG[0], 0)
         if arg_db.isFlagSet(KeyTweenCommand.CLEARCACHE_FLAG[0]):
             self.clearCache = arg_db.flagArgumentBool(KeyTweenCommand.CLEARCACHE_FLAG[0], 0)
 
@@ -59,10 +65,11 @@ class KeyTweenCommand(om.MPxCommand):
             self.displayInfo('clearCache')
             cmds.undoInfo(stateWithoutFlush=False)
             self.animCurveChange = oma.MAnimCurveChange()
-            #slideTool.animCurveChange = oma.MAnimCurveChange()
+            slideTool.animCurveChange = self.animCurveChange
             slideTool.cacheKeyData()
             cmds.undoInfo(stateWithoutFlush=True)
-
+        else:
+            self.animCurveChange = slideTool.animCurveChange
         slideTool.doKeyTween(self.alpha, self.alphaB, self.blendMode, self.animCurveChange)
 
     def undoIt(self):
