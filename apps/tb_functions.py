@@ -76,73 +76,10 @@ import maya.OpenMaya as om
 import maya.api.OpenMayaAnim as oma2
 import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omui
-
-orbPointList = [[0.0, 25.0, 0.0],
-                [0.0, 23.097, 9.567074999999999],
-                [0.0, 17.677675, 17.677675],
-                [0.0, 9.567074999999999, 23.097],
-                [0.0, 0.0, 25.0],
-                [0.0, -9.567074999999999, 23.097],
-                [0.0, -17.677675, 17.677675],
-                [0.0, -23.097, 9.567074999999999],
-                [0.0, -25.0, 0.0],
-                [0.0, -23.097, -9.567074999999999],
-                [0.0, -17.677675, -17.677675],
-                [0.0, -9.567074999999999, -23.097],
-                [0.0, 0.0, -25.0],
-                [0.0, 9.567074999999999, -23.097],
-                [0.0, 17.677675, -17.677675],
-                [0.0, 23.097, -9.567074999999999],
-                [0.0, 25.0, 0.0],
-                [9.567074999999999, 23.097, 0.0],
-                [17.677675, 17.677675, 0.0],
-                [23.097, 9.567074999999999, 0.0],
-                [25.0, 0.0, 0.0],
-                [23.097, -9.567074999999999, 0.0],
-                [17.677675, -17.677675, 0.0],
-                [9.567074999999999, -23.097, 0.0],
-                [0.0, -25.0, 0.0],
-                [-9.567074999999999, -23.097, 0.0],
-                [-17.677675, -17.677675, 0.0],
-                [-23.097, -9.567074999999999, 0.0],
-                [-25.0, 0.0, 0.0],
-                [-23.097, 9.567074999999999, 0.0],
-                [-17.677675, 17.677675, 0.0],
-                [-9.567074999999999, 23.097, 0.0],
-                [0.0, 25.0, 0.0],
-                [0.0, 23.097, -9.567074999999999],
-                [0.0, 17.677675, -17.677675],
-                [0.0, 9.567074999999999, -23.097],
-                [0.0, 0.0, -25.0],
-                [-9.567074999999999, 0.0, -23.097],
-                [-17.677675, 0.0, -17.677675],
-                [-23.097, 0.0, -9.567074999999999],
-                [-25.0, 0.0, 0.0],
-                [-23.097, 0.0, 9.567074999999999],
-                [-17.677675, 0.0, 17.677675],
-                [-9.567074999999999, 0.0, 23.097],
-                [0.0, 0.0, 25.0],
-                [9.567074999999999, 0.0, 23.097],
-                [17.677675, 0.0, 17.677675],
-                [23.097, 0.0, 9.567074999999999],
-                [25.0, 0.0, 0.0],
-                [23.097, 0.0, -9.567074999999999],
-                [17.677675, 0.0, -17.677675],
-                [9.567074999999999, 0.0, -23.097],
-                [0.0, 0.0, -25.0]]
-orbKnotList = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-               21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
-               39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52]
-
-crossKnotList = [0, 1, 2, 3, 4, 5, 6, 7]
-crossPointList = [[-25, 0, 0],
-                  [25, 0, 0],
-                  [0, 0, 0],
-                  [0, 0, 25],
-                  [0, 0, -25],
-                  [0, 0, 0],
-                  [0, 25, 0],
-                  [0, -25, 0]]
+import os
+import json
+dataPath = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, 'appData', 'controlShapes.json'))
+pointLists = json.load(open(dataPath))
 
 acceptedConstraintTypes = ['pairBlend', 'constraint']
 
@@ -422,11 +359,8 @@ class functions(object):
         return loc
 
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',unlockScale=False):
-        drawFunction = {
-            'orb': self.drawOrb,
-            'cross': self.drawCross,
-        }
-        control, shape = drawFunction.get(drawType)(scale=float(scale))
+        points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
+        control, shape = self.drawControl(points, scale=float(scale))
         control.rename(name + '_' + suffix)
 
         control.rotateOrder.set(3)
@@ -1466,24 +1400,20 @@ class functions(object):
         return False
 
     def drawOrb(self, scale=1.0):
-        # print [dt.Vector(x) * scale * self.unit_conversion() for x in orbPointList]
-        curve = cmds.curve(degree=1,
-                           knot=orbKnotList,
-                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in orbPointList])
-        curve = pm.PyNode(curve)
-        return curve, curve.getShape()
+        print ('drawOrb')
+        return self.drawControl(orbPointList, list(range(0, len(orbPointList))), scale=scale)
 
     def drawCross(self, scale=1.0):
-        curve = cmds.curve(degree=1,
-                           knot=crossKnotList,
-                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
-        curve = pm.PyNode(curve)
-        return curve, curve.getShape()
+        print ('drawCross')
+        return self.drawControl(crossPointList, list(range(0, len(crossPointList))), scale=scale)
 
-    def drawCross(self, scale=1.0):
+    def drawRedirectRoot(self, scale=1.0):
+        return self.drawControl(redirectPointList, list(range(0, len(redirectPointList))), scale=scale)
+
+    def drawControl(self, pointlist, scale=1.0):
         curve = cmds.curve(degree=1,
-                           knot=crossKnotList,
-                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in crossPointList])
+                           knot=list(range(0, len(pointlist))),
+                           point=[dt.Vector(x) * (scale / self.unit_conversion()) for x in pointlist])
         curve = pm.PyNode(curve)
         return curve, curve.getShape()
 

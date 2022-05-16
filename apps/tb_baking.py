@@ -1174,11 +1174,10 @@ class BakeTools(toolAbstractFactory):
 
     def worldOffset(self, sel):
         """
-
         :return:
         """
         if not sel:
-            return
+            return list()
 
         rotationRoots = dict()
         rotateAnimNodes = dict()
@@ -1186,9 +1185,15 @@ class BakeTools(toolAbstractFactory):
 
         tempConstraints = list()
         for s in sel:
-            rotationRoot = self.funcs.tempControl(name=s, suffix='worldOffset')
+            rotationRoot = self.funcs.tempControl(name=s,
+                                                  suffix='worldOffset',
+                                                  drawType='orb',
+                                                  scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
-            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='localOffset', scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s,
+                                                          suffix='localOffset',
+                                                          drawType='diamond',
+                                                          scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
@@ -1239,6 +1244,7 @@ class BakeTools(toolAbstractFactory):
         for s in sel:
             self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s, orientOnly=False, maintainOffset=False,
                                             channels=channels)
+        pm.select(rotationRoots.values(), replace=True)
 
     def redirectSelected(self):
         sel = cmds.ls(sl=True)
@@ -1264,12 +1270,12 @@ class BakeTools(toolAbstractFactory):
         tempConstraints = list()
 
         for s in sel:
-            root = self.funcs.tempControl(name=s, suffix='Root', drawType='cross')
-            rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='cross')
+            root = self.funcs.tempControl(name=s, suffix='Root', drawType='redirectRoot')
+            rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='flatRotator')
             translateAnimNode = self.funcs.tempNull(name=s, suffix='TranslateBaked')
-            translateAnimOFfsetNode = self.funcs.tempControl(name=s, suffix='TranslateOffset')
+            translateAnimOFfsetNode = self.funcs.tempControl(name=s, suffix='TranslateOffset', drawType='plus')
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
-            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset')
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset', drawType='sphereZ', scale=1.0)
 
             self.funcs.getSetColour(s, root, brightnessOffset=0)
 

@@ -3193,7 +3193,7 @@ class HotkeyToolButton(QPushButton):
             return
         if self.sourceType == 'mel':
             mel.eval(self.command)
-        return super(ToolButton, self).mousePressEvent(event)
+        return super(HotkeyToolButton, self).mousePressEvent(event)
 
     def sizeHint(self):
         return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
