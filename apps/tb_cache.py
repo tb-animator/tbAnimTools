@@ -52,6 +52,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['cacheTool.cacheSelectedCharacters()']))
+        self.addCommand(self.tb_hkey(name='importCache',
+                                     annotation='Open a file dialog to import cache files',
+                                     category=self.category,
+                                     command=['cacheTool.importCacheDialog()']))
         return self.commandList
 
     def assignHotkeys(self):
