@@ -1400,15 +1400,16 @@ class functions(object):
         return False
 
     def drawOrb(self, scale=1.0):
-        print ('drawOrb')
-        return self.drawControl(orbPointList, list(range(0, len(orbPointList))), scale=scale)
+        points = pointLists['pointLists'].get('orb', pointLists['pointLists']['cross'])
+        return self.drawControl(points, list(range(0, len(points))), scale=scale)
 
     def drawCross(self, scale=1.0):
-        print ('drawCross')
-        return self.drawControl(crossPointList, list(range(0, len(crossPointList))), scale=scale)
+        points = pointLists['pointLists'].get('cross', pointLists['pointLists']['cross'])
+        return self.drawControl(points, list(range(0, len(points))), scale=scale)
 
     def drawRedirectRoot(self, scale=1.0):
-        return self.drawControl(redirectPointList, list(range(0, len(redirectPointList))), scale=scale)
+        points = pointLists['pointLists'].get('redirectRoot', pointLists['pointLists']['cross'])
+        return self.drawControl(points, list(range(0, len(points))), scale=scale)
 
     def drawControl(self, pointlist, scale=1.0):
         curve = cmds.curve(degree=1,
