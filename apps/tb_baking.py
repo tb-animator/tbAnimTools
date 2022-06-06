@@ -121,10 +121,15 @@ class hotkeys(hotKeyAbstractFactory):
                          command=['BakeTools.redirectSelected()'],
                          help=maya.stringTable['tbCommand.redirectSelected']))
         self.addCommand(
-            self.tb_hkey(name='worldOffsetSelection', annotation='constrain to object to locator - rotate only',
+            self.tb_hkey(name='worldOffsetSelection', annotation='worldOffsetSelection',
                          category=self.category,
                          command=['BakeTools.worldOffsetSelection()'],
                          help=maya.stringTable['tbCommand.worldOffsetSelection']))
+        self.addCommand(
+            self.tb_hkey(name='worldOffsetSelectionRotation', annotation='worldOffsetSelection',
+                         category=self.category,
+                         command=['BakeTools.worldOffsetSelectionRotation()'],
+                         help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
                                      category=self.category, command=[
@@ -233,15 +238,15 @@ class BakeTools(toolAbstractFactory):
                                          label='Baked locator control size',
                                          minimum=0.1, maximum=100, step=0.1)
         worldOffsetSizeWidget = intFieldWidget(optionVar=self.worldOffsetSizeOption,
-                                         defaultValue=0.5,
-                                         label='World offset control size',
-                                         minimum=0.1, maximum=100, step=0.1)
+                                               defaultValue=0.5,
+                                               label='World offset control size',
+                                               minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
         worldOffsetSizeWidget.changedSignal.connect(self.updatePreview)
 
         constraintChannelHeader = subHeader('Constraint Channels')
         constraintChannelInfo = infoLabel([
-                                              'Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
+            'Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
         constraintChannelWidget = optionVarBoolWidget('Constrain Highlighted Channels',
                                                       self.tempControlChannelOption)
 
@@ -1062,10 +1067,12 @@ class BakeTools(toolAbstractFactory):
                         node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
                         if node not in allNodes:
                             allNodes.append(node)
-                allConstraints = [item for sublist in [cmds.listRelatives(n, type='constraint') or [] for n in allNodes] for item in sublist if item]
+                allConstraints = [item for sublist in [cmds.listRelatives(n, type='constraint') or [] for n in allNodes]
+                                  for item in sublist if item]
                 filteredConstraints = list(
                     set([c for c in allConstraints if not cmds.referenceQuery(c, isNodeReferenced=True)]))
-                unreferencedNodes = list(set([n for n in allNodes if not cmds.referenceQuery(n, isNodeReferenced=True)]))
+                unreferencedNodes = list(
+                    set([n for n in allNodes if not cmds.referenceQuery(n, isNodeReferenced=True)]))
                 allLayers.remove(rootLayer)
                 if not allNodes:
                     return cmds.warning('No controls found in layers, aborting')
@@ -1092,8 +1099,8 @@ class BakeTools(toolAbstractFactory):
                                  shape=False)
 
                 cmds.delete(allLayers)
-                #cmds.delete(unreferencedNodes)
-                #cmds.delete(filteredConstraints)
+                # cmds.delete(unreferencedNodes)
+                # cmds.delete(filteredConstraints)
 
         except Exception:
             cmds.warning(traceback.format_exc())
@@ -1172,7 +1179,18 @@ class BakeTools(toolAbstractFactory):
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
-    def worldOffset(self, sel):
+    def worldOffsetSelectionRotation(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return
+        with self.funcs.suspendUpdate():
+            try:
+                self.worldOffset(sel, rotationOnly=True)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
+
+    def worldOffset(self, sel, rotationOnly=False):
         """
         :return:
         """
@@ -1242,7 +1260,9 @@ class BakeTools(toolAbstractFactory):
 
         channels = self.funcs.getChannels()
         for s in sel:
-            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s, orientOnly=False, maintainOffset=False,
+            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s,
+                                            orientOnly=rotationOnly,
+                                            maintainOffset=False,
                                             channels=channels)
         pm.select(rotationRoots.values(), replace=True)
 

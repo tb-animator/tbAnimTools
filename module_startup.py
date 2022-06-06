@@ -28,7 +28,7 @@ import maya.utils as mutils
 import pymel.core as pm
 import maya.mel as mel
 import tbtoolsUpdater as upd
-import tb_qtMarkingMenu as qtm
+
 
 class initialise(object):
     def check_for_updates(self):
@@ -37,11 +37,14 @@ class initialise(object):
             updater.check_version()
 
     def loadRMB(self, *args):
+        pass
+        '''
         try:
             eventFilterManager = qtm.EventFilterManager()
             eventFilterManager.installMainFilter()
         except Exception as e:
             print ("EventFilterManager Failed", Exception, e)
+        '''
 
     def load_everything(self):
         import tbtoolsInstaller

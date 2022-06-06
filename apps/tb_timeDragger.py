@@ -52,6 +52,16 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('timeline'))
         self.commandList = list()
+        self.addCommand(self.tb_hkey(name='timeDrag',
+                                     annotation='simple time drag, no mouse click needed',
+                                     category=self.category,
+                                     help='TODO',
+                                     command=['TimeDragger.timeDrag()']))
+        self.addCommand(self.tb_hkey(name='timeDragSmooth',
+                                     annotation='simple time drag, no mouse click needed',
+                                     category=self.category,
+                                     help='TODO',
+                                     command=['TimeDragger.timeDragSmooth()']))
         self.addCommand(self.tb_hkey(name='smooth_drag_timeline_on',
                                      annotation='timeslider tool with no frame snapping',
                                      category=self.category,
@@ -72,6 +82,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      help=maya.stringTable['tbCommand.step_drag_timeline_off'],
                                      command=['TimeDragger.stepDrag(state=False)']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -95,6 +106,7 @@ class TimeDragger(toolAbstractFactory):
     step_modes = ['odd frames only']
     stepFrameCount_var = "tb_timedrag_step_frame"
     step_optionVar = "tb_step_odd"
+    step_unconstrained = "tb_step_unconstrained"
     MessagePos = None
     showMessage = None
     toggle_background = None
@@ -111,6 +123,7 @@ class TimeDragger(toolAbstractFactory):
     even_only = pm.optionVar.get("tb_step_even", True)
     # for maya 2016 dag evaluation madness
     evaluate_mode = ""
+    initialPos = None
 
     def __new__(cls):
         if TimeDragger.__instance is None:
@@ -148,10 +161,13 @@ class TimeDragger(toolAbstractFactory):
                                                minimum=1, maximum=100, step=1)
         EvenOnlyOptionWidget = optionVarBoolWidget('Step on even frames only',
                                                    self.step_optionVar)
+        unconstrainedOptionWidget = optionVarBoolWidget('Step ouside of playback range',
+                                                   self.step_unconstrained)
 
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(stepDragInfo)
         self.layout.addWidget(EvenOnlyOptionWidget)
+        self.layout.addWidget(unconstrainedOptionWidget)
         self.layout.addWidget(StepFramesWidget)
 
         self.layout.addStretch()
@@ -262,3 +278,224 @@ class TimeDragger(toolAbstractFactory):
         print ("background state  :", self.background_state)
         print ("previous tool     :", self.previous_tool)
         '''
+
+    def setInitialPos(self, value):
+        self.initialPos = value
+        self.start_time = cmds.currentTime(query=True)
+
+    def timeDragMouseMoved(self, startPos, currentPos):
+        distance = currentPos - self.initialPos
+        step_destination = self.start_time + int(distance * 0.05) * 1 #self.step
+        if self.even_only:
+            # snap to odd frames only
+            step_destination = int(step_destination / 2) * 2 + 1
+        if pm.optionVar.get(self.step_unconstrained, True):
+            pm.setCurrentTime(step_destination)
+        else:
+            pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
+
+    def timeDragSmoothMouseMoved(self, startPos, currentPos):
+        distance = currentPos - self.initialPos
+        step_destination = self.start_time + (distance * 0.05)
+        if pm.optionVar.get(self.step_unconstrained, True):
+            pm.setCurrentTime(step_destination)
+        else:
+            pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
+        
+
+    def timeDragMouseWheel(self, value):
+        pm.setCurrentTime(pm.currentTime(query=True) + value)
+        self.initialPos = QCursor.pos().x()
+        self.start_time = pm.getCurrentTime()
+
+    def timeDrag(self):
+        self.timeDragWidget = TimeDragDialog()
+        self.initialPos = QCursor.pos().x()
+        self.start_time = pm.getCurrentTime()
+        self.timeDragWidget.mouseMovedSignal.connect(self.timeDragMouseMoved)
+        self.timeDragWidget.mouseWheelSignal.connect(self.timeDragMouseWheel)
+        self.timeDragWidget.updateInitialSignal.connect(self.setInitialPos)
+        self.timeDragWidget.show()
+
+    def timeDragSmooth(self):
+        self.timeDragWidget = TimeDragDialog()
+        self.initialPos = QCursor.pos().x()
+        self.start_time = pm.getCurrentTime()
+        cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=False)
+        self.timeDragWidget.mouseMovedSignal.connect(self.timeDragSmoothMouseMoved)
+        self.timeDragWidget.mouseWheelSignal.connect(self.timeDragMouseWheel)
+        self.timeDragWidget.updateInitialSignal.connect(self.setInitialPos)
+        self.timeDragWidget.closedSignal.connect(self.resetSmoothSlider)
+        self.timeDragWidget.show()
+
+    def resetSmoothSlider(self):
+        cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=True)
+        cmds.currentTime(int(cmds.currentTime(query=True)))
+
+class TimeDragDialog(QDialog):
+    mouseMovedSignal = Signal(float, float)
+    mouseWheelSignal = Signal(float)
+    openedSignal = Signal(float)
+    closedSignal = Signal()
+    updateInitialSignal = Signal(float)
+    bufferMin = 100
+    bufferMax = 200
+
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+                 *args, **kwargs):
+        super(TimeDragDialog, self).__init__(parent=parent)
+        self.app = QApplication.instance()
+        self.keyPressHandler = None
+
+        self.menuDict = menuDict
+        self.parentMenu = parentMenu
+        self.invokedKey = None
+        self.returnButton = None
+
+        self.recentlyOpened = False
+        self.activeButton = None
+        self.centralRadius = 16
+        self.scalar = math.cos(math.radians(45)) * self.centralRadius
+
+        self.setMouseTracking(True)
+        self.stylesheet = getqss.getStyleSheet()
+        self.setStyleSheet(self.stylesheet)
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        # screen = QDesktopWidget().availableGeometry()
+
+        self.cursorPos = QCursor.pos()
+        self.currentCursorPos = QCursor.pos()
+
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        if self.parentMenu:
+            self.invokedKey = self.parentMenu.invokedKey
+            self.returnButton = ReturnButton(label='', parent=self, cls=self)
+            # print ('parent pos', self.parentMenu.cursorPos)
+            distance = self.distance(self.cursorPos, self.parentMenu.cursorPos)
+            delta = self.parentMenu.cursorPos - self.cursorPos
+            delta = om2.MVector(delta.x(), delta.y(), 0).normal()
+            # print ('returnButton', delta)
+            self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
+        else:
+            self.keyPressHandler = markingMenuKeypressHandler(UI=self)
+            self.app.installEventFilter(self.keyPressHandler)
+
+    def show(self):
+        self.cursorPos = QCursor.pos()
+        self.currentCursorPos = QCursor.pos()
+        screens = QApplication.screens()
+        top = 0
+        left = 0
+        bottom = 0
+        right = 0
+        for s in screens:
+            geo = s.availableGeometry()
+            top = min(top, geo.topLeft().y())
+            left = min(left, geo.topLeft().x())
+            right = max(right, geo.bottomRight().x())
+            bottom = max(bottom, geo.bottomRight().y())
+            if s.availableGeometry().contains(QCursor.pos()):
+                screen = s
+
+        self.screenGeo = screen.availableGeometry()
+        self.move(top, left)
+        self.setFixedSize(right-left, bottom-top)
+        if not self.parentMenu:
+            self.recentlyOpened = True
+
+        super(TimeDragDialog, self).show()
+        self.setFocus()
+        self.openedSignal.emit(self.cursorPos.x())
+
+    def hide(self):
+        super(TimeDragDialog, self).hide()
+
+    def close(self):
+        self.closedSignal.emit()
+        if self.keyPressHandler:
+            self.app.removeEventFilter(self.keyPressHandler)
+        super(TimeDragDialog, self).close()
+
+    def moveToCursor(self):
+        pos = QCursor.pos()
+        xOffset = 10  # border?
+        self.cursorPos = QPoint(self.cursorPos.x() - self.screenGeo.left(), self.cursorPos.y() - self.screenGeo.top())
+        self.move(self.screenGeo.left(), self.screenGeo.top())
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        lineColor = QColor(68, 68, 68, 128)
+        linePenColor = QColor(255, 160, 47, 255)
+        blank = QColor(124, 124, 124, 1)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 1)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(lineColor))
+        qp.setCompositionMode(qp.CompositionMode_Clear)
+
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+        qp.setBrush(QBrush(blank))
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
+
+        qp.setBrush(QBrush(lineColor))
+        qp.end()
+
+    def mouseMoveEvent(self, event):
+        # print ('mouseMoveEvent', event.pos())
+        if QCursor.pos().x() < self.bufferMin:
+            QCursor.setPos(self.width() - self.bufferMax, QCursor.pos().y())
+            self.updateInitialSignal.emit(QCursor.pos().x() )
+        if QCursor.pos().x() < self.bufferMax:
+            print ('max buffer left')
+        if QCursor.pos().x() > self.width() - self.bufferMin:
+            QCursor.setPos(self.bufferMax, QCursor.pos().y())
+            self.updateInitialSignal.emit(QCursor.pos().x() )
+        if QCursor.pos().x() > self.width() - self.bufferMax:
+            print ('max buffer right')
+        self.currentCursorPos = QCursor.pos()
+        self.mouseMovedSignal.emit(self.cursorPos.x(), QCursor.pos().x())
+
+    def mousePressEvent(self, event):
+        # print ('mousePressEvent', event)
+        event.accept()
+
+    def tabletEvent(self, e):
+        print(e.pressure())
+
+    def keyPressEvent(self, event):
+        if event.type() == event.KeyPress:
+            if self.recentlyOpened:
+                if event.key() is not None:
+                    self.invokedKey = event.key()
+                    self.recentlyOpened = False
+
+        if not self.invokedKey or self.invokedKey == event.key():
+            return
+        super(TimeDragDialog, self).keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if event.isAutoRepeat():
+            return
+        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
+            if not self.invokedKey or self.invokedKey == event.key():
+                self.close()
+
+    def wheelEvent(self, event):
+        if event.delta() > 0:
+            value = -1
+        else:
+            value = 1
+        self.mouseWheelSignal.emit(value)
+

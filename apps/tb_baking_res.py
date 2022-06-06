@@ -34,7 +34,13 @@ maya.stringTable[
                                       u'You can now play with the weight of both your original additive layer and this to blend in/out how much the original layer affects the child controls.'
 
 maya.stringTable['tbCommand.worldOffsetSelection'] = u'Bake the current selected objects rotation to a temp control, used as a world space additive control, __' \
-                                                       u'a second control is added as a final local offset.'
+                                                       u'a second control is added as a final local offset. Good for consistent world space offsets on controls ' \
+                                                     u'when a standard additive layer would introduce too much wobble.'
+maya.stringTable['tbCommand.worldOffsetSelectionRotation'] = u'Bake the current selected objects rotation to a temp control, used as a world space additive control, __' \
+                                                       u'a second control is added as a final local offset. Good for consistent world space offsets on controls ' \
+                                                     u'when a standard additive layer would introduce too much wobble.' \
+                                                             u'Original control is only constrained in rotation.' \
+                                                             u''
 maya.stringTable['tbCommand.redirectSelected'] = u'Bake the current selected objects to a mini rig to redirect translation/rotation.__Good for turning a walk into a strafe.'
 maya.stringTable['tbCommand.bakeToLocator'] = u'Bake the current selected objects to world space locators.__' \
                                                 u'Supports locked channels.'

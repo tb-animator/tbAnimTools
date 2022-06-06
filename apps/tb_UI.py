@@ -236,7 +236,8 @@ class markingMenuKeypressHandler(QObject):
 
 
 class ViewportDialog(QDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(), *args, **kwargs):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+                 *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
         self.keyPressHandler = None
@@ -255,6 +256,7 @@ class ViewportDialog(QDialog):
                         'NW': list(),
                         'SE': list(),
                         'SW': list(),
+                        'radial': list()
                         }
         self.setMouseTracking(True)
         self.stylesheet = getqss.getStyleSheet()
@@ -266,17 +268,9 @@ class ViewportDialog(QDialog):
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         # screen = QDesktopWidget().availableGeometry()
-        screens = QApplication.screens()
-        for s in screens:
-            if s.availableGeometry().contains(QCursor.pos()):
-                screen = s
-
-        self.screenGeo = screen.availableGeometry()
 
         self.cursorPos = QCursor.pos()
-
         self.currentCursorPos = QCursor.pos()
-        self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
 
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
@@ -360,6 +354,15 @@ class ViewportDialog(QDialog):
         # print ('buttonHovered', widget)
 
     def show(self):
+        self.cursorPos = QCursor.pos()
+        self.currentCursorPos = QCursor.pos()
+        screens = QApplication.screens()
+        for s in screens:
+            if s.availableGeometry().contains(QCursor.pos()):
+                screen = s
+
+        self.screenGeo = screen.availableGeometry()
+        self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
         if not self.parentMenu:
             self.recentlyOpened = True
         self.moveToCursor()
@@ -369,7 +372,7 @@ class ViewportDialog(QDialog):
         self.addAllButtons()
 
     def hide(self):
-        #print ('being hidden', self)
+        # print ('being hidden', self)
         super(ViewportDialog, self).hide()
 
     def closeMenu(self):
@@ -402,8 +405,8 @@ class ViewportDialog(QDialog):
         pos = QCursor.pos()
         xOffset = 10  # border?
         # self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
-        #print ('self.cursorPos', self.cursorPos)
-        #print self.mapFromGlobal(self.cursorPos)
+        # print ('self.cursorPos', self.cursorPos)
+        # print self.mapFromGlobal(self.cursorPos)
         self.cursorPos = QPoint(self.cursorPos.x() - self.screenGeo.left(), self.cursorPos.y() - self.screenGeo.top())
         self.move(self.screenGeo.left(), self.screenGeo.top())
 
@@ -550,6 +553,9 @@ class ViewportDialog(QDialog):
             self.setWindowOpacity(opacity)
 
 
+
+
+
 class ReturnButton(QPushButton):
     hoverSignal = Signal(object)
 
@@ -597,7 +603,7 @@ class ReturnButton(QPushButton):
     def mouseMoveEvent(self, event):
         self.setHoverSS()
         self.hoverSignal.emit(self)
-        #print ('hover hide current', self.cls)
+        # print ('hover hide current', self.cls)
         self.cls.hideCurrentLayer()
 
     def executeCommand(self):
@@ -2595,6 +2601,7 @@ class radioGroupWidget(QWidget):
                 pm.optionVar[self.optionVar] = button.text()
         self.editedSignal.emit()
 
+
 class radioGroupVertical(object):
     layout = None
     optionVar = None
@@ -3077,7 +3084,7 @@ class ToolButton(QPushButton):
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.label.setAttribute(Qt.WA_TransparentForMouseEvents, 1)
         pb_layout = self.layout().addWidget(self.label)
-        self.layout().setContentsMargins(0,0,0,0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right; margin: 0px;")
         self.label.setStyleSheet("margin-left: 68px;margin-top:0px;margin-right:0px;margin-bottom:0px")
         self.setStyleSheet(getqss.getStyleSheet())
@@ -4513,7 +4520,7 @@ class ButtonWidget(QWidget):
         self.altPopup = PopupSlider(**altSliderData)
         self.button.clicked.connect(self.raisePopup)
         self.button.middleClicked.connect(self.repeatLast)
-        #self.button.rightClicked.connect(self.raisePopup)
+        # self.button.rightClicked.connect(self.raisePopup)
         self.popup.sliderEndedSignal.connect(self.resetCursor)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
 

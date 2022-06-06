@@ -51,11 +51,19 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='cacheSelectedCharacter',
                                      annotation='',
                                      category=self.category,
-                                     command=['cacheTool.cacheSelectedCharacters()']))
+                                     command=['CacheTool.cacheSelectedCharacters()']))
+        self.addCommand(self.tb_hkey(name='cacheSelectedCharacterUnload',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['CacheTool.cacheSelectedCharacters(disableReferences=True)']))
         self.addCommand(self.tb_hkey(name='importCache',
                                      annotation='Open a file dialog to import cache files',
                                      category=self.category,
-                                     command=['cacheTool.importCacheDialog()']))
+                                     command=['CacheTool.importCacheDialog()']))
+        self.addCommand(self.tb_hkey(name='loadReferenceFromCache',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['CacheTool.loadReferenceFromCacheSelected()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -86,13 +94,14 @@ class CacheTool(toolAbstractFactory):
     """
     # __metaclass__ = abc.ABCMeta
     __instance = None
-    toolName = 'cacheTool'
+    toolName = 'CacheTool'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     gpuCachExportOption = 'tbGpuCacheDir'
-    gpuCachType_values = ['GPU', 'ALembic']
-    gpuCachType_default = 'GPU'
+    gpuCachImportTypeOption = 'tbGpuCacheType'
+    gpuCacheType_values = ['GPU', 'ALembic']
+    gpuCacheType_default = 'GPU'
 
     loadedMeshData = dict()
     namespaceToCharDict = dict()
@@ -121,9 +130,9 @@ class CacheTool(toolAbstractFactory):
 
         dirWidget = filePathWidget(self.gpuCachExportOption, None)
 
-        fileTypeWidget = radioGroupWidget(optionVarList=self.gpuCachType_values,
-                                          optionVar=self.gpuCachType_default,
-                                          defaultValue=self.gpuCachType_values[0], label='Output file type')
+        fileTypeWidget = radioGroupWidget(optionVarList=self.gpuCacheType_values,
+                                          optionVar=self.gpuCachImportTypeOption,
+                                          defaultValue=self.gpuCacheType_values[0], label='Import mode')
 
         self.layout.addWidget(dirWidget)
         self.layout.addWidget(fileTypeWidget)
@@ -201,20 +210,46 @@ class CacheTool(toolAbstractFactory):
                 self.loadedMeshData[refname].meshGroups.append(obj)
         self.saveRigData(refname, self.loadedMeshData[refname].toJson())
 
-    def cacheSelectedCharacters(self):
+    def cacheSelectedCharacters(self, disableReferences=False):
         sel = cmds.ls(sl=True)
         if not sel:
             return
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
 
+        fileName = cmds.file(query=True, sceneName=True, shortName=True)
+        fileName = fileName.split('.')[0]
+
         allMeshes = list()
         for ns in characters.keys():
             meshes = self.getSkinCLustersForNamespace(ns)
             allMeshes.extend(meshes)
-        file = cmds.file(query=True, sceneName=True, shortName=True)
-        file = file.split('.')[0]
-        self.exportCache(meshes, name=file + '_' + ns)
+
+            outputFile = self.exportCache(meshes, name=fileName + '_' + ns)
+            refNode, fileReference = self.getReference(meshes[0])
+            cacheNode = self.importCache(outputFile)
+            if refNode:
+                cmds.addAttr(str(cacheNode), ln='refNode', dt='string')
+                cmds.setAttr(str(cacheNode) + '.refNode', refNode, type='string')
+            if disableReferences:
+                self.unloadReference(refNode)
+
+    def unloadReference(self, refNnode):
+        cmds.file(unloadReference=refNnode)
+
+    def loadReferenceFromCache(self, cacheNode):
+        if not cmds.attributeQuery('refNode', node=cacheNode, exists=True):
+            return
+        refNode = cmds.getAttr(cacheNode + '.refNode', asString=True)
+        cmds.file(loadReferenceDepth="asPrefs", loadReference=refNode)
+        cmds.delete(cacheNode)
+
+    def loadReferenceFromCacheSelected(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        for s in sel:
+            self.loadReferenceFromCache(s)
 
     def getSkinCLustersForNamespace(self, ns):
         skinClusters = pm.ls(ns + ':*', type='skinCluster')
@@ -222,35 +257,72 @@ class CacheTool(toolAbstractFactory):
         visibleMeshes = [m for m in meshes if self.isNodeVisible(m)]
         return visibleMeshes
 
-    def exportCache(self, exportObjects, name='test'):
+    def exportCache(self, exportObjects, name='test', abc=True):
         startTime = cmds.playbackOptions(query=True, min=True)
         endTime = cmds.playbackOptions(query=True, max=True)
         outputFolder = self.getExportFolder()
         if not outputFolder:
             return cmds.warning('No output folder selected')
-        cmds.gpuCache(exportObjects,
-                      startTime=startTime,
-                      endTime=endTime,
-                      dataFormat='ogawa',
-                      optimize=True,
-                      optimizationThreshold=40000,
-                      writeMaterials=False,
-                      directory=outputFolder,
-                      fileName=name,
-                      saveMultipleFiles=False)
+        if abc:
+            pm.select(exportObjects)
+            objs = pm.ls(sl=True, long=True)
+            objString = ['-root ' + str(o) for o in objs]
+            objString = ' '.join(objString)
+            filePath = os.path.join(outputFolder, name + '.abc')
+            filePath = filePath.replace('\\', '/')
 
-    def importCache(self, filename):
-        cacheNode = pm.createNode('gpuCache')
-        cacheNodeParent = cacheNode.getParent()
-        cacheNodeParent.rename(str(os.path.basename(filename)).split('.')[0])
-        cacheNode.cacheFileName.set(str(filename))
+            cmdString = 'AbcExport -j "-frameRange {startTime} {endTime} -ro -worldSpace -dataFormat ogawa {objString} -file {fileName}"'.format(
+                fileName=filePath,
+                objString=objString,
+                startTime=int(startTime),
+                endTime=int(endTime),
+            )
+            print (cmdString)
+            mel.eval(cmdString)
+        else:
+            cmds.gpuCache(exportObjects,
+                          startTime=startTime,
+                          endTime=endTime,
+                          dataFormat='ogawa',
+                          optimize=True,
+                          optimizationThreshold=40000,
+                          writeMaterials=True,
+                          directory=outputFolder,
+                          fileName=name,
+                          saveMultipleFiles=False)
+        return os.path.join(outputFolder, name + '.abc')
+
+    def importCache(self, filename, pointCloud=False, alembic=False):
+        mode = None
+        if pointCloud:
+            mode = self.gpuCacheType_values[0]
+        if alembic:
+            mode = self.gpuCacheType_values[1]
+        if not mode:
+            mode = pm.optionVar.get(self.gpuCachImportTypeOption, self.gpuCacheType_default)
+            print ('mode', mode)
+        if mode == self.gpuCacheType_values[0]:
+            cacheNode = pm.createNode('gpuCache')
+            cacheNodeParent = cacheNode.getParent()
+            cacheNodeParent.rename(str(os.path.basename(filename)).split('.')[0])
+            cacheNode.cacheFileName.set(str(filename))
+        else:
+            cacheNodeParent = self.funcs.tempControl(name=str(os.path.basename(filename)).split('.')[0],
+                                                     suffix='Root',
+                                                     drawType='flatRotator')
+            alembicNode = cmds.AbcImport(filename, mode="import")
+            cacheNodes = cmds.listConnections(alembicNode + '.outPolyMesh')
+            pm.parent(cacheNodes, cacheNodeParent)
+            pm.addAttr(cacheNodeParent, ln='alembic', at='message')
+            pm.connectAttr(alembicNode + '.message', cacheNodeParent + '.alembic')
+        return cacheNodeParent
 
     def importCacheDialog(self):
         fileFilter = "gpu cache (*.abc)"
         importedFiles = cmds.fileDialog2(fileFilter=fileFilter,
-                               fileMode=4,
-                               dialogStyle=1,
-                               startingDirectory=self.getExportFolder())
+                                         fileMode=4,
+                                         dialogStyle=1,
+                                         startingDirectory=self.getExportFolder())
         if not importedFiles:
             return
 
@@ -269,3 +341,14 @@ class CacheTool(toolAbstractFactory):
         if parents:
             visible = self.isNodeVisible(parents[0])
         return visible
+
+    def getReference(self, obj):
+        refState = cmds.referenceQuery(str(obj), isNodeReferenced=True)
+
+        if refState:
+            # if it is referenced, check against pickwalk library entries
+            refNnode = cmds.referenceQuery(str(obj), referenceNode=True)
+            return refNnode, cmds.referenceQuery(str(obj), filename=True)
+        else:
+            # might just be working in the rig file itself
+            return None, None
