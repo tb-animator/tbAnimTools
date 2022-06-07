@@ -289,7 +289,7 @@ class TimeDragger(toolAbstractFactory):
         if self.even_only:
             # snap to odd frames only
             step_destination = int(step_destination / 2) * 2 + 1
-        if pm.optionVar.get(self.step_unconstrained, True):
+        if pm.optionVar.get(self.step_unconstrained, False):
             pm.setCurrentTime(step_destination)
         else:
             pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
@@ -297,11 +297,10 @@ class TimeDragger(toolAbstractFactory):
     def timeDragSmoothMouseMoved(self, startPos, currentPos):
         distance = currentPos - self.initialPos
         step_destination = self.start_time + (distance * 0.05)
-        if pm.optionVar.get(self.step_unconstrained, True):
+        if pm.optionVar.get(self.step_unconstrained, False):
             pm.setCurrentTime(step_destination)
         else:
             pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
-        
 
     def timeDragMouseWheel(self, value):
         pm.setCurrentTime(pm.currentTime(query=True) + value)
@@ -391,6 +390,7 @@ class TimeDragDialog(QDialog):
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
         screens = QApplication.screens()
+        '''
         top = 0
         left = 0
         bottom = 0
@@ -407,6 +407,15 @@ class TimeDragDialog(QDialog):
         self.screenGeo = screen.availableGeometry()
         self.move(top, left)
         self.setFixedSize(right-left, bottom-top)
+        '''
+        for s in screens:
+            if s.availableGeometry().contains(QCursor.pos()):
+                screen = s
+
+        self.screenGeo = screen.availableGeometry()
+        self.move(self.screenGeo.left(), self.screenGeo.top())
+        self.setFixedSize(self.screenGeo.width(), self.screenGeo.height())
+
         if not self.parentMenu:
             self.recentlyOpened = True
 
@@ -428,6 +437,7 @@ class TimeDragDialog(QDialog):
         xOffset = 10  # border?
         self.cursorPos = QPoint(self.cursorPos.x() - self.screenGeo.left(), self.cursorPos.y() - self.screenGeo.top())
         self.move(self.screenGeo.left(), self.screenGeo.top())
+
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -453,18 +463,16 @@ class TimeDragDialog(QDialog):
         qp.end()
 
     def mouseMoveEvent(self, event):
-        # print ('mouseMoveEvent', event.pos())
-        if QCursor.pos().x() < self.bufferMin:
-            QCursor.setPos(self.width() - self.bufferMax, QCursor.pos().y())
-            self.updateInitialSignal.emit(QCursor.pos().x() )
-        if QCursor.pos().x() < self.bufferMax:
-            print ('max buffer left')
-        if QCursor.pos().x() > self.width() - self.bufferMin:
-            QCursor.setPos(self.bufferMax, QCursor.pos().y())
-            self.updateInitialSignal.emit(QCursor.pos().x() )
-        if QCursor.pos().x() > self.width() - self.bufferMax:
-            print ('max buffer right')
+        if QCursor.pos().x() < self.screenGeo.left() + self.bufferMin:
+            QCursor.setPos(self.screenGeo.left() + self.width() - self.bufferMax, QCursor.pos().y())
+            self.updateInitialSignal.emit(QCursor.pos().x())
+
+        if QCursor.pos().x() > self.screenGeo.left() + self.width() - self.bufferMin:
+            QCursor.setPos(self.screenGeo.left() + self.bufferMax, QCursor.pos().y())
+            self.updateInitialSignal.emit(QCursor.pos().x())
+
         self.currentCursorPos = QCursor.pos()
+
         self.mouseMovedSignal.emit(self.cursorPos.x(), QCursor.pos().x())
 
     def mousePressEvent(self, event):
