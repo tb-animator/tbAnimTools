@@ -1241,7 +1241,7 @@ class BakeTools(toolAbstractFactory):
                          force=True,
                          addNode=rotationRoot)
 
-        bakeTargets = rotationRoots.values() + rotateAnimNodes.values()
+        bakeTargets = list(rotationRoots.values()) + list(rotateAnimNodes.values())
         pm.bakeResults(bakeTargets,
                        time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
                        simulation=False,
@@ -1325,7 +1325,7 @@ class BakeTools(toolAbstractFactory):
             rotateAnimNodes[s] = rotateAnimNode
             translateAnimOFfsetNodes[s] = translateAnimOFfsetNode
             rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
-        bakeTargets = translateAnimNodes.values() + rotateAnimNodes.values()
+        bakeTargets = list(translateAnimNodes.values()) + list(rotateAnimNodes.values())
         pm.bakeResults(bakeTargets,
                        time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
                        simulation=False,
