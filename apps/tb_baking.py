@@ -1067,12 +1067,15 @@ class BakeTools(toolAbstractFactory):
                         node = mel.eval('plugNode "{0}"'.format(attrs[-1]))
                         if node not in allNodes:
                             allNodes.append(node)
+                '''
                 allConstraints = [item for sublist in [cmds.listRelatives(n, type='constraint') or [] for n in allNodes]
                                   for item in sublist if item]
+                allConstraints = [x for x in allConstraints if cmds.objExists(x)]
                 filteredConstraints = list(
                     set([c for c in allConstraints if not cmds.referenceQuery(c, isNodeReferenced=True)]))
                 unreferencedNodes = list(
                     set([n for n in allNodes if not cmds.referenceQuery(n, isNodeReferenced=True)]))
+                '''
                 allLayers.remove(rootLayer)
                 if not allNodes:
                     return cmds.warning('No controls found in layers, aborting')

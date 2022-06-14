@@ -76,6 +76,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.jumpUsingInitialFrameVelocity()'],
                                      help=maya.stringTable['tbCommand.doJumpUsingInitialFrameVelocity']))
+        self.addCommand(self.tb_hkey(name='quickDrop',
+                                     annotation='useful comment',
+                                     category=self.category, command=['GravityTools.quickDrop()'],
+                                     help=''))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
@@ -172,6 +176,24 @@ class GravityTools(toolAbstractFactory):
     calculation for max height
     - (v0 * v0) / 2 * a)
     '''
+
+    def quickDrop(self):
+        self.uiUnit = om.MTime.uiUnit()
+
+        if self.funcs.isTimelineHighlighted():
+            timeRange = self.funcs.getTimelineHighlightedRange()
+        else:
+            timeRange = cmds.currentTime(query=True), cmds.playbackOptions(query=True, maxTime=True)
+
+        sel = cmds.ls(sl=True)
+        if not sel:
+            tempControl = self.funcs.tempControl(name='Gravity', suffix='', drawType='cross')
+        else:
+            tempControl = self.funcs.tempControl(name=sel[0], suffix='Gravity', drawType='cross')
+            pm.delete(pm.pointConstraint(sel[0], tempControl))
+
+        pm.select(tempControl, replace=True)
+        self.doJumpUsingInitialFrameVelocity()
 
     def doQuickJump(self):
         with self.funcs.keepSelection():
