@@ -669,7 +669,8 @@ class AimTools(toolAbstractFactory):
 
         tempConstraint = pm.parentConstraint(control, aimLocator, maintainOffset=True)
         keyTimes = self.funcs.get_object_key_times(str(control))
-
+        if not keyTimes:
+            keyTimes = [cmds.playbackOptions(query=True, min=True), cmds.playbackOptions(query=True, max=True)]
         min_key = min(keyTimes)
         max_key = max(keyTimes)
 

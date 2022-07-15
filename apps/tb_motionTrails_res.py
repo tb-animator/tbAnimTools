@@ -9,3 +9,7 @@ maya.stringTable['tbCommand.toggleMotionTrailCameraRelative'] = u'Toggles the mo
 maya.stringTable['tbCommand.createMotionTrail'] = u'Basic create motion trail command.__' \
                                                           u'toggleMotionTrail is more useful'
 maya.stringTable['tbCommand.removeMotionTrail'] = u'Removes the trail from the selected controls'
+maya.stringTable['tbCommand.motionPathSelected'] = u'Creates a nurbs curve matching your animation and attaches a temp node to it. Your control ' \
+                                                   u'is constrained to the temp control on a layer.  You can then edit the curve and the uValue on the temp control.' \
+                                                   u'Useful for editing the spacing when you are happy with the path an object is taking, or if you are finding soft selection on ' \
+                                                   u'regular animated motion trails is too slow.'

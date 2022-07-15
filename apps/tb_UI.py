@@ -278,6 +278,7 @@ class ViewportDialog(QDialog):
         if self.parentMenu:
             self.invokedKey = self.parentMenu.invokedKey
             self.returnButton = ReturnButton(label='', parent=self, cls=self)
+            self.returnButton.hoverSignal.connect(self.returnButtonHovered)
             # print ('parent pos', self.parentMenu.cursorPos)
             distance = self.distance(self.cursorPos, self.parentMenu.cursorPos)
             delta = self.parentMenu.cursorPos - self.cursorPos
@@ -287,6 +288,10 @@ class ViewportDialog(QDialog):
         else:
             self.keyPressHandler = markingMenuKeypressHandler(UI=self)
             self.app.installEventFilter(self.keyPressHandler)
+        self.tooltipEnabled = True
+
+    def returnButtonHovered(self):
+        print ('returnButtonHovered')
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -333,6 +338,14 @@ class ViewportDialog(QDialog):
                 b.hoverSignal.connect(self.buttonHovered)
                 b.absPos = button.pos()  # + b.parent().pos()
                 self.allButtons.append(b)
+
+    def enableLayer(self):
+        print ('enableLayer')
+        self.tooltipEnabled = True
+
+    def disableLayer(self):
+        print ('disableLayer')
+        self.tooltipEnabled = False
 
     def moveAll(self):
         if self.returnButton:
@@ -398,6 +411,7 @@ class ViewportDialog(QDialog):
         QApplication.instance().sendEvent(self.parentMenu, event)
         self.parentMenu.setFocusPolicy(Qt.StrongFocus)
         self.parentMenu.setFocus()
+        self.parentMenu.enableLayer()
 
         self.parentMenu.moveAll()
 

@@ -35,29 +35,29 @@ from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
 
 API_TYPES = {'animCurve': [om2.MFn.kAnimCurveTimeToAngular,
-                                         om2.MFn.kAnimCurveTimeToDistance,
-                                         om2.MFn.kAnimCurveTimeToUnitless,
-                                         om2.MFn.kAnimCurveTimeToTime],
-                           'selection':
-                               [om2.MItSelectionList.kDagSelectionItem,
-                                om2.MItSelectionList.kDNselectionItem],
-                           'animCurveSelection': [om2.MItSelectionList.kDagSelectionItem,
-                                                  om2.MItSelectionList.kAnimSelectionItem,
-                                                  om2.MItSelectionList.kDNselectionItem],
-                           'blendModes': [om2.MFn.kBlendNodeDoubleLinear,
-                                          om2.MFn.kBlendNodeAdditiveRotation,
-                                          om2.MFn.kBlendNodeAdditiveScale,
-                                          om2.MFn.kBlendNodeBoolean,
-                                          om2.MFn.kBlendNodeEnum,
-                                          om2.MFn.kBlendNodeDouble,
-                                          om2.MFn.kBlendNodeDoubleAngle,
-                                          om2.MFn.kBlendNodeFloat,
-                                          om2.MFn.kBlendNodeFloatAngle,
-                                          om2.MFn.kBlendNodeFloatLinear,
-                                          om2.MFn.kBlendNodeInt16,
-                                          om2.MFn.kBlendNodeInt32,
-                                          om2.MFn.kBlendNodeBase],
-                           'rotation': [om2.MFn.kBlendNodeAdditiveRotation]}
+                           om2.MFn.kAnimCurveTimeToDistance,
+                           om2.MFn.kAnimCurveTimeToUnitless,
+                           om2.MFn.kAnimCurveTimeToTime],
+             'selection':
+                 [om2.MItSelectionList.kDagSelectionItem,
+                  om2.MItSelectionList.kDNselectionItem],
+             'animCurveSelection': [om2.MItSelectionList.kDagSelectionItem,
+                                    om2.MItSelectionList.kAnimSelectionItem,
+                                    om2.MItSelectionList.kDNselectionItem],
+             'blendModes': [om2.MFn.kBlendNodeDoubleLinear,
+                            om2.MFn.kBlendNodeAdditiveRotation,
+                            om2.MFn.kBlendNodeAdditiveScale,
+                            om2.MFn.kBlendNodeBoolean,
+                            om2.MFn.kBlendNodeEnum,
+                            om2.MFn.kBlendNodeDouble,
+                            om2.MFn.kBlendNodeDoubleAngle,
+                            om2.MFn.kBlendNodeFloat,
+                            om2.MFn.kBlendNodeFloatAngle,
+                            om2.MFn.kBlendNodeFloatLinear,
+                            om2.MFn.kBlendNodeInt16,
+                            om2.MFn.kBlendNodeInt32,
+                            om2.MFn.kBlendNodeBase],
+             'rotation': [om2.MFn.kBlendNodeAdditiveRotation]}
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -78,6 +78,7 @@ import maya.api.OpenMaya as om2
 import maya.OpenMayaUI as omui
 import os
 import json
+
 dataPath = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, 'appData', 'controlShapes.json'))
 pointLists = json.load(open(dataPath))
 
@@ -200,7 +201,6 @@ class functions(object):
         unlockedLayers = [x for x in layerCache if not x.lock]
         allLayers = [x.layer for x in layerCache]
 
-
         # if baseAnimLayer layer is selected and not locked, use that
         if baseAnimLayer.lock:
             baseAnimLayer.layer = None
@@ -208,9 +208,9 @@ class functions(object):
             return baseAnimLayer.layer
 
         it = om2.MItDependencyGraph(plug, om2.MFn.kAnimLayer,
-                                   direction=om2.MItDependencyGraph.kDownstream,
-                                   traversal=om2.MItDependencyGraph.kBreadthFirst,
-                                   level=om2.MItDependencyGraph.kNodeLevel)
+                                    direction=om2.MItDependencyGraph.kDownstream,
+                                    traversal=om2.MItDependencyGraph.kBreadthFirst,
+                                    level=om2.MItDependencyGraph.kNodeLevel)
         # it.pruningOnFilter = True
         bestLayer = None
 
@@ -358,7 +358,8 @@ class functions(object):
         loc.getShape().overrideColorRGB.set(color)
         return loc
 
-    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',unlockScale=False):
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
+                    unlockScale=False):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         control, shape = self.drawControl(points, scale=float(scale))
         control.rename(name + '_' + suffix)
@@ -532,7 +533,7 @@ class functions(object):
                     continue
                 if p in selection:
                     found = True
-                    returnedList.insert(returnedList.index(p)+1, returnedList.pop(returnedList.index(key)))
+                    returnedList.insert(returnedList.index(p) + 1, returnedList.pop(returnedList.index(key)))
                 if not found:
                     returnedList.insert(0, returnedList.pop(returnedList.index(key)))
 
@@ -647,6 +648,21 @@ class functions(object):
         """ returns the currently selected curve names
         """
         return cmds.keyframe(query=True, selected=True, name=True)
+
+    @staticmethod
+    def get_graph_editor_curves():
+        """
+        gets the curves visible in the graph editor
+        :return:
+        """
+        result = cmds.selectionConnection('graphEditor1FromOutliner', query=True, object=True)
+        curves = list()
+        for r in result:
+            c = cmds.listConnections(r, source=True, destination=False)
+            if c:
+                curves.append(c)
+        filteredCurves = [item for sublist in curves for item in sublist if item]
+        return filteredCurves
 
     @staticmethod
     def get_selected_keys():
@@ -1029,7 +1045,8 @@ class functions(object):
         pass
 
     # yellow info prefix highlighting
-    def infoMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30, fade=True):
+    def infoMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30,
+                    fade=True):
         prefix = '<hl>%s</hl>' % prefix
         self.enable_messages()
         pm.inViewMessage(amg=prefix + message,
@@ -1042,7 +1059,8 @@ class functions(object):
         self.disable_messages()
 
     # prefix will be highlighted in red!
-    def errorMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30, fade=True):
+    def errorMessage(self, position="botRight", prefix="", message="", fadeInTime=30, fadeStayTime=30, fadeOutTime=30,
+                     fade=True):
         # self.optionVar_name = "inViewMessageEnable"
         # self.optionVar_name = Message().optionVar_name
         prefix = '<span %s>%s</span>' % (self.messageColours['red'], prefix)
@@ -1313,6 +1331,43 @@ class functions(object):
             plug = mel.eval(cmd)
         return plug
 
+    def getClosestPointOnCurveNEW(self, curve, position, guess=None):
+        selList = om.MSelectionList()
+        selList.add(curve)
+        curveFn = om.MFnNurbsCurve(selList.getDagPath(0))
+
+        p, u, v = curveFn.closestPoint(om2.MPoint(*position),
+                                       guess=None,
+                                       tolerance=0.01,
+                                       space=om.MSpace.kWorld)
+
+        return [(p[0], p[1], p[2]), (u, v)]
+
+    def getCurveParamAtPosition(self, crv, position):
+        point = om.MPoint(position[0], position[1], position[2])
+
+        dag = om.MDagPath()
+        obj = om.MObject()
+        oList = om.MSelectionList()
+        oList.add(crv.name())
+        oList.getDagPath(0, dag, obj)
+
+        curveFn = om.MFnNurbsCurve(dag)
+        length = curveFn.length()
+        crv.findParamFromLength(length)
+
+        paramUtill = om.MScriptUtil()
+        paramPtr = paramUtill.asDoublePtr()
+        lengthUtill = om.MScriptUtil()
+        currentLengthPtr = lengthUtill.asDoublePtr()
+
+        point = curveFn.closestPoint(point, paramPtr, 0.001, om.MSpace.kObject)
+        curveFn.getParamAtPoint(point, paramPtr, 0.001, om.MSpace.kObject)
+
+        param = paramUtill.getDouble(paramPtr)
+        currentLength = curveFn.findLengthFromParam(param)
+        return param, currentLength, length
+
     def getCurvesFromLayerAPI(self, plug, layer, layerCache, baseAnimLayer):
         """
         """
@@ -1325,9 +1380,9 @@ class functions(object):
         allLayers = [x.layer for x in layerCache]
 
         it = om2.MItDependencyGraph(plug, om2.MFn.kInvalid,
-                                   direction=om2.MItDependencyGraph.kUpstream,
-                                   traversal=om2.MItDependencyGraph.kBreadthFirst,
-                                   level=om2.MItDependencyGraph.kNodeLevel)
+                                    direction=om2.MItDependencyGraph.kUpstream,
+                                    traversal=om2.MItDependencyGraph.kBreadthFirst,
+                                    level=om2.MItDependencyGraph.kNodeLevel)
 
         target = None
 
@@ -1488,8 +1543,8 @@ class functions(object):
 
         resultScale = transformMatrixObj.scale(om2.MSpace.kWorld)
         return resultTranslate, angles
-        #pm.xform('pCube1', relative=True, translation=resultTranslate)
-        #pm.xform('pCube1', relative=True, rotation=angles)
+        # pm.xform('pCube1', relative=True, translation=resultTranslate)
+        # pm.xform('pCube1', relative=True, rotation=angles)
 
     def getVectorToTarget(self, target, control):
         tempNode = cmds.createNode('transform')

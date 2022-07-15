@@ -1,0 +1,199 @@
+{
+  "subMenus": [
+    {
+      "name": "main",
+      "parent": null,
+      "menuItems": [
+        {
+          "label": "Ballistic tools",
+          "icon": "gravityBase.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "gravity"
+        },
+        {
+          "label": "New Layers",
+          "icon": "newLayers.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "newLayerMenu"
+        },
+        {
+          "label": "Temp Controls",
+          "icon": "newTempControls.png",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+
+        {
+          "label": "Motion Trails",
+          "icon": "motionTrails.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "motionTrails"
+        },
+        {
+          "label": "Baking",
+          "icon": "baking.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "baking"
+        },
+                {
+          "label": "GPU Cache",
+          "icon": "gpuCache.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "gpuCache"
+        }
+      ]
+    },
+    {
+      "name": "gpuCache",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "Cache Selected Characters",
+          "icon": "gpuCacheCreate.png",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Cache Selected Characters Unload",
+          "icon": "gpuCacheUnload.png",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Import Cache",
+          "icon": "gpuCacheLoad.png",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Restore Rig",
+          "icon": "gpuCacheRestore.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    },
+    {
+      "name": "baking",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "Quick Merge All Layers",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Bake To Override",
+          "command": null,
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    },
+    {
+      "name": "newLayerMenu",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "New Additive Layer",
+          "command": null,
+          "icon": "newAdditiveLayer.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "New Override Layer",
+          "command": null,
+          "icon": "newOverrideLayer.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    },
+    {
+      "name": "motionTrails",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "Toggle Motion Trails",
+          "command": "toggleMotionTrail",
+          "icon": "motionTrails.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Nurbs Motion Path",
+          "command": "motionPathSelected",
+          "icon": "curveEP.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    },
+    {
+      "name": "gravity",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "Quick drop",
+          "command": "quickDrop",
+          "icon": "gravityDrop.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Jump current key pairs",
+          "command": "quickJump",
+          "icon": "gravityWindow.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Jump all key pairs",
+          "command": "jumpAllKeypairs",
+          "icon": "gravityWindowAll.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Jump using velocity",
+          "command": "jumpUsingInitialFrameVelocity",
+          "icon": "gravityInitial.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    }
+
+  ]
+}

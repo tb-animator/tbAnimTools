@@ -44,6 +44,267 @@ class hotkeys(hotKeyAbstractFactory):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
 
+class ViewportRadialMenu(ViewportDialog):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+                 *args, **kwargs):
+        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict)
+        self.centralPoint = QPoint(0, 0)  # the central point of the radial menu
+        self.parentPos = QPoint(0, 0)  # the button position that raised this menu
+        self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
+        self.radius = 100
+        self.maxButtons = 0
+        self.labelText = 'blank'
+
+    def addAllButtons(self):
+        for key, items in self.menuDict.items():
+            for item in items:
+                self.addButton(quad=key,
+                               button=item)
+
+    def moveAll(self):
+        return
+
+    def show(self):
+        self.cursorPos = QCursor.pos()
+        if self.parentMenu:
+            self.centralPoint = self.parentMenu.centralPoint
+            self.parentMenu.disableLayer()
+        else:
+            self.centralPoint = QCursor.pos()
+            self.parentPos = QCursor.pos()  # used for the return button position on the top menu
+        self.currentCursorPos = QCursor.pos()
+        self.arrangeButtons()
+        super(ViewportRadialMenu, self).show()
+
+    def arrangeButtons(self):
+        self.maxButtons = len(self.widgets['radial'])
+        initialAngle = 0
+        if self.parentMenu:
+            radius = self.distance(self.centralPoint, self.parentPos) + 64
+            circuference = 2 * 3.14 * radius
+            test = circuference % 64
+            increment = 360.0 / (circuference / 64)
+            initialAngle = self.getAngle(self.centralPoint, self.parentPos)
+            initialAngle -= increment * (self.maxButtons - 1) * 0.5
+
+        for index, button in enumerate(self.widgets['radial']):
+            if self.parentMenu:
+                # print ('parentMenu.maxButtons', self.parentMenu.maxButtons)
+                pos = QPoint(self.centralPoint.x(), self.centralPoint.y())
+                # radius = self.distance(self.centralPoint, self.parentPos) + 38
+                # angle = index * 360.0 / self.maxButtons
+                angle = increment * index + initialAngle
+            else:
+                pos = QPoint(self.cursorPos.x(), self.cursorPos.y())
+                radius = self.radius
+                # print ('radius', radius)
+
+                angle = index * 360.0 / self.maxButtons
+            button.currentAngle = angle
+
+            offset = QPoint(math.sin((math.radians(angle))) * radius,
+                            -math.cos((math.radians(angle))) * radius)
+            halfSize = QPoint(button.width() * 0.5, button.height() * 0.5)
+            button.move(pos + offset - halfSize)
+            button.absPos = button.pos()  # + b.parent().pos()
+        if self.parentMenu:
+            delta = self.parentMenu.cursorPos - self.cursorPos
+            delta = om2.MVector(delta.x(), delta.y(), 0).normal()
+            # print ('returnButton', delta)
+            self.returnButton.move(self.returnButtonPos.x() - self.returnButton.width() * 0.5,
+                                   self.returnButtonPos.y() - self.returnButton.height() * 0.5)
+
+    def addButton(self, quad='radial', button=QWidget):
+        '''
+        Add buttons to the widget, don't arrange them here
+        :param quad:
+        :param button:
+        :return:
+        '''
+
+        if isinstance(button, ToolboxButton):
+            self.widgets[quad].append(button)
+            button.absPos = button.pos()
+            self.allButtons.append(button)
+            button.hoverSignal.connect(self.buttonHovered)
+        elif isinstance(button, ToolboDivider):
+            self.widgets[quad].append(button)
+        elif isinstance(button, ToolboxDoubleButton):
+            self.widgets[quad].append(button)
+            for b in button.buttons:
+                b.hoverSignal.connect(self.buttonHovered)
+                b.absPos = button.pos()  # + b.parent().pos()
+                self.allButtons.append(b)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        lineColor = QColor(68, 68, 68, 128)
+        linePenColor = QColor(255, 160, 47, 255)
+        blank = QColor(124, 124, 124, 1)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(blank))
+        qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.drawRoundedRect(0, 0, self.width(), 20, 8, 8)
+
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setBrush(QBrush(blank))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.setBrush(QBrush(lineColor))
+        if not self.parentMenu:
+            qp.drawEllipse(self.cursorPos.x() - self.centralRadius / 2,
+                           self.cursorPos.y() - self.centralRadius / 2,
+                           self.centralRadius,
+                           self.centralRadius)
+        # print (self.currentCursorPos.x(), self.currentCursorPos.y())
+
+        if self.activeButton:
+            qp.setPen(QPen(QBrush(linePenColor), 4))
+            offset = 0
+            buttonPos = self.activeButton.absPos
+            endPoint = QPoint()
+            '''
+            if isinstance(self.activeButton.parent(), ToolboxDoubleButton):
+                buttonPos += self.activeButton.parent().pos()
+            '''
+            if buttonPos.x() < self.cursorPos.x():
+                offset = self.activeButton.width()
+            endPoint = QPoint(buttonPos.x() + self.activeButton.width() / 2,
+                              buttonPos.y() + self.activeButton.height() / 2)
+            angle = math.atan2(self.cursorPos.x() - endPoint.x(), self.cursorPos.y() - endPoint.y())
+            # print ('angle', angle)
+            # print (math.cos(angle) * (self.centralRadius/2))
+            # print (math.sin(angle) * (self.centralRadius/2))
+            if not self.parentMenu:
+                qp.drawLine(endPoint.x(),
+                            endPoint.y(),
+                            self.cursorPos.x() - (math.sin(angle) * (self.centralRadius / 1.5)),
+                            self.cursorPos.y() - (math.cos(angle) * (self.centralRadius / 1.5)))
+            else:
+                qp.drawLine(endPoint.x(),
+                            endPoint.y(),
+                            self.parentPos.x() - (math.sin(angle) * (18)),
+                            self.parentPos.y() - (math.cos(angle) * (18)))
+
+            """ Tooltip stuff"""
+            if self.tooltipEnabled:
+                lineColor = QColor(64, 64, 64)
+                fillColor = QColor(198, 198, 198)
+                path = QPainterPath()
+                pen = QPen()
+                brush = QBrush()
+                font = QFont("Console", 11, 11, False)
+
+                pen.setWidth(3.5)
+                pen.setColor(lineColor)
+                brush.setColor(fillColor)
+                qp.setFont(font)
+                qp.setPen(pen)
+
+                fontMetrics = QFontMetrics(font)
+                pixelsWide = fontMetrics.width(self.activeButton.labelText)
+                pixelsHigh = fontMetrics.height()
+
+                radius = self.distance(self.centralPoint, self.parentPos) + 128
+                offset = QPoint(math.sin((math.radians(self.activeButton.currentAngle))) * (radius + (0.5*pixelsWide)),
+                                -math.cos((math.radians(self.activeButton.currentAngle))) * (radius + pixelsHigh))
+                tooltipPos = QPoint(self.centralPoint.x() + offset.x() - (pixelsWide*0.5), self.centralPoint.y() + offset.y() + (pixelsHigh*0.5))
+
+                path.addText(0, pixelsHigh + 2, font, self.activeButton.labelText)
+                path.addText(tooltipPos.x(), tooltipPos.y(), font, self.activeButton.labelText)
+
+                pen = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
+                brush = QBrush(fillColor)
+                qp.setCompositionMode(qp.CompositionMode_SourceOver)
+                qp.strokePath(path, pen)
+                qp.fillPath(path, brush)
+
+        '''
+        qp.setPen(QPen(QBrush(blank), 0))
+        qp.setBrush(QBrush(blank))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        '''
+        # super(ViewportDialog, self).paintEvent(event)
+        qp.end()
+
+    def getClosesWidget(self):
+        # print ('getClosesWidget')
+        distance = self.distance(self.cursorPos, self.currentCursorPos)
+        for w in self.allButtons:
+            w.setNonHoverSS()
+        if distance < self.scalar:
+            self.activeButton = None
+            return
+        if self.allButtons:
+            closest = 9999
+            closestWidget = None
+            for w in self.allButtons:
+                if not isinstance(w, ToolboxButton):
+                    # print ('skip', w)
+                    continue
+                # w.setNonHoverSS()
+                widgetPos = QPoint(w.absPos.x() + w.width() / 2, w.absPos.y() + w.height() / 2)
+                distance = self.distance(widgetPos, self.currentCursorPos)
+                if distance < closest:
+                    closestWidget = w
+                    closest = distance
+
+                # print (widgetPos, distance)
+            # print ('closest', closestWidget)
+            self.activeButton = closestWidget
+            if self.activeButton:
+                self.activeButton.setHoverSS()
+            self.update()
+
+    def distance(self, point_a, point_b):
+        distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
+        return distance
+
+    def getAngle(self, point_a, point_b):
+        return math.degrees(math.atan2(point_b.x() - point_a.x(), point_a.y() - point_b.y()))
+
+
+class SubToolboxWidget(ViewportRadialMenu):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parentMenu=None):
+        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+
+        if self.parentMenu:
+            self.parentMenu.setEnabled(False)
+
+        self.addButton(quad='radial',
+                       button=RadialToolboxButton(label='SubMENU NE', parent=self,
+                                                  cls=self,
+                                                  command=None,
+                                                  popupSubMenu=True,
+                                                  subMenuClass=SubToolboxWidget,
+                                                  closeOnPress=True))
+        self.addButton(quad='radial',
+                       button=RadialToolboxButton(label='SubMENU NE', parent=self,
+                                                  cls=self,
+                                                  command=None,
+                                                  closeOnPress=True))
+        self.addButton(quad='radial',
+                       button=RadialToolboxButton(label='SubMENU NE', parent=self,
+                                                  cls=self,
+                                                  command=None,
+                                                  popupSubMenu=True,
+                                                  subMenuClass=SubToolboxWidget,
+                                                  closeOnPress=True))
+        self.addButton(quad='radial',
+                       button=RadialToolboxButton(label='SubMENU NE', parent=self,
+                                                  cls=self,
+                                                  command=None,
+                                                  closeOnPress=True))
+
+
 class ViewportToolbox(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
@@ -55,9 +316,14 @@ class ViewportToolbox(toolAbstractFactory):
     funcs = functions()
     markingMenuWidget = None
 
+    baseDataFile = None
+    rawJsonBaseData = None
+    menuDict = dict()
+
     def __new__(cls):
         if ViewportToolbox.__instance is None:
             ViewportToolbox.__instance = object.__new__(cls)
+            ViewportToolbox.__instance.initData()
 
         ViewportToolbox.__instance.val = cls.toolName
         return ViewportToolbox.__instance
@@ -70,6 +336,14 @@ class ViewportToolbox(toolAbstractFactory):
     Declare an interface for operations that create abstract product
     objects.
     """
+
+    def initData(self):
+        super(ViewportToolbox, self).initData()
+        self.baseDataFile = os.path.join(self.dataPath, self.toolName + 'BaseData.json')
+
+    def loadData(self):
+        super(ViewportToolbox, self).loadData()
+        self.rawJsonBaseData = json.load(open(self.baseDataFile))
 
     def optionUI(self):
         return super(ViewportToolbox, self).optionUI()
@@ -85,7 +359,7 @@ class ViewportToolbox(toolAbstractFactory):
 
     def openMM(self):
         self.build_MM()
-        self.markingMenuWidget.show()
+        self.menuDict["main"].show()
 
     def build_MM(self, parentMenu=None):
         menuDict = {'NE': list(),
@@ -94,101 +368,60 @@ class ViewportToolbox(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportRadialMenu(parentMenu=parentMenu)
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget,
-                                                              command=None,
-                                                              closeOnPress=True))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget,
-                                                              command=None,
-                                                              closeOnPress=True))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget,
-                                                              command=None,
-                                                              closeOnPress=True))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget,
-                                                              command=None,
-                                                              closeOnPress=True))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget,
-                                                              command=None,
-                                                              closeOnPress=True))
+        if not self.rawJsonBaseData:
+            self.loadData()
 
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU NW', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget, command=None,
-                                                              closeOnPress=True))
+        if not self.rawJsonBaseData:
+            return
 
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU SE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget, command=None,
-                                                              closeOnPress=True))
+        # assign the main menu to the dict
+        self.menuDict["main"] = ViewportRadialMenu(parentMenu=None)
 
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU SW', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget, command=None,
-                                                              closeOnPress=True,
-                                                              subMenuClass=SubToolboxWidget,
-                                                              popupSubMenu=True
-                                                              ))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU SE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget, command=None,
-                                                              closeOnPress=True))
-        self.markingMenuWidget.addButton(quad='radial',
-                                         button=RadialToolboxButton(label='SubMENU SE', parent=self.markingMenuWidget,
-                                                              cls=self.markingMenuWidget, command=None,
-                                                              closeOnPress=True))
+        # create all sub menus and parent them
+        for menu in self.rawJsonBaseData.get('subMenus', list()):
+            if menu['name'] == "main":
+                continue
+            self.menuDict[menu['name']] = ViewportRadialMenu(parentMenu=self.menuDict[menu['parent']])
 
+        for menu in self.rawJsonBaseData.get('subMenus', list()):
+            for menuItem in menu.get('menuItems', list()):
+                button = RadialToolboxButton(parent=self.menuDict[menu['name']], cls=self.menuDict[menu['name']],
+                                             **menuItem)
+                if menuItem['subMenuClass'] is not None:
+                    button.subMenu = self.menuDict[menuItem['subMenuClass']]
+                self.menuDict[menu['name']].addButton('radial', button=button)
 
-class SubToolboxWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+        """
+        label='SubMENU NE', parent=self,
+                                                  cls=self,
+                                                  command=None,
+                                                  popupSubMenu=True,
+                                                  subMenuClass=SubToolboxWidget,
+                                                  closeOnPress=True
+        """
 
-        if self.parentMenu:
-            self.parentMenu.setEnabled(False)
-
-        self.addButton(quad='NE', button=ToolboxButton(label='SubMENU NE', parent=self, cls=self,
-                                                       command=None,
-                                                       closeOnPress=True))
-
-        self.addButton(quad='NW', button=ToolboxButton(label='SubMENU NW', parent=self, cls=self, command=None,
-                                                       closeOnPress=True))
-
-        self.addButton(quad='SE', button=ToolboxButton(label='SubMENU SE', parent=self, cls=self, command=None,
-                                                       closeOnPress=True))
-
-        self.addButton(quad='SW', button=ToolboxButton(label='SubMENU SW', parent=self, cls=self, command=None,
-                                                       closeOnPress=True,
-                                                       subMenuClass=SubToolboxWidget,
-                                                       popupSubMenu=True
-                                                       ))
 
 class RadialToolboxButton(ToolboxButton):
     hoverSignal = Signal(object)
 
-    def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
+    def __init__(self, label, parent, cls=None, icon=str(), command=str(), closeOnPress=True, popupSubMenu=False,
                  subMenuClass=None,
                  subMenu=None,
-                 iconWidth=16, iconHeight=16,
+                 iconWidth=32, iconHeight=32,
                  ):
         super(RadialToolboxButton, self).__init__(label, parent)
 
         self.subMenu = subMenu  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
-        self.setFixedSize(48, 22)
         self.executed = False
         self.labelText = label
         self.cls = cls
-        self.command = command
+
+        if command:
+            self.command = lambda: mel.eval(command)
+        else:
+            self.command = None
+
         self.closeOnPress = closeOnPress
         self.clicked.connect(self.buttonClicked)
         self.setNonHoverSS()
@@ -198,16 +431,19 @@ class RadialToolboxButton(ToolboxButton):
         if icon:
             fontWidth += iconWidth
         self.setText(str())
-        self.setFixedSize(32,32)
-        if popupSubMenu:
-            self.icon = IconPath + '\popupMenu.png'
+        self.setFixedSize(36, 36)
+        self.pixmap = QPixmap()
+        if icon:
+            self.icon = os.path.join(IconPath, icon)
+            if not os.path.isfile(self.icon):
+                self.icon = ':/%s' % icon
         else:
-            self.icon = icon
+            self.icon = os.path.join(IconPath, 'blank.png')
+        self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
-        if self.icon:
-            self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        else:
-            self.pixmap = QPixmap()
+        self.popupPixmap = QPixmap(IconPath + '\popupSubmenu.png')
+        self.popupPixmap = self.popupPixmap.scaled(36, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.setNonHoverSS()
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     def buttonClicked(self):
@@ -227,8 +463,8 @@ class RadialToolboxButton(ToolboxButton):
     def setHoverSS(self):
         self.setStyleSheet("ToolboxButton {"
                            "text-align:left;"
-                           "border-radius: 16;"
-                           "border-color: #ffa02f}"
+                           "border-radius: %s;"
+                           "border-color: #ffa02f}" % str(self.width() * 0.5)
                            )
 
     def setNonHoverSS(self):
@@ -238,20 +474,24 @@ class RadialToolboxButton(ToolboxButton):
                            "border-width: 1px;"
                            "border-color: #1e1e1e;"
                            "border-style: solid;"
-                           "border-radius: 16;"
+                           "border-radius: %s;"
                            "padding: 3px;"
                            "font-size: 12px;"
                            "text-align:left;"
                            "padding-left: 5px;"
                            "padding-right: 5px;"
-                           "}"
+                           "}" % str(self.width() * 0.5)
                            )
 
     def mouseMoveEvent(self, event):
         self.setHoverSS()
         if self.popupSubMenu:
             if not self.subMenu:
+                # probably remove this
                 self.subMenu = self.subMenuClass(parentMenu=self.cls)
+            self.subMenu.parentPos = QPointF(self.pos().x() + self.width() * 0.5,
+                                             self.pos().y() + self.height() * 0.5)
+            self.subMenu.returnButtonPos = self.cls.parentPos
             self.subMenu.show()
         self.hoverSignal.emit(self)
 
@@ -273,12 +513,15 @@ class RadialToolboxButton(ToolboxButton):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        if self.popupSubMenu:
+            painter.drawPixmap(0, 0, self.popupPixmap)
         if self.pixmap:
             painter.drawPixmap(pos_x, pos_y, self.pixmap)
+
         font = painter.font()
         font.setBold(True)
         painter.setFont(font)
-        #painter.drawText(self.pixmap.width() + 12, 16, self.labelText)  # fifth option
+        # painter.drawText(self.pixmap.width() + 12, 16, self.labelText)  # fifth option
 
 
 class EventFilterManager(object):
@@ -405,13 +648,11 @@ class QtMarkingMenu(QObject):
             self.isPressed = False
             self.pressedTimer = 0
         if event.type() == QEvent.MouseButtonPress:
-            print ('press')
             if not self.isPressed:
                 self.isPressed = True
                 self.pressedTimer = 0
         # print event.type()
         if event.type() == QEvent.Wheel:
-            print ('wheel', event.angleDelta())
             if Qt.AltModifier == self.keyMod:
                 if event.angleDelta().x() > 0:
                     cmds.currentTime(cmds.currentTime(query=True) + 1)
@@ -1100,145 +1341,3 @@ class animated_scene(QWidget):
     def mousePressEvent(self, event):
         for item in self.all_items:
             item.mousePressEvent(event)
-
-
-class ViewportRadialMenu(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
-                 *args, **kwargs):
-        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict)
-
-    def addAllButtons(self):
-        for key, items in self.menuDict.items():
-            for item in items:
-                self.addButton(quad=key,
-                               button=item)
-
-    def show(self):
-        self.cursorPos = QCursor.pos()
-        self.currentCursorPos = QCursor.pos()
-        self.arrangeButtons()
-        super(ViewportRadialMenu, self).show()
-
-    def arrangeButtons(self):
-        maxButtons = len(self.widgets['radial'])
-        self.radius = 100
-        for index, button in enumerate(self.widgets['radial']):
-            angle = index * 360.0 / maxButtons
-            pos = QPoint(self.cursorPos.x(), self.cursorPos.y())
-            offset = QPoint(math.sin((math.radians(angle))) * self.radius,
-                            -math.cos((math.radians(angle))) * self.radius)
-            halfSize = QPoint(button.width() * 0.5, button.height() * 0.5)
-            button.move(pos + offset - halfSize)
-            button.absPos = button.pos()  # + b.parent().pos()
-
-    def addButton(self, quad='radial', button=QWidget):
-        '''
-        Add buttons to the widget, don't arrange them here
-        :param quad:
-        :param button:
-        :return:
-        '''
-
-        if isinstance(button, ToolboxButton):
-            self.widgets[quad].append(button)
-            button.absPos = button.pos()
-            self.allButtons.append(button)
-            button.hoverSignal.connect(self.buttonHovered)
-        elif isinstance(button, ToolboDivider):
-            self.widgets[quad].append(button)
-        elif isinstance(button, ToolboxDoubleButton):
-            self.widgets[quad].append(button)
-            for b in button.buttons:
-                b.hoverSignal.connect(self.buttonHovered)
-                b.absPos = button.pos()  # + b.parent().pos()
-                self.allButtons.append(b)
-
-    def paintEvent(self, event):
-        qp = QPainter()
-        qp.begin(self)
-        lineColor = QColor(68, 68, 68, 128)
-        linePenColor = QColor(255, 160, 47, 255)
-        blank = QColor(124, 124, 124, 32)
-
-        qp.setPen(QPen(QBrush(lineColor), 2))
-        grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, "#323232")
-        grad.setColorAt(0.1, "#373737")
-        grad.setColorAt(1, "#323232")
-        qp.setBrush(QBrush(grad))
-        qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.drawRoundedRect(0, 0, self.width(), 20, 8, 8)
-
-        qp.setCompositionMode(qp.CompositionMode_Source)
-        qp.setRenderHint(QPainter.Antialiasing)
-
-        qp.setBrush(QBrush(blank))
-        qp.drawRoundedRect(self.rect(), 8, 8)
-        qp.setBrush(QBrush(lineColor))
-        qp.drawEllipse(self.cursorPos.x() - self.centralRadius / 2,
-                       self.cursorPos.y() - self.centralRadius / 2,
-                       self.centralRadius,
-                       self.centralRadius)
-        # print (self.currentCursorPos.x(), self.currentCursorPos.y())
-
-        if self.activeButton:
-            qp.setPen(QPen(QBrush(linePenColor), 4))
-            offset = 0
-            buttonPos = self.activeButton.absPos
-            '''
-            if isinstance(self.activeButton.parent(), ToolboxDoubleButton):
-                buttonPos += self.activeButton.parent().pos()
-            '''
-            if buttonPos.x() < self.cursorPos.x():
-                offset = self.activeButton.width()
-            endPoint = QPoint(buttonPos.x() + self.activeButton.width() / 2,
-                              buttonPos.y() + self.activeButton.height() / 2)
-            angle = math.atan2(self.cursorPos.x() - endPoint.x(), self.cursorPos.y() - endPoint.y())
-            # print ('angle', angle)
-            # print (math.cos(angle) * (self.centralRadius/2))
-            # print (math.sin(angle) * (self.centralRadius/2))
-
-            qp.drawLine(endPoint.x(),
-                        endPoint.y(),
-                        self.cursorPos.x() - (math.sin(angle) * (self.centralRadius / 1.5)),
-                        self.cursorPos.y() - (math.cos(angle) * (self.centralRadius / 1.5)))
-        '''
-        qp.setPen(QPen(QBrush(blank), 0))
-        qp.setBrush(QBrush(blank))
-        qp.drawRoundedRect(self.rect(), 8, 8)
-        '''
-        # super(ViewportDialog, self).paintEvent(event)
-        qp.end()
-
-    def getClosesWidget(self):
-        # print ('getClosesWidget')
-        distance = self.distance(self.cursorPos, self.currentCursorPos)
-        for w in self.allButtons:
-            w.setNonHoverSS()
-        if distance < self.scalar:
-            self.activeButton = None
-            return
-        if self.allButtons:
-            closest = 9999
-            closestWidget = None
-            for w in self.allButtons:
-                if not isinstance(w, ToolboxButton):
-                    # print ('skip', w)
-                    continue
-                # w.setNonHoverSS()
-                widgetPos = QPoint(w.absPos.x() + w.width() / 2, w.absPos.y() + w.height() / 2)
-                distance = self.distance(widgetPos, self.currentCursorPos)
-                if distance < closest:
-                    closestWidget = w
-                    closest = distance
-
-                # print (widgetPos, distance)
-            # print ('closest', closestWidget)
-            self.activeButton = closestWidget
-            if self.activeButton:
-                self.activeButton.setHoverSS()
-            self.update()
-
-    def distance(self, point_a, point_b):
-        distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
-        return distance

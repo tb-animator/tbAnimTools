@@ -1047,15 +1047,28 @@ class Pickwalk(toolAbstractFactory):
                                                            direction=direction,
                                                            destination=sel[1])
                 '''
-                if direction != 'up':
+                if direction == 'down':
                     # if left or right, create the reverse
                     self.pickwalkCreator.addPickwalkChain(
                         controls=sel,
                         direction=direction,
-                        loop=direction == 'left' or direction == 'right',
+                        loop=False,
+                        reciprocate=False,
+                        endOnSelf=False)
+                elif direction == 'left' or direction == 'right':
+                    self.pickwalkCreator.addPickwalkChain(
+                        controls=sel,
+                        direction=direction,
+                        loop=True,
                         reciprocate=True,
                         endOnSelf=False)
-
+                else:
+                    self.pickwalkCreator.addPickwalkChain(
+                        controls=sel,
+                        direction=direction,
+                        loop=False,
+                        reciprocate=False,
+                        endOnSelf=False)
 
             elif len(sel) > 2:
                 # add all objects in a chain
@@ -1063,7 +1076,7 @@ class Pickwalk(toolAbstractFactory):
                     controls=sel,
                     direction=direction,
                     loop=direction == 'left' or direction == 'right',
-                    reciprocate=True,
+                    reciprocate=direction != 'up',
                     endOnSelf=False)
         else:
             if len(sel) == 1 or len(sel) == 2:

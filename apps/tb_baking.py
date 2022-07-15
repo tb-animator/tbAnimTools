@@ -207,6 +207,7 @@ class BakeTools(toolAbstractFactory):
 
     crossSizeOption = 'tbBakeLocatorSize'
     worldOffsetSizeOption = 'tbBakeWorldOffsetSize'
+    motionControlizeOption = 'tbMotionControlSize'
     assetName = 'TempControls'
     worldOffsetAssetName = 'WorldOffsetControls'
     constraintTargetAttr = 'constraintTarget'
@@ -241,6 +242,9 @@ class BakeTools(toolAbstractFactory):
                                                defaultValue=0.5,
                                                label='World offset control size',
                                                minimum=0.1, maximum=100, step=0.1)
+
+
+        #motionControlSizeWidget.changedSignal.connect(self.updatePreview)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
         worldOffsetSizeWidget.changedSignal.connect(self.updatePreview)
 
@@ -266,6 +270,7 @@ class BakeTools(toolAbstractFactory):
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
+        #self.layout.addWidget(motionControlSizeWidget)
         self.layout.addWidget(worldOffsetSizeWidget)
 
         self.layout.addWidget(constraintChannelHeader)
@@ -1350,3 +1355,5 @@ class BakeTools(toolAbstractFactory):
         for s in sel:
             pm.pointConstraint(translateAnimOFfsetNodes[s], s)
             pm.orientConstraint(rotateAnimOffsetNodes[s], s)
+
+

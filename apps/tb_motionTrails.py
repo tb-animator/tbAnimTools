@@ -73,6 +73,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['MotionTrails.removeMotionTrail()'],
                                      help=maya.stringTable['tbCommand.removeMotionTrail']))
+        self.addCommand(self.tb_hkey(name='motionPathSelected',
+                                     annotation='',
+                                     category=self.category, command=['MotionTrails.motionPathSelected()'],
+                                     help=maya.stringTable['tbCommand.motionPathSelected']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -95,7 +100,7 @@ class MotionTrails(toolAbstractFactory):
     trailThicknessOption = 'tbMotrailThicknessOption'
     trailframeMarkerSizesOption = 'tbMotrailframeMarkerSizesOption'
     showframeMarkerOption = 'tbMotrailshowFrameMarkerOption'
-
+    motionControlSizeOption = 'tbMotionControlSize'
     motionTrailNodes = ['motionTrailShape', 'motionTrail1Handle', 'motionTrail']
 
     ignoredAttributes = ['points', 'boundingBox', 'drawOverride', 'frames', 'boundingBoxMax']
@@ -164,6 +169,13 @@ class MotionTrails(toolAbstractFactory):
         fadeLayout.addWidget(trailThicknessWidget)
         fadeLayout.addWidget(trailframeMarkerSizesWidget)
         fadeLayout.addWidget(showTicksOptionWidget)
+
+        motionControlSizeWidget = intFieldWidget(optionVar=self.motionControlSizeOption,
+                                                 defaultValue=0.5,
+                                                 label='Motion path control size',
+                                                 minimum=0.1, maximum=100, step=0.1)
+
+        self.layout.addWidget(motionControlSizeWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -516,3 +528,91 @@ class MotionTrails(toolAbstractFactory):
         if not conns:
             return list()
         return list(set(conns))
+
+    def motionPathSelected(self):
+        # TODO - undo chunk
+        # asset
+        # toggle fraction mode boolean on temp control
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return
+        startTime = self.funcs.getTimelineMin()
+        endTime = self.funcs.getTimelineMax()
+        isCroppped = False
+        if self.funcs.isTimelineHighlighted():
+            startTime, endTime = self.funcs.getTimelineHighlightedRange()
+            isCroppped = True
+
+        tempNodes = dict()
+        tempConstraints = dict()
+
+        for s in sel:
+            tmp = str(self.funcs.tempControl(name=s, suffix='Motion', drawType='cross',
+                                             scale=pm.optionVar.get(self.motionControlSizeOption, 0.5)))
+            cnst = cmds.pointConstraint(s, tmp)
+            tempNodes[s] = tmp
+            tempConstraints[s] = cnst
+
+        cmds.bakeResults(list(tempNodes.values()),
+                         time=(startTime, endTime),
+                         simulation=False,
+                         bakeOnOverrideLayer=False,
+                         sampleBy=1)
+        pm.delete(list(tempConstraints.values()))
+        resultLayer = cmds.animLayer('motionPath', override=True)
+
+        for s in sel:
+            keyValues = cmds.keyframe(tempNodes[s],
+                                      at=('translateX', 'translateY', 'translateZ'),
+                                      q=True,
+                                      valueChange=True)
+
+            offset = int(len(keyValues) / 3)
+            curveInfo = list()
+            for i in range(0, offset):
+                curveInfo.append([keyValues[i], keyValues[i + offset], keyValues[i + offset + offset]])
+            divisions = int(endTime - startTime)
+            curve = cmds.curve(name=s + '_path', worldSpace=True, p=curveInfo)
+
+            resampledCurve = cmds.rebuildCurve(curve,
+                                               ch=False,
+                                               replaceOriginal=True,
+                                               rebuildType=0,
+                                               end=True,
+                                               keepRange=False,
+                                               keepControlPoints=True,
+                                               keepEndPoints=True,
+                                               keepTangents=False,
+                                               spans=divisions,
+                                               degree=1,
+                                               tolerance=0.01)[0]
+
+            cmds.select(tempNodes[s], replace=True)
+            cmds.cutKey()
+            cmds.select(curve, add=True)
+            motionPath = cmds.pathAnimation(fractionMode=False,
+                                            follow=False,
+                                            startTimeU=startTime,
+                                            endTimeU=endTime)
+
+            pCurve = pm.PyNode(curve)
+            maxValue = len(curveInfo)
+            lastParam = -1
+            nearestPointOnCurve = cmds.createNode('nearestPointOnCurve')
+            cmds.connectAttr(curve + '.worldSpace', nearestPointOnCurve + '.inputCurve')
+            for index in range(int(endTime - startTime) + 1):
+                cmds.setAttr(nearestPointOnCurve + '.inPosition', curveInfo[index][0], curveInfo[index][1], curveInfo[index][2])
+                uParam = cmds.getAttr(nearestPointOnCurve + '.parameter')
+
+                cmds.setKeyframe(motionPath + '.u', value=uParam, time=index + int(startTime))
+
+            pm.parentConstraint(tempNodes[s], s, layer=resultLayer, skipRotate=('x', 'y', 'z'))
+            cmds.delete(nearestPointOnCurve)
+        # resultLayer
+        if isCroppped:
+            timeWeightDict = {startTime - 1: 0,
+                              startTime: 1,
+                              endTime: 1, endTime + 1: 0}
+            for time, value in timeWeightDict.items():
+                cmds.setKeyframe('{0}.weight'.format(resultLayer), time=(time,), value=value)
+                cmds.keyTangent('{0}.weight'.format(resultLayer), time=(time,), inTangentType='flat', outTangentType='flat')

@@ -30,18 +30,18 @@ import maya.api.OpenMaya as om2
 import pymel.core.datatypes as dt
 import math
 from Abstract import *
-
+maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 
@@ -108,6 +108,12 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='quickCopyKeysConnect',
                                      annotation='copy-connect selected keys to the current frame',
                                      category=self.category, command=['KeyModifiers.quickCopyKeys(connect=True)']))
+        self.addCommand(self.tb_hkey(name='clampKeysBelow',
+                                     annotation=maya.stringTable['tbCommand.clampKeysBelow'],
+                                     category=self.category, command=['KeyModifiers.clampCurve(low=True)']))
+        self.addCommand(self.tb_hkey(name='clampKeysAbove',
+                                     annotation=maya.stringTable['tbCommand.clampKeysAbove'],
+                                     category=self.category, command=['KeyModifiers.clampCurve(low=False)']))
 
         return self.commandList
 
@@ -119,7 +125,7 @@ class KeyModifiers(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'KeyModifiers'
     hotkeyClass = hotkeys()
@@ -276,7 +282,7 @@ class KeyModifiers(toolAbstractFactory):
             cmds.filterCurve()
 
     @staticmethod
-    def getMatrix(node, matrix = "worldMatrix"):
+    def getMatrix(node, matrix="worldMatrix"):
         '''
         Gets the world matrix of an object based on name.
         '''
@@ -326,7 +332,7 @@ class KeyModifiers(toolAbstractFactory):
             return False
         keyTimes = sorted(list(set(selectedKeyTimes)))
         keyTimes = [keyTimes[0], keyTimes[-1]]
-        cmds.keyframe(animation='keys', option='over', relative=True, timeChange=currentTime-keyTimes[not start])
+        cmds.keyframe(animation='keys', option='over', relative=True, timeChange=currentTime - keyTimes[not start])
 
     def flipKeyValues(self, first=False, last=False):
         """
@@ -339,7 +345,7 @@ class KeyModifiers(toolAbstractFactory):
         for curve in selectedCurves:
             selectedKeyTimes = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
             selectedKeyValues = cmds.keyframe(curve, query=True, selected=True, valueChange=True)
-            #print (curve, selectedKeyTimes)
+            # print (curve, selectedKeyTimes)
             pivotValue = 0
             if first:
                 pivotValue = selectedKeyValues[0]
@@ -413,3 +419,83 @@ class KeyModifiers(toolAbstractFactory):
         angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
         _node = pm.PyNode(node)
         pm.setAttr(_node.rotate, angles)
+
+    def clampCurve(self, low=True):
+        currentTime = cmds.currentTime(query=True)
+        graphEditorCurves = self.funcs.get_graph_editor_curves()
+        selectedCurves = self.funcs.get_selected_curves()
+        insertTimes = dict()
+        inFlatTimes = dict()
+        outFlatTimes = dict()
+        clippedTimes = dict()
+
+        if not selectedCurves:
+            selectedCurves = graphEditorCurves
+        print ('graphEditorCurves', graphEditorCurves)
+        if not selectedCurves:
+            return cmds.warning('No curves selected')
+
+        for curve in selectedCurves:
+            insertTimes[curve] = list()
+            inFlatTimes[curve] = list()
+            outFlatTimes[curve] = list()
+            clippedTimes[curve] = list()
+
+            currentVal = cmds.keyframe(curve, query=True, eval=True, time=(currentTime,))
+            keyRange = cmds.keyframe(curve, query=True, timeChange=True)
+
+            for idx in range(int(keyRange[-1] - keyRange[0]) + 1):
+                t = idx + int(keyRange[0])
+                prevVal = cmds.keyframe(curve, query=True, eval=True, time=(t - 1,))
+                val = cmds.keyframe(curve, query=True, eval=True, time=(t,))
+                nextVal = cmds.keyframe(curve, query=True, eval=True, time=(t + 1,))
+
+                if low:
+                    if prevVal < currentVal and nextVal >= currentVal:
+                        insertTimes[curve].append(t)
+                        outFlatTimes[curve].append(t)
+
+                    if nextVal < currentVal and prevVal >= currentVal:
+                        insertTimes[curve].append(t)
+                        inFlatTimes[curve].append(t)
+                else:
+                    if prevVal > currentVal and nextVal <= currentVal:
+                        insertTimes[curve].append(t)
+                        outFlatTimes[curve].append(t)
+
+                    if nextVal > currentVal and prevVal <= currentVal:
+                        insertTimes[curve].append(t)
+                        inFlatTimes[curve].append(t)
+
+            for t in insertTimes[curve]:
+                cmds.setKeyframe(curve, time=(t,), insert=True)
+
+            keyRange = cmds.keyframe(curve, query=True, timeChange=True)
+            keyValues = cmds.keyframe(curve, query=True, valueChange=True)
+
+            for i, v in zip(keyRange, keyValues):
+                if low:
+                    if v > currentVal[0]:
+                        clippedTimes[curve].append(i)
+                else:
+                    if v < currentVal[0]:
+                        clippedTimes[curve].append(i)
+            for t in clippedTimes[curve]:
+                cmds.setKeyframe(curve, time=(t,), value=currentVal[0])
+                cmds.keyTangent(curve,
+                                edit=True,
+                                inTangentType='flat',
+                                outTangentType='flat',
+                                time=(t,))
+            for t in inFlatTimes[curve]:
+                cmds.setKeyframe(curve, time=(t,), inTangentType='flat')
+                cmds.keyTangent(curve,
+                                edit=True,
+                                inTangentType='flat',
+                                time=(t,))
+            for t in outFlatTimes[curve]:
+                cmds.setKeyframe(curve, time=(t,), outTangentType='flat')
+                cmds.keyTangent(curve,
+                                edit=True,
+                                outTangentType='flat',
+                                time=(t,))
