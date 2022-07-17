@@ -118,7 +118,7 @@
       "menuItems": [
         {
           "label": "New Additive Layer",
-          "command": null,
+          "command": "quickCreateAdditiveLayer",
           "icon": "newAdditiveLayer.png",
           "popupSubMenu": false,
           "closeOnPress": true,
@@ -126,7 +126,7 @@
         },
         {
           "label": "New Override Layer",
-          "command": null,
+          "command": "quickCreateOverrideLayer",
           "icon": "newOverrideLayer.png",
           "popupSubMenu": false,
           "closeOnPress": true,
