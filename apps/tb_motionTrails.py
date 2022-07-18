@@ -162,7 +162,7 @@ class MotionTrails(toolAbstractFactory):
         self.layout.addWidget(infoText)
 
         self.layout.addLayout(fadeLayout)
-        #self.layout.addLayout(markerLayout)
+        # self.layout.addLayout(markerLayout)
         fadeLayout.addWidget(trailFadeFramesWidget)
         fadeLayout.addWidget(trailPreFramesWidget)
         fadeLayout.addWidget(trailPostFramesWidget)
@@ -533,18 +533,24 @@ class MotionTrails(toolAbstractFactory):
         # TODO - undo chunk
         # asset
         # toggle fraction mode boolean on temp control
+
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return
+
         startTime = self.funcs.getTimelineMin()
         endTime = self.funcs.getTimelineMax()
         isCroppped = False
+
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
             isCroppped = True
 
         tempNodes = dict()
         tempConstraints = dict()
+        motionPaths = list()
+
+        cmds.undoInfo(openChunk=True, chunkName="motionPathSelected")
 
         for s in sel:
             tmp = str(self.funcs.tempControl(name=s, suffix='Motion', drawType='cross',
@@ -559,6 +565,7 @@ class MotionTrails(toolAbstractFactory):
                          bakeOnOverrideLayer=False,
                          sampleBy=1)
         pm.delete(list(tempConstraints.values()))
+
         resultLayer = cmds.animLayer('motionPath', override=True)
 
         for s in sel:
@@ -590,24 +597,31 @@ class MotionTrails(toolAbstractFactory):
             cmds.select(tempNodes[s], replace=True)
             cmds.cutKey()
             cmds.select(curve, add=True)
+
             motionPath = cmds.pathAnimation(fractionMode=False,
                                             follow=False,
                                             startTimeU=startTime,
                                             endTimeU=endTime)
+            motionPaths.append(motionPath)
 
             pCurve = pm.PyNode(curve)
             maxValue = len(curveInfo)
             lastParam = -1
             nearestPointOnCurve = cmds.createNode('nearestPointOnCurve')
             cmds.connectAttr(curve + '.worldSpace', nearestPointOnCurve + '.inputCurve')
+
             for index in range(int(endTime - startTime) + 1):
-                cmds.setAttr(nearestPointOnCurve + '.inPosition', curveInfo[index][0], curveInfo[index][1], curveInfo[index][2])
+                cmds.setAttr(nearestPointOnCurve + '.inPosition', curveInfo[index][0], curveInfo[index][1],
+                             curveInfo[index][2])
                 uParam = cmds.getAttr(nearestPointOnCurve + '.parameter')
 
                 cmds.setKeyframe(motionPath + '.u', value=uParam, time=index + int(startTime))
 
-            pm.parentConstraint(tempNodes[s], s, layer=resultLayer, skipRotate=('x', 'y', 'z'))
+            cmds.select(tempNodes[s], s, replace=True)
+            pm.parentConstraint(layer=resultLayer, skipRotate=('x', 'y', 'z'), weight=1)
+            cmds.setAttr(motionPath + '.fractionMode', 1)
             cmds.delete(nearestPointOnCurve)
+
         # resultLayer
         if isCroppped:
             timeWeightDict = {startTime - 1: 0,
@@ -615,4 +629,8 @@ class MotionTrails(toolAbstractFactory):
                               endTime: 1, endTime + 1: 0}
             for time, value in timeWeightDict.items():
                 cmds.setKeyframe('{0}.weight'.format(resultLayer), time=(time,), value=value)
-                cmds.keyTangent('{0}.weight'.format(resultLayer), time=(time,), inTangentType='flat', outTangentType='flat')
+                cmds.keyTangent('{0}.weight'.format(resultLayer), time=(time,), inTangentType='flat',
+                                outTangentType='flat')
+
+        cmds.undoInfo(closeChunk=True)
+
