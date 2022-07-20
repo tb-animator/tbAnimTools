@@ -24,9 +24,9 @@
           "label": "Temp Controls",
           "icon": "newTempControls.png",
           "command": null,
-          "popupSubMenu": false,
+          "popupSubMenu": true,
           "closeOnPress": true,
-          "subMenuClass": null
+          "subMenuClass": "tempControlsMenu"
         },
 
         {
@@ -62,7 +62,7 @@
         {
           "label": "Cache Selected Characters",
           "icon": "gpuCacheCreate.png",
-          "command": null,
+          "command": "cacheSelectedCharacter",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -70,7 +70,7 @@
         {
           "label": "Cache Selected Characters Unload",
           "icon": "gpuCacheUnload.png",
-          "command": null,
+          "command": "cacheSelectedCharacterUnload",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -78,7 +78,7 @@
         {
           "label": "Import Cache",
           "icon": "gpuCacheLoad.png",
-          "command": null,
+          "command": "importCache",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -86,6 +86,7 @@
         {
           "label": "Restore Rig",
           "icon": "gpuCacheRestore.png",
+          "command": "loadReferenceFromCache",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -98,14 +99,46 @@
       "menuItems": [
         {
           "label": "Quick Merge All Layers",
-          "command": null,
+          "command": "quickMergeAllLayers",
+          "icon": "mergeConnections.png",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
         },
         {
-          "label": "Bake To Override",
-          "command": null,
+          "label": "Bake To Override Layer",
+          "command": "simpleBakeToOverride",
+          "icon": "bakeAnimation.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Counter Animation Layer",
+          "command": "counterAnimLayer",
+          "icon": "arcLengthDim.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
+    },
+    {
+      "name": "tempControlsMenu",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "New Additive Layer",
+          "command": "quickCreateAdditiveLayer",
+          "icon": "newAdditiveLayer.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "New Override Layer",
+          "command": "quickCreateOverrideLayer",
+          "icon": "newOverrideLayer.png",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -131,7 +164,24 @@
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
+        },
+        {
+          "label": "Bake To Override Layer",
+          "command": "simpleBakeToOverride",
+          "icon": "bakeAnimation.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Counter Animation Layer",
+          "command": "counterAnimLayer",
+          "icon": "arcLengthDim.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
         }
+
       ]
     },
     {
