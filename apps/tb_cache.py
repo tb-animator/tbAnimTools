@@ -22,7 +22,9 @@
 
 *******************************************************************************
 '''
-
+"""
+TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
+"""
 import pymel.core as pm
 import maya.cmds as cmds
 

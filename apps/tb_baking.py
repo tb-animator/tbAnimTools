@@ -376,7 +376,7 @@ class BakeTools(toolAbstractFactory):
             mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
             pm.delete(resultContainer)
 
-    def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True):
+    def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True, skipMotionTrails=False):
         if not sel:
             sel = pm.ls(sl=True)
         locs = []
@@ -437,15 +437,17 @@ class BakeTools(toolAbstractFactory):
                                          force=True,
                                          addNode=constraint)
                 if pm.optionVar.get(self.tempControlMotionTrailOption, False):
-                    for l in locs:
-                        cmds.select(str(l), replace=True)
-                        mel.eval('createMotionTrail')
+                    if not skipMotionTrails:
+                        for l in locs:
+                            cmds.select(str(l), replace=True)
+                            mel.eval('createMotionTrail')
                 if select:
                     pm.select(locs, replace=True)
                 return locs
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
+
 
     def bakeSelectedHotkey(self):
         sel = pm.ls(sl=True)

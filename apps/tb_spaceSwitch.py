@@ -815,7 +815,7 @@ class SpaceSwitch(toolAbstractFactory):
         for s in selection:
             timeDict[s] = self.getMatchRange(s, timeline=False)
 
-        combinedTimeList = sorted({x for v in timeDict.itervalues() for x in v})
+        combinedTimeList = sorted({x for v in list(timeDict.values()) for x in v})
 
         if len(combinedTimeList) > 1:
             with self.funcs.suspendUpdate():

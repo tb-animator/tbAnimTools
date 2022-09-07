@@ -438,7 +438,7 @@ class ViewportDialog(QDialog):
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
         qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.drawRoundedRect(0, 0, self.width(), 20, 8, 8)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), self.width() * 0.5, self.width() * 0.5)
 
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
@@ -567,18 +567,15 @@ class ViewportDialog(QDialog):
             self.setWindowOpacity(opacity)
 
 
-
-
-
 class ReturnButton(QPushButton):
     hoverSignal = Signal(object)
 
-    def __init__(self, label, parent, cls=None, closeOnPress=True):
+    def __init__(self, label, parent, cls=None, closeOnPress=True, radial=False):
         super(ReturnButton, self).__init__(label, parent)
         self.setIcon(QIcon(':\polySpinEdgeBackward.png'))
         self.setFixedSize(32, 32)
         self.cls = cls
-
+        self.radial = radial
         self.closeOnPress = closeOnPress
         self.clicked.connect(self.buttonClicked)
         self.setNonHoverSS()
@@ -596,32 +593,48 @@ class ReturnButton(QPushButton):
         return bb.contains(pos)
 
     def setHoverSS(self):
+        rounded = int(self.width()) * 0.5
         self.setStyleSheet("ReturnButton{"
                            "border-color: #ffa02f;"
-                           "border-radius: 16;"
+                           "border-radius: %s;"
                            "border-width: 4px;"
                            "border-color: #1e1e1e;"
-                           "}"
+                           "}" % rounded
                            )
 
     def setNonHoverSS(self):
+        rounded = int(self.width()) * 0.5
+        if self.radial:
+            self.setStyleSheet("ReturnButton{"
+                               "color: #b1b1b1;"
+                               "background-color: qradialgradient(cx: 0.5, cy: 0.5 fx: 0.5, fy: 0.5, radius: 1, stop: 0 #bdb3b2 opacity 1, stop: 0.5 #565656);"
+                               "border-color: #1e1e1e;"
+                               "border-radius: %s;"
+                               "}" % (rounded)
+                               )
+            return
         self.setStyleSheet("ReturnButton{"
                            "color: #b1b1b1;"
                            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
                            "border-width: 4px;"
                            "border-color: #1e1e1e;"
-                           "border-radius: 16;"
-                           "}"
+                           "border-radius: %s;"
+                           "}" % rounded
                            )
 
     def mouseMoveEvent(self, event):
-        self.setHoverSS()
-        self.hoverSignal.emit(self)
-        # print ('hover hide current', self.cls)
-        self.cls.hideCurrentLayer()
+        if self.distance(QPoint(self.width() * 0.5, self.height() * 0.5), event.pos()) <= self.height() * 0.5:
+            self.setHoverSS()
+            self.hoverSignal.emit(self)
+            # print ('hover hide current', self.cls)
+            self.cls.hideCurrentLayer()
 
     def executeCommand(self):
         pass
+
+    def distance(self, point_a, point_b):
+        distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
+        return distance
 
 
 class ToolboxButton(QPushButton):

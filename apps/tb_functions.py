@@ -24,6 +24,7 @@
 '''
 import pymel.core as pm
 import maya.cmds as cmds
+import maya.OpenMaya as om
 import maya.OpenMayaAnim as oma
 import math
 import maya.mel as mel
@@ -1832,3 +1833,26 @@ class functions(object):
 
         # No connections means the first index is available
         return 0
+
+    def selectFromScreenApi(self, x, y, x_rect=None, y_rect=None):
+        # get current selection
+        sel = om.MSelectionList()
+        om.MGlobal.getActiveSelectionList(sel)
+
+        # api.MGlobal.selectionMethod()
+        # select from screen
+        args = [x, y]
+        if x_rect and y_rect:
+            om.MGlobal.selectFromScreen(x, y, x_rect, y_rect, om.MGlobal.kReplaceList)
+        else:
+            om.MGlobal.selectFromScreen(x, y, om.MGlobal.kReplaceList, 0)
+        objects = om.MSelectionList()
+        om.MGlobal.getActiveSelectionList(objects)
+
+        # restore selection
+        om.MGlobal.setActiveSelectionList(sel, om.MGlobal.kReplaceList)
+
+        # return the objects as strings
+        fromScreen = []
+        objects.getSelectionStrings(fromScreen)
+        return fromScreen

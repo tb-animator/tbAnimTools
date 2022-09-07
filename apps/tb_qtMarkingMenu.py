@@ -52,8 +52,30 @@ class ViewportRadialMenu(ViewportDialog):
         self.parentPos = QPoint(0, 0)  # the button position that raised this menu
         self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
         self.radius = 100
+        self.ringWidth = 64
+        self.innerRing = self.radius - 0.5*self.ringWidth
+        self.outerRing = self.radius + 0.5*self.ringWidth
+        self.ringColour = QColor(255, 160, 47, 32)
+        self.ringAlpha = 64
+        self.ringAlphaDisabled = 32
+
+        if self.parentMenu:
+            self.innerRing = self.parentMenu.outerRing
+            self.outerRing = self.parentMenu.outerRing + self.ringWidth
+            self.ringColour.setAlpha(self.ringAlpha)
+            self.returnButton.radial = True
+            self.returnButton.setFixedSize(self.innerRing, self.innerRing)
+            self.returnButton.setNonHoverSS()
         self.maxButtons = 0
         self.labelText = 'blank'
+
+    def enableLayer(self):
+        super(ViewportRadialMenu, self).enableLayer()
+        self.ringColour.setAlpha(self.ringAlpha)
+
+    def disableLayer(self):
+        super(ViewportRadialMenu, self).disableLayer()
+        self.ringColour.setAlpha(self.ringAlphaDisabled)
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -80,8 +102,9 @@ class ViewportRadialMenu(ViewportDialog):
         self.maxButtons = len(self.widgets['radial'])
         initialAngle = 0
         if self.parentMenu:
-            radius = self.distance(self.centralPoint, self.parentPos) + 64
-            circuference = 2 * 3.14 * radius
+            self.radius = self.distance(self.centralPoint, self.parentPos) + self.ringWidth
+            radius = self.radius
+            circuference = 2 * 3.14 * self.radius
             test = circuference % 64
             increment = 360.0 / (circuference / 64)
             initialAngle = self.getAngle(self.centralPoint, self.parentPos)
@@ -110,9 +133,11 @@ class ViewportRadialMenu(ViewportDialog):
         if self.parentMenu:
             delta = self.parentMenu.cursorPos - self.cursorPos
             delta = om2.MVector(delta.x(), delta.y(), 0).normal()
-            # print ('returnButton', delta)
+            # resize the return button and refresh the stylesheet
+            #self.returnButton.setFixedSize(self.innerRing, self.innerRing)
             self.returnButton.move(self.returnButtonPos.x() - self.returnButton.width() * 0.5,
                                    self.returnButtonPos.y() - self.returnButton.height() * 0.5)
+            self.returnButton.setNonHoverSS()
 
     def addButton(self, quad='radial', button=QWidget):
         '''
@@ -158,6 +183,23 @@ class ViewportRadialMenu(ViewportDialog):
         qp.setBrush(QBrush(blank))
         qp.drawRoundedRect(self.rect(), 8, 8)
         qp.setBrush(QBrush(lineColor))
+
+
+        brush = QBrush(self.ringColour)
+        cubicPath = QPainterPath(self.centralPoint)
+
+        outer = QRectF(0, 0, 2 * self.outerRing, 2 * self.outerRing)
+        inner = QRectF(0, 0, 2 * self.innerRing, 2 * self.innerRing)
+        outer.moveTo(self.centralPoint.x() - outer.width() * 0.5, self.centralPoint.y() - outer.height() * 0.5)
+        inner.moveTo(self.centralPoint.x() - inner.width() * 0.5, self.centralPoint.y() - inner.height() * 0.5)
+        cubicPath.addEllipse(inner)
+        cubicPath.addEllipse(outer)
+        radialGradient = QRadialGradient(self.centralPoint, self.outerRing, QPointF(self.centralPoint.x(), self.centralPoint.y()), self.innerRing)
+        radialGradient.setColorAt(0.0, QColor(142, 124, 123, self.ringColour.alpha()))
+        radialGradient.setColorAt(0.2, QColor(163, 149, 148, self.ringColour.alpha()))
+        radialGradient.setColorAt(1.0, QColor(189, 179, 178, self.ringColour.alpha()))
+        qp.fillPath(cubicPath, QBrush(radialGradient))
+
         if not self.parentMenu:
             qp.drawEllipse(self.cursorPos.x() - self.centralRadius / 2,
                            self.cursorPos.y() - self.centralRadius / 2,
@@ -213,9 +255,11 @@ class ViewportRadialMenu(ViewportDialog):
                 pixelsHigh = fontMetrics.height()
 
                 radius = self.distance(self.centralPoint, self.parentPos) + 128
-                offset = QPoint(math.sin((math.radians(self.activeButton.currentAngle))) * (radius + (0.5*pixelsWide)),
-                                -math.cos((math.radians(self.activeButton.currentAngle))) * (radius + pixelsHigh))
-                tooltipPos = QPoint(self.centralPoint.x() + offset.x() - (pixelsWide*0.5), self.centralPoint.y() + offset.y() + (pixelsHigh*0.5))
+                offset = QPoint(
+                    math.sin((math.radians(self.activeButton.currentAngle))) * (radius + (0.5 * pixelsWide)),
+                    -math.cos((math.radians(self.activeButton.currentAngle))) * (radius + pixelsHigh))
+                tooltipPos = QPoint(self.centralPoint.x() + offset.x() - (pixelsWide * 0.5),
+                                    self.centralPoint.y() + offset.y() + (pixelsHigh * 0.5))
 
                 path.addText(0, pixelsHigh + 2, font, self.activeButton.labelText)
                 path.addText(tooltipPos.x(), tooltipPos.y(), font, self.activeButton.labelText)
