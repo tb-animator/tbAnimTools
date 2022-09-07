@@ -28,7 +28,14 @@
           "closeOnPress": true,
           "subMenuClass": "tempControlsMenu"
         },
-
+        {
+          "label": "Constraints",
+          "icon": "constraint.png",
+          "command": null,
+          "popupSubMenu": true,
+          "closeOnPress": true,
+          "subMenuClass": "constraintsMenu"
+        },
         {
           "label": "Motion Trails",
           "icon": "motionTrails.png",
@@ -45,7 +52,7 @@
           "closeOnPress": true,
           "subMenuClass": "baking"
         },
-                {
+        {
           "label": "GPU Cache",
           "icon": "gpuCache.png",
           "command": null,
@@ -128,17 +135,41 @@
       "parent": "main",
       "menuItems": [
         {
-          "label": "New Additive Layer",
-          "command": "quickCreateAdditiveLayer",
-          "icon": "newAdditiveLayer.png",
+          "label": "Bake To Locator",
+          "command": "bakeToLocator",
+          "icon": "bakeToLocator.png",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
         },
         {
-          "label": "New Override Layer",
-          "command": "quickCreateOverrideLayer",
-          "icon": "newOverrideLayer.png",
+          "label": "Bake To Locator - Rotation",
+          "command": "bakeToLocatorRotation",
+          "icon": "bakeToLocatorRotation.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Redirect Selection",
+          "command": "redirectSelected",
+          "icon": "redirectSelected.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "worldOffsetSelection",
+          "command": "worldOffsetSelection",
+          "icon": "worldOffsetSelection.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "worldOffsetSelectionRotation",
+          "command": "worldOffsetSelectionRotation",
+          "icon": "worldOffsetSelectionRotation.png",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -181,7 +212,6 @@
           "closeOnPress": true,
           "subMenuClass": null
         }
-
       ]
     },
     {
@@ -200,6 +230,14 @@
           "label": "Nurbs Motion Path",
           "command": "motionPathSelected",
           "icon": "curveEP.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Offline Motion Trail",
+          "command": "offlineMotionTrailSelected",
+          "icon": "menuIconPaths.png",
           "popupSubMenu": false,
           "closeOnPress": true,
           "subMenuClass": null
@@ -243,7 +281,60 @@
           "subMenuClass": null
         }
       ]
+    },
+    {
+      "name": "constraintsMenu",
+      "parent": "main",
+      "menuItems": [
+        {
+          "label": "Snap Constraint - Reverse Baked",
+          "command": "simpleConstraintNoOffsetPostBakeReverse",
+          "icon": "constraintSnapReverseBake.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Snap Constraint - Baked",
+          "command": "simpleConstraintNoOffsetPostBake",
+          "icon": "constraintSnapBaked.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Snap Constraint",
+          "command": "simpleConstraintNoOffset",
+          "icon": "constraintSnap.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Offset Constraint",
+          "command": "simpleConstraintOffset",
+          "icon": "constraintOffset.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Offset Constraint - Baked",
+          "command": "simpleConstraintOffsetPostBake",
+          "icon": "constraintOffsetBaked.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
+        {
+          "label": "Offset Constraint - Reverse Baked",
+          "command": "simpleConstraintOffsetPostBakeReverse",
+          "icon": "constraintOffsetReverseBaked.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        }
+      ]
     }
-
   ]
 }
