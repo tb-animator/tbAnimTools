@@ -84,6 +84,26 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['BakeTools.bake_to_override()'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride_2s',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=2)'],
+                                     help=maya.stringTable['tbCommand.simpleBakeToOverride']))
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride_3s',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=3)'],
+                                     help=maya.stringTable['tbCommand.simpleBakeToOverride']))
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride_4s',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=4)'],
+                                     help=maya.stringTable['tbCommand.simpleBakeToOverride']))
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride_5s',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=5)'],
+                                     help=maya.stringTable['tbCommand.simpleBakeToOverride']))
+        self.addCommand(self.tb_hkey(name='simpleBakeToOverride_x',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.bakeOnXUI()'],
+                                     help=maya.stringTable['tbCommand.simpleBakeToOverride']))
 
         self.addCommand(self.tb_hkey(name='simpleBakeToBase',
                                      annotation='',
@@ -94,7 +114,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['BakeTools.addAdditiveLayer()'],
                                      help=maya.stringTable['tbCommand.quickCreateAdditiveLayer']))
-
+        self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer_Component',
+                                     annotation='',
+                                     category=self.category, command=['BakeTools.addAdditiveLayer(component=False)'],
+                                     help=maya.stringTable['tbCommand.quickCreateAdditiveLayer']))
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
                                      annotation='',
                                      category=self.category, command=['BakeTools.addOverrideLayer()'],
@@ -243,8 +266,7 @@ class BakeTools(toolAbstractFactory):
                                                label='World offset control size',
                                                minimum=0.1, maximum=100, step=0.1)
 
-
-        #motionControlSizeWidget.changedSignal.connect(self.updatePreview)
+        # motionControlSizeWidget.changedSignal.connect(self.updatePreview)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
         worldOffsetSizeWidget.changedSignal.connect(self.updatePreview)
 
@@ -270,7 +292,7 @@ class BakeTools(toolAbstractFactory):
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
-        #self.layout.addWidget(motionControlSizeWidget)
+        # self.layout.addWidget(motionControlSizeWidget)
         self.layout.addWidget(worldOffsetSizeWidget)
 
         self.layout.addWidget(constraintChannelHeader)
@@ -310,38 +332,44 @@ class BakeTools(toolAbstractFactory):
         cmds.setAttr('temp_Preview.scaleY', scale)
         cmds.setAttr('temp_Preview.scaleZ', scale)
 
-    def bake_to_override(self):
+    def bake_to_override(self, sampleRate=1):
+        print ('sampleRate', sampleRate)
         sel = cmds.ls(sl=True)
         if not sel:
             return
-        with self.funcs.keepSelection():
-            preContainers = set(pm.ls(type='container'))
-            preBakeLayers = pm.ls(type='animLayer')
-            keyRange = self.funcs.get_all_layer_key_times(sel)
-            if not keyRange or keyRange[0] == None:
-                keyRange = self.funcs.getTimelineRange()
+        with self.funcs.undoChunk():
+            with self.funcs.keepSelection():
+                preContainers = set(pm.ls(type='container'))
+                preBakeLayers = pm.ls(type='animLayer')
+                keyRange = self.funcs.get_all_layer_key_times(sel)
+                if not keyRange or keyRange[0] == None:
+                    keyRange = self.funcs.getTimelineRange()
 
-            pm.bakeResults(sel,
-                           time=(keyRange[0], keyRange[-1]),
-                           simulation=False,
-                           sampleBy=1,
-                           oversamplingRate=1,
-                           disableImplicitControl=True,
-                           preserveOutsideKeys=False,
-                           sparseAnimCurveBake=True,
-                           removeBakedAttributeFromLayer=False,
-                           removeBakedAnimFromLayer=False,
-                           bakeOnOverrideLayer=True,
-                           minimizeRotation=True,
-                           controlPoints=False,
-                           shape=False)
-            postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
-            for newAnimLayer in postBakeLayer:
-                pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
-                pm.rename(newAnimLayer, 'OverrideBaked')
+                pm.bakeResults(sel,
+                               time=(keyRange[0], keyRange[-1]),
+                               simulation=False,
+                               sampleBy=1,
+                               oversamplingRate=1,
+                               disableImplicitControl=True,
+                               preserveOutsideKeys=False,
+                               sparseAnimCurveBake=True,
+                               removeBakedAttributeFromLayer=False,
+                               removeBakedAnimFromLayer=False,
+                               bakeOnOverrideLayer=True,
+                               minimizeRotation=True,
+                               controlPoints=False,
+                               shape=False)
+                postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
+                for newAnimLayer in postBakeLayer:
+                    pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
+                    pm.rename(newAnimLayer, 'OverrideBaked')
 
-            self.removeContainersPostBake(preContainers)
-        self.funcs.select_layer(postBakeLayer)
+                self.removeContainersPostBake(preContainers)
+            self.funcs.select_layer(postBakeLayer)
+
+            if sampleRate != 1:
+                for newAnimLayer in postBakeLayer:
+                    self.resampleLayer(str(newAnimLayer), sampleRate)
 
     def simpleBake(self):
         sel = cmds.ls(sl=True)
@@ -448,6 +476,93 @@ class BakeTools(toolAbstractFactory):
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
+    def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True, skipMotionTrails=False):
+        """
+        Bake selected  controls to last selected one
+        :param sel:
+        :param constrain:
+        :param orientOnly:
+        :param select:
+        :param skipMotionTrails:
+        :return:
+        """
+        if not sel:
+            sel = pm.ls(sl=True)
+        locs = []
+        constraints = []
+        if not sel:
+            return
+        controls = sel[:-1]
+        target = sel[-1]
+
+        with self.funcs.suspendUpdate():
+            try:
+                parentNode = self.funcs.tempNull(name=target, suffix='baked')
+                for s in sel:
+                    # loc = self.funcs.tempLocator(name=s, suffix='baked')
+                    ps = pm.PyNode(s)
+                    ns = ps.namespace()
+                    if not cmds.objExists(ns + self.assetName):
+                        self.createAsset(ns + self.assetName, imageName=None)
+                    asset = ns + self.assetName
+                    loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
+                                                 scale=pm.optionVar.get(self.crossSizeOption, 1))
+                    pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                    pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+                    const = pm.parentConstraint(s, loc)
+                    locs.append(loc)
+                    constraints.append(const)
+                    pm.container(asset, edit=True,
+                                 includeHierarchyBelow=True,
+                                 force=True,
+                                 addNode=loc)
+                '''
+                if locs:
+                    preContainers = set(pm.ls(type='container'))
+                    pm.bakeResults(locs,
+                                   simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                                   sampleBy=1,
+                                   oversamplingRate=1,
+                                   disableImplicitControl=True,
+                                   preserveOutsideKeys=False,
+                                   sparseAnimCurveBake=True,
+                                   removeBakedAttributeFromLayer=False,
+                                   removeBakedAnimFromLayer=False,
+                                   bakeOnOverrideLayer=False,
+                                   minimizeRotation=True,
+                                   controlPoints=False,
+                                   shape=False,
+                                   time=[pm.playbackOptions(query=True, minTime=True),
+                                         pm.playbackOptions(query=True, maxTime=True)],
+                                   )
+                    self.removeContainersPostBake(preContainers)
+                    if constrain:
+                        pm.delete(constraints)
+                        for cnt, loc in zip(sel, locs):
+                            skipT = self.funcs.getAvailableTranslates(cnt)
+                            skipR = self.funcs.getAvailableRotates(cnt)
+                            constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                                                                                      False: [x.split('translate')[-1]
+                                                                                              for x in
+                                                                                              skipT]}[
+                                orientOnly],
+                                                             skipRotate=[x.split('rotate')[-1] for x in skipR])
+                            pm.container(asset, edit=True,
+                                         includeHierarchyBelow=True,
+                                         force=True,
+                                         addNode=constraint)
+                if pm.optionVar.get(self.tempControlMotionTrailOption, False):
+                    if not skipMotionTrails:
+                        for l in locs:
+                            cmds.select(str(l), replace=True)
+                            mel.eval('createMotionTrail')
+                if select:
+                    pm.select(locs, replace=True)
+                return locs
+                '''
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
 
     def bakeSelectedHotkey(self):
         sel = pm.ls(sl=True)
@@ -612,10 +727,10 @@ class BakeTools(toolAbstractFactory):
     def addOverrideLayer(self):
         return self.add_layer(override=True)
 
-    def addAdditiveLayer(self):
-        return self.add_layer(override=False)
+    def addAdditiveLayer(self, component=False):
+        return self.add_layer(override=False, component=component)
 
-    def createLayer(self, override=False, suffixStr=None):
+    def createLayer(self, override=False, suffixStr=None, component=True):
         if suffixStr is None:
             suffixStr = {True: 'Override', False: 'Additive'}[override]
 
@@ -629,17 +744,18 @@ class BakeTools(toolAbstractFactory):
 
         newAnimLayer.ghostColor.set(colour[override])
         newAnimLayer.scaleAccumulationMode.set(not override)
-        newAnimLayer.rotationAccumulationMode.set(True)
+        newAnimLayer.rotationAccumulationMode.set(component)
+
         self.deselect_layers()
         newAnimLayer.selected.set(True)
         newAnimLayer.preferred.set(True)
         return newAnimLayer
 
-    def add_layer(self, override=False):
+    def add_layer(self, override=False,component=True):
         timeRange = None
         if self.funcs.isTimelineHighlighted():
             timeRange = self.funcs.getTimelineHighlightedRange()
-        newAnimLayer = self.createLayer(override=override)
+        newAnimLayer = self.createLayer(override=override, component=component)
 
         if timeRange:
             if override:
@@ -1358,4 +1474,46 @@ class BakeTools(toolAbstractFactory):
             pm.pointConstraint(translateAnimOFfsetNodes[s], s)
             pm.orientConstraint(rotateAnimOffsetNodes[s], s)
 
+    def resampleSelectedLayer(self, sample=1):
+        allLayers = self.funcs.get_selected_layers(None)
+        for layer in allLayers:
+            self.resampleLayer(layer, sample=sample)
+
+    def resampleLayer(self, layer=str(), sample=1):
+        if not layer:
+            return
+        curves = cmds.animLayer(layer, query=True, animCurves=True)
+        if not curves:
+            return
+        for c in curves:
+            keyTimes = cmds.keyframe(c, query=True, timeChange=True)
+            cmds.bakeResults(c,
+                             sampleBy=sample,
+                             oversamplingRate=1,
+                             time=(keyTimes[0], (keyTimes[-1])),
+                             preserveOutsideKeys=True,
+                             sparseAnimCurveBake=False)
+
+    def bakeOnXUI(self):
+        wd = bakeOnXWidget(title='Bake to key per (x) frames', label='Frames', buttonText="Bake", default="Bake")
+
+class bakeOnXWidget(IntInputWidget):
+    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
+        super(bakeOnXWidget, self).__init__(title=title, label=label, buttonText=buttonText, default=default)
+        buttonLayout = QHBoxLayout()
+        self.layout().addLayout(buttonLayout)
+        for x in range(5):
+            button = QPushButton("%s's" % (x+1))
+            button.sample = x+1
+            button.clicked.connect(self.button_pushed)
+            buttonLayout.addWidget(button)
+
+        self.acceptedSignal.connect(self.bake_pressed)
+
+    def bake_pressed(self, sample):
+        pm.Callback(BakeTools().bake_to_override(sampleRate=sample))
+
+    def button_pushed(self):
+        pm.Callback(BakeTools().bake_to_override(sampleRate=self.sender().sample))
+        self.close()
 

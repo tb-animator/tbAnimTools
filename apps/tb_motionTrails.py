@@ -214,12 +214,13 @@ class MotionTrails(toolAbstractFactory):
 
         if not sel:
             return True
-
+        sel = [s.split('.')[0] for s in sel]
         allAssets = list(set([cmds.container(query=True, findContainer=s) for s in sel]))
         allControls = list()
 
-
         for a in allAssets:
+            if not a:
+                continue
             if not cmds.attributeQuery('control', node=a, exists=True):
                 continue
             c = cmds.listConnections(a + '.control', source=True, destination=False)
@@ -227,7 +228,7 @@ class MotionTrails(toolAbstractFactory):
                 continue
             allControls.extend(c)
 
-        sel = sel[0].split('.')[0]
+        sel = sel[0]
         asset = cmds.container(query=True, findContainer=sel)
 
         if cmds.attributeQuery('offlinePath', node=asset, exists=True):
@@ -287,7 +288,8 @@ class MotionTrails(toolAbstractFactory):
             cmds.menuItem(label='Bake selected to layer and delete curve', image='',
                           command=pm.Callback(self.bakeSelectedCommand, allAssets, allControls, True))
             # cmds.menuItem(label='Bake all to layer', image='', command=pm.Callback(self.bakeSelectedCommand, asset, allControls))
-            cmds.menuItem(label='Rebuild curve', image='', command=pm.Callback(self.rebuildMotionPath, allControls, allCurves))
+            cmds.menuItem(label='Rebuild curve', image='',
+                          command=pm.Callback(self.rebuildMotionPath, allControls, allCurves))
             cmds.menuItem(label='Delete', image='', command=pm.Callback(self.deleteControlsCommand, allAssets, sel))
 
             '''
@@ -700,7 +702,6 @@ class MotionTrails(toolAbstractFactory):
                                              scale=pm.optionVar.get(self.motionControlSizeOption, 0.5)))
             cmds.container(s + '_' + 'MotionPath', edit=True, addNode=tmp)
 
-
             cnst = cmds.pointConstraint(s, tmp)
             tempNodes[s] = tmp
             tempConstraints[s] = cnst
@@ -739,7 +740,7 @@ class MotionTrails(toolAbstractFactory):
                                                keepEndPoints=True,
                                                keepTangents=False,
                                                spans=divisions,
-                                               degree=1,
+                                               degree=3,
                                                tolerance=0.01)[0]
 
             cmds.select(tempNodes[s], replace=True)
@@ -1077,7 +1078,6 @@ class MotionTrails(toolAbstractFactory):
         if not asset:
             return None
         return pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
-
 
     def lockCurveLength(self, curve):
         pm.select(curve, replace=True)

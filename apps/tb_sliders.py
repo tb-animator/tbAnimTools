@@ -1160,7 +1160,6 @@ class SlideTools(toolAbstractFactory):
         self.app.installEventFilter(self.keyKeyPressHandler)
 
     def keySliderBeginSignal(self, key, value, value2):
-        print ('keySliderBeginSignal')
         cmds.undoInfo(openChunk=True, chunkName="tbInbetween")
         cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=True)
         # self.keyTweenClasses[key].startDrag(value)
@@ -1473,8 +1472,6 @@ class SlideTools(toolAbstractFactory):
         else:
             power = 2.0
             outAlpha = 0.0
-        print ('power', power)
-        print ('outAlpha', outAlpha)
 
         for curve, keyframeData in self.keyframeData.items():
             startValue = self.keyframeRefData[curve].previousValues[keyframeData.keyIndexes[0]]

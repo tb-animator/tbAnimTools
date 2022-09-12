@@ -1801,6 +1801,106 @@ class ChannelInputWidget(QWidget):
         self.oldPos = None
 
 
+class IntInputWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(int)
+    oldPos = None
+
+    def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
+        super(IntInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        self.setStyleSheet(getqss.getStyleSheet())
+
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        #self.setFixedSize(300, 64)
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel(title)
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel(label)
+        self.lineEdit = intFieldWidget(optionVar=None,
+                                       defaultValue=1,
+                                       minimum=1, maximum=100, step=1)
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+
+        self.saveButton = QPushButton(buttonText)
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        # layout.addWidget(btnSetFolder)
+
+        mainLayout.addWidget(self.titleText)
+        mainLayout.addLayout(layout)
+        layout.addWidget(self.text)
+        layout.addWidget(self.lineEdit)
+        layout.addWidget(self.saveButton)
+
+        self.saveButton.clicked.connect(self.acceptedFunction)
+
+        self.setLayout(mainLayout)
+        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.show()
+        self.lineEdit.setFocus()
+        self.setStyleSheet(
+            "TextInputWidget { "
+            "border-radius: 8;"
+            "}"
+        )
+        #self.setFixedSize(self.sizeHint())
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.spinBox.value())
+        self.close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.acceptedFunction()
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        return super(IntInputWidget, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+
+
 class ObjectInputWidget(QWidget):
     """
     Simple prompt with text input
