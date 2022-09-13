@@ -727,7 +727,7 @@ class BakeTools(toolAbstractFactory):
     def addOverrideLayer(self):
         return self.add_layer(override=True)
 
-    def addAdditiveLayer(self, component=False):
+    def addAdditiveLayer(self, component=True):
         return self.add_layer(override=False, component=component)
 
     def createLayer(self, override=False, suffixStr=None, component=True):
