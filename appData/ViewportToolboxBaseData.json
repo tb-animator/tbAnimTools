@@ -144,6 +144,15 @@
       "name": "tempControlsMenu",
       "parent": "main",
       "menuItems": [
+
+                {
+          "label": "Temp Pivot",
+          "command": "create_temp_pivot",
+          "icon": "pickPivotComp.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
         {
           "label": "Bake To Locator",
           "command": "bakeToLocator",
