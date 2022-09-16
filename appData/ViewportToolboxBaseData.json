@@ -120,6 +120,14 @@
           "closeOnPress": true,
           "subMenuClass": null
         },
+                        {
+          "label": "Bake to x",
+          "command": "simpleBakeToOverride_x",
+          "icon": "nClothCacheReplaceFrames.png",
+          "popupSubMenu": false,
+          "closeOnPress": true,
+          "subMenuClass": null
+        },
         {
           "label": "Counter Animation Layer",
           "command": "counterAnimLayer",
@@ -128,6 +136,8 @@
           "closeOnPress": true,
           "subMenuClass": null
         }
+
+
       ]
     },
     {

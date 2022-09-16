@@ -139,6 +139,7 @@ class WalkData(object):
             return None
         target = self.objectDict[node][direction]
         self.setLastUsedIndex(node)
+
         if target in self.destinations.keys():
             # destination is a conditional destination
             # print ('destination is a conditional destination')
@@ -219,7 +220,8 @@ class PickwalkCreator(object):
         :param item:
         :return:
         """
-        # print 'sides', sideList
+        # print ('item', item)
+        # print ('sides', sideList)
         for key, walkDirection in self.walkData.objectDict.items():
             mirrorDir = dict()
             # print key, item
@@ -227,7 +229,7 @@ class PickwalkCreator(object):
                 if not self.validForMirror(key, sideList):
                     # print 'not valid for mirror'
                     continue
-                # print 'need to mirror', key
+                # print ('need to mirror', key)
                 for dir, value in walkDirection.__dict__.items():
                     found = False
                     if not value:
@@ -236,16 +238,16 @@ class PickwalkCreator(object):
                         continue
                     if value in self.walkData.destinations.keys():
                         # print dir, 'is condition - not made this bit yet'
-                        # recusrively mirror any destination info found here
+                        # recursively mirror any destination info found here
                         self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
                         # add the mirror key to the destination list, mirror it
                     mirrorDir[dir] = self.getMirrorName(value, sideList)
 
                 # print 'mirrorDir', mirrorDir
                 mirrorKey = self.getMirrorName(key, sideList)
-
+                # print ('mirrorKey', mirrorKey)
                 for dKey, dValue in mirrorDir.items():
-                    # print 'setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue
+                    # print ('setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue)
                     self.setControlDestination(mirrorKey,
                                                direction=dKey,
                                                destination=dValue)
@@ -323,10 +325,17 @@ class PickwalkCreator(object):
     def setControlDestination(self, control,
                               direction=str(),
                               destination=str()):
+        '''
+        print ('setControlDestination')
+        print ('control,', control)
+        print ('direction', direction)
+        print ('destination', destination)
+        '''
         # add control entry in case it is not already there
         control = str(control).split(':')[-1]
         self.addControl(control)
-        destination = destination.split(':')[-1]
+        if destination:
+            destination = destination.split(':')[-1]
 
         if destination in self.walkData.destinations.keys():
             self.walkData.objectDict[control][direction] = destination
@@ -344,7 +353,7 @@ class PickwalkCreator(object):
         if not controls:
             return cmds.error('no nodes defined for walk')
 
-        #print ('addPickwalkChain')
+        # print ('addPickwalkChain')
 
         if not isinstance(controls, list):
             controls = [controls]
@@ -357,11 +366,11 @@ class PickwalkCreator(object):
                                                            WalkDirectionDict()).__dict__.get(opposite, None)
         lastControlOutTarget = self.walkData.objectDict.get(lastControl,
                                                             WalkDirectionDict()).__dict__.get(direction, None)
-        '''
-        print (firstControl, firstContolInTarget)
-        print (lastControl, lastControlOutTarget)
-        print (str(lastControlOutTarget) == "(None,)")
-        '''
+
+        # print ('firstControl', firstControl, 'firstContolInTarget', firstContolInTarget)
+        # print ('lastControl', lastControl, 'lastControlOutTarget', lastControlOutTarget)
+        # print (str(lastControlOutTarget) == "(None,)")
+
         fwdControls = [c for c in controls]
         bwdControls = [c for c in controls]
         fwdControls.append(fwdControls.pop(0))
@@ -380,6 +389,7 @@ class PickwalkCreator(object):
             fwdControls.pop(-1)
             fwdControls.append(controls[-1])
 
+        '''
         if lastControlOutTarget:
             fwdControls.pop(-1)
             fwdControls.append(None)
@@ -387,16 +397,16 @@ class PickwalkCreator(object):
         if firstContolInTarget:
             bwdControls.pop(0)
             bwdControls.insert(0, None)
-
-        #print (controls)
-        #print (fwdControls)
-        #print (fwdControls)
+        '''
+        # print (controls)
+        # print (fwdControls)
+        # print (fwdControls)
         for control, fwdTarget, bwdTarget in zip(controls, fwdControls, bwdControls):
-            '''
-            print (control, direction, 'to', fwdTarget)
-            print (control, opposite, 'to', bwdTarget)
-            print ('')
-            '''
+
+            # print (control, direction, 'to', fwdTarget)
+            # print (control, opposite, 'to', bwdTarget)
+            # print ('')
+
             if fwdTarget is not None:
                 self.setControlDestination(control,
                                            direction=direction,
@@ -408,7 +418,6 @@ class PickwalkCreator(object):
             self.setControlDestination(control,
                                        direction=opposite,
                                        destination=bwdTarget)
-
 
     def getNodeInfoFromRig(self, control):
         """
@@ -676,7 +685,8 @@ class Pickwalk(toolAbstractFactory):
     defaultPickwalkDir = None
     hotkeyClass = None
     funcs = None
-
+    win = None
+    assignmentWin = None
     saveOnUpdateOption = saveOnUpdateOption
     defaultToStandardAtDeadEndOption = defaultToStandardAtDeadEndOption
 
@@ -860,12 +870,7 @@ class Pickwalk(toolAbstractFactory):
                           radialPosition='N'
                           )
             return
-        cmds.menuItem(label='tbPickwalk Quick Commands',
-                      divider=0,
-                      boldFont=True,
-                      enable=False,
-                      radialPosition='N'
-                      )
+
         cmds.menuItem(label='tbPickwalk UI',
                       divider=0,
                       boldFont=True,
@@ -882,23 +887,30 @@ class Pickwalk(toolAbstractFactory):
         cmds.menuItem(label='Open Library UI',
                       command=self.openLibrary,
                       )
-        cmds.menuItem(label='Add left/Right Chain',
-                      command=self.quickLeftRight,
-                      radialPosition='SW'
-                      )
 
-        cmds.menuItem(label='Add Down/Up Chain',
-                      command=self.quickDownUp,
-                      radialPosition='NW'
+        cmds.menuItem(label='Left',
+                      command=pm.Callback(self.walkCreate, 'left', condition=False),
+                      radialPosition='W'
                       )
-
+        cmds.menuItem(label='Right',
+                      command=pm.Callback(self.walkCreate, 'right', condition=False),
+                      radialPosition='E'
+                      )
+        cmds.menuItem(label='Up',
+                      command=pm.Callback(self.walkCreate, 'up', condition=False),
+                      radialPosition='N'
+                      )
+        cmds.menuItem(label='Down',
+                      command=pm.Callback(self.walkCreate, 'down', condition=False),
+                      radialPosition='S'
+                      )
         cmds.menuItem(label='Add Down To Many',
                       command=self.quickDownToMulti,
-                      radialPosition='NE'
+                      radialPosition='SE'
                       )
         cmds.menuItem(label='Add Up From Many',
                       command=self.quickUpFromMulti,
-                      radialPosition='SE'
+                      radialPosition='NE'
                       )
 
         cmds.menuItem(label='Add New Condition',
@@ -914,12 +926,12 @@ class Pickwalk(toolAbstractFactory):
                       )
 
     def openLibrary(self, *args):
-        win = pickwalkRigAssignemtWindow()
-        win.show()
+        self.assignmentWin = pickwalkRigAssignemtWindow()
+        self.assignmentWin.show()
 
     def openCreator(self, *args):
-        win = pickwalkMainWindow()
-        win.show()
+        self.win = pickwalkMainWindow()
+        self.win.show()
 
     def revertArrowHotkeys(self):
         pass
@@ -1025,8 +1037,32 @@ class Pickwalk(toolAbstractFactory):
             if conns:
                 return conns[0]
 
+    def findSequenceMain(self, control):
+        controlList = []
+        controlList = self.findSequenceRecursive(control, [control])
+        return controlList
+
+    def findSequenceRecursive(self, control, substringList):
+        length = len(control)
+        if length == 0:
+            return substringList
+
+        else:
+            m = re.search(r'\d+$', control)
+            # if the string ends in digits m will be a Match object, or None otherwise.
+            if m is not None:
+                dat = m.group()
+                next = (str(int(dat) + 1).zfill(len(str(dat))))
+
+                nextControl = control[:len(control) - len(str(dat))] + next
+                if cmds.objExists(nextControl):
+                    substringList.append(nextControl)
+                    self.findSequenceRecursive(nextControl, substringList)
+            return substringList
+
     def walkCreate(self, direction=str(), condition=False):
         sel = cmds.ls(sl=True, type='transform')
+        print ('sel', sel)
         returnedControls = list()
         if not sel:
             return
@@ -1036,11 +1072,25 @@ class Pickwalk(toolAbstractFactory):
         self.loadLibraryForCurrent()
 
         if not condition:
+            # standard single object destination
             if len(sel) == 1:
-                self.pickwalkCreator.setControlDestination(sel[0],
-                                                           direction=direction,
-                                                           destination=sel[0])
+                # print ('single object')
+                controlList = self.findSequenceMain(sel[0])
+                # print (controlList)
+                if len(controlList) == 1:
+                    self.pickwalkCreator.setControlDestination(sel[0],
+
+                                                               direction=direction,
+                                                               destination=sel[0])
+                else:
+                    self.pickwalkCreator.addPickwalkChain(
+                        controls=controlList,
+                        direction=direction,
+                        loop=False,
+                        reciprocate=True,
+                        endOnSelf=False)
             elif len(sel) == 2:
+                # print ('2 objects')
                 # 2 objects - create single direction pickwalk
                 '''
                 self.pickwalkCreator.setControlDestination(sel[0],
@@ -1048,14 +1098,16 @@ class Pickwalk(toolAbstractFactory):
                                                            destination=sel[1])
                 '''
                 if direction == 'down':
+                    # print ('down')
                     # if left or right, create the reverse
                     self.pickwalkCreator.addPickwalkChain(
                         controls=sel,
                         direction=direction,
                         loop=False,
-                        reciprocate=False,
+                        reciprocate=True,
                         endOnSelf=False)
                 elif direction == 'left' or direction == 'right':
+                    # print ('left n right')
                     self.pickwalkCreator.addPickwalkChain(
                         controls=sel,
                         direction=direction,
@@ -1063,6 +1115,7 @@ class Pickwalk(toolAbstractFactory):
                         reciprocate=True,
                         endOnSelf=False)
                 else:
+                    # print ('up')
                     self.pickwalkCreator.addPickwalkChain(
                         controls=sel,
                         direction=direction,
@@ -1076,8 +1129,13 @@ class Pickwalk(toolAbstractFactory):
                     controls=sel,
                     direction=direction,
                     loop=direction == 'left' or direction == 'right',
-                    reciprocate=direction != 'up',
+                    reciprocate=True,
                     endOnSelf=False)
+            if direction != 'left' and direction != 'right':
+                for s in sel:
+                    self.pickwalkCreator.mirror(s.split(':')[-1],
+                                                [self.pickwalkCreator.walkData.mirrorNames.get('left', '_L'),
+                                                 self.pickwalkCreator.walkData.mirrorNames.get('right', '_R')])
         else:
             if len(sel) == 1 or len(sel) == 2:
                 dlg = PickwalkNewConditionPopup()
@@ -1093,6 +1151,40 @@ class Pickwalk(toolAbstractFactory):
         self.forceReloadData()
         return
 
+    def recursiveLookup(self, control, attribute, source=True, destination=False):
+        if cmds.attributeQuery(attribute, node=str(control), exists=True):
+            targetConnections = cmds.listConnections(control + '.' + attribute, source=source, destination=destination)
+            if targetConnections:
+                return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
+        return control
+
+    def checkDownstreamTempControls(self, control):
+        walkObject = None
+        messageConnections = cmds.listConnections(control + '.message', source=False, destination=True, plugs=True)
+        if not messageConnections:
+            return control
+        for conn in messageConnections:
+            if not cmds.attributeQuery('constraintTarget', node=str(conn.split('.')[0]), exists=True):
+                continue
+            walkObject = pm.PyNode(self.recursiveLookDown(str(conn.split('.')[0]), 'constraintTarget'), source=False,
+                                   destination=True)
+            if walkObject:
+                return self.checkDownstreamTempControls(walkObject)
+            else:
+                continue
+        return control
+
+    def recursiveLookDown(self, control, attribute, source=True, destination=False):
+        if cmds.attributeQuery(attribute, node=str(control), exists=True):
+            targetConnections = cmds.listConnections(control + '.message', source=source, destination=destination,
+                                                     plugs=True)
+            print targetConnections
+            if targetConnections:
+                return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
+            else:
+                return control
+        return control
+
     def pickwalk(self, direction=str, add=False):
         sel = pm.ls(sl=True, type='transform')
         returnedControls = list()
@@ -1101,10 +1193,18 @@ class Pickwalk(toolAbstractFactory):
             return
 
         walkObject = sel[-1]
+
+        if cmds.attributeQuery('constraintTarget', node=str(walkObject), exists=True):
+            walkObject = pm.PyNode(self.recursiveLookup(str(walkObject), 'constraintTarget'))
+
         if direction not in self.walkDirectionNames.keys():
             return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
-        refName = self.getRefName(walkObject)
+        refName, refState = self.getRefName(walkObject)
+        if not refState:
+            self.walkStandard(direction)
+            return
+
         if refName:
             # print 'query against pickwalk library'
             returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
@@ -1142,6 +1242,9 @@ class Pickwalk(toolAbstractFactory):
         if not returnedControls:
             self.walkStandard(direction)
             return
+
+        returnedControls = str(self.checkDownstreamTempControls(returnedControls[0]))
+
         if add:
             cmds.select([str(s) for s in sel] + returnedControls, replace=True)
             return
@@ -1156,7 +1259,7 @@ class Pickwalk(toolAbstractFactory):
         else:
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
-        return refName
+        return refName, refState
 
     def queryNewRig(self, refName):
         if refName in self.walkDataLibrary._fileToMapDict.keys():
@@ -1202,7 +1305,7 @@ class Pickwalk(toolAbstractFactory):
             pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
             if pickAttributes:
                 # exit and return to standard pickwalk ( bit of repeated code but whatever for now )
-                print ('Attribute driven pickwalk found', pickAttributes)
+                # print ('Attribute driven pickwalk found', pickAttributes)
                 return returnedControls
         return returnedControls
 
@@ -1409,8 +1512,9 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def assignNewRigNewMap(self, rigName):
-        win = pickwalkMainWindow()
-        newMap = win.saveAsLibrary(defaultName=rigName)
+        if not self.win:
+            self.win = pickwalkMainWindow()
+        newMap = self.win.saveAsLibrary(defaultName=rigName)
         if not newMap:
             return
         # print('new map', newMap)
@@ -1418,8 +1522,8 @@ class Pickwalk(toolAbstractFactory):
         self.savePickwalkLibraryMap()
         self.getAllPickwalkMaps()
         Pickwalk()
-        win.show()
-        win.loadLibraryForCurrent()
+        self.win.show()
+        self.win.loadLibraryForCurrent()
 
     """
     Functions moved from mainwindow to here
@@ -3411,9 +3515,11 @@ class MirrorPickwalkPopup(BaseDialog):
                                   "QListWidget {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
 
         self.pickwalk = Pickwalk()
-        self.pickwalkWindow = pickwalkMainWindow()
-        self.pickwalk.loadLibraryForCurrent()
-        self.pickwalkCreator = self.pickwalk.pickwalkCreator
+        if not self.pickwalk.win:
+            self.pickwalk.win = pickwalkMainWindow()
+        self.pickwalkWindow = self.pickwalk.win
+        self.pickwalkWindow.loadLibraryForCurrent()
+        self.pickwalkCreator = self.pickwalkWindow.pickwalkCreator
 
         self.setStyleSheet("QFrame {"
                            "border-width: 2;"
@@ -3450,13 +3556,15 @@ class MirrorPickwalkPopup(BaseDialog):
         widget.setStyleSheet(getqss.getStyleSheet())
 
     def mirrorWalk(self, fromText=str(), toText=str()):
+        print ('mirrorWalk', fromText, toText)
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return pm.warning('no object selected')
         for s in sel:
             self.pickwalkCreator.mirror(s.split(':')[-1], [fromText, toText])
         self.pickwalkWindow.saveLibrary()
-        self.forceReloadData()
+        self.pickwalkWindow.loadLibraryForCurrent()
+        self.close()
 
 
 class PickwalkNewConditionPopup(BaseDialog):
@@ -3745,13 +3853,11 @@ class mirrorPickwalkWidget(QFrame):
         # self.fromInput.setValidator(fromInput_validator)
 
     def updateMirrorLabels(self):
-        print ('update mirror labesl', self.CLS.walkData.mirrorNames)
+        print ('update mirror labels', self.CLS.walkData.mirrorNames)
         self.fromInputOption = self.CLS.walkData.mirrorNames.get('left', '_L')
         self.toInputOption = self.CLS.walkData.mirrorNames.get('right', '_R')
-        self.blockSignals(True)
         self.fromInput.setText(self.fromInputOption)
         self.toInput.setText(self.toInputOption)
-        self.blockSignals(False)
 
     def sendMirrorSignal(self):
         self.mirrorPressed.emit(self.fromInput.text(), self.toInput.text())
@@ -4004,29 +4110,31 @@ class pickwalkMainWindow(QMainWindow):
         option_menu = menu.addMenu('&Options')
         view_menu = menu.addMenu('&View')
 
+        '''
         add_action = QAction('Add new library', self)
         add_action.setShortcut('Ctrl+N')
         file_menu.addAction(add_action)
         add_action.triggered.connect(self.newLibrary)
-
-        load_action = QAction('Load (replace)', self)
-        load_action.setShortcut('Ctrl+O')
-        file_menu.addAction(load_action)
-        load_action.triggered.connect(self.loadLibrary)
+        '''
 
         load_action = QAction('Load map for current rig', self)
         load_action.setShortcut('Ctrl+C')
         file_menu.addAction(load_action)
         load_action.triggered.connect(self.loadLibraryForCurrent)
 
-        merge_action = QAction('load (merge)', self)
+        merge_action = QAction('load (merge with current)', self)
         merge_action.setShortcut('Ctrl+M')
         file_menu.addAction(merge_action)
         merge_action.triggered.connect(self.appendLibrary)
 
-        mergeSelected_action = QAction('load to selected', self)
+        mergeSelected_action = QAction('load (replace selected controls)', self)
         file_menu.addAction(mergeSelected_action)
         mergeSelected_action.triggered.connect(self.loadLibraryToSelection)
+
+        load_action = QAction('Load pickwalk file', self)
+        load_action.setShortcut('Ctrl+O')
+        file_menu.addAction(load_action)
+        load_action.triggered.connect(self.loadLibrary)
 
         save_action = QAction('Save', self)
         save_action.setShortcut('Ctrl+S')

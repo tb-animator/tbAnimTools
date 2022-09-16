@@ -710,7 +710,7 @@ class MotionTrails(toolAbstractFactory):
                          time=(startTime, endTime),
                          simulation=False,
                          bakeOnOverrideLayer=False,
-                         sampleBy=1)
+                         sampleBy=1)   
         pm.delete(list(tempConstraints.values()))
 
         resultLayer = cmds.animLayer('motionPath', override=True)

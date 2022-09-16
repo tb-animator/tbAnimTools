@@ -52,7 +52,7 @@ class ViewportRadialMenu(ViewportDialog):
         self.parentPos = QPoint(0, 0)  # the button position that raised this menu
         self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
         self.radius = 100
-        self.ringWidth = 64
+        self.ringWidth = 50
         self.innerRing = self.radius - 0.5*self.ringWidth
         self.outerRing = self.radius + 0.5*self.ringWidth
         self.ringColour = QColor(255, 160, 47, 32)
@@ -96,6 +96,7 @@ class ViewportRadialMenu(ViewportDialog):
             self.parentPos = QCursor.pos()  # used for the return button position on the top menu
         self.currentCursorPos = QCursor.pos()
         self.arrangeButtons()
+
         super(ViewportRadialMenu, self).show()
 
     def arrangeButtons(self):
@@ -363,6 +364,8 @@ class ViewportToolbox(toolAbstractFactory):
     baseDataFile = None
     rawJsonBaseData = None
     menuDict = dict()
+
+    mainToolbox = None
 
     def __new__(cls):
         if ViewportToolbox.__instance is None:

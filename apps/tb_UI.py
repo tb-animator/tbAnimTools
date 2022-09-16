@@ -367,6 +367,7 @@ class ViewportDialog(QDialog):
         # print ('buttonHovered', widget)
 
     def show(self):
+        t = cmds.timerX()
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
         screens = QApplication.screens()
@@ -380,9 +381,11 @@ class ViewportDialog(QDialog):
             self.recentlyOpened = True
         self.moveToCursor()
         # self.grabKeyboard()
-        super(ViewportDialog, self).show()
         self.setFocus()
         self.addAllButtons()
+        self.repaint()
+        super(ViewportDialog, self).show()
+        print (cmds.timerX() - t)
 
     def hide(self):
         # print ('being hidden', self)
