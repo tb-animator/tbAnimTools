@@ -1062,7 +1062,7 @@ class Pickwalk(toolAbstractFactory):
 
     def walkCreate(self, direction=str(), condition=False):
         sel = cmds.ls(sl=True, type='transform')
-        print ('sel', sel)
+        #print ('sel', sel)
         returnedControls = list()
         if not sel:
             return
@@ -1178,7 +1178,6 @@ class Pickwalk(toolAbstractFactory):
         if cmds.attributeQuery(attribute, node=str(control), exists=True):
             targetConnections = cmds.listConnections(control + '.message', source=source, destination=destination,
                                                      plugs=True)
-            print targetConnections
             if targetConnections:
                 return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
             else:
@@ -2122,7 +2121,7 @@ class pickDirectionWidget(QFrame):
 
     def autoApplyData(self, *args):
         if pm.optionVar.get(autoApplyOption, True):
-            print ('auto apply', args)
+            #print ('auto apply', args)
             self.applyData()
 
     def applyData(self):
