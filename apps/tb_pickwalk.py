@@ -1242,7 +1242,7 @@ class Pickwalk(toolAbstractFactory):
             self.walkStandard(direction)
             return
 
-        returnedControls = str(self.checkDownstreamTempControls(returnedControls[0]))
+        returnedControls = [str(self.checkDownstreamTempControls(returnedControls[0]))]
 
         if add:
             cmds.select([str(s) for s in sel] + returnedControls, replace=True)
