@@ -3218,7 +3218,10 @@ class ToolButton(QPushButton):
         self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right; margin: 0px;")
         self.label.setStyleSheet("margin-left: 68px;margin-top:0px;margin-right:0px;margin-bottom:0px")
         self.setStyleSheet(getqss.getStyleSheet())
-        self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 20px;}")
+        if self.icon:
+            self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 28px;}")
+        else:
+            self.label.setStyleSheet("QLabel{background-color: transparent;text-align:right;margin-left: 8px;}")
         self.command = command
         self.menuBar = menuBar
         self.menuItem = None
@@ -3228,7 +3231,7 @@ class ToolButton(QPushButton):
             if self.sourceType == 'mel':
                 self.clicked.connect(lambda: mel.eval(command))
             else:
-                self.clicked.connect(lambda: self.command)
+                self.clicked.connect(lambda: self.command())
         if self.icon:
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:

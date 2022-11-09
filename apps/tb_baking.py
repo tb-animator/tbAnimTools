@@ -476,7 +476,8 @@ class BakeTools(toolAbstractFactory):
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
-    def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True, skipMotionTrails=False):
+    def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True,
+                               skipMotionTrails=False):
         """
         Bake selected  controls to last selected one
         :param sel:
@@ -498,15 +499,25 @@ class BakeTools(toolAbstractFactory):
         with self.funcs.suspendUpdate():
             try:
                 parentNode = self.funcs.tempNull(name=target, suffix='baked')
-                for s in sel:
+
+                ps = pm.PyNode(parentNode)
+                ns = ps.namespace()
+                if not cmds.objExists(ns + self.assetName):
+                    self.createAsset(ns + self.assetName, imageName=None)
+                asset = ns + self.assetName
+
+                constraint = pm.parentConstraint(target, parentNode)
+                pm.container(asset, edit=True,
+                             includeHierarchyBelow=True,
+                             force=True,
+                             addNode=[parentNode,constraint])
+
+                for s in controls:
                     # loc = self.funcs.tempLocator(name=s, suffix='baked')
-                    ps = pm.PyNode(s)
-                    ns = ps.namespace()
-                    if not cmds.objExists(ns + self.assetName):
-                        self.createAsset(ns + self.assetName, imageName=None)
-                    asset = ns + self.assetName
+
                     loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
                                                  scale=pm.optionVar.get(self.crossSizeOption, 1))
+                    pm.parent(loc, parentNode)
                     pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                     pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                     const = pm.parentConstraint(s, loc)
@@ -516,7 +527,7 @@ class BakeTools(toolAbstractFactory):
                                  includeHierarchyBelow=True,
                                  force=True,
                                  addNode=loc)
-                '''
+
                 if locs:
                     preContainers = set(pm.ls(type='container'))
                     pm.bakeResults(locs,
@@ -539,27 +550,26 @@ class BakeTools(toolAbstractFactory):
                     if constrain:
                         pm.delete(constraints)
                         for cnt, loc in zip(sel, locs):
-                            skipT = self.funcs.getAvailableTranslates(cnt)
-                            skipR = self.funcs.getAvailableRotates(cnt)
-                            constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                                      False: [x.split('translate')[-1]
-                                                                                              for x in
-                                                                                              skipT]}[
-                                orientOnly],
-                                                             skipRotate=[x.split('rotate')[-1] for x in skipR])
+                            constraint = self.funcs.safeParentConstraint(loc, cnt,
+                                                                         orientOnly=orientOnly,
+                                                                         maintainOffset=False)
+                            '''
                             pm.container(asset, edit=True,
                                          includeHierarchyBelow=True,
                                          force=True,
                                          addNode=constraint)
+                            '''
+                '''
                 if pm.optionVar.get(self.tempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
                             cmds.select(str(l), replace=True)
                             mel.eval('createMotionTrail')
+                '''
                 if select:
                     pm.select(locs, replace=True)
                 return locs
-                '''
+
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
@@ -751,7 +761,7 @@ class BakeTools(toolAbstractFactory):
         newAnimLayer.preferred.set(True)
         return newAnimLayer
 
-    def add_layer(self, override=False,component=True):
+    def add_layer(self, override=False, component=True):
         timeRange = None
         if self.funcs.isTimelineHighlighted():
             timeRange = self.funcs.getTimelineHighlightedRange()
@@ -1497,14 +1507,15 @@ class BakeTools(toolAbstractFactory):
     def bakeOnXUI(self):
         wd = bakeOnXWidget(title='Bake to key per (x) frames', label='Frames', buttonText="Bake", default="Bake")
 
+
 class bakeOnXWidget(IntInputWidget):
     def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):
         super(bakeOnXWidget, self).__init__(title=title, label=label, buttonText=buttonText, default=default)
         buttonLayout = QHBoxLayout()
         self.layout().addLayout(buttonLayout)
         for x in range(5):
-            button = QPushButton("%s's" % (x+1))
-            button.sample = x+1
+            button = QPushButton("%s's" % (x + 1))
+            button.sample = x + 1
             button.clicked.connect(self.button_pushed)
             buttonLayout.addWidget(button)
 
@@ -1516,4 +1527,3 @@ class bakeOnXWidget(IntInputWidget):
     def button_pushed(self):
         pm.Callback(BakeTools().bake_to_override(sampleRate=self.sender().sample))
         self.close()
-

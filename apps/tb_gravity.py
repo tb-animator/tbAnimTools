@@ -23,7 +23,6 @@
 *******************************************************************************
 '''
 import pymel.core as pm
-import tb_timeline as tl
 import maya.mel as mel
 import maya.cmds as cmds
 import maya.OpenMaya as om
@@ -35,18 +34,21 @@ from Abstract import *
 from tb_UI import *
 import maya
 
+capsuleSideA = 'tbCapsuleSideA'
+capsuleSideB = 'tbCapsuleSideB'
+
 maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 import maya.cmds as cmds
@@ -59,6 +61,7 @@ import sys
 import pymel.core as pm
 import pymel.core.datatypes as dt
 import maya.cmds as cmds
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -86,6 +89,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMReleased',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.closeMM()']))
+        self.addCommand(self.tb_hkey(name='GravityToolsOpenUI',
+                                     annotation='useful comment',
+                                     category=self.category, command=['GravityTools.toolBoxUI()'],
+                                     help=''))
 
         return self.commandList
 
@@ -97,14 +104,32 @@ class GravityTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'GravityTools'
+    comTemplateSubFolder = 'comTemplates'
     hotkeyClass = hotkeys()
     funcs = functions()
 
     gravityOption = 'tbGravityOption'
     defaultGravity = -981
+    toolbox = None
+
+    copyData = {'scaleX': 0,
+                'scaleY': 0,
+                }
+    copyConstraintOffset = {'TranslateX': 0,
+                            'TranslateY': 0,
+                            'TranslateZ': 0,
+                            'RotateX': 0,
+                            'RotateY': 0,
+                            'RotateZ': 0,
+                            }
+    sides = [pm.optionVar.get(capsuleSideA, '_L'),
+             pm.optionVar.get(capsuleSideB, '_R')]
+    editMode = pm.optionVar.get('tbComEditMode', True)
+
+    lastSelectedRig = None
 
     def __new__(cls):
         if GravityTools.__instance is None:
@@ -127,6 +152,12 @@ class GravityTools(toolAbstractFactory):
     objects.
     """
 
+    def initData(self):
+        super(GravityTools, self).initData()
+        self.comTemplateDir = os.path.normpath(os.path.join(self.dataPath, self.comTemplateSubFolder))
+        if not os.path.isdir(self.comTemplateDir):
+            os.mkdir(self.comTemplateDir)
+
     def optionUI(self):
         super(GravityTools, self).optionUI()
         infoText = QLabel()
@@ -148,19 +179,7 @@ class GravityTools(toolAbstractFactory):
         return None
 
     def build_MM(self):
-        cmds.menuItem(label='tbGravtiyTools',
-                      divider=0,
-                      boldFont=True,
-                      enable=False,
-                      )
-        cmds.menuItem(label='Quick Aim',
-                      command=self.quickAim,
-                      )
-        cmds.menuItem(label='tbGravtiyTools',
-                      divider=1,
-                      boldFont=True,
-                      enable=False,
-                      )
+        return
 
     """
     Functions
@@ -292,12 +311,12 @@ class GravityTools(toolAbstractFactory):
                         if not curve:
                             continue
                         curveOriginal = curveDuplicates.get(s + '.' + attr, None)
-                        resultCurve = cmds.listConnections(plugs[s + '.' + attr] , source=True, destination=False)
+                        resultCurve = cmds.listConnections(plugs[s + '.' + attr], source=True, destination=False)
                         cmds.copyKey(resultCurve, time=(start, end), option="curve")
                         cmds.pasteKey(curveOriginal, time=(start, end), animation="objects", option="fitReplace")
                         cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
                         cmds.delete(resultCurve)
-                else: # additive layer
+                else:  # additive layer
                     for attr in ['translateX', 'translateY', 'translateZ']:
                         # hack for pre maya 2020.4.3
                         curve = curves.get(s + '.' + attr, None)
@@ -488,3 +507,661 @@ class GravityTools(toolAbstractFactory):
         tfmMatrix.setTranslation(om2.MVector(rotatePivotValueX, rotatePivotValueY, rotatePivotValueZ),
                                  om2.MSpace.kWorld)
         return tfmMatrix.asMatrix() * value
+
+    def updateOffsets(self):
+        """
+        Updates all offsets for capsules in scene
+        :param sel:
+        :return:
+        """
+        mainCapsuleNodes = cmds.ls('*:Capsules*')
+        if not mainCapsuleNodes:
+            return
+        for node in mainCapsuleNodes:
+            capsules = self.getCapsules(node)
+            if not capsules:
+                continue
+            for c in capsules:
+                constraints = cmds.listRelatives(c, type='parentConstraint')
+                if not constraints:
+                    continue
+                targetList = cmds.parentConstraint(constraints[0], query=True, targetList=True)
+                cmds.parentConstraint(targetList, constraints[0], edit=True, maintainOffset=True)
+
+    def getConstrainForNode(self, node, exactType='parentConstraint'):
+        constraints = cmds.listRelatives(node, type=exactType)
+        if constraints:
+            return constraints[0]
+        return None
+
+    def updateMainComConstraint(self, sel):
+        com = self.centreOfMassNode(sel)
+
+        constraints = cmds.listRelatives(com, type='pointConstraint')
+        capsules = self.getCapsules(sel)
+
+        if not capsules:
+            return
+        if not constraints:
+            mainConstraint = cmds.pointConstraint(capsules, com)
+        else:
+            mainConstraint = constraints[0]
+        if isinstance(mainConstraint, list):
+            mainConstraint = mainConstraint[0]
+        cmds.pointConstraint(capsules, com)
+        targetList = cmds.pointConstraint(mainConstraint, query=True, targetList=True)
+        weightList = cmds.pointConstraint(mainConstraint, query=True, weightAliasList=True)
+
+        for t, w in zip(targetList, weightList):
+            if cmds.listConnections(mainConstraint + '.' + w, source=True, destination=False):
+                continue
+            cmds.connectAttr(t + '.volume', mainConstraint + '.' + w)
+
+    def getCapsules(self, sel):
+        capsules = cmds.listRelatives(self.mainCapsuleNode(sel), children=True)
+        capsules = [c for c in capsules if c.endswith('_cap')]
+        return capsules
+
+    def alignCapsule(self, capsule, axis='x'):
+        constraints = cmds.listRelatives(capsule, type='parentConstraint')
+        if not constraints:
+            return
+        offsets = {'x': [0, 0, 90],
+                   'y': [90, 0, 0],
+                   'z': [0, 90, 0],
+                   }
+        for index, k in enumerate(offsets.keys()):
+            cmds.setAttr(constraints[0] + ".target[0].targetOffsetRotate%s" % k.upper(), offsets[axis][index])
+
+    def centreOfMassNode(self, sel):
+        sel = pm.PyNode(sel)
+        namespace = sel.namespace()
+        mainNode = self.mainCapsuleNode(sel)
+        if not cmds.objExists(namespace + 'COM'):
+            com = cmds.spaceLocator(name=namespace + 'COM')
+            cmds.setAttr(com[0] + '.overrideEnabled', 1)
+            cmds.setAttr(com[0] + '.overrideColor', 17)
+            cmds.setAttr(com[0] + '.localScaleY', 0.1)
+            cmds.parent(com, mainNode)
+        if not cmds.objExists(namespace + 'COM_Floor'):
+            floorCom = cmds.spaceLocator(name=namespace + 'COM_Floor')
+            cmds.parent(floorCom, mainNode)
+            cmds.setAttr(com[0] + '.overrideEnabled', 1)
+            cmds.setAttr(com[0] + '.overrideColor', 18)
+            cmds.pointConstraint(com[0], floorCom[0], skip='y')
+        return namespace + 'COM'
+
+    def mainCapsuleNode(self, sel):
+        sel = pm.PyNode(sel)
+        namespace = sel.namespace()
+        if not cmds.objExists(namespace + 'Capsules'):
+            node = cmds.createNode('transform', name=namespace + 'Capsules')
+            cmds.addAttr(node, ln='rig', at='message')
+            pm.connectAttr(sel.root().message, node + '.rig')
+            return node
+        return namespace + 'Capsules'
+
+    def createCapsuleAtSelection(self, sel=None, axis='x'):
+        if not sel:
+            sel = cmds.ls(sl=True, type='joint')
+        if not sel:
+            return cmds.warning('Please select a joint')
+        if not isinstance(sel, list):
+            sel = [sel]
+        for s in sel:
+            capsule = self.createCapsule(s)
+            if cmds.getModifiers() == 1:
+                cmds.select(capsule, replace=True)
+                self.pasteCapsule(capsule)
+            cmds.parentConstraint(s, capsule)
+            self.alignCapsule(capsule, axis=axis)
+            cmds.parent(capsule, self.mainCapsuleNode(s))
+            self.centreOfMassNode(s)
+            self.updateMainComConstraint(capsule)
+            cmds.select(capsule, replace=True)
+        return capsule
+
+    def createCapsule(self, name):
+        createDebug_shader(name='capsuleShader', colour=[1, 0, 0])
+        mainNode = cmds.cylinder(name=name + '_cap', p=(0, 0, 0), ax=(0, 1, 0), ssw=0, esw=360, r=1, hr=2, d=3, ut=0,
+                                 tol=0.01, s=8, nsp=1, ch=1)[0]
+        assignDebug_shader(shader='capsuleShader', obj=mainNode)
+        cmds.connectAttr(mainNode + '.scaleX', mainNode + '.scaleZ')
+        cmds.addAttr(mainNode, ln='volume', at='float')
+        cmds.setAttr(mainNode + '.volume', edit=True, keyable=False, channelBox=True)
+        names = ['tip', 'base']
+        offsets = [1, -1]
+        start = [180, 0]
+        end = [360, 180]
+        for index, x in enumerate(names):
+            node = cmds.sphere(name=mainNode + '_' + x,
+                               p=(0, 0, 0),
+                               ax=(0, 0, 1),
+                               ssw=start[index],
+                               esw=end[index],
+                               r=1, d=3, ut=0, tol=0.01,
+                               s=8, nsp=4, ch=1)[0]
+            assignDebug_shader(shader='capsuleShader', obj=node)
+            cmds.parent(node, mainNode)
+            cmds.setAttr(node + '.translate', 0, offsets[index], 0, type='double3')
+            cmds.setAttr(node + ".overrideEnabled", 1)
+            cmds.setAttr(node + ".overrideDisplayType", 2)
+            cmds.setAttr(node + '.inheritsTransform', 0)
+            constraint = cmds.parentConstraint(mainNode, node, maintainOffset=True)
+            scaleConstraint = cmds.scaleConstraint(mainNode, node, maintainOffset=True, skip='y')
+            pma = cmds.createNode('plusMinusAverage')
+            cmds.setAttr(pma + '.operation', 3)
+            cmds.connectAttr(scaleConstraint[0] + '.constraintScaleX', pma + '.input1D[0]')
+            cmds.connectAttr(scaleConstraint[0] + '.constraintScaleZ', pma + '.input1D[1]')
+            cmds.connectAttr(pma + '.output1D', node + '.scaleY')
+
+        r_h = cmds.createNode('plusMinusAverage', name='r_h')
+        cmds.connectAttr(mainNode + '.scaleY', r_h + '.input1D[0]')
+        cmds.connectAttr(mainNode + '.scaleY', r_h + '.input1D[1]')
+
+        r_m = cmds.createNode('multDoubleLinear', name='r_m')
+        cmds.setAttr(r_m + '.input1', 1.3333333333333333)
+        cmds.connectAttr(mainNode + '.scaleX', r_m + '.input2')
+        r_m_h = cmds.createNode('addDoubleLinear', name='r_m_h')
+        cmds.connectAttr(r_m + '.output', r_m_h + '.input1')
+        cmds.connectAttr(r_h + '.output1D', r_m_h + '.input2')
+        r2 = cmds.createNode('multiplyDivide', name='r2')
+        cmds.setAttr(r2 + '.operation', 3)
+        cmds.setAttr(r2 + '.input2X', 2)
+        cmds.connectAttr(mainNode + '.scaleX', r2 + '.input1X')
+        pi_r = cmds.createNode('multDoubleLinear', name='pi_r')
+        cmds.setAttr(pi_r + '.input1', 3.142)
+        cmds.connectAttr(r2 + '.outputX', pi_r + '.input2')
+
+        pi_r_h = cmds.createNode('multDoubleLinear', name='pi_r_h')
+        cmds.connectAttr(pi_r + '.output', pi_r_h + '.input1')
+        cmds.connectAttr(r_m_h + '.output', pi_r_h + '.input2')
+        cmds.connectAttr(pi_r_h + '.output', mainNode + '.volume')
+        return mainNode
+
+    def copyCapsule(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        if not cmds.attributeQuery('volume', node=sel[0], exists=True):
+            return cmds.warning(sel[0], 'is not a capsule')
+        capsule = sel[0]
+        self.updateOffsets()
+        self.copyData, self.copyConstraintOffset = self.cacheCapsule(capsule)
+        return cmds.warning('capsule copied')
+
+    def cacheCapsule(self, capsule):
+        copyData = dict()
+        copyConstraintOffset = dict()
+        constraint = self.getConstrainForNode(capsule, exactType='parentConstraint')
+        for key in self.copyData.keys():
+            copyData[key] = cmds.getAttr(capsule + '.' + key)
+        if constraint:
+            for key in self.copyConstraintOffset.keys():
+                copyConstraintOffset[key] = cmds.getAttr(constraint + '.target[0].targetOffset' + key)
+        return copyData, copyConstraintOffset
+
+    def pasteCapsule(self, sel=None, copyData=None, copyConstraintOffset=None, mirror=False):
+        scale = -1 if mirror else 1
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        if not isinstance(sel, list):
+            sel = [sel]
+        if not copyData:
+            copyData = self.copyData
+        if not copyConstraintOffset:
+            copyConstraintOffset = self.copyConstraintOffset
+        if not copyData.keys():
+            return cmds.warning('no copied capsule data')
+        for s in sel:
+            constraint = None
+            if not cmds.attributeQuery('volume', node=s, exists=True):
+                cmds.warning(s, 'is not a capsule, attempting to create a new one')
+                continue
+
+            constraint = self.getConstrainForNode(s, exactType='parentConstraint')
+            for key in copyData.keys():
+                cmds.setAttr(s + '.' + key, copyData[key])
+            if constraint:
+                for key in copyConstraintOffset.keys():
+                    cmds.setAttr(constraint + '.target[0].targetOffset' + key, scale * copyConstraintOffset[key])
+        self.updateMainComConstraint(sel[0])
+
+    def getMirrorName(self, node, sideList):
+        for s in sideList:
+            if s in node:
+                return node.replace(s, sideList[not sideList.index(s)])
+        return node
+
+    def sideAUpdated(self, value):
+        self.sides[0] = value
+        pm.optionVar[capsuleSideA] = value
+
+    def sideBUpdated(self, value):
+        self.sides[1] = value
+        pm.optionVar[capsuleSideB] = value
+
+    def mirrorSelectedCapsules(self, sideList=None):
+        if not sideList:
+            sideList = self.sides
+
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        capsules = [s for s in sel if cmds.attributeQuery('volume', node=s, exists=True)]
+        for c in capsules:
+            baseName = c.rsplit('_cap')[0]
+            mirrorObject = self.getMirrorName(baseName, sideList)
+            if mirrorObject == baseName:
+                continue
+            self.copyCapsule([c])
+            cmds.select(mirrorObject, replace=True)
+            newCapsule = self.createCapsuleAtSelection()
+            cmds.select(newCapsule)
+            self.pasteCapsule([newCapsule], mirror=True)
+        self.updateMainComConstraint(sel[0])
+
+    def bakeNode(self, sel=None, target='COM'):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No last rig used')
+        refname, namespace = self.funcs.getCurrentRig(sel)
+
+        targetObject = namespace + ':' + target
+        if not cmds.objExists(targetObject):
+            return cmds.warning('Cannot find %s' % targetObject)
+        if cmds.objExists(targetObject + '_Baked'):
+            cmds.delete(targetObject + '_Baked')
+        tempControl = self.funcs.tempControl(name=targetObject, suffix='Baked', drawType='cross', scale=0.1)
+        if self.funcs.isTimelineHighlighted():
+            bakeRange = self.funcs.getTimelineHighlightedRange()
+        else:
+            bakeRange = self.funcs.getTimelineRange()
+
+        pm.pointConstraint(targetObject, tempControl)
+        self.allTools.tools['BakeTools'].quickBake(tempControl, startTime=bakeRange[0], endTime=bakeRange[-1],
+                                                   deleteConstraints=True)
+        return tempControl
+
+    def bakeComToNode(self):
+        self.bakeNode(target='COM')
+
+    def bakeFloorComToNode(self):
+        self.bakeNode(target='COM_Floor')
+
+    def bakeSelToCOM(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('No selection')
+        tempControl = self.bakeNode(target='COM')
+        sel.append(tempControl)
+        self.allTools.tools['BakeTools'].bake_to_locator_pinned(sel=sel, constrain=True)
+
+    def bakeSelToFloorCOM(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('No selection')
+        tempControl = self.bakeNode(target='COM_Floor')
+        sel.append(tempControl)
+        self.allTools.tools['BakeTools'].bake_to_locator_pinned(sel=sel, constrain=True)
+
+    def setLastUsedRig(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No last rig used')
+        if not isinstance(sel, list):
+            sel = [sel]
+
+        refname, namespace = self.funcs.getCurrentRig(sel)
+
+        self.lastSelectedRig = refname
+
+    def saveCurrentCapsules(self, sel=None):
+        rigToSave = None
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            if not self.lastSelectedRig:
+                return
+
+    def loadCapsules(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        mainCapsule = self.mainCapsuleNode(sel[0])
+        if not mainCapsule:
+            refname, namespace = self.funcs.getCurrentRig(sel)
+        else:
+            rigRoot = cmds.listConnections(mainCapsule + '.rig', source=True, destination=False)
+            refname, namespace = self.funcs.getCurrentRig(rigRoot)
+            cmds.delete(mainCapsule)
+
+        dataFile = os.path.join(self.comTemplateDir, refname + '.json')
+        jsonData = json.load(open(dataFile))
+
+        for key in jsonData['offsets'].keys():
+            capsuleTarget = namespace + ':' + key.rsplit('_cap')[0]
+
+            newCapsule = self.createCapsuleAtSelection(sel=capsuleTarget, axis='x')
+            self.pasteCapsule([newCapsule], copyData=jsonData['offsets'][key], copyConstraintOffset=jsonData['constraintOffsets'][key])
+
+    def saveCapsules(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        mainCapsule = self.mainCapsuleNode(sel[0])
+        if not mainCapsule:
+            return cmds.warning('No main node for selection')
+        capsules = self.getCapsules(sel[0])
+        if not capsules:
+            return cmds.warning('No capsules for selection')
+        rigRoot = cmds.listConnections(mainCapsule + '.rig', source=True, destination=False)
+
+        refname, namespace = self.funcs.getCurrentRig(rigRoot)
+        jsonData = '''{}'''
+        setData = json.loads(jsonData)
+        setData['targets'] = dict()
+        setData['offsets'] = dict()
+        setData['constraintOffsets'] = dict()
+
+        for cap in capsules:
+            copyData, copyConstraintOffset = self.cacheCapsule(cap)
+            pCap = pm.PyNode(cap)
+            capName = pCap.stripNamespace()
+            targetName = capName.rsplit('_cap')[0]
+
+            setData['targets'][capName] = targetName
+            setData['offsets'][capName] = copyData
+            setData['constraintOffsets'][capName] = copyConstraintOffset
+        dataFile = os.path.join(self.comTemplateDir, refname + '.json')
+
+        self.saveJsonFile(dataFile, setData)
+
+    def getToolboxWidget(self, widget):
+        buttonWidth = 108
+        buttonHeight = 40
+        '''
+        cmds.setParent()
+        if cmds.menu(TOOLBOX_MENU, exists=True):
+            cmds.deleteUI(TOOLBOX_MENU)
+        menuBar = cmds.menu(TOOLBOX_MENU, label=TOOLBOX_MENU, tearOff=True)
+        '''
+
+        def setAnimMode():
+            stackedWidget.setCurrentIndex(0)
+            animButton.setEnabled(True)
+            editButton.setDisabled(True)
+            pm.optionVar['tbComEditMode'] = True
+
+        def setEditMode():
+            stackedWidget.setCurrentIndex(1)
+            animButton.setDisabled(True)
+            editButton.setEnabled(True)
+            pm.optionVar['tbComEditMode'] = False
+
+        toolBoxWidget = QWidget()
+        toolBoxWidget.setContentsMargins(0, 0, 0, 0)
+        toolBoxLayout = QVBoxLayout()
+        toolBoxLayout.setContentsMargins(0, 0, 0, 0)
+        toolBoxLayout.setSpacing(0)
+        editMainWidget = QWidget()
+        editMainWidget.setContentsMargins(0, 0, 0, 0)
+        editMainLayout = QVBoxLayout()
+        editMainLayout.setContentsMargins(0, 0, 0, 0)
+        editMainLayout.setSpacing(0)
+        editMainWidget.setLayout(editMainLayout)
+        animMainLWidget = QWidget()
+        animMainLWidget.setContentsMargins(0, 0, 0, 0)
+        animMainLayout = QVBoxLayout()
+        animMainLayout.setContentsMargins(0, 0, 0, 0)
+        animMainLayout.setSpacing(0)
+        animMainLWidget.setLayout(animMainLayout)
+
+        toolBoxWidget.setLayout(toolBoxLayout)
+
+        stackedWidget = QStackedWidget()
+
+        editButton = QPushButton('Edit')
+        editButton.clicked.connect(setAnimMode)
+        animButton = QPushButton('Anim')
+        animButton.clicked.connect(setEditMode)
+        modeLayout = QHBoxLayout()
+        modeLayout.addWidget(editButton)
+        modeLayout.addWidget(animButton)
+
+        menuBar = None
+        viewLayout = QHBoxLayout()
+        xrayJointButton = ToolButton(text='Toggle\nxray',
+                                     imgLabel='Tips',
+                                     width=buttonWidth,
+                                     height=buttonHeight,
+                                     icon=":/QR_xRay.png",
+                                     command='ViewMode_xray_joints')
+
+        isolateButton = ToolButton(text='Toggle\nIsolate',
+                                   imgLabel='Tips',
+                                   width=buttonWidth,
+                                   height=buttonHeight,
+                                   icon=":/IsolateSelected.png",
+                                   command='toggle_isolate_selection')
+
+        viewLayout.addWidget(isolateButton)
+        viewLayout.addWidget(xrayJointButton)
+
+        createLayout = QVBoxLayout()
+        createLabel = QLabel('Create Capsule')
+        colPoseButton = ToolButton(text='Create Capsule',
+                                   imgLabel='Sel',
+                                   width=2 * buttonWidth,
+                                   icon=":/hairConvertConstraint.png",
+                                   sourceType='py',
+                                   command=self.createCapsuleAtSelection)
+
+        updateOffsetsButton = ToolButton(text='Update offsets',
+                                         imgLabel='Group',
+                                         width=2 * buttonWidth,
+                                         icon=":/hairConvertConstraint.png",
+                                         sourceType='py',
+                                         command=self.updateOffsets)
+
+        createAlignLayout = QHBoxLayout()
+        createXAlignButton = ToolButton(text='X',
+                                        imgLabel='Sel',
+                                        height=22,
+                                        width=(2 * buttonWidth) / 3.0, sourceType='py',
+                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'x'))
+        createYAlignButton = ToolButton(text='Y',
+                                        imgLabel='All',
+                                        height=22,
+                                        width=(2 * buttonWidth) / 3.0, sourceType='py',
+                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'y'))
+        createZAlignButton = ToolButton(text='Z',
+                                        imgLabel='All',
+                                        height=22,
+                                        width=(2 * buttonWidth) / 3.0, sourceType='py',
+                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'z'))
+
+        createAlignLayout.addWidget(createXAlignButton)
+        createAlignLayout.addWidget(createYAlignButton)
+        createAlignLayout.addWidget(createZAlignButton)
+        createLayout.addWidget(createLabel)
+        createLayout.addLayout(createAlignLayout)
+        createLayout.addWidget(updateOffsetsButton)
+
+        alignLayout = QHBoxLayout()
+        xAlignButton = ToolButton(text='Align X',
+                                  imgLabel='Sel',
+                                  height=22,
+                                  width=(2 * buttonWidth) / 3.0,
+                                  command='tbBakeCollisionSelected')
+        yAlignButton = ToolButton(text='Align Y',
+                                  imgLabel='All',
+                                  height=22,
+                                  width=(2 * buttonWidth) / 3.0,
+                                  command='tbBakeAllCollisionSelected')
+        zAlignButton = ToolButton(text='Align Z',
+                                  imgLabel='All',
+                                  height=22,
+                                  width=(2 * buttonWidth) / 3.0,
+                                  command='tbBakeAllCollisionSelected')
+
+        alignLayout.addWidget(xAlignButton)
+        alignLayout.addWidget(yAlignButton)
+        alignLayout.addWidget(zAlignButton)
+
+        saveLoadLayout = QHBoxLayout()
+        loadButton = ToolButton(text='Load',
+                                icon=":/openScript.png", sourceType='py',
+                                height=22,
+                                command=self.loadCapsules)
+        saveButton = ToolButton(text='Save',
+                                 icon=":/save.png", sourceType='py',
+                                 height=22,
+                                 command=self.saveCapsules)
+        saveLoadLayout.addWidget(loadButton)
+        saveLoadLayout.addWidget(saveButton)
+
+        copyPasteLayout = QHBoxLayout()
+        copyButton = ToolButton(text='Copy',
+                                icon=":/copyUV.png", sourceType='py',
+                                height=22,
+                                command=self.copyCapsule)
+        pasteButton = ToolButton(text='Paste',
+                                 icon=":/pasteUV.png", sourceType='py',
+                                 height=22,
+                                 command=self.pasteCapsule)
+        copyPasteLayout.addWidget(copyButton)
+        copyPasteLayout.addWidget(pasteButton)
+
+        mirrorLayout = QHBoxLayout()
+        mirrorButton = ToolButton(text='Mirror',
+                                  icon=":/delete.png", sourceType='py',
+                                  width=(2 * buttonWidth) / 3.0,
+                                  height=22,
+                                  command=self.mirrorSelectedCapsules)
+        sideALineEdit = QLineEdit(self.sides[0])
+        sideALineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
+        sideALineEdit.textChanged.connect(self.sideAUpdated)
+        sideBLineEdit = QLineEdit(self.sides[1])
+        sideBLineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
+        sideBLineEdit.textChanged.connect(self.sideBUpdated)
+        mirrorLayout.addWidget(mirrorButton)
+        mirrorLayout.addWidget(sideALineEdit)
+        mirrorLayout.addWidget(sideBLineEdit)
+
+        editMainLayout.addLayout(viewLayout)
+        editMainLayout.addLayout(createLayout)
+        # editMainLayout.addLayout(alignLayout)
+        editMainLayout.addLayout(mirrorLayout)
+        editMainLayout.addLayout(copyPasteLayout)
+        editMainLayout.addLayout(saveLoadLayout)
+
+        toolBoxLayout.addLayout(modeLayout)
+        toolBoxLayout.addWidget(stackedWidget)
+        stackedWidget.addWidget(editMainWidget)
+        stackedWidget.addWidget(animMainLWidget)
+
+        # Anim layout
+        bakeLayout = QVBoxLayout()
+        bakeLabel = QLabel('Bake COM')
+        bakeButtonLayout = QVBoxLayout()
+        bakeCOMButton = ToolButton(text='Bake COM to node',
+                                   imgLabel='Sel',
+                                   sourceType='py',
+                                   height=22,
+                                   width=2 * buttonWidth,
+                                   command=self.bakeComToNode)
+        bakeFloorCOMButton = ToolButton(text='Bake Floor COM to node',
+                                        imgLabel='Sel',
+                                        sourceType='py',
+                                        height=22,
+                                        width=2 * buttonWidth,
+                                        command=self.bakeFloorComToNode)
+        bakeSelToCOMButton = ToolButton(text='Bake Selection to COM',
+                                   imgLabel='Sel',
+                                   sourceType='py',
+                                   height=22,
+                                   width=2 * buttonWidth,
+                                   command=self.bakeSelToCOM)
+        bakeSelToFloorCOMButton = ToolButton(text='Bake Selection to Floor COM',
+                                        imgLabel='Sel',
+                                        sourceType='py',
+                                        height=22,
+                                        width=2 * buttonWidth,
+                                        command=self.bakeSelToFloorCOM)
+        bakeLayout.addWidget(bakeLabel)
+        bakeLayout.addLayout(bakeButtonLayout)
+        bakeButtonLayout.addWidget(bakeCOMButton)
+        bakeButtonLayout.addWidget(bakeFloorCOMButton)
+        bakeButtonLayout.addWidget(bakeSelToCOMButton)
+        bakeButtonLayout.addWidget(bakeSelToFloorCOMButton)
+
+        animMainLayout.addLayout(bakeLayout)
+
+        editMode = pm.optionVar.get('tbComEditMode', True)
+        if editMode:
+            setAnimMode()
+        else:
+            setEditMode()
+        return toolBoxWidget
+
+    def toolBoxUI(self):
+        # if not self.toolbox:
+        self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                                  title='tb Centre of Mass', text=str(),
+                                  lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
+        self.toolbox.mainLayout.addWidget(self.getToolboxWidget(self.toolbox))
+
+        self.toolbox.show()
+        self.toolbox.setFixedSize(self.toolbox.sizeHint())
+
+
+def createDebug_shader(name='capsuleShader', colour=[0.034, 1, 0]):
+    if not pm.objExists(name):
+        shader = pm.shadingNode('lambert', asShader=True, name=name)
+        shader.color.set(colour)
+        shader.ambientColor.set(0.266, 0.266, 0.266)
+        shader.transparency.set(0.75, 0.75, 0.75)
+        # shader.incandescence.set(colour)
+    else:
+        shader = pm.PyNode(name)
+
+
+def assignDebug_shader(shader='capsuleShader', obj=[]):
+    if obj and cmds.objExists(shader):
+        assignObjectListToShader(obj, shader)
+
+
+def assignObjectListToShader(objList=None, shader=None):
+    """
+    Assign the shader to the object list
+    arguments:
+        objList: list of objects or faces
+    """
+    # assign selection to the shader
+    shaderSG = getSGfromShader(shader)
+    if objList:
+        if shaderSG:
+            cmds.sets(objList, e=True, forceElement=shaderSG)
+        else:
+            print ('The provided shader didn\'t returned a shaderSG')
+    else:
+        print ('Please select one or more objects')
+
+
+def getSGfromShader(shader=None):
+    if shader:
+        if cmds.objExists(shader):
+            sgq = cmds.listConnections(shader, d=True, et=True, t='shadingEngine')
+            if sgq:
+                return sgq[0]
+            else:
+                sqq = cmds.sets(renderable=True, noSurfaceShader=True, empty=True, name=shader + 'SG')
+                cmds.defaultNavigation(connectToExisting=True, source=shader, destination=sqq)
+                return sqq
+    return None

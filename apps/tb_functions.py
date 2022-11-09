@@ -1582,6 +1582,8 @@ class functions(object):
     def getMfnCurveValues(mfnCurve, mTimeArray):
         return [mfnCurve.evaluate(m) for m in mTimeArray]
 
+
+
     def omGetPlugsFromLayer(self, layer, layerAttributes):
         MPlugDict = dict()
         MFnCurveDict = dict()
