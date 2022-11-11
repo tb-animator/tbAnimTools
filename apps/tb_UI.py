@@ -3227,20 +3227,23 @@ class ToolButton(QPushButton):
         self.menuItem = None
         self.imgLabel = imgLabel
 
-        if command:
-            if self.sourceType == 'mel':
-                self.clicked.connect(lambda: mel.eval(command))
-            else:
-                self.clicked.connect(lambda: self.command())
+        if self.command:
+            self.clicked.connect(self.evalCommand)
         if self.icon:
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
             self.pixmap = QPixmap()
 
+    @Slot()
+    def evalCommand(self):
+        if self.sourceType == 'mel':
+            mel.eval(self.command)
+        else:
+            self.command()
+
     def mousePressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
         if modifiers == Qt.ControlModifier:
-
             currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
             cmds.setParent(currentShelf)
             shelfButton = cmds.shelfButton(image1=self.icon,
@@ -3258,7 +3261,7 @@ class ToolButton(QPushButton):
         elif modifiers == Qt.AltModifier:
             print ('assign hotkey')
             return
-        return super(ToolButton, self).mousePressEvent(event)
+        #return super(ToolButton, self).mousePressEvent(event)
 
     def sizeHint(self):
         return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
@@ -3307,12 +3310,16 @@ class HotkeyToolButton(QPushButton):
         self.imgLabel = imgLabel
 
         if command:
-            self.clicked.connect(lambda: mel.eval(command))
+            self.clicked.connect(self.evalCommand)
 
         if self.icon:
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
             self.pixmap = QPixmap()
+
+    @Slot()
+    def evalCommand(self):
+        mel.eval(self.command)
 
     def mousePressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
@@ -3333,7 +3340,7 @@ class HotkeyToolButton(QPushButton):
             return
         if self.sourceType == 'mel':
             mel.eval(self.command)
-        return super(HotkeyToolButton, self).mousePressEvent(event)
+        #return super(HotkeyToolButton, self).mousePressEvent(event)
 
     def sizeHint(self):
         return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
