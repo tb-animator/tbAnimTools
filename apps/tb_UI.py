@@ -81,6 +81,7 @@ class CustomDialog(QDialog):
 
 
 class BaseDialog(QDialog):
+    widgetClosed = Signal()
     oldPos = None
 
     def __init__(self, parent=None, title='', text='',
@@ -210,6 +211,9 @@ class BaseDialog(QDialog):
         self.lockState = pinState
         self.closeButton.setVisible(True)
 
+    def close(self):
+        self.widgetClosed.emit()
+        super(BaseDialog, self).close()
 
 class markingMenu_filter(QObject):
     '''A simple event filter to catch MouseMove events'''
@@ -3261,7 +3265,7 @@ class ToolButton(QPushButton):
         elif modifiers == Qt.AltModifier:
             print ('assign hotkey')
             return
-        #return super(ToolButton, self).mousePressEvent(event)
+        return super(ToolButton, self).mousePressEvent(event)
 
     def sizeHint(self):
         return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,

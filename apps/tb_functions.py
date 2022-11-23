@@ -60,6 +60,10 @@ API_TYPES = {'animCurve': [om2.MFn.kAnimCurveTimeToAngular,
                             om2.MFn.kBlendNodeBase],
              'rotation': [om2.MFn.kBlendNodeAdditiveRotation]}
 
+uiCommandDict = {'graphEditor1GraphEd': 'GraphEditor',
+                 'graphEditor1GraphEd': 'GraphEditor',
+                 'None': ''}
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -417,6 +421,9 @@ class functions(object):
         l = max(min(l * factor, 1.0), 0.0)
         r, g, b = hls_to_rgb(h, l, s)
         return int(r * 255), int(g * 255), int(b * 255)
+
+    def complimentary_colour(self, colour):
+        return [255 - colour[0], 255 - colour[1], 255 - colour[2]]
 
     def lighten_color(self, colour, factor=0.1):
         return self.adjust_color_lightness(colour[0], colour[1], colour[2], 1 + factor)
@@ -1122,6 +1129,7 @@ class functions(object):
         if GraphEdWindow:
             cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
 
+
     @contextmanager
     def undoNoQueue(self):
         cmds.undoInfo(stateWithoutFlush=False)
@@ -1581,8 +1589,6 @@ class functions(object):
     @staticmethod
     def getMfnCurveValues(mfnCurve, mTimeArray):
         return [mfnCurve.evaluate(m) for m in mTimeArray]
-
-
 
     def omGetPlugsFromLayer(self, layer, layerAttributes):
         MPlugDict = dict()

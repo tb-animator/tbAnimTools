@@ -34,6 +34,11 @@ from Abstract import *
 from tb_UI import *
 import maya
 
+mainNodeName = 'CoM_Nodes'
+capsuleNodeName = 'Capsules'
+comNodeName = 'CoM'
+floorComNodeName = 'CoM_Floor'
+
 capsuleSideA = 'tbCapsuleSideA'
 capsuleSideB = 'tbCapsuleSideB'
 
@@ -176,7 +181,8 @@ class GravityTools(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        return None
+        pm.menuItem(label='Centre of Mass', image='CoM.png', command='GravityToolsOpenUI', sourceType='mel',
+                    parent=parentMenu)
 
     def build_MM(self):
         return
@@ -195,6 +201,13 @@ class GravityTools(toolAbstractFactory):
     calculation for max height
     - (v0 * v0) / 2 * a)
     '''
+
+    def getGravity(self):
+        worldAxis = cmds.upAxis(query=True, axis=True)
+        self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity) / self.funcs.unit_conversion()
+        gravityVector = {'y': [0, self.gravity, 0],
+                         'z': [0, 0, self.gravity]}
+        return gravityVector[worldAxis]
 
     def quickDrop(self):
         self.uiUnit = om.MTime.uiUnit()
@@ -381,10 +394,10 @@ class GravityTools(toolAbstractFactory):
             startTranslation = self.getMatrixTranslation(startMx)
             endTranslation = self.getMatrixTranslation(endMtx)
             initialVelocity = (endTranslation - startTranslation) * self.funcs.time_conversion()
-            arcX = self.arcCalc(endTranslation.x, initialVelocity.x, durationFrames, 0)
-            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames,
-                                self.gravity / self.funcs.unit_conversion())
-            arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, 0)
+            gravityVector = self.getGravity()
+            arcX = self.arcCalc(endTranslation.x, initialVelocity.x, durationFrames, gravityVector[0])
+            arcY = self.arcCalc(endTranslation.y, initialVelocity.y, durationFrames, gravityVector[1])
+            arcZ = self.arcCalc(endTranslation.z, initialVelocity.z, durationFrames, gravityVector[2])
             self.keyJumpArc(arcX, arcY, arcZ, start, end, locs[s])
 
             self.bakeJumpToControl(start, end, locs[s], s)
@@ -462,15 +475,15 @@ class GravityTools(toolAbstractFactory):
 
     def getJumpArc(self, startTranslation, endTranslation, durationFrames):
         # calculate time vs frames
+        gravityVector = self.getGravity()
         displacement = endTranslation - startTranslation
         durationSeconds = float(durationFrames / self.funcs.time_conversion())
-        velocityX = self.getJumpInitialVelocity(displacement.x, durationSeconds, 0)
-        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds,
-                                                -self.gravity / self.funcs.unit_conversion())
-        velocityZ = self.getJumpInitialVelocity(displacement.z, durationSeconds, 0)
-        arcX = self.arcCalc(startTranslation.x, velocityX, durationFrames, 0)
-        arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, self.gravity / self.funcs.unit_conversion())
-        arcZ = self.arcCalc(startTranslation.z, velocityZ, durationFrames, 0)
+        velocityX = self.getJumpInitialVelocity(displacement.x, durationSeconds, -gravityVector[0])
+        velocityY = self.getJumpInitialVelocity(displacement.y, durationSeconds, -gravityVector[1])
+        velocityZ = self.getJumpInitialVelocity(displacement.z, durationSeconds, -gravityVector[2])
+        arcX = self.arcCalc(startTranslation.x, velocityX, durationFrames, gravityVector[0])
+        arcY = self.arcCalc(startTranslation.y, velocityY, durationFrames, gravityVector[1])
+        arcZ = self.arcCalc(startTranslation.z, velocityZ, durationFrames, gravityVector[2])
         return arcX, arcY, arcZ
 
     def arcCalc(self, x0, v0, durationFrames, gravity):
@@ -535,7 +548,7 @@ class GravityTools(toolAbstractFactory):
         return None
 
     def updateMainComConstraint(self, sel):
-        com = self.centreOfMassNode(sel)
+        com, floorCom = self.centreOfMassNode(sel)
 
         constraints = cmds.listRelatives(com, type='pointConstraint')
         capsules = self.getCapsules(sel)
@@ -574,32 +587,51 @@ class GravityTools(toolAbstractFactory):
             cmds.setAttr(constraints[0] + ".target[0].targetOffsetRotate%s" % k.upper(), offsets[axis][index])
 
     def centreOfMassNode(self, sel):
+        """
+        Builds the centre of mass node constrained to the capsules
+        :param sel:
+        :return:
+        """
         sel = pm.PyNode(sel)
         namespace = sel.namespace()
         mainNode = self.mainCapsuleNode(sel)
-        if not cmds.objExists(namespace + 'COM'):
-            com = cmds.spaceLocator(name=namespace + 'COM')
+        mainComNode = self.mainCoMNode(sel)
+        if not cmds.objExists(namespace + comNodeName):
+            com = cmds.spaceLocator(name=namespace + comNodeName)
             cmds.setAttr(com[0] + '.overrideEnabled', 1)
             cmds.setAttr(com[0] + '.overrideColor', 17)
             cmds.setAttr(com[0] + '.localScaleY', 0.1)
-            cmds.parent(com, mainNode)
-        if not cmds.objExists(namespace + 'COM_Floor'):
-            floorCom = cmds.spaceLocator(name=namespace + 'COM_Floor')
-            cmds.parent(floorCom, mainNode)
+            cmds.parent(com, mainComNode)
+        if not cmds.objExists(namespace + floorComNodeName):
+            floorCom = cmds.spaceLocator(name=namespace + floorComNodeName)
+            cmds.parent(floorCom, mainComNode)
             cmds.setAttr(com[0] + '.overrideEnabled', 1)
             cmds.setAttr(com[0] + '.overrideColor', 18)
-            cmds.pointConstraint(com[0], floorCom[0], skip='y')
-        return namespace + 'COM'
+            cmds.pointConstraint(com[0], floorCom[0], skip=cmds.upAxis(query=True, axis=True))
+        return namespace + comNodeName, namespace + floorComNodeName
+
+
+    def mainCoMNode(self, sel):
+        sel = pm.PyNode(sel)
+        namespace = sel.namespace()
+        if not cmds.objExists(namespace + mainNodeName):
+            node = cmds.createNode('transform', name=namespace + mainNodeName)
+            cmds.addAttr(node, ln='rig', at='message')
+            pm.connectAttr(sel.root().message, node + '.rig')
+            return node
+        return namespace + mainNodeName
 
     def mainCapsuleNode(self, sel):
         sel = pm.PyNode(sel)
         namespace = sel.namespace()
-        if not cmds.objExists(namespace + 'Capsules'):
-            node = cmds.createNode('transform', name=namespace + 'Capsules')
+        mainComNode = self.mainCoMNode(sel)
+        if not cmds.objExists(namespace + capsuleNodeName):
+            node = cmds.createNode('transform', name=namespace + capsuleNodeName)
             cmds.addAttr(node, ln='rig', at='message')
             pm.connectAttr(sel.root().message, node + '.rig')
+            pm.parent(node, mainComNode)
             return node
-        return namespace + 'Capsules'
+        return namespace + capsuleNodeName
 
     def createCapsuleAtSelection(self, sel=None, axis='x'):
         if not sel:
@@ -787,6 +819,28 @@ class GravityTools(toolAbstractFactory):
                                                    deleteConstraints=True)
         return tempControl
 
+    def toggleCapsuleVis(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No last rig used')
+        sel = pm.PyNode(sel[0])
+
+        visState = cmds.getAttr(self.mainCapsuleNode(sel) + '.visibility')
+        cmds.setAttr(self.mainCapsuleNode(sel) + '.visibility', not visState)
+
+    def toggleNodeVis(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No last rig used')
+
+        sel = pm.PyNode(sel[0])
+        com, floorCom = self.centreOfMassNode(sel)
+        visState = cmds.getAttr(com + '.visibility')
+        cmds.setAttr(com + '.visibility', not visState)
+        cmds.setAttr(floorCom + '.visibility', not visState)
+
     def bakeComToNode(self):
         self.bakeNode(target='COM')
 
@@ -848,7 +902,8 @@ class GravityTools(toolAbstractFactory):
             capsuleTarget = namespace + ':' + key.rsplit('_cap')[0]
 
             newCapsule = self.createCapsuleAtSelection(sel=capsuleTarget, axis='x')
-            self.pasteCapsule([newCapsule], copyData=jsonData['offsets'][key], copyConstraintOffset=jsonData['constraintOffsets'][key])
+            self.pasteCapsule([newCapsule], copyData=jsonData['offsets'][key],
+                              copyConstraintOffset=jsonData['constraintOffsets'][key])
 
     def saveCapsules(self):
         sel = cmds.ls(sl=True)
@@ -1020,9 +1075,9 @@ class GravityTools(toolAbstractFactory):
                                 height=22,
                                 command=self.loadCapsules)
         saveButton = ToolButton(text='Save',
-                                 icon=":/save.png", sourceType='py',
-                                 height=22,
-                                 command=self.saveCapsules)
+                                icon=":/save.png", sourceType='py',
+                                height=22,
+                                command=self.saveCapsules)
         saveLoadLayout.addWidget(loadButton)
         saveLoadLayout.addWidget(saveButton)
 
@@ -1068,34 +1123,48 @@ class GravityTools(toolAbstractFactory):
 
         # Anim layout
         bakeLayout = QVBoxLayout()
-        bakeLabel = QLabel('Bake COM')
+        bakeLabel = QLabel('Bake CoM')
         bakeButtonLayout = QVBoxLayout()
-        bakeCOMButton = ToolButton(text='Bake COM to node',
+        toggleCapButton = ToolButton(text='Toggle Capsule Vis',
+                                     icon=":RS_visible.png",
+                                     sourceType='py',
+                                     height=32,
+                                     width=2 * buttonWidth,
+                                     command=self.toggleCapsuleVis)
+        toggleNodeButton = ToolButton(text='Toggle Node Vis',
+                                     icon=":RS_visible.png",
+                                     sourceType='py',
+                                     height=32,
+                                     width=2 * buttonWidth,
+                                     command=self.toggleNodeVis)
+        bakeCOMButton = ToolButton(text='Bake CoM to node',
                                    imgLabel='Sel',
                                    sourceType='py',
                                    height=22,
                                    width=2 * buttonWidth,
                                    command=self.bakeComToNode)
-        bakeFloorCOMButton = ToolButton(text='Bake Floor COM to node',
+        bakeFloorCOMButton = ToolButton(text='Bake Floor CoM to node',
                                         imgLabel='Sel',
                                         sourceType='py',
                                         height=22,
                                         width=2 * buttonWidth,
                                         command=self.bakeFloorComToNode)
-        bakeSelToCOMButton = ToolButton(text='Bake Selection to COM',
-                                   imgLabel='Sel',
-                                   sourceType='py',
-                                   height=22,
-                                   width=2 * buttonWidth,
-                                   command=self.bakeSelToCOM)
-        bakeSelToFloorCOMButton = ToolButton(text='Bake Selection to Floor COM',
+        bakeSelToCOMButton = ToolButton(text='Bake Selection to CoM',
                                         imgLabel='Sel',
                                         sourceType='py',
                                         height=22,
                                         width=2 * buttonWidth,
-                                        command=self.bakeSelToFloorCOM)
+                                        command=self.bakeSelToCOM)
+        bakeSelToFloorCOMButton = ToolButton(text='Bake Selection to Floor CoM',
+                                             imgLabel='Sel',
+                                             sourceType='py',
+                                             height=22,
+                                             width=2 * buttonWidth,
+                                             command=self.bakeSelToFloorCOM)
         bakeLayout.addWidget(bakeLabel)
         bakeLayout.addLayout(bakeButtonLayout)
+        bakeButtonLayout.addWidget(toggleCapButton)
+        bakeButtonLayout.addWidget(toggleNodeButton)
         bakeButtonLayout.addWidget(bakeCOMButton)
         bakeButtonLayout.addWidget(bakeFloorCOMButton)
         bakeButtonLayout.addWidget(bakeSelToCOMButton)
