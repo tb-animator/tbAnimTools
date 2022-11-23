@@ -521,6 +521,19 @@ class GravityTools(toolAbstractFactory):
                                  om2.MSpace.kWorld)
         return tfmMatrix.asMatrix() * value
 
+    def getTopParent(self, sel):
+        """
+        Due to pymel crapping out at non unique names, gotta do this in cmds
+        :param sel:
+        :return:
+        """
+        parents = cmds.listRelatives(sel, allParents=True, fullPath=True)[0]
+        parents = parents.split('|')
+        for p in parents:
+            if p:
+                return p
+        return None
+
     def updateOffsets(self):
         """
         Updates all offsets for capsules in scene
@@ -617,7 +630,8 @@ class GravityTools(toolAbstractFactory):
         if not cmds.objExists(namespace + mainNodeName):
             node = cmds.createNode('transform', name=namespace + mainNodeName)
             cmds.addAttr(node, ln='rig', at='message')
-            pm.connectAttr(sel.root().message, node + '.rig')
+            topNode = self.getTopParent(str(sel))
+            pm.connectAttr(topNode + '.message', node + '.rig')
             return node
         return namespace + mainNodeName
 
@@ -628,7 +642,8 @@ class GravityTools(toolAbstractFactory):
         if not cmds.objExists(namespace + capsuleNodeName):
             node = cmds.createNode('transform', name=namespace + capsuleNodeName)
             cmds.addAttr(node, ln='rig', at='message')
-            pm.connectAttr(sel.root().message, node + '.rig')
+            topNode = self.getTopParent(str(sel))
+            pm.connectAttr(topNode + '.message', node + '.rig')
             pm.parent(node, mainComNode)
             return node
         return namespace + capsuleNodeName
