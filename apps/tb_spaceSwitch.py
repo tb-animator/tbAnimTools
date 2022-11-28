@@ -50,6 +50,7 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
+
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('spaceSwitch'))
@@ -171,9 +172,6 @@ class SpaceData(object):
         # TODO - remove from presets as well
 
 
-
-
-
 class SpaceSwitch(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
@@ -274,31 +272,37 @@ class SpaceSwitch(toolAbstractFactory):
         # make this better...?
 
         if sel:
-            menuDict['NW'].append(ToolboxButton(label='switch to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\local_base.png',
-                                                command=lambda: self.switchTo(sel, mode=str_spaceLocalValues),
-                                                closeOnPress=True))
-            menuDict['NW'].append(ToolboxButton(label='switch to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\world_base.png',
-                                                command=lambda: self.switchTo(sel, mode=str_spaceGlobalValues),
-                                                closeOnPress=True))
-            menuDict['NW'].append(ToolboxButton(label='switch to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\default_base.png',
-                                                command=lambda: self.switchTo(sel, mode=str_spaceDefaultValues),
-                                                closeOnPress=True))
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\local_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceLocalValues),
+                              closeOnPress=True))
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\world_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceGlobalValues),
+                              closeOnPress=True))
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\default_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceDefaultValues),
+                              closeOnPress=True))
 
-            menuDict['NE'].append(ToolboxButton(label='bake to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\local_base.png',
-                                                command=lambda: self.bakeTo(sel, mode=str_spaceLocalValues),
-                                                closeOnPress=True))
-            menuDict['NE'].append(ToolboxButton(label='bake to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\world_base.png',
-                                                command=lambda: self.bakeTo(sel, mode=str_spaceGlobalValues),
-                                                closeOnPress=True))
-            menuDict['NE'].append(ToolboxButton(label='bake to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                                icon=IconPath + '\default_base.png',
-                                                command=lambda: self.bakeTo(sel, mode=str_spaceDefaultValues),
-                                                closeOnPress=True))
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\local_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceLocalValues),
+                              closeOnPress=True))
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Global', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\world_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceGlobalValues),
+                              closeOnPress=True))
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Default', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\default_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceDefaultValues),
+                              closeOnPress=True))
 
             menuDict['SW'].append(ToolboxButton(label='Select all Switch Controls',
                                                 parent=self.markingMenuWidget,
@@ -531,11 +535,11 @@ class SpaceSwitch(toolAbstractFactory):
                 if not self.loadedSpaceData[rigName].spacePresets.get(presetName):
                     self.loadedSpaceData[rigName].spacePresets[presetName] = dict()
 
-                #print ('pre', self.loadedSpaceData[rigName].spacePresets[presetName])
+                # print ('pre', self.loadedSpaceData[rigName].spacePresets[presetName])
                 self.loadedSpaceData[rigName].spacePresets[presetName][control + '.' + attr] = value
-                #print ('post', self.loadedSpaceData[rigName].spacePresets[presetName])
+                # print ('post', self.loadedSpaceData[rigName].spacePresets[presetName])
             SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
-            #print ('saved')
+            # print ('saved')
 
     def makeSwitchData(self, selection=list(), mode=str_spaceGlobalValues):
         switchAttrData = dict()
@@ -664,7 +668,7 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.animLayer(resultLayer, edit=True, selected=True)
         cmds.animLayer(resultLayer, edit=True, preferred=True)
         for key, attr in spaceAttributes.items():
-            #print ('key, attr', key, attr)
+            # print ('key, attr', key, attr)
             spaceSwitchAttr = pm.Attribute(key)
             spaceValue = values[key]
             if not isinstance(values[key], int) and not isinstance(values[key], float):
@@ -718,15 +722,15 @@ class SpaceSwitch(toolAbstractFactory):
                 unknownControls.append(s)
             else:
                 allSpaceAttrs = list(set([x.split('.')[-1] for x in self.loadedSpaceData[rigName].spaceControl.keys()]))
-                #print ('allSpaceAttrs', allSpaceAttrs)
+                # print ('allSpaceAttrs', allSpaceAttrs)
                 if rigName not in self.loadedSpaceData.keys():
                     unknownControls.append(s)
                     continue
-                #print (self.loadedSpaceData[rigName].spaceControl.items())
+                # print (self.loadedSpaceData[rigName].spaceControl.items())
                 attrs = self.loadedSpaceData[rigName].spaceControl.keys()
                 values = self.loadedSpaceData[rigName].spaceControl.values()
                 if control in values:
-                    #print ('control in values', control, values.index(control))
+                    # print ('control in values', control, values.index(control))
                     attr = attrs[values.index(control)]
                     attrName = attr.split('.')[-1]
                     p_attr = pm.Attribute(s + '.' + attrName)
@@ -736,7 +740,7 @@ class SpaceSwitch(toolAbstractFactory):
                     spaceValues = p_attr.getEnums()
                     all_spaces.append(spaceValues)
 
-                    #print (control, 'in', spaceValues)
+                    # print (control, 'in', spaceValues)
                     allAttrNames.append(attrName)
                     dataValues[namespace + ':' + attr] = spaceValues
                     dataControls[namespace + ':' + attr] = namespace + ':' + control
@@ -752,7 +756,7 @@ class SpaceSwitch(toolAbstractFactory):
                         spaceValues = p_attr.getEnums()
                         all_spaces.append(spaceValues)
 
-                        #print (control, 'in', spaceValues)
+                        # print (control, 'in', spaceValues)
                         allAttrNames.append(attrName)
                         dataValues[namespace + ':' + control + '.' + attrName] = spaceValues
                         dataControls[namespace + ':' + control + '.' + attrName] = namespace + ':' + control
@@ -760,14 +764,16 @@ class SpaceSwitch(toolAbstractFactory):
                         # set the default values based on existing values
                         index = cmds.getAttr(namespace + ':' + control + '.' + attrName)
                         value = spaceValues[index]
-                        self.loadedSpaceData[rigName].__dict__[str_spaceGlobalValues][control + '.' + attrName] = spaceValues.keys()[0]
-                        self.loadedSpaceData[rigName].__dict__[str_spaceLocalValues][control + '.' + attrName] = spaceValues.keys()[-1]
+                        self.loadedSpaceData[rigName].__dict__[str_spaceGlobalValues][control + '.' + attrName] = \
+                        spaceValues.keys()[0]
+                        self.loadedSpaceData[rigName].__dict__[str_spaceLocalValues][control + '.' + attrName] = \
+                        spaceValues.keys()[-1]
                         self.loadedSpaceData[rigName].__dict__[str_spaceDefaultValues][control + '.' + attrName] = value
                         SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
         # print ('unknownControls', unknownControls)
         # print ('allAttrNames', allAttrNames)
         allAttrNames = set(allAttrNames)
-        #print ('unknownControls', unknownControls)
+        # print ('unknownControls', unknownControls)
         for c in unknownControls:
             if not ':' in c:
                 namespace = ''
@@ -808,8 +814,8 @@ class SpaceSwitch(toolAbstractFactory):
         return newAnimLayer
 
     def switchFromData(self, attributes, values):
-        #print ('switchFromData attributes', attributes)
-        #print ('switchFromData values', values)
+        # print ('switchFromData attributes', attributes)
+        # print ('switchFromData values', values)
         timeDict = dict()
         selection = attributes.values()
         for s in selection:
@@ -891,7 +897,7 @@ class SpaceSwitch(toolAbstractFactory):
         if not cmds.objExists(node):
             return pm.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
-        #print ('simpleSpaceSwitch', node, spaceAttribute)
+        # print ('simpleSpaceSwitch', node, spaceAttribute)
         spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
@@ -993,7 +999,6 @@ class SubToolboxWidget(ViewportDialog):
                  parentMenu=None):
         super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
 
-
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
 
@@ -1013,6 +1018,7 @@ class SubToolboxWidget(ViewportDialog):
                                                        popupSubMenu=True
                                                        ))
 
+
 class SaveCurrentStateWidget(ViewportDialog):
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  parentMenu=None):
@@ -1022,14 +1028,17 @@ class SaveCurrentStateWidget(ViewportDialog):
             self.parentMenu.setEnabled(False)
 
         self.addButton(quad='SW', button=ToolboxButton(label='Store as Global', parent=self, cls=self,
-                                                       command=lambda : SpaceSwitch().captureData(mode=str_spaceGlobalValues, presetName=None),
+                                                       command=lambda: SpaceSwitch().captureData(
+                                                           mode=str_spaceGlobalValues, presetName=None),
                                                        closeOnPress=True))
         self.addButton(quad='SW', button=ToolboxButton(label='Store as local', parent=self, cls=self,
-                                                       command=lambda : SpaceSwitch().captureData(mode=str_spaceLocalValues, presetName=None),
+                                                       command=lambda: SpaceSwitch().captureData(
+                                                           mode=str_spaceLocalValues, presetName=None),
                                                        closeOnPress=True))
 
         self.addButton(quad='SW', button=ToolboxButton(label='Store as Default', parent=self, cls=self,
-                                                       command=lambda : SpaceSwitch().captureData(mode=str_spaceDefaultValues, presetName=None),
+                                                       command=lambda: SpaceSwitch().captureData(
+                                                           mode=str_spaceDefaultValues, presetName=None),
                                                        closeOnPress=True))
         '''
         self.addButton(quad='SW', button=ToolboxButton(label='SubMENU SW', parent=self, cls=self, command=None,
@@ -1038,7 +1047,6 @@ class SaveCurrentStateWidget(ViewportDialog):
                                                        popupSubMenu=True
                                                        ))
         '''
-
 
 
 class SpaceSwitchSetupUI(QMainWindow):
@@ -1139,16 +1147,16 @@ class SpaceSwitchSetupUI(QMainWindow):
         return self.selectionChangedCallback
 
     def selectionChanged(self, *args):
-        #print ('selection changed')
+        # print ('selection changed')
         controls = self.getPendingControls()
-
 
         for k, v in self.spaceData.spaceControl.items():
             if v in controls:
-                #print ('widget', self.controlWidgets[k])
+                # print ('widget', self.controlWidgets[k])
                 self.controlWidgets[k].controlWidget.errorHighlight()
             else:
                 self.controlWidgets[k].controlWidget.errorHighlightRemove()
+
     def errorHighlight(self, widget):
         borderHighlightQSS = "{background-color: red}"
 
@@ -1210,7 +1218,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         return pendingControls
 
     def addNewControlsWithAttribute(self, attribute):
-        #print ('attribute', attribute)
+        # print ('attribute', attribute)
         self.spaceData.addControlsWithMatchingAttribute(self.namespace, self.pendingControls, attribute)
         self.refreshUI()
 
@@ -1337,6 +1345,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         cmds.scriptJob(kill=self.selectionChangedCallback)
 
         event.accept()
+
     """
     Test functions
     """
@@ -1629,7 +1638,7 @@ class SwitchableObjectWidget(QWidget):
         self.fkLayout = QVBoxLayout()
         self.ikLayout = QVBoxLayout()
 
-        #self.controlLayout.addWidget(self.controlWidget)
+        # self.controlLayout.addWidget(self.controlWidget)
 
         self.mainLayout.addLayout(self.controlLayout)
         self.mainLayout.addLayout(self.valuesLayout)
@@ -1709,7 +1718,7 @@ class SwitchableObjectWidget(QWidget):
         self.cls.spaceData.__dict__[key][self.key] = value
 
     def updateAttributeType(self, key, value):
-        #print ('updateAttributeType', key, self.key, value)
+        # print ('updateAttributeType', key, self.key, value)
 
         # swap out existing entry
         if self.key in self.cls.spaceData.spaceGlobalValues.keys():

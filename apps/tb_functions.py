@@ -381,6 +381,32 @@ class functions(object):
         shape.overrideColorRGB.set(color)
         return control
 
+    def getControlColour(self, ref):
+        """
+        Get the colour for a control in rgb
+        :param ref:
+        :param control:
+        :return:
+        """
+        node = pm.PyNode(ref)
+        refObj = node
+        overrideState = node.overrideEnabled.get()
+        if not overrideState:
+            shape = node.getShape()
+            if shape:
+                overrideState = shape.overrideEnabled.get()
+                if overrideState:
+                    refObj = shape
+
+        if not refObj.overrideRGBColors.get():
+            if refObj.overrideColor.get() == 0:
+                rgbColour = [125, 125, 125]
+            else:
+                rgbColour = [x * 255 for x in cmds.colorIndex(refObj.overrideColor.get(), q=True)]
+        else:
+            rgbColour = [x * 255 for x in refObj.overrideColorRGB.get()]
+        return rgbColour
+
     def getSetColour(self, ref, control, brightnessOffset=0):
         """
         Copies the colour override from ref to control
@@ -1715,7 +1741,11 @@ class functions(object):
         return [x.split(':')[-1] for x in matching]
 
     def getOppositeControl(self, name):
-        namespace, control = name.rsplit(':', 1)
+        if ':' in name:
+            namespace, control = name.rsplit(':', 1)
+        else:
+            namespace = str()
+            control = str(name)
         prefix = re.split('[^a-zA-Z0-9]+', control)
 
         for pre in prefix:

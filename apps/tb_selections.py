@@ -172,7 +172,11 @@ class SelectionTools(toolAbstractFactory):
 
 
     def getOppositeControl(self, name, constraint=False, shape=True):
-        namespace, control = name.rsplit(':', 1)
+        if ':' in name:
+            namespace, control = name.rsplit(':', 1)
+        else:
+            namespace = str()
+            control = str(name)
         prefix = re.split('[^a-zA-Z0-9]+', control)
         matchingPrefix = self.getSimilarControls(namespace, control, prefix, constraint=False, shape=True)
         st = self.funcs.stripTailDigits(control)

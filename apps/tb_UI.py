@@ -48,6 +48,7 @@ else:
     from shiboken2 import wrapInstance
 import getStyleSheet as getqss
 import os
+from colorsys import rgb_to_hls, hls_to_rgb
 
 scriptLocation = os.path.dirname(os.path.realpath(__file__))
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
@@ -55,6 +56,28 @@ helpPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Help')
 
 baseIconFile = 'checkBox.png'
 
+
+def adjust_color_lightness(r, g, b, factor):
+    h, l, s = rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+    l = max(min(l * factor, 1.0), 0.0)
+    r, g, b = hls_to_rgb(h, l, s)
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
+def darken_color(colour, factor=0.1):
+    return adjust_color_lightness(colour[0], colour[1], colour[2], 1 - factor)
+
+def hex_to_rgb(hex):
+    return [float((hex[x:x + 2])) for x in [1, 3, 5]]
+
+def rgb_to_hex(colour):
+    return "#%02x%02x%02x" % (colour[0], colour[1], colour[2])
+
+def getColourBasedOnRGB(inputColour, lightColour, darkColour):
+    isLight = ((inputColour[0] * 0.299) + (inputColour[1] * 0.587) + (inputColour[2] * 0.114)) > 186
+    if isLight:
+        return darkColour, False
+    return lightColour, True
 
 class CustomDialog(QDialog):
     def __init__(self, parent=None):
@@ -215,6 +238,7 @@ class BaseDialog(QDialog):
         self.widgetClosed.emit()
         super(BaseDialog, self).close()
 
+
 class markingMenu_filter(QObject):
     '''A simple event filter to catch MouseMove events'''
 
@@ -240,16 +264,20 @@ class markingMenuKeypressHandler(QObject):
 
 
 class ViewportDialog(QDialog):
+    closeSignal = Signal()
+    keyReleasedSignal = Signal()
+
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
         self.keyPressHandler = None
-
         self.menuDict = menuDict
         self.parentMenu = parentMenu
         self.invokedKey = None
         self.returnButton = None
+
+        self.hasExecutedCommand = False
 
         self.recentlyOpened = False
         self.activeButton = None
@@ -327,6 +355,7 @@ class ViewportDialog(QDialog):
                    'SW': existingPos.y() + existingSize.height(),
                    }
         # print (quad, offsetX[quad], offsetY[quad])
+        # print ('existingSize', existingSize.height())
         button.move(offsetX[quad], offsetY[quad])
 
         if isinstance(button, ToolboxButton):
@@ -334,21 +363,31 @@ class ViewportDialog(QDialog):
             button.absPos = button.pos()
             self.allButtons.append(button)
             button.hoverSignal.connect(self.buttonHovered)
+            button.commandExecutedSignal.connect(self.commandExecuted)
+            self.closeSignal.connect(button.hidePopup)
         elif isinstance(button, ToolboDivider):
             self.widgets[quad].append(button)
         elif isinstance(button, ToolboxDoubleButton):
             self.widgets[quad].append(button)
             for b in button.buttons:
                 b.hoverSignal.connect(self.buttonHovered)
+                b.commandExecutedSignal.connect(self.commandExecuted)
+                self.closeSignal.connect(b.hidePopup)
                 b.absPos = button.pos()  # + b.parent().pos()
                 self.allButtons.append(b)
 
+    @Slot()
+    def commandExecuted(self):
+        self.hasExecutedCommand = True
+        for b in self.allButtons:
+            b.disableExecuteOnHover()
+
     def enableLayer(self):
-        print ('enableLayer')
+        # print ('enableLayer')
         self.tooltipEnabled = True
 
     def disableLayer(self):
-        print ('disableLayer')
+        # print ('disableLayer')
         self.tooltipEnabled = False
 
     def moveAll(self):
@@ -389,7 +428,7 @@ class ViewportDialog(QDialog):
         self.addAllButtons()
         self.repaint()
         super(ViewportDialog, self).show()
-        print (cmds.timerX() - t)
+        # print (cmds.timerX() - t)
 
     def hide(self):
         # print ('being hidden', self)
@@ -404,7 +443,14 @@ class ViewportDialog(QDialog):
     def close(self):
         if self.keyPressHandler:
             self.app.removeEventFilter(self.keyPressHandler)
-        super(ViewportDialog, self).close()
+        try:
+            super(ViewportDialog, self).close()
+        except:
+            pass
+        try:
+            self.closeSignal.emit()
+        except:
+            pass
 
     def hideCurrentLayer(self):
         self.close()
@@ -436,7 +482,12 @@ class ViewportDialog(QDialog):
         qp.begin(self)
         lineColor = QColor(68, 68, 68, 128)
         linePenColor = QColor(255, 160, 47, 255)
-        blank = QColor(124, 124, 124, 32)
+        blank = QColor(124, 124, 124, 1)
+        empty = QColor(124, 124, 124, 0)
+
+        centralColour = QColor(68, 68, 68, 64)
+        centralColourMid = QColor(68, 68, 68, 32)
+        centralColourFade = QColor(68, 68, 68, 0)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
         grad = QLinearGradient(200, 0, 200, 32)
@@ -452,6 +503,20 @@ class ViewportDialog(QDialog):
 
         qp.setBrush(QBrush(blank))
         qp.drawRoundedRect(self.rect(), 8, 8)
+
+        # subtle central shadow
+        shadowGrad = QRadialGradient(self.cursorPos, 200)
+        shadowGrad.setColorAt(0, centralColour)
+        shadowGrad.setColorAt(0.2, centralColourMid)
+        shadowGrad.setColorAt(1, centralColourFade)
+        qp.setPen(QPen(QBrush(empty), 0))
+        qp.setBrush(QBrush(shadowGrad))
+        qp.drawEllipse(self.cursorPos.x() - 300,
+                       self.cursorPos.y() - 300,
+                       600,
+                       600)
+
+        # central dot
         qp.setBrush(QBrush(lineColor))
         qp.drawEllipse(self.cursorPos.x() - self.centralRadius / 2,
                        self.cursorPos.y() - self.centralRadius / 2,
@@ -519,6 +584,7 @@ class ViewportDialog(QDialog):
                     # print ('skip', w)
                     continue
                 # w.setNonHoverSS()
+                # TODO - fix central point lookup as it's shit
                 widgetPos = QPoint(w.absPos.x() + w.width() / 2, w.absPos.y() + w.height() / 2)
                 distance = self.distance(widgetPos, self.currentCursorPos)
                 if distance < closest:
@@ -557,13 +623,18 @@ class ViewportDialog(QDialog):
             if not self.invokedKey or self.invokedKey == event.key():
                 if self.activeButton:
                     if isinstance(self.activeButton, ToolboxButton):
-                        self.activeButton.executeCommand()
+                        if self.activeButton.executeOnHover:
+                            self.activeButton.executeCommand()
 
                 self.close()
                 if self.parentMenu:
                     # print ('sending keyreleaseevent')
                     self.parentMenu.keyReleaseEvent(event)
                 self.invokedKey = None
+        try:
+            self.keyReleasedSignal.emit()
+        except:
+            pass
 
     def wheelEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
@@ -646,14 +717,31 @@ class ReturnButton(QPushButton):
 
 class ToolboxButton(QPushButton):
     hoverSignal = Signal(object)
+    colourChangedSignal = Signal(str, float, float, float)
+    commandExecutedSignal = Signal()
 
     def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
                  subMenuClass=None,
                  subMenu=None,
                  iconWidth=16, iconHeight=16,
+                 isSmall=False,
+                 fixedWidth=None,
+                 colour=[55, 55, 55],
+                 colouredBackground=False,
                  ):
         super(ToolboxButton, self).__init__(label, parent)
-
+        self.isSmall = isSmall
+        self.borderColour = QColor(30, 30, 30)
+        self.colouredBackground = colouredBackground
+        self.colourRGB = colour
+        self.colour = rgb_to_hex(colour)
+        self.colourDark = list()
+        for x in range(1, 5):
+            self.colourDark.append(rgb_to_hex(darken_color(colour, float(x) * 0.1)))
+        self.lightColour = QColor(198, 198, 198)
+        self.darkColour = QColor(32, 32, 32)
+        self.textColour, self.isLight = getColourBasedOnRGB(colour, self.lightColour, self.darkColour)
+        self.executeOnHover = True
         self.subMenu = subMenu  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
         self.setFixedSize(48, 22)
@@ -666,11 +754,16 @@ class ToolboxButton(QPushButton):
         self.setNonHoverSS()
         self.setMouseTracking(True)
         self.popupSubMenu = popupSubMenu
-        fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
+        self.pop_up_window = None
+
+        if not fixedWidth:
+            fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
+        else:
+            fontWidth = fixedWidth + 16
         if icon:
             fontWidth += iconWidth
         self.setText(str())
-        self.setFixedSize(max(48, ((fontWidth / 64) * 64) + 64), 24)
+
         if popupSubMenu:
             self.icon = IconPath + '\popupMenu.png'
         else:
@@ -680,7 +773,33 @@ class ToolboxButton(QPushButton):
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
             self.pixmap = QPixmap()
+        if isSmall:
+            self.setFixedSize(22, 22)
+        else:
+            self.setFixedSize(max(32, ((fontWidth / 64.0) * 64) + 64), 22)
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+
+    def setPopupMenu(self, menuClass):
+        self.pop_up_window = menuClass('name', self)
+
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
+
+    def _showMenu(self, pos):
+        """
+        Move this to somewhere better
+        :param pos:
+        :return:
+        """
+        pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
+        if self.pop_up_window:
+            self.pop_up_window.move(pop_up_pos)
+
+            self.pop_up_window.show()
+
+    def disableExecuteOnHover(self):
+        self.executeOnHover = False
 
     def buttonClicked(self):
         try:
@@ -697,15 +816,21 @@ class ToolboxButton(QPushButton):
         return bb.contains(pos)
 
     def setHoverSS(self):
+        self.borderColour = QColor(255, 160, 47)
+        self.borderWidth = 1
         self.setStyleSheet("ToolboxButton {"
                            "text-align:left;"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #222936, stop: 0.1 #222936, stop: 0.5 #222936, stop: 0.9 #222936, stop: 1 #222936);"
                            "border-color: #ffa02f}"
                            )
+        self.textColour, self.isLight = getColourBasedOnRGB(hex_to_rgb('#222936'), self.lightColour, self.darkColour)
 
     def setNonHoverSS(self):
+        self.borderColour = QColor(30, 30, 30)
+        self.borderWidth = 1
         self.setStyleSheet("ToolboxButton {"
                            "color: #b1b1b1;"
-                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 %s, stop: 0.1 %s, stop: 0.5 %s, stop: 0.9 %s, stop: 1 %s);"
                            "border-width: 1px;"
                            "border-color: #1e1e1e;"
                            "border-style: solid;"
@@ -715,8 +840,14 @@ class ToolboxButton(QPushButton):
                            "text-align:left;"
                            "padding-left: 5px;"
                            "padding-right: 5px;"
-                           "}"
+                           "}" % (self.colour,
+                                  self.colourDark[0],
+                                  self.colourDark[1],
+                                  self.colourDark[2],
+                                  self.colourDark[3],
+                                  )
                            )
+        self.textColour, self.isLight = getColourBasedOnRGB(self.colourRGB, self.lightColour, self.darkColour)
 
     def mouseMoveEvent(self, event):
         self.setHoverSS()
@@ -730,6 +861,7 @@ class ToolboxButton(QPushButton):
         if self.command:
             if not self.executed:
                 self.command()
+                self.commandExecutedSignal.emit()
             if self.closeOnPress:
                 self.executed = True
             if self.subMenu:
@@ -737,39 +869,137 @@ class ToolboxButton(QPushButton):
 
     def paintEvent(self, event):
         QPushButton.paintEvent(self, event)
+        qp = QPainter()
+        qp.begin(self)
+        qp.setRenderHint(QPainter.Antialiasing, True)
+        qp.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        lineColor = QColor(32, 32, 32, 32)
 
-        pos_x = 5  # hardcoded horizontal margin
+        lineColorFull = QColor(32, 32, 32)
+        fillColor = QColor(198, 198, 198)
+        # qp.setCompositionMode(qp.CompositionMode_Source)
+        if self.isSmall:
+            pos_x = 0.5 * (self.width() - self.pixmap.width())  # hardcoded horizontal margin
+        else:
+            pos_x = 4  # hardcoded horizontal margin
         pos_y = (self.height() - self.pixmap.height()) / 2
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         if self.pixmap:
-            painter.drawPixmap(pos_x, pos_y, self.pixmap)
-        font = painter.font()
+            qp.drawPixmap(pos_x, pos_y, self.pixmap)
+
+        '''
+        if self.colouredBackground:
+            grad = QLinearGradient(200, 0, 200, 32)
+            grad.setColorAt(0, self.colourDark)
+            grad.setColorAt(0.1, self.colour)
+            grad.setColorAt(1, self.colourDark)
+            qp.setBrush(QBrush(grad))
+            qp.setPen(QPen(QBrush(self.borderColour), self.borderWidth))
+            qp.drawRoundedRect(-1, -1, self.width()+1, self.height()+1, 6, 6)
+        '''
+        path = QPainterPath()
+        pen = QPen()
+        brush = QBrush()
+        font = QFont("Console", 10, 10, False)
+
+        pen.setWidth(3.5)
+        pen.setColor(lineColor)
+        brush.setColor(fillColor)
+        qp.setFont(font)
+        qp.setPen(pen)
+        textPos = QPoint(8, 0)
+        if self.pixmap:
+            textPos.setX(self.pixmap.width() + textPos.x())
+        fontMetrics = QFontMetrics(font)
+        pixelsWide = fontMetrics.width(self.labelText)
+        pixelsHigh = fontMetrics.height()
+
+        path.addText(textPos.x(), pixelsHigh, font, self.labelText)
+
+        pen = QPen(lineColor, 6.5, Qt.SolidLine, Qt.RoundCap)
+        pen2 = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
+        brush = QBrush(self.textColour)
+
+
+        if self.isLight: qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        else: qp.setCompositionMode(qp.CompositionMode_ColorDodge)
+        qp.strokePath(path, pen)
+        qp.strokePath(path, pen2)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.fillPath(path, brush)
+
+        font = qp.font()
         font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(self.pixmap.width() + 12, 16, self.labelText)  # fifth option
+        qp.setFont(font)
+        # qp.drawText(textPos.x(), 16, self.labelText)  # fifth option
+        qp.end()
+
+    @Slot()
+    def hidePopup(self):
+        if self.pop_up_window:
+            self.pop_up_window.close()
+
+class ToolboxColourButton(ToolboxButton):
+    def setPopupMenu(self, menuClass):
+        self.pop_up_window = menuClass('name', self)
+
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
+
+    def _showMenu(self, pos):
+        """
+        Move this to somewhere better
+        :param pos:
+        :return:
+        """
+        pop_up_pos = QCursor.pos()
+        self.commandExecutedSignal.emit()
+        cmds.colorEditor(mini=True,
+                         position=(pop_up_pos.x()-355, pop_up_pos.y()-105),
+                         rgbValue=[x/255 for x in self.colourRGB])
+        if cmds.colorEditor(query=True, result=True):
+            values = cmds.colorEditor(query=True, rgb=True)
+            #print 'RGB = ' + str(values)
+            self.colourChangedSignal.emit(self.labelText, values[0], values[1],values[2])
+        else:
+            print 'Editor was dismissed'
+
+        return
+
+        if self.pop_up_window:
+            self.pop_up_window.move(pop_up_pos)
+
+            self.pop_up_window.show()
 
 
 class ToolboxDoubleButton(QWidget):
     hoverSignal = Signal(object)
 
-    def __init__(self, label, parent, cls=None, buttons=list(), labelWidth=128
-                 ):
+    def __init__(self, label, parent, cls=None, buttons=list(), labelWidth=128, colour="#373737", colourDark="#323232",
+                 buttonsOnRight=False, hideLabel=False):
         super(ToolboxDoubleButton, self).__init__(parent)
+        self.hideLabel = hideLabel
+        self.colour = colour
+        self.colourDark = colourDark
+        self.setFixedHeight(22)
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setSpacing(0)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.mainLayout)
 
-        self.label = QLabel(label)
+        self.label = DropShadowLabel(label)
         self.label.setStyleSheet("background-color:transparent")
-        self.label.setFixedWidth(labelWidth)
+        font = QFont("Console", 10, 10, False)
+        self.label.setFixedWidth(QFontMetrics(font).width(self.label.text()) + 8)
         self.buttons = buttons
+
+        if not hideLabel: self.mainLayout.addWidget(self.label)
+
         for button in self.buttons:
             self.mainLayout.addWidget(button)
-        self.mainLayout.addWidget(self.label)
+
+        if not buttonsOnRight:
+            if not hideLabel: self.mainLayout.addWidget(self.label)
 
     def buttonClicked(self):
         self.executeCommand()
@@ -791,7 +1021,6 @@ class ToolboxDoubleButton(QWidget):
     def setNonHoverSS(self):
         self.setStyleSheet("ToolboxButton {"
                            "color: #b1b1b1;"
-                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
                            "border-width: 1px;"
                            "border-color: #1e1e1e;"
                            "border-style: solid;"
@@ -801,6 +1030,10 @@ class ToolboxDoubleButton(QWidget):
                            "text-align:left;"
                            "padding-left: 5px;"
                            "padding-right: 5px;"
+                           "}"
+                           )
+        self.setStyleSheet("ToolboxButton {"
+                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);"
                            "}"
                            )
 
@@ -815,12 +1048,14 @@ class ToolboxDoubleButton(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
+        if not self.hideLabel:
+            grad = QLinearGradient(200, 0, 200, 32)
+            grad.setColorAt(0, self.colourDark)
+            grad.setColorAt(0.1, self.colour)
+            grad.setColorAt(1, self.colourDark)
+            qp.setBrush(QBrush(grad))
+
         qp.setPen(QPen(QBrush(lineColor), 0))
-        grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, "#323232")
-        grad.setColorAt(0.1, "#373737")
-        grad.setColorAt(1, "#323232")
-        qp.setBrush(QBrush(grad))
         qp.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
 
         qp.end()
@@ -1406,6 +1641,7 @@ class TextInputWidget(QWidget):
         # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
 
         self.lineEdit.setFocus()
+        self.lineEdit.setFixedWidth(self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 16)
         self.setStyleSheet(
             "TextInputWidget { "
             "border-radius: 8;"
@@ -1416,6 +1652,7 @@ class TextInputWidget(QWidget):
         self.comboBox.setMinimumWidth(width)
         self.closeButton.setVisible(self.showCloseButton)
         self.resize(self.sizeHint())
+
         self.show()
         # self.setFixedSize(400, 64)
 
@@ -1827,7 +2064,7 @@ class IntInputWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        #self.setFixedSize(300, 64)
+        # self.setFixedSize(300, 64)
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
@@ -1862,7 +2099,7 @@ class IntInputWidget(QWidget):
             "border-radius: 8;"
             "}"
         )
-        #self.setFixedSize(self.sizeHint())
+        # self.setFixedSize(self.sizeHint())
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -3344,7 +3581,7 @@ class HotkeyToolButton(QPushButton):
             return
         if self.sourceType == 'mel':
             mel.eval(self.command)
-        #return super(HotkeyToolButton, self).mousePressEvent(event)
+        # return super(HotkeyToolButton, self).mousePressEvent(event)
 
     def sizeHint(self):
         return QSize(self.label.sizeHint().width() + self.pixmap.width() + 24,
@@ -4752,3 +4989,39 @@ class SliderButtonPopupMenu(ButtonPopup):
         self.layout.addRow(rootOptionLabel)
         for label, widget in self.radioGroup.returnedWidgets:
             self.layout.addRow(widget)
+
+
+class DropShadowLabel(QLabel):
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+        lineColor = QColor(32, 32, 32, 32)
+        fillColor = QColor(198, 198, 198)
+        path = QPainterPath()
+        pen = QPen()
+        brush = QBrush()
+        font = QFont("Console", 10, 10, False)
+
+        pen.setWidth(3.5)
+        pen.setColor(lineColor)
+        brush.setColor(fillColor)
+        qp.setFont(font)
+        qp.setPen(pen)
+
+        fontMetrics = QFontMetrics(font)
+        pixelsWide = fontMetrics.width(self.text())
+        pixelsHigh = fontMetrics.height()
+
+        path.addText(0, pixelsHigh, font, self.text())
+
+        pen = QPen(lineColor, 6.5, Qt.SolidLine, Qt.RoundCap)
+        pen2 = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
+        brush = QBrush(fillColor)
+        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.strokePath(path, pen)
+        qp.strokePath(path, pen2)
+        qp.fillPath(path, brush)
+        qp.end()

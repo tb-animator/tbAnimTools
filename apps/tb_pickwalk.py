@@ -72,7 +72,6 @@ lockedIcon = 'nodeGrapherLocked.png'
 unlockedIcon = 'nodeGrapherUnlocked.png'
 btnWidth = 80
 
-
 class WalkData(object):
     """
     Stores all information about pickwalking
@@ -332,6 +331,7 @@ class PickwalkCreator(object):
         print ('destination', destination)
         '''
         # add control entry in case it is not already there
+        # TODO add logic here to strip out bad data
         control = str(control).split(':')[-1]
         self.addControl(control)
         if destination:
@@ -752,6 +752,11 @@ class Pickwalk(toolAbstractFactory):
                          'a': 'tbPickwalkLeft',
                          'd': 'tbPickwalkRight',
                          }
+    walkIncrementMap = {'up': -1,
+                        'down': 1,
+                        'left': 0,
+                        'right': 0,
+                        }
 
     pickwalkCreator = PickwalkCreator()
 
@@ -1060,9 +1065,20 @@ class Pickwalk(toolAbstractFactory):
                     self.findSequenceRecursive(nextControl, substringList)
             return substringList
 
+    def createDestination(self, controlA, controlB, direction):
+        self.loadLibraryForCurrent()
+        self.pickwalkCreator.addPickwalkChain(
+            controls=[controlA, controlB],
+            direction=direction,
+            loop=False,
+            reciprocate=True,
+            endOnSelf=False)
+        self.saveLibrary()
+        self.forceReloadData()
+
     def walkCreate(self, direction=str(), condition=False):
         sel = cmds.ls(sl=True, type='transform')
-        #print ('sel', sel)
+        # print ('sel', sel)
         returnedControls = list()
         if not sel:
             return
@@ -1185,6 +1201,7 @@ class Pickwalk(toolAbstractFactory):
         return control
 
     def pickwalk(self, direction=str, add=False):
+        #print ('pickwalk')
         sel = pm.ls(sl=True, type='transform')
         returnedControls = list()
         if not sel:
@@ -1200,9 +1217,10 @@ class Pickwalk(toolAbstractFactory):
             return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
         refName, refState = self.getRefName(walkObject)
-        if not refState:
-            self.walkStandard(direction)
-            return
+        if refName not in self.walkDataLibrary._fileToMapDict.keys():
+            if not refState:
+                self.walkStandard(direction)
+                return
 
         if refName:
             # print 'query against pickwalk library'
@@ -1267,6 +1285,34 @@ class Pickwalk(toolAbstractFactory):
             return
         self.queryWalkOnNewRig(refName)
 
+    def findIncrementalControl(self, cnt, namespace=str(), offset=1):
+        intParts = re.findall(r'\d+', cnt)
+        if not intParts:
+            return None
+
+        if not intParts:
+            return None
+
+        nameParts = cnt.split(intParts[0])
+        intParts[-1] = int(intParts[-1]) + offset
+        listLength = max(len(intParts), len(nameParts))
+        nameList = [str()] * listLength
+        intList = [str()] * listLength
+        for i, v in enumerate(intParts):
+            nameList[i] = v
+        for i, v in enumerate(nameParts):
+            intList[i] = v
+
+        resultList = nameList + intList
+
+        resultList[::2] = intList
+        resultList[1::2] = nameList
+        outStr = ''.join(map(str, resultList))
+        #print ('outStr', outStr)
+        if cmds.objExists(namespace + ':' + outStr):
+            return outStr
+        return None
+
     def dataDrivenWalk(self, direction, refName, walkObject):
         returnedControls = list()
         walkObjectStripped = walkObject.stripNamespace()
@@ -1278,12 +1324,18 @@ class Pickwalk(toolAbstractFactory):
             result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
                                                      node=walkObjectStripped,
                                                      direction=direction)
-            if result is u'(None,)':
+
+            if not result or result is u'(None,)' or result is None or result is u'(None)':
                 # print('query new destination')
-                self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
-                return False
-            if result is None:
-                # print('query new destination')
+                if direction == 'up' or direction == 'down':
+                    result = self.findIncrementalControl(walkObjectStripped,
+                                                         namespace=walkObjectNS,
+                                                         offset=self.walkIncrementMap[direction])
+                if result:
+                    if cmds.objExists(walkObjectNS + result):
+                        self.createDestination(walkObject, walkObjectNS + result, direction)
+                #print ('incrementalNode', result)
+            if result is u'(None,)' or result is None:
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
 
@@ -1586,7 +1638,7 @@ class Pickwalk(toolAbstractFactory):
 
     def saveLibrary(self):
         if not self.pickwalkCreator.walkData._filePath:
-            print ('no current file path')
+            #print ('no current file path')
             self.saveAsLibrary()
             return
         self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
@@ -1688,10 +1740,10 @@ class WalkDirectionDict(object):
     Dictionary of walk directions, entries will be walkDatinationInfo() or str()
     """
 
-    def __init__(self, left=None,
-                 right=None,
-                 up=None,
-                 down=None):
+    def __init__(self, left=str(),
+                 right=str(),
+                 up=str(),
+                 down=str()):
         self.left = left
         self.right = right
         self.up = up
@@ -2121,7 +2173,7 @@ class pickDirectionWidget(QFrame):
 
     def autoApplyData(self, *args):
         if pm.optionVar.get(autoApplyOption, True):
-            #print ('auto apply', args)
+            # print ('auto apply', args)
             self.applyData()
 
     def applyData(self):
@@ -3933,9 +3985,14 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         menu = self.menuBar()
         edit_menu = menu.addMenu('&File')
 
-        self.addReferenceButton = QPushButton('Add Rig To Map')
+        self.addReferenceButton = QPushButton('Add Rig File To Map')
         self.addReferenceButton.setToolTip(ToolTip_AddRigToMap)
         self.addReferenceButton.clicked.connect(self.addRigToMap)
+
+        self.addSelectedRigButton = QPushButton('Add Selected Rig To Map')
+        self.addSelectedRigButton.setToolTip(ToolTip_AddRigToMap)
+        self.addSelectedRigButton.clicked.connect(self.addSelectedRigToMap)
+
         self.removeeferenceButton = QPushButton('Remove Rig From Map')
         self.removeeferenceButton.clicked.connect(self.removeRigFromMap)
         self.assignIgnoredRigButton = QPushButton('Assign Ignored Rig to Map')
@@ -3946,6 +4003,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.ignoredRigsTree = QTreeSingleViewWidget(label='Ignored Rigs')
         self.left_layout.addWidget(self.pickwalkMapTree)
         self.right_layout.addWidget(self.referencedRigsTree)
+        self.right_layout.addWidget(self.addSelectedRigButton)
         self.right_layout.addWidget(self.addReferenceButton)
         self.right_layout.addWidget(self.removeeferenceButton)
         self.right_layout.addWidget(self.ignoredRigsTree)
@@ -3998,6 +4056,19 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.referencedRigsTree.removeItem(self.currentRig)
         self.ignoredRigsTree.appendItem(self.currentRig)
         self.walkDataLibrary.save(self.libraryFilePath)
+
+    def addSelectedRigToMap(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.wanring('No selection')
+        baseName, namespace = Pickwalk().funcs.getCurrentRig([sel[0]])
+
+        self.walkDataLibrary.assignRig(self.currentMap, baseName)
+
+        self.walkDataLibrary.save(self.libraryFilePath)
+        Pickwalk().loadWalkLibrary()
+        self.ignoredRigsTree.removeItem(baseName.split('.')[0])
+        self.pickwalkMapTree.appendItem(baseName.split('.')[0])
 
     def addRigToMap(self):
         if not self.currentMap:

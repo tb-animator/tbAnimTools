@@ -22,20 +22,20 @@
 
 *******************************************************************************
 '''
-
+import time
 import pymel.core as pm
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 import maya.cmds as cmds
@@ -55,6 +55,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
 
         # quick selection set - select
+        self.addCommand(self.tb_hkey(name='tbOpenQuickSelectionMMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['QuickSelectionSets.openMM()']))
         self.addCommand(self.tb_hkey(name='select_quick_select_set_objs',
                                      annotation='',
                                      category=self.category,
@@ -81,7 +84,7 @@ class QuickSelectionTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'QuickSelectionSets'
     hotkeyClass = hotkeys()
@@ -108,7 +111,6 @@ class QuickSelectionTools(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 
-
         self.all_sets = self.get_sets()
 
         self.quickSelectSavePath = pm.optionVar.get(self.quickSelectFolderOption, self.quickSelectFolderDefault)
@@ -124,7 +126,8 @@ class QuickSelectionTools(toolAbstractFactory):
         super(QuickSelectionTools, self).optionUI()
         self.initData()
         dirWidget = filePathWidget(self.quickSelectFolderOption, self.quickSelectFolderDefault)
-        quickSelectOnQssWidget = optionVarBoolWidget('Quick select selection only on sets named _qss', self.quickSelectOnQssSuffix)
+        quickSelectOnQssWidget = optionVarBoolWidget('Quick select selection only on sets named _qss',
+                                                     self.quickSelectOnQssSuffix)
         self.layout.addWidget(dirWidget)
         self.layout.addWidget(quickSelectOnQssWidget)
         self.layout.addStretch()
@@ -148,38 +151,66 @@ class QuickSelectionTools(toolAbstractFactory):
             cmds.select(clear=True)
             main_set = cmds.sets(name="QuickSelects")
             cmds.select(sel, replace=True)
-            return main_set
-        else:
-            return "QuickSelects"
 
-    def get_sets(self):
+        return "QuickSelects"
+
+    def get_sets(self, forceAll=False):
         all_sets = cmds.ls(sets=True)
         qs_sets = list()
 
-        if pm.optionVar.get(self.quickSelectOnQssSuffix, True):
+        if pm.optionVar.get(self.quickSelectOnQssSuffix, True) and not forceAll:
             all_sets = [q for q in all_sets if q.endswith('_qss')]
 
         for qs_name in all_sets:
             if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
+                self.addColourAttribute(qs_name)
                 qs_sets.append(qs_name)
 
         return qs_sets
+
+    def getMatchingSets(self, sel, all_sets):
+        matchedSets = list()
+        unmatchedSets = list()
+        if not all_sets:
+            return matchedSets, unmatchedSets
+
+        for s in all_sets:
+            if self.check_set_membership(sel, s):
+                matchedSets.append(s)
+            else:
+                unmatchedSets.append(s)
+        return matchedSets, unmatchedSets
+
+    def selectQuickSelectionSet(self, name, add=True):
+        cmds.select(self.get_set_contents(name), add=add, replace=not add)
+
+    def addColourAttribute(self, name):
+        if not cmds.attributeQuery('Colour', node=name, exists=True):
+            cmds.addAttr(name, longName='Colour', usedAsColor=True, attributeType='float3')
+            cmds.addAttr(name, longName='ColourX', attributeType="float", p='Colour')
+            cmds.addAttr(name, longName='ColourY', attributeType="float", p='Colour')
+            cmds.addAttr(name, longName='ColourZ', attributeType="float", p='Colour')
+            cmds.setAttr(name + '.Colour', 1.0, 0.769, 0.0, type='float3')
+            cmds.setAttr(name + '.Colour', edit=True, keyable=False, channelBox=True)
+            cmds.setAttr(name + '.ColourX', edit=True, keyable=False, channelBox=True)
+            cmds.setAttr(name + '.ColourY', edit=True, keyable=False, channelBox=True)
+            cmds.setAttr(name + '.ColourZ', edit=True, keyable=False, channelBox=True)
+
+    def getSetColour(self, name):
+        self.addColourAttribute(name)
+        return cmds.getAttr(name + '.Colour')[0]
 
     def qs_select(self):
         sel = cmds.ls(sl=True)
         if not sel:
             return
 
-        for s in sel:
-            if cmds.objectType(s) == 'objectSet':
-                cmds.select(s, add=True)
-                cmds.select(s, deselect=True, noExpand=True)
         all_sets = self.get_sets()
         if all_sets:
             for a_set in all_sets:
                 qs_result = self.check_set_membership(sel, a_set)
                 if qs_result:
-                    cmds.select(a_set, add=True)
+                    cmds.select(self.get_set_contents(a_set), add=True)
         else:
             msg = 'no quick selects found for selection'
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
@@ -195,10 +226,11 @@ class QuickSelectionTools(toolAbstractFactory):
 
     @staticmethod
     def get_set_contents(qss_set):
-        return cmds.sets(qss_set, query=True)
+        return cmds.listConnections(qss_set, source=True, d=False, plugs=False, c=0)
 
     def check_set_membership(self, selection, sel_set):
         sel_set_members = cmds.sets(sel_set, query=True)
+
         if sel_set_members:
             if [i for i in selection if i in sel_set_members]:
                 return sel_set
@@ -210,7 +242,6 @@ class QuickSelectionTools(toolAbstractFactory):
                                    fadeOutTime=4.0)
 
     def create_qs_set(self):
-
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -243,33 +274,36 @@ class QuickSelectionTools(toolAbstractFactory):
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
                                    fadeOutTime=4.0)
 
-    def saveQssDialog(self):
+    def saveQssDialog(self, quick=False):
         sel = cmds.ls(selection=True)
         if not sel:
             return pm.warning('Unable to save empty selection')
 
-        dialog = TextInputWidget(title='Save Quick Selection Set', label='Enter Name', buttonText="Save",
-                                 default=sel[-1].split(':')[-1],
-                                 checkBox='Mirror')
+        dialog = QssSaveWidget(title='Save Selection Set', label='Enter Name', buttonText="Save",
+                               default=sel[-1].split(':')[-1],
+                               qss=quick,
+                               checkBox='Mirror')
         dialog.acceptedCBSignal.connect(self.getSaveQssSignal)
 
-    def getSaveQssSignal(self, name, mirror):
+    def getSaveQssSignal(self, name, quick, mirror):
         sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('Nothing selected')
         if name:
-            self.save_qs(name, sel)
+            self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
         opposites = list()
         if not mirror:
             return
         for s in sel:
             opposites.append(self.funcs.getOppositeControl(s))
         if opposites:
-            self.save_qs(opposites[0], opposites)
+            self.save_qs(opposites[0], opposites, colour=self.funcs.getControlColour(opposites[-1]))
 
-    def save_qs(self, qs_name, selection):
+    def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
         qs_name = qs_name.split(':')[-1]
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
-
+        self.create_main_set()
         # only select existing objects
         existing_obj = self.existing_obj_in_list(selection)
         if existing_obj:
@@ -280,10 +314,12 @@ class QuickSelectionTools(toolAbstractFactory):
             if cmds.objExists(qs_name):
                 if cmds.nodeType(qs_name) == 'objectSet':
                     cmds.delete(qs_name)
-            self.create_main_set()
-            if not qs_name.endswith('_qss'):
+            if quick:
                 qs_name += '_qss'
             qs = cmds.sets(name=qs_name, text="gCharacterSet")
+            print ('qs', qs)
+            self.getSetColour(qs)
+            self.setSetColourFromUI(qs, colour[0]/255, colour[1]/255, colour[2]/255)
             cmds.select(qs, replace=True)
             cmds.sets(qs, addElement=self.create_main_set())
             cmds.select(pre_sel, replace=True)
@@ -291,6 +327,7 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def save_qs_from_file(self, qs_name, selection):
         namespace_override = None
+
         def process_namespace():
             sel = pm.ls(selection=True)
             if sel:
@@ -320,13 +357,22 @@ class QuickSelectionTools(toolAbstractFactory):
             self.funcs.infoMessage(position="botRight", prefix="Error", message=msg, fadeStayTime=10, fadeOutTime=10.0)
 
     def save_qs_to_file(self):
-        if not self.get_sets():
+        allSets = self.get_sets()
+        if not allSets:
             return cmds.warning('no sets found to save')
+        # [item for sublist in curves for item in sublist if item]
+
+        refname, namespace = self.funcs.getCurrentRig(sel=self.get_set_contents(allSets))
         dialog = TextInputWidget(title='Save Quick Selection Sets To File', label='Enter FileName', buttonText="Save",
-                                 default='default')
+                                 default=refname)
         dialog.acceptedSignal.connect(self.getSaveFileSignal)
 
     def getSaveFileSignal(self, fileName):
+        """
+        For some reason all the logic for saving is here, go figure
+        :param fileName:
+        :return:
+        """
         if fileName:
             save_file = os.path.join(self.quickSelectSavePath, fileName + ".qss")
             jsonFile = os.path.join(self.quickSelectSavePath, fileName + ".json")
@@ -335,14 +381,20 @@ class QuickSelectionTools(toolAbstractFactory):
             else:
                 os.chmod(self.quickSelectSavePath, stat.S_IWRITE)
             out_data = []
+
             jsonData = '''{}'''
             setData = json.loads(jsonData)
-            for qsets in self.get_sets():
-                out_data.append(qss_data_obj(qs_name=str(qsets), qs_objects=self.get_set_contents(qsets)))
-                setData[str(qsets)] = self.get_set_contents(qsets)
-            #pickle.dump(out_data, open(save_file, "wb"))
-            self.saveJsonFile(jsonFile, setData)
+            setData['setNames'] = dict()
+            # TODO - save non qss sets as well
+            # TODO - add qss option and colour option on save?
+            for qset in self.get_sets():
+                data = qss_data_obj(qs_name=str(qset),
+                                    qs_objects=self.get_set_contents(qset),
+                                    colour=self.getSetColour(qset))
 
+                setData['setNames'][str(qset)] = data.toJson()
+            # pickle.dump(out_data, open(save_file, "wb"))
+            self.saveJsonFile(jsonFile, setData)
 
     def load_qss_file(self, qss_name):
         """
@@ -352,8 +404,10 @@ class QuickSelectionTools(toolAbstractFactory):
         file_name = os.path.join(self.quickSelectSavePath, qss_name)
         rawJsonData = json.load(open(file_name))
 
-        for qs_name, qs_objects in rawJsonData.items():
-            self.save_qs_from_file(qs_name, qs_objects)
+        if 'setName' not in rawJsonData.keys():
+            cmds.warning('Loading legacy set')
+            for qs_name, qs_objects in rawJsonData.items():
+                self.save_qs_from_file(qs_name, qs_objects)
 
     def restore_qs_from_dir(self):
         qss_files = list()
@@ -382,37 +436,291 @@ class QuickSelectionTools(toolAbstractFactory):
                 setData[str(qs.qs_name)] = qs.qs_objects
             self.saveJsonFile(os.path.join(self.quickSelectFolderDefault, (qss.split('.')[0] + '.json')), setData)
 
+    def loadDataForCharacters(self, characters):
+        namespaceToCharDict = dict()
+        if not characters:
+            return
+        for key, value in characters.items():
+            '''
+            if not key:
+                continue  # skip non referenced chars
+            '''
+            refname, namespace = self.funcs.getCurrentRig([value[0]])
+            if namespace.startswith(':'):
+                namespace = namespace.split(':', 1)[-1]
+            namespaceToCharDict[namespace] = refname
+            '''
+            if refname not in self.loadedSpaceData.keys():
+                self.saveRigFileIfNew(refname, SpaceData().toJson())
+            '''
+            # spaceData = self.loadRigData(SpaceData(), refname)
+            # self.loadedSpaceData[refname] = None
+        self.namespaceToCharDict = namespaceToCharDict
+
+    def openMM(self):
+        self.build_MM()
+        self.markingMenuWidget.show()
+        self.markingMenuWidget.keyReleasedSignal.connect(self.menuClosed)
+        self.markingMenuWidget.closeSignal.connect(self.setSelectionTool)
+        self.markingMenuWidget.setVisible(False)
+        self.start_time = time.time()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.delayedShow)
+        self.timer.start(1)
+
+    @Slot()
+    def delayedShow(self, *args):
+        if time.time() - self.start_time >= 0.1:  # this would be 420 seconds
+            if self.timer.isActive():
+                self.markingMenuWidget.setVisible(True)
+            self.timer.stop()
+
+    @Slot()
+    def menuClosed(self):
+        self.timer.stop()
+        self.markingMenuWidget.close()
+        self.markingMenuWidget.setVisible(False)
+
+    def build_MM(self, parentMenu=None):
+        menuDict = {'NE': list(),
+                    'NW': list(),
+                    'SE': list(),
+                    'SW': list()
+                    }
+
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+
+        sel = cmds.ls(sl=True)
+        allSets = self.get_sets(forceAll=True)
+        matchedSets, unmatchedSets = self.getMatchingSets(sel, allSets)
+        matchedQss = list()
+        if matchedSets:
+            matchedQss = [x for x in matchedSets if x.endswith('_qss')]
+        # main select quik select button
+        tmpLabel = QLabel()
+        fontWidth = 0
+        for mset in allSets:
+            tmpLabel.setText(mset)
+            tFontWidth = tmpLabel.fontMetrics().boundingRect(tmpLabel.text()).width() + 16
+            if tFontWidth > fontWidth:
+                fontWidth = tFontWidth
+        if sel:
+            menuDict['NE'].append(
+                ToolboxButton(label='Quick Select', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                              icon=IconPath + '\local_base.png',
+                              command=lambda: self.qs_select(),
+                              closeOnPress=True))
+            menuDict['NW'].append(ToolboxButton(label='Add Selection Set', parent=self.markingMenuWidget,
+                                                cls=self.markingMenuWidget,
+                                                icon=IconPath + '\local_base.png',
+                                                command=lambda: self.saveQssDialog(quick=False),
+                                                fixedWidth=120,
+                                                closeOnPress=True))
+            menuDict['NW'].append(ToolboxButton(label='Add Quick Selection Set', parent=self.markingMenuWidget,
+                                                cls=self.markingMenuWidget,
+                                                icon=IconPath + '\local_base.png',
+                                                command=lambda: self.saveQssDialog(quick=True),
+                                                fixedWidth=120,
+                                                closeOnPress=True))
+
+        for mset in matchedSets:
+            setColour = self.getSetColoursForUI(mset)
+
+            button = ToolboxButton(label='A', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                   command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
+                                   closeOnPress=False,
+                                   icon=':\create.png',
+                                   isSmall=True)
+            altButton = ToolboxColourButton(label=mset, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                            command=pm.Callback(self.selectQuickSelectionSet, mset, add=False),
+                                            closeOnPress=False,
+                                            isSmall=False,
+                                            colour=setColour,
+                                            fixedWidth=fontWidth,
+                                            colouredBackground=True,
+                                            )
+            altButton.setPopupMenu(AdjustmentButtonPopup)
+            altButton.colourChangedSignal.connect(self.setSetColourFromUI)
+            menuDict['SE'].append(ToolboxDoubleButton(mset,
+                                                      self.markingMenuWidget,
+                                                      cls=self.markingMenuWidget,
+                                                      buttons=[button, altButton],
+                                                      colour=setColour,
+                                                      hideLabel=True, ))
+
+        menuDict['SE'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
+
+        # print ('max font width', fontWidth)
+        for mset in unmatchedSets:
+            setColour = self.getSetColoursForUI(mset)
+
+            button = ToolboxButton(label='+', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                   command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
+                                   closeOnPress=False,
+                                   icon=':\create.png',
+                                   isSmall=True)
+            altButton = ToolboxColourButton(label=mset, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+                                            command=pm.Callback(self.selectQuickSelectionSet, mset, add=False),
+                                            closeOnPress=False,
+                                            isSmall=False,
+                                            colour=setColour,
+                                            fixedWidth=fontWidth,
+                                            colouredBackground=True,
+                                            )
+            altButton.setPopupMenu(AdjustmentButtonPopup)
+            altButton.colourChangedSignal.connect(self.setSetColourFromUI)
+            menuDict['SE'].append(ToolboxDoubleButton(mset,
+                                                      self.markingMenuWidget,
+                                                      cls=self.markingMenuWidget,
+                                                      buttons=[button, altButton],
+                                                      colour=setColour,
+                                                      buttonsOnRight=False,
+                                                      hideLabel=True, ))
+
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
+        # make this better...?
+
+        # get sets associated with selection
+
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Load Quick Selects    ',
+                                            icon=IconPath + '\popupWindow.png',
+                                            parent=self.markingMenuWidget,
+                                            cls=self.markingMenuWidget,
+                                            command=lambda: self.openQssLoadWindow(),
+                                            closeOnPress=True))
+
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Save Current Sets ...     ',
+                                            icon=IconPath + '\popupWindow.png',
+                                            parent=self.markingMenuWidget,
+                                            cls=self.markingMenuWidget,
+                                            command=lambda: self.save_qs_to_file(),
+                                            closeOnPress=True))
+
+    def getSetColoursForUI(self, mset):
+        colour = self.getSetColour(mset)
+        colour = [colour[0] * 255, colour[1] * 255, colour[2] * 255]
+        return colour
+
+    def setSetColourFromUI(self, mset, colourR, colourG, colourB):
+        cmds.setAttr(mset + '.Colour', colourR, colourG, colourB, type='double3')
+
+    def setSelectionTool(self):
+        cmds.setToolTo('selectSuperContext')
+
+    def quickSelectViewportDialog(self):
+        sel = cmds.ls(ls=True)
+
+        for s in sel:
+            setMembership = cmds.listSets(object=s)
+            setMembership = [x for x in setMembership if x.endswith('_qss')]
+        return
+        for s in sel:
+            if cmds.objectType(s) == 'objectSet':
+                cmds.select(s, add=True)
+                cmds.select(s, deselect=True, noExpand=True)
+
+
+class AdjustmentButtonPopup(ButtonPopup):
+    def __init__(self, name, parent=None, hideLabel=False):
+        super(ButtonPopup, self).__init__(parent)
+        self.hideLabel = hideLabel
+        self.setWindowTitle("{0} Options".format(name))
+
+        self.setWindowFlags(Qt.Popup)
+
+        self.layout = QFormLayout(self)
+
+        self.create_widgets()
+        self.create_layout()
+
+    def create_widgets(self):
+        pass
+
+    def create_layout(self):
+        tbAdjustmentBlendLabel = QLabel('tbAdjustmentBlend')
+        extractOptionLabel = QLabel('Extract Controls')
+        rootOptionLabel = QLabel('Global control stripping')
+        channelOptionLabel = QLabel('Channel options')
+        if not self.hideLabel:
+            self.layout.addRow(tbAdjustmentBlendLabel)
+        self.layout.addRow(rootOptionLabel)
+        button = QPushButton('Extract Selection')
+
+        self.layout.addRow(button)
+        self.layout.addRow(extractOptionLabel)
+
+
+class SaveCurrentStateWidget(ViewportDialog):
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parentMenu=None):
+        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+
+        if self.parentMenu:
+            self.parentMenu.setEnabled(False)
+
+        self.addButton(quad='SW', button=ToolboxButton(label='Store as Global', parent=self, cls=self,
+                                                       command=lambda: QuickSelectionTools().qs_select(),
+                                                       closeOnPress=True))
+        self.addButton(quad='SW', button=ToolboxButton(label='Store as local', parent=self, cls=self,
+                                                       command=lambda: QuickSelectionTools().qs_select(),
+                                                       closeOnPress=True))
+
+        self.addButton(quad='SW', button=ToolboxButton(label='Store as Default', parent=self, cls=self,
+                                                       command=lambda: lambda: QuickSelectionTools().qs_select(),
+                                                       closeOnPress=True))
+        '''
+        self.addButton(quad='SW', button=ToolboxButton(label='SubMENU SW', parent=self, cls=self, command=None,
+                                                       closeOnPress=True,
+                                                       subMenuClass=SubToolboxWidget,
+                                                       popupSubMenu=True
+                                                       ))
+        '''
+
 
 class qss_data_obj(object):
-    def __init__(self, qs_name="", qs_objects=[]):
+    def __init__(self, qs_name="", qs_objects=[], colour=list()):
         self.qs_name = qs_name
         self.qs_objects = qs_objects
+        self.qs_colour = colour
 
     def toJson(self):
         jsonData = '''{}'''
         jsonObjectInfo = json.loads(jsonData)
         jsonObjectInfo['qs_name'] = self.qs_name
         jsonObjectInfo['qs_objects'] = self.qs_objects
+        jsonObjectInfo['qs_colour'] = self.qs_colour
+        return jsonObjectInfo
 
-class saveQssWidget(QWidget):
-    saveSignal = Signal(str)
 
-    def __init__(self):
-        super(TextInputWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+class QssSaveWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(str)
+    acceptedCBSignal = Signal(str, bool, bool)
+    rejectedSignal = Signal()
+    oldPos = None
+
+    def __init__(self, title='Save Selection Set', label='Name', buttonText=str(), default=str(), combo=list(),
+                 checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
+                 helpString=None,
+                 parentWidget=None,
+                 qss=False,
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+        super(QssSaveWidget, self).__init__(parent=parent)
+        self.showCloseButton = showCloseButton
+        self.parentWidget = parentWidget
+        self.key = key
+        self.subKey = subKey
+        self.helpString = helpString
+        self.overlay = overlay
         self.setStyleSheet(getqss.getStyleSheet())
-        self.setStyleSheet(
-            "QDialog { "
-            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0.1 #646464, stop: 1 #5d5d5d);"
-            "}"
-            "saveQssWidget {"
-            "border-style: solid;"
-            "border: 1px solid #1e1e1e;"
-            "border-radius: 5;"
-            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);"
 
-            "}"
-        )
-        self.setWindowOpacity(0.9)
+        self.combo = combo
+        self.setWindowOpacity(1.0)
         self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
@@ -420,37 +728,71 @@ class saveQssWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(300, 64)
+        # self.setFixedSize(400, 64)
+        titleLayout = QHBoxLayout()
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
+
         sel = pm.ls(sl=True)
 
-        self.titleText = QLabel('Save Quick Selection Set')
+        self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
-        self.text = QLabel('Enter Name')
-        self.lineEdit = QLineEdit(sel[0].stripNamespace())
-        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
-        reg_ex = QRegExp("[a-z-A-Z0123456789_]+")
-        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
-        self.lineEdit.setValidator(input_validator)
+        self.text = QLabel(label)
 
-        self.saveButton = QPushButton("Save")
+        self.mirrorCheckbox = QCheckBox()
+        self.mirrorCheckbox.setText('Mirror')
+        self.qssCheckbox = QCheckBox()
+        self.qssCheckbox.setChecked(qss)
+        self.qssCheckbox.setText('Quick')
+
+        self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
         # layout.addWidget(btnSetFolder)
 
-        mainLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+        mainLayout.addLayout(titleLayout)
         mainLayout.addLayout(layout)
+
+        self.lineEdit = QLineEdit(default)
+        self.lineEdit.setMinimumWidth(120)
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
+        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+        self.lineEdit.setValidator(input_validator)
+
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
+        layout.addWidget(self.qssCheckbox)
+        layout.addWidget(self.mirrorCheckbox)
         layout.addWidget(self.saveButton)
 
-        self.saveButton.clicked.connect(self.saveQss)
+        if self.helpString:
+            self.helpLabel = QLabel(self.helpString)
+            self.helpLabel.setWordWrap(True)
+            mainLayout.addWidget(self.helpLabel)
+        self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+
+        # self.lineEdit.setFocus()
+        self.lineEdit.setFixedWidth(
+            min(max, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+        self.setStyleSheet(
+            "QssSaveWidget { "
+            "border-radius: 8;"
+            "}"
+        )
+
+        self.closeButton.setVisible(self.showCloseButton)
+        self.resize(self.sizeHint())
+
         self.show()
-        self.lineEdit.setFocus()
+        # self.setFixedSize(400, 64)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -464,23 +806,54 @@ class saveQssWidget(QWidget):
 
         qp.setPen(QPen(QBrush(lineColor), 2))
         grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, "#4d4d4d")
-        grad.setColorAt(0.1, "#646464")
-        grad.setColorAt(1, "#5d5d5d")
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
         qp.drawRoundedRect(self.rect(), 16, 16)
         qp.end()
 
-    def saveQss(self, *args):
-        self.saveSignal.emit(self.lineEdit.text())
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.text())
+        self.acceptedCBSignal.emit(self.lineEdit.text(),
+                                   self.qssCheckbox.isChecked(),
+                                   self.mirrorCheckbox.isChecked())
         self.close()
+
+    def close(self):
+        self.rejectedSignal.emit()
+        if self.overlay:
+            self.parent().close()
+        super(QssSaveWidget, self).close()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
-            self.saveQss()
+            self.acceptedFunction()
         if event.key() == Qt.Key_Escape:
             self.close()
-        return super(TextInputWidget, self).keyPressEvent(event)
+        return super(QssSaveWidget, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        if self.overlay:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+
+    def show(self):
+        position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
+        position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
+
+        self.move(position_x, position_y)
+        super(QssSaveWidget, self).show()
 
 
 class QssFileWidget(QWidget):
