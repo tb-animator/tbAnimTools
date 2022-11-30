@@ -1293,8 +1293,14 @@ class Pickwalk(toolAbstractFactory):
         if not intParts:
             return None
 
-        nameParts = cnt.split(intParts[0])
+        nameParts = cnt.split(intParts[-1])
         intParts[-1] = int(intParts[-1]) + offset
+        #print (nameParts)
+        #print (intParts)
+        outStr = nameParts[0] + str(intParts[-1]) + nameParts[-1]
+        # turns out the following is a dumb idea
+        '''
+        
         listLength = max(len(intParts), len(nameParts))
         nameList = [str()] * listLength
         intList = [str()] * listLength
@@ -1304,11 +1310,13 @@ class Pickwalk(toolAbstractFactory):
             intList[i] = v
 
         resultList = nameList + intList
-
+        print ('resultList', resultList)
         resultList[::2] = intList
         resultList[1::2] = nameList
         outStr = ''.join(map(str, resultList))
+        print ('outStr', outStr)
         #print ('outStr', outStr)
+        '''
         if cmds.objExists(namespace + ':' + outStr):
             return outStr
         return None
