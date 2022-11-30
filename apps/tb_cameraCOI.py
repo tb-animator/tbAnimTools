@@ -328,15 +328,15 @@ class CameraPivot(toolAbstractFactory):
         except:
             pass
         try:
-            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+            cmds.scriptJob(kill=self.DragReleaseScriptJob)
         except:
             pass
         try:
-            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+            cmds.scriptJob(kill=self.ModelPanelSetFocusScriptJob)
         except:
             pass
         try:
-            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+            cmds.scriptJob(kill=self.playbackModeChangedScriptJob)
         except:
             pass
 
@@ -345,8 +345,8 @@ class CameraPivot(toolAbstractFactory):
         if self.SomethingSelectedScriptJob != -1:
             self.SomethingSelectedScriptJob = (cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt)))
         if self.DragReleaseScriptJob != -1:
-            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("DragRelease", CameraPivot().doIt)))
+            self.DragReleaseScriptJob = (cmds.scriptJob(event=("DragRelease", CameraPivot().doIt)))
         if self.ModelPanelSetFocusScriptJob != -1:
-            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt)))
+            self.ModelPanelSetFocusScriptJob = (cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt)))
         if self.playbackModeChangedScriptJob != -1:
-            self.SomethingSelectedScriptJob = (cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt)))
+            self.playbackModeChangedScriptJob = (cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt)))
