@@ -70,8 +70,8 @@ def darken_color(colour, factor=0.1):
 def hex_to_rgb(hex):
     return [float((hex[x:x + 2])) for x in [1, 3, 5]]
 
-def rgb_to_hex(colour):
-    return "#%02x%02x%02x" % (colour[0], colour[1], colour[2])
+def rgb_to_hex(colour=[0.5, 0.5,0.5]):
+    return "#%02x%02x%02x" % (int(colour[0]), int(colour[1]), int(colour[2]))
 
 def getColourBasedOnRGB(inputColour, lightColour, darkColour):
     isLight = ((inputColour[0] * 0.299) + (inputColour[1] * 0.587) + (inputColour[2] * 0.114)) > 186
@@ -734,6 +734,7 @@ class ToolboxButton(QPushButton):
         self.borderColour = QColor(30, 30, 30)
         self.colouredBackground = colouredBackground
         self.colourRGB = colour
+        # print ('the colour', colour)
         self.colour = rgb_to_hex(colour)
         self.colourDark = list()
         for x in range(1, 5):
@@ -962,7 +963,7 @@ class ToolboxColourButton(ToolboxButton):
             #print 'RGB = ' + str(values)
             self.colourChangedSignal.emit(self.labelText, values[0], values[1],values[2])
         else:
-            print 'Editor was dismissed'
+            return
 
         return
 

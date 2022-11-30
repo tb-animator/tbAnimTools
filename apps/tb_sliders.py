@@ -994,8 +994,8 @@ class SlideTools(toolAbstractFactory):
             self.xformWidget.moveToCursor()
         self.xformWidget.show()
         self.xformWidget.raise_()
-        self.app.installEventFilter(self.keyPressHandler)
-        self.keyPressHandler.addUI(self.xformWidget)
+        #self.app.installEventFilter(self.keyPressHandler)
+        #self.keyPressHandler.addUI(self.xformWidget)
 
     def xformSliderBeginSignal(self, key, value):
         self.xformTweenClasses[key].startDrag(value)
@@ -1070,7 +1070,7 @@ class SlideTools(toolAbstractFactory):
             xformWidget.altPopup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
             xformWidget.altPopup.sliderEndedSignal.connect(self.keySliderEndSignal)
 
-            self.keyPressHandler.addUI(xformWidget)
+            #self.keyPressHandler.addUI(xformWidget)
             widgets[0].addWidget(xformWidget)  # .setParent(phLayout)
 
         parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]

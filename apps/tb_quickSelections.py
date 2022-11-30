@@ -781,7 +781,7 @@ class QssSaveWidget(QWidget):
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(
-            min(max, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
         self.setStyleSheet(
             "QssSaveWidget { "
             "border-radius: 8;"
