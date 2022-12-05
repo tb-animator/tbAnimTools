@@ -63,7 +63,10 @@ class ClassFinder(object):
         self.proToolsBaseDirectory = 'proApps'
         self.proToolsVerionDirectory = 'proApps'
         self.toolsDirectory = os.path.join(self.directory, self.toolsBaseDirectory)
-        if sys.version_info >= (2, 8):
+        if sys.version_info >= (3, 8):
+            self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python39')
+            self.proToolsVerionDirectory = 'proApps.Python39'
+        elif sys.version_info >= (2, 8):
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python3')
             self.proToolsVerionDirectory = 'proApps.Python3'
         else:
