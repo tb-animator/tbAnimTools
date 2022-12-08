@@ -96,6 +96,7 @@ class QuickSelectionTools(toolAbstractFactory):
     quickSelectSavePath = None
 
     quickSelectOnQssSuffix = 'quickSelectOnQssSuffix'
+    quickSelectionIgnore = 'quickSelectionIgnore'
 
     namespace_mode = 0
 
@@ -128,8 +129,12 @@ class QuickSelectionTools(toolAbstractFactory):
         dirWidget = filePathWidget(self.quickSelectFolderOption, self.quickSelectFolderDefault)
         quickSelectOnQssWidget = optionVarBoolWidget('Quick select selection only on sets named _qss',
                                                      self.quickSelectOnQssSuffix)
+        quickSelectIgnoreListWidget = optionVarStringListWidget('Ignore lists with suffix (separate multiple with ;)',
+                                                     self.quickSelectionIgnore)
+
         self.layout.addWidget(dirWidget)
         self.layout.addWidget(quickSelectOnQssWidget)
+        self.layout.addWidget(quickSelectIgnoreListWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -158,8 +163,22 @@ class QuickSelectionTools(toolAbstractFactory):
         all_sets = cmds.ls(sets=True)
         qs_sets = list()
 
+        all_sets = [q for q in all_sets if  cmds.sets(q, query=True, text=True) == 'gCharacterSet']
         if pm.optionVar.get(self.quickSelectOnQssSuffix, True) and not forceAll:
             all_sets = [q for q in all_sets if q.endswith('_qss')]
+        ignoreValues = pm.optionVar.get(self.quickSelectionIgnore, '')
+
+        ignoredSets = list()
+
+        for s in all_sets:
+            for x in ignoreValues.split(';'):
+                if x in s:
+                    ignoredSets.append(s)
+
+        for s in ignoredSets:
+            if s not in all_sets:
+                continue
+            all_sets.remove(s)
 
         for qs_name in all_sets:
             if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':

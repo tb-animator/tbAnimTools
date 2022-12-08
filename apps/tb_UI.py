@@ -2434,6 +2434,29 @@ class optionVarBoolWidget(optionVarWidget):
     def sendChangedSignal(self):
         self.changedSignal.emit(self.checkBox.isChecked())
 
+class optionVarStringListWidget(optionVarWidget):
+    changedSignal = Signal(bool)
+
+    def __init__(self, label=str, optionVar=str):
+        QWidget.__init__(self)
+        self.optionVar = optionVar
+        self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+        self.labelText = QLabel(label)
+        self.lineEdit = QLineEdit()
+
+        optionValue = pm.optionVar(stringValue=(self.optionVar, pm.optionVar.get(self.optionVar, '')))
+        self.lineEdit.setText(optionValue)
+        self.lineEdit.textEdited.connect(self.lineEditChanged)
+        self.layout.addWidget(self.labelText)
+        self.layout.addWidget(self.lineEdit)
+
+    def lineEditChanged(self):
+        pm.optionVar[self.optionVar] = self.lineEdit.text()
+
+    def sendChangedSignal(self):
+        self.changedSignal.emit(self.lineEdit.isChecked())
 
 class optionVarListWidget(optionVarWidget):
     """

@@ -323,22 +323,26 @@ class CameraPivot(toolAbstractFactory):
             self.removePivotScriptJobs()
 
     def removePivotScriptJobs(self):
-        try:
-            cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
-        except:
-            pass
-        try:
-            cmds.scriptJob(kill=self.DragReleaseScriptJob)
-        except:
-            pass
-        try:
-            cmds.scriptJob(kill=self.ModelPanelSetFocusScriptJob)
-        except:
-            pass
-        try:
-            cmds.scriptJob(kill=self.playbackModeChangedScriptJob)
-        except:
-            pass
+        if self.SomethingSelectedScriptJob != -1:
+            try:
+                cmds.scriptJob(kill=self.SomethingSelectedScriptJob)
+            except:
+                pass
+        if self.DragReleaseScriptJob != -1:
+            try:
+                cmds.scriptJob(kill=self.DragReleaseScriptJob)
+            except:
+                pass
+        if self.ModelPanelSetFocusScriptJob != -1:
+            try:
+                cmds.scriptJob(kill=self.ModelPanelSetFocusScriptJob)
+            except:
+                pass
+        if self.playbackModeChangedScriptJob != -1:
+            try:
+                cmds.scriptJob(kill=self.playbackModeChangedScriptJob)
+            except:
+                pass
 
     def createCameraPivotScriptJob(self):
         self.removePivotScriptJobs()
