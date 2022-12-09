@@ -172,6 +172,8 @@ class QuickSelectionTools(toolAbstractFactory):
 
         for s in all_sets:
             for x in ignoreValues.split(';'):
+                if not x:
+                    continue
                 if x in s:
                     ignoredSets.append(s)
 
@@ -181,9 +183,9 @@ class QuickSelectionTools(toolAbstractFactory):
             all_sets.remove(s)
 
         for qs_name in all_sets:
-            if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
-                self.addColourAttribute(qs_name)
-                qs_sets.append(qs_name)
+            #if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
+            self.addColourAttribute(qs_name)
+            qs_sets.append(qs_name)
 
         return qs_sets
 
