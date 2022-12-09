@@ -524,7 +524,7 @@ class MotionTrails(toolAbstractFactory):
         return trials
 
     def isMotionTrail(self, s):
-        childNodes = cmds.listRelatives(s, children=True)
+        childNodes = cmds.listRelatives(s, children=True, fullPath=True)
         if not childNodes:
             return False
         return any([cmds.nodeType(c) == 'motionTrailShape' for c in childNodes])
@@ -536,7 +536,7 @@ class MotionTrails(toolAbstractFactory):
         if not messageConnection:
             return False
         for m in messageConnection:
-            childNodes = cmds.listRelatives(m, children=True)
+            childNodes = cmds.listRelatives(m, children=True, fullPath=True)
             if childNodes:
                 for c in childNodes:
                     if cmds.nodeType(c) in self.motionTrailNodes:
@@ -605,7 +605,7 @@ class MotionTrails(toolAbstractFactory):
         trail = list()
         if messageConnection:
             for m in messageConnection:
-                childNodes = cmds.listRelatives(m, children=True)
+                childNodes = cmds.listRelatives(m, children=True, fullPath=True)
                 if childNodes:
                     for c in childNodes:
                         if cmds.nodeType(c) == 'motionTrailShape':
@@ -637,7 +637,7 @@ class MotionTrails(toolAbstractFactory):
             nodesToRemove = list()
             if messageConnection:
                 for m in messageConnection:
-                    childNodes = cmds.listRelatives(m, children=True)
+                    childNodes = cmds.listRelatives(m, children=True, fullPath=True)
                     if childNodes:
                         for c in childNodes:
                             if cmds.nodeType(c) in self.motionTrailNodes:
