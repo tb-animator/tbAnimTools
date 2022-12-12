@@ -22,6 +22,7 @@
 
 *******************************************************************************
 '''
+defaultSides = {'left': '_l', 'right': '_r'}
 """
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
@@ -78,6 +79,9 @@ class CharacterTool(toolAbstractFactory):
     currentNamespace = None
     currentCharData = dict()
 
+    # rig names / rig data
+    allCharacters = dict()
+
     def __new__(cls):
         if CharacterTool.__instance is None:
             CharacterTool.__instance = object.__new__(cls)
@@ -113,6 +117,8 @@ class CharacterTool(toolAbstractFactory):
         if not sel:
             return None, None
         refname, namespace = self.funcs.getCurrentRig(sel)
+        if not refname in self.allCharacters.keys():
+            self.loadCharacter(refname)
         return refname, namespace
 
     def update(self):
@@ -123,14 +129,25 @@ class CharacterTool(toolAbstractFactory):
                 self.loadCharacter(refname)
             self.currentChar = refname
             self.currentNamespace = namespace
+            self.currentCharData = self.allCharacters[refname]
+            self.leftSideLineEdit.setText(self.currentCharData.get('sides', defaultSides)['left'])
+            self.rightSideLineEdit.setText(self.currentCharData.get('sides', defaultSides)['right'])
 
     def loadCharacter(self, refname):
+        if not refname:
+            return
         print ('loadCharacter', refname, self.charTemplateDir)
         dataFile = os.path.join(self.charTemplateDir, refname + '.json')
         if not os.path.isfile(dataFile):
             self.saveJsonFile(dataFile, dict())
+        self.allCharacters[refname] = json.load(open(dataFile))
 
-        self.currentCharData = json.load(open(dataFile))
+    def getCharacterFromSelection(self):
+        refname, namespace = self.getSelectedChar()
+        if not refname in self.allCharacters.keys():
+            self.loadCharacter(refname)
+
+        return refname, self.allCharacters[refname]
 
     def getStrippedSelection(self):
         sel = pm.ls(sl=True)
@@ -138,6 +155,11 @@ class CharacterTool(toolAbstractFactory):
             return None
 
         return [x.stripNamespace() for x in sel]
+
+    def setSide(self, side, value):
+        sideDict = self.currentCharData.get('sides', defaultSides)
+        sideDict[side] = value
+        self.currentCharData['sides'] = sideDict
 
     def setAllControls(self):
         strippedControls = self.getStrippedSelection()
@@ -158,6 +180,40 @@ class CharacterTool(toolAbstractFactory):
             return cmds.warning('No controls')
         controls = [self.currentNamespace + ':' + x for x in controls]
         cmds.select(controls)
+
+    def setAllMeshes(self):
+        strippedControls = self.getStrippedSelection()
+        if not strippedControls:
+            return cmds.warning('No selection')
+        self.currentCharData['meshes'] = sorted(strippedControls)
+
+    def appendMeshes(self):
+        strippedControls = self.getStrippedSelection()
+        if not strippedControls:
+            return cmds.warning('No selection')
+        currentControls = self.currentCharData.get('meshes', list())
+        self.currentCharData['meshes'] = sorted(list(set(currentControls + strippedControls)))
+
+    def selectMeshes(self):
+        meshes = self.currentCharData.get('meshes', list())
+        if not meshes:
+            return cmds.warning('No controls')
+        meshes = [self.currentNamespace + ':' + x for x in meshes]
+        cmds.select(meshes)
+
+    def getAllMeshes(self, sel=None):
+        refname, namespace = self.getSelectedChar(sel=sel)
+        self.loadCharacter(refname)
+        meshes = self.allCharacters[refname].get('meshes', list())
+        meshes = [namespace + ':' + x for x in meshes]
+        return meshes
+
+    def getAllControls(self, sel=None):
+        refname, namespace = self.getSelectedChar(sel=sel)
+        self.loadCharacter(refname)
+        controls = self.allCharacters[refname].get('controls', list())
+        controls = [namespace + ':' + x for x in controls]
+        return controls
 
     def saveCurrentCharacter(self):
         print ('saveCurrentCharacter')
@@ -194,6 +250,10 @@ class CharacterTool(toolAbstractFactory):
         currentLayout.addWidget(lbl)
         currentLayout.addWidget(self.currentRigLabel)
 
+        controlsGroupbox = QGroupBox('Controls')
+        controlsLayout = QHBoxLayout()
+        controlsGroupbox.setLayout(controlsLayout)
+
         defineControlsButton = ToolButton(text='Set Controls',
                                           imgLabel='Tips',
                                           width=buttonWidth,
@@ -215,9 +275,55 @@ class CharacterTool(toolAbstractFactory):
                                           icon=":/selectObject.png",
                                           sourceType='py',
                                           command=self.selectControls)
-        viewLayout.addWidget(defineControlsButton)
-        viewLayout.addWidget(appendControlsButton)
-        viewLayout.addWidget(selectControlsButton)
+        controlsLayout.addWidget(defineControlsButton)
+        controlsLayout.addWidget(appendControlsButton)
+        controlsLayout.addWidget(selectControlsButton)
+
+        mirrorGroupbox = QGroupBox('Control Sides')
+        mirrorLayout = QHBoxLayout()
+        mirrorGroupbox.setLayout(mirrorLayout)
+
+        leftLabel = QLabel('Left')
+        rightLabel = QLabel('Right')
+        self.leftSideLineEdit = QLineEdit('_l')
+        self.leftSideLineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
+        self.leftSideLineEdit.textChanged.connect(self.sideUpdated)
+        self.rightSideLineEdit = QLineEdit('_r')
+        self.rightSideLineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
+        self.rightSideLineEdit.textChanged.connect(self.sideUpdated)
+
+        meshGroupbox = QGroupBox('Meshes')
+        meshLayout = QHBoxLayout()
+        meshGroupbox.setLayout(meshLayout)
+        defineMeshesButton = ToolButton(text='Set Meshes',
+                                        imgLabel='Tips',
+                                        width=buttonWidth,
+                                        height=buttonHeight,
+                                        icon=":/out_polySphere.png",
+                                        sourceType='py',
+                                        command=self.setAllMeshes)
+        appendMeshesButton = ToolButton(text='Append Meshes',
+                                        imgLabel='Tips',
+                                        width=buttonWidth,
+                                        height=buttonHeight,
+                                        icon=":/out_polySphere.png",
+                                        sourceType='py',
+                                        command=self.appendMeshes)
+        selectMeshesButton = ToolButton(text='',
+                                        imgLabel='Tips',
+                                        width=32,
+                                        height=buttonHeight,
+                                        icon=":/selectObject.png",
+                                        sourceType='py',
+                                        command=self.selectMeshes)
+        meshLayout.addWidget(defineMeshesButton)
+        meshLayout.addWidget(appendMeshesButton)
+        meshLayout.addWidget(selectMeshesButton)
+
+        mirrorLayout.addWidget(leftLabel)
+        mirrorLayout.addWidget(self.leftSideLineEdit)
+        mirrorLayout.addWidget(rightLabel)
+        mirrorLayout.addWidget(self.rightSideLineEdit)
 
         saveLayout = QHBoxLayout()
         saveButton = ToolButton(text='Save',
@@ -229,21 +335,28 @@ class CharacterTool(toolAbstractFactory):
         saveLayout.addWidget(saveButton)
 
         toolBoxLayout.addLayout(currentLayout)
-        toolBoxLayout.addLayout(viewLayout)
+        toolBoxLayout.addWidget(controlsGroupbox)
+        toolBoxLayout.addWidget(meshGroupbox)
+        toolBoxLayout.addWidget(mirrorGroupbox)
         toolBoxLayout.addLayout(saveLayout)
 
         return toolBoxWidget
+
+    def sideUpdated(self):
+        self.setSide('left', self.leftSideLineEdit.text())
+        self.setSide('right', self.rightSideLineEdit.text())
 
     def toolBoxUI(self):
         # if not self.toolbox:
         self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                   title='tb Character Definition', text=str(),
                                   lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
+
         self.toolbox.mainLayout.addWidget(self.getToolboxWidget(self.toolbox))
 
         self.toolbox.show()
         self.toolbox.widgetClosed.connect(self.removeScriptJob)
         self.toolbox.setFixedSize(self.toolbox.sizeHint())
-        self.toolbox.setFixedWidth(300)
+        self.toolbox.setFixedWidth(320)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()

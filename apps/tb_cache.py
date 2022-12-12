@@ -216,19 +216,23 @@ class CacheTool(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return
+        allMeshes = list()
+
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
 
         fileName = cmds.file(query=True, sceneName=True, shortName=True)
         fileName = fileName.split('.')[0]
 
-        allMeshes = list()
         for ns in characters.keys():
-            meshes = self.getSkinCLustersForNamespace(ns)
-            allMeshes.extend(meshes)
+            charMeshes = self.allTools.tools['CharacterTool'].getAllMeshes(sel)
+            if not charMeshes:
+                # no meshes defined - guess
+                charMeshes = self.getSkinCLustersForNamespace(ns)
+            allMeshes.extend(charMeshes)
 
-            outputFile = self.exportCache(meshes, name=fileName + '_' + ns)
-            refNode, fileReference = self.getReference(meshes[0])
+            refNode, fileReference = self.getReference(charMeshes[0])
+            outputFile = self.exportCache(charMeshes, name=fileName + '_' + ns)
             cacheNode = self.importCache(outputFile)
             if refNode:
                 cmds.addAttr(str(cacheNode), ln='refNode', dt='string')
@@ -302,7 +306,6 @@ class CacheTool(toolAbstractFactory):
             mode = self.gpuCacheType_values[1]
         if not mode:
             mode = pm.optionVar.get(self.gpuCachImportTypeOption, self.gpuCacheType_default)
-            print ('mode', mode)
         if mode == self.gpuCacheType_values[0]:
             cacheNode = pm.createNode('gpuCache')
             cacheNodeParent = cacheNode.getParent()
@@ -315,6 +318,10 @@ class CacheTool(toolAbstractFactory):
             alembicNode = cmds.AbcImport(filename, mode="import")
             cacheNodes = cmds.listConnections(alembicNode + '.outPolyMesh')
             pm.parent(cacheNodes, cacheNodeParent)
+            childNode = cmds.listRelatives(str(cacheNodeParent), children=True,
+                                           fullPath=True)
+            for c in childNode:
+                cmds.rename(c, c.replace('|', '').split(':')[-1] + '_cache')
             pm.addAttr(cacheNodeParent, ln='alembic', at='message')
             pm.connectAttr(alembicNode + '.message', cacheNodeParent + '.alembic')
         return cacheNodeParent
