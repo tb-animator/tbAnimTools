@@ -36,6 +36,7 @@ from tb_UI import *
 from collections import deque
 
 defaultToStandardAtDeadEndOption = 'defaultToStandardAtDeadEndOption'
+walkMultipleObjectsOption = 'walkMultipleObjectsOption'
 
 saveOnUpdateOption = 'tbPickwalkSaveOnUpdate'
 autoApplyOption = 'tbPickwalkAutoApply'
@@ -71,6 +72,7 @@ skipDirections = ['upSkip', 'downSkip', 'leftSkip', 'rightSkip']
 lockedIcon = 'nodeGrapherLocked.png'
 unlockedIcon = 'nodeGrapherUnlocked.png'
 btnWidth = 80
+
 
 class WalkData(object):
     """
@@ -689,6 +691,7 @@ class Pickwalk(toolAbstractFactory):
     assignmentWin = None
     saveOnUpdateOption = saveOnUpdateOption
     defaultToStandardAtDeadEndOption = defaultToStandardAtDeadEndOption
+    walkMultipleObjectsOption = walkMultipleObjectsOption
 
     transformTranslateDict = dict()
     transformRotateDict = dict()
@@ -803,7 +806,10 @@ class Pickwalk(toolAbstractFactory):
 
         endOptionWidget = optionVarBoolWidget('Default to standard walk on empty custom map ',
                                               self.defaultToStandardAtDeadEndOption)
+        walkMultipleOptionWidget = optionVarBoolWidget('Walk multiple objects at once ',
+                                                       self.walkMultipleObjectsOption)
         self.layout.addWidget(endOptionWidget)
+        self.layout.addWidget(walkMultipleOptionWidget)
 
         layout = QHBoxLayout()
         arrowLabel = QLabel('Arrow keys for pickwalking')
@@ -1018,6 +1024,7 @@ class Pickwalk(toolAbstractFactory):
 
             pickwalkCreator = PickwalkCreator()
             pickwalkCreator.load(walkData)
+
             self.pickwalkData[mapName] = pickwalkCreator.walkData
 
     def walkStandard(self, direction):
@@ -1201,71 +1208,75 @@ class Pickwalk(toolAbstractFactory):
         return control
 
     def pickwalk(self, direction=str, add=False):
-        #print ('pickwalk')
+        # print ('pickwalk')
         sel = pm.ls(sl=True, type='transform')
         returnedControls = list()
+        finalControls = list()
         if not sel:
             self.walkStandard(direction)
             return
 
-        walkObject = sel[-1]
+        if not pm.optionVar.get(self.walkMultipleObjectsOption, False):
+            sel = [sel[-1]]
 
-        if cmds.attributeQuery('constraintTarget', node=str(walkObject), exists=True):
-            walkObject = pm.PyNode(self.recursiveLookup(str(walkObject), 'constraintTarget'))
+        for walkObject in sel:
+            if cmds.attributeQuery('constraintTarget', node=str(walkObject), exists=True):
+                walkObject = pm.PyNode(self.recursiveLookup(str(walkObject), 'constraintTarget'))
 
-        if direction not in self.walkDirectionNames.keys():
-            return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
+            if direction not in self.walkDirectionNames.keys():
+                return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
-        refName, refState = self.getRefName(walkObject)
-        if refName not in self.walkDataLibrary._fileToMapDict.keys():
-            if not refState:
+            refName, refState = self.getRefName(walkObject)
+
+            if refName not in self.walkDataLibrary._fileToMapDict.keys():
+                if not refState:
+                    self.walkStandard(direction)
+                    return
+
+            if refName:
+                # print 'query against pickwalk library'
+                returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
+                if returnedControls == False:
+                    # means a standard walk has been performed
+                    return
+                # print 'main', returnedControls
+
+            if not returnedControls:
+                # anything beyond here is using attribute based pickwalking
+                userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
+                if not userAttrs:
+                    self.walkStandard(direction)
+                    return
+                pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
+                if not pickAttributes:
+                    # didn't find any custom pickwalk attributes, use the regular walk
+                    self.walkStandard(direction)
+                    return
+
+                found = False
+
+                for walkAttribute in self.pickwalkAttributeNames[direction]:
+                    if not found:
+                        if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
+                            returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
+                            if returnObj:
+                                if isinstance(returnObj, list):
+                                    returnedControls.extend(returnObj)
+                                    found = True
+                                else:
+                                    returnedControls.append(returnObj)
+                                    found = True
+
+            if not returnedControls:
                 self.walkStandard(direction)
                 return
 
-        if refName:
-            # print 'query against pickwalk library'
-            returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
-            if returnedControls == False:
-                # means a standard walk has been performed
-                return
-            # print 'main', returnedControls
-
-        if not returnedControls:
-            # anything beyond here is using attribute based pickwalking
-            userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
-            if not userAttrs:
-                self.walkStandard(direction)
-                return
-            pickAttributes = [i for i in self.pickwalkAttributeNames[direction] if i in userAttrs]
-            if not pickAttributes:
-                # didn't find any custom pickwalk attributes, use the regular walk
-                self.walkStandard(direction)
-                return
-
-            found = False
-
-            for walkAttribute in self.pickwalkAttributeNames[direction]:
-                if not found:
-                    if cmds.attributeQuery(walkAttribute, node=str(walkObject), exists=True):
-                        returnObj = self.pickWalkAttribute(node=str(walkObject), attribute=walkAttribute)
-                        if returnObj:
-                            if isinstance(returnObj, list):
-                                returnedControls.extend(returnObj)
-                                found = True
-                            else:
-                                returnedControls.append(returnObj)
-                                found = True
-
-        if not returnedControls:
-            self.walkStandard(direction)
-            return
-
-        returnedControls = [str(self.checkDownstreamTempControls(returnedControls[0]))]
-
+            # returnedControls = [str(self.checkDownstreamTempControls(returnedControls[0]))]
+            finalControls.append(str(self.checkDownstreamTempControls(returnedControls[0])))
         if add:
-            cmds.select([str(s) for s in sel] + returnedControls, replace=True)
+            cmds.select([str(s) for s in sel] + finalControls, replace=True)
             return
-        cmds.select(returnedControls, replace=True)
+        cmds.select(finalControls, replace=True)
 
     def getRefName(self, walkObject):
         refName = None
@@ -1295,8 +1306,8 @@ class Pickwalk(toolAbstractFactory):
 
         nameParts = cnt.split(intParts[-1])
         intParts[-1] = int(intParts[-1]) + offset
-        #print (nameParts)
-        #print (intParts)
+        # print (nameParts)
+        # print (intParts)
         outStr = nameParts[0] + str(intParts[-1]) + nameParts[-1]
         # turns out the following is a dumb idea
         '''
@@ -1328,6 +1339,11 @@ class Pickwalk(toolAbstractFactory):
         userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         if refName in self.walkDataLibrary._fileToMapDict.keys():
             mapName = self.walkDataLibrary._fileToMapDict[refName]
+
+            CharacterTool = self.allTools.tools['CharacterTool']
+            MirrorTools = self.allTools.tools['MirrorTools']
+            CharacterTool.loadCharacter(mapName)
+
             # print refName, 'uses map', self.walkDataLibrary._fileToMapDict[refName]
             result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
                                                      node=walkObjectStripped,
@@ -1339,10 +1355,16 @@ class Pickwalk(toolAbstractFactory):
                     result = self.findIncrementalControl(walkObjectStripped,
                                                          namespace=walkObjectNS,
                                                          offset=self.walkIncrementMap[direction])
-                if result:
-                    if cmds.objExists(walkObjectNS + result):
-                        self.createDestination(walkObject, walkObjectNS + result, direction)
-                #print ('incrementalNode', result)
+                    if result:
+                        if cmds.objExists(walkObjectNS + result):
+                            self.createDestination(walkObject, walkObjectNS + result, direction)
+                else:
+                    result = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
+                                                                          walkObject)
+                    if result:
+                        if cmds.objExists(walkObjectNS + result):
+                            self.createDestination(walkObject, result, direction)
+                # print ('incrementalNode', result)
             if result is u'(None,)' or result is None:
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
@@ -1627,6 +1649,7 @@ class Pickwalk(toolAbstractFactory):
 
     def loadLibraryForCurrent(self):
         fname = self.getCurrentRig()
+        print ('Look at me!! %s' % fname)
         if not fname:
             sel = cmds.ls(sl=True)
             if not sel:
@@ -1635,7 +1658,6 @@ class Pickwalk(toolAbstractFactory):
             self.queryNewRig(refName)
         if not fname:
             return None
-
         self.pickwalkCreator.load(fname)
 
     def browseToFile(self):
@@ -1646,7 +1668,7 @@ class Pickwalk(toolAbstractFactory):
 
     def saveLibrary(self):
         if not self.pickwalkCreator.walkData._filePath:
-            #print ('no current file path')
+            # print ('no current file path')
             self.saveAsLibrary()
             return
         self.pickwalkCreator.walkData.save(self.pickwalkCreator.walkData._filePath)
@@ -4383,6 +4405,7 @@ class pickwalkMainWindow(QMainWindow):
 
     def loadLibraryForCurrent(self):
         fname = self.getCurrentRig()
+
         if not fname:
             return
 
