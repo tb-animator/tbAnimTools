@@ -2417,6 +2417,7 @@ class optionVarBoolWidget(optionVarWidget):
         QWidget.__init__(self)
         self.optionVar = optionVar
         self.layout = QHBoxLayout()
+        self.layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
@@ -2932,7 +2933,7 @@ class intFieldWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
-        label = QLabel(label)
+        self.label = QLabel(label)
         spacerItem = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.spinBox = QDoubleSpinBox()
         self.spinBox.setMaximum(maximum)
@@ -2942,7 +2943,7 @@ class intFieldWidget(QWidget):
         if step == 1:
             self.spinBox.setDecimals(0)
         self.spinBox.setProperty("value", self.optionValue)
-        self.layout.addWidget(label)
+        self.layout.addWidget(self.label)
         self.layout.addItem(spacerItem)
         self.layout.addWidget(self.spinBox)
         self.spinBox.valueChanged.connect(self.interactivechange)

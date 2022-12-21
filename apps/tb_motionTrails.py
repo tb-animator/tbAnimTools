@@ -102,6 +102,7 @@ class MotionTrails(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+    bezierCurveOption = 'tbMotrailIsBezier'
     trailFadeFramesOption = 'tbMotrailFadeFramesOption'
     trailPreFramesOption = 'tbMotrailPreFramesOption'
     trailPostFramesOption = 'tbMotrailPostFramesOption'
@@ -141,53 +142,37 @@ class MotionTrails(toolAbstractFactory):
         fadeLayout = QVBoxLayout()
         markerLayout = QHBoxLayout()
 
-        trailFadeFramesWidget = intFieldWidget(optionVar=self.trailFadeFramesOption,
-                                               defaultValue=5,
-                                               label='Fade Frames',
-                                               minimum=0, maximum=100, step=1)
-        trailPreFramesWidget = intFieldWidget(optionVar=self.trailPreFramesOption,
-                                              defaultValue=15,
-                                              label='Pre Frames',
-                                              minimum=0, maximum=100, step=1)
-        trailPostFramesWidget = intFieldWidget(optionVar=self.trailPostFramesOption,
-                                               defaultValue=15,
-                                               label='Post frames',
-                                               minimum=0, maximum=100, step=1)
-        trailThicknessWidget = intFieldWidget(optionVar=self.trailThicknessOption,
-                                              defaultValue=1.0,
-                                              label='Thickness',
-                                              minimum=1, maximum=10, step=1)
-        trailframeMarkerSizesWidget = intFieldWidget(optionVar=self.trailframeMarkerSizesOption,
-                                                     defaultValue=0,
-                                                     label='Marker Size',
-                                                     minimum=1, maximum=10, step=1)
-        showTicksOptionWidget = optionVarBoolWidget('Show frame markers',
-                                                    self.showframeMarkerOption)
-        widgets = [trailFadeFramesWidget,
-                   trailPreFramesWidget,
-                   trailPostFramesWidget,
-                   trailThicknessWidget,
-                   trailframeMarkerSizesWidget,
-                   showTicksOptionWidget]
-        for wd in widgets:
-            wd.setFixedWidth(150)
+        mainOptionLayout = QFormLayout()
+
+        mainOptionLayout.addRow('Fade Frames', intFieldWidget(optionVar=self.trailFadeFramesOption,
+                                                              defaultValue=5,
+                                                              minimum=0, maximum=100, step=1))
+        mainOptionLayout.addRow('Pre Frames', intFieldWidget(optionVar=self.trailPreFramesOption,
+                                                             defaultValue=15,
+                                                             minimum=0, maximum=100, step=1))
+        mainOptionLayout.addRow('Post frames', intFieldWidget(optionVar=self.trailPostFramesOption,
+                                                              defaultValue=15,
+                                                              minimum=0, maximum=100, step=1))
+        mainOptionLayout.addRow('Thickness', intFieldWidget(optionVar=self.trailThicknessOption,
+                                                            defaultValue=1.0,
+                                                            minimum=1, maximum=10, step=1))
+        mainOptionLayout.addRow('Marker Size', intFieldWidget(optionVar=self.trailframeMarkerSizesOption,
+                                                              defaultValue=0,
+                                                              minimum=1, maximum=10, step=1))
+        mainOptionLayout.addRow('Show frame markers', optionVarBoolWidget('',
+                                                                          self.showframeMarkerOption))
+
+        mainOptionLayout.addRow('Motion path control size', intFieldWidget(optionVar=self.motionControlSizeOption,
+                                                                           defaultValue=0.5,
+                                                                           minimum=0.1, maximum=100, step=0.1))
+        mainOptionLayout.addRow('Nurbs Motion Path Uses Bezier', optionVarBoolWidget('',
+                                                                                     self.bezierCurveOption))
         self.layout.addWidget(infoText)
 
+        self.layout.addLayout(mainOptionLayout)
         self.layout.addLayout(fadeLayout)
         # self.layout.addLayout(markerLayout)
-        fadeLayout.addWidget(trailFadeFramesWidget)
-        fadeLayout.addWidget(trailPreFramesWidget)
-        fadeLayout.addWidget(trailPostFramesWidget)
-        fadeLayout.addWidget(trailThicknessWidget)
-        fadeLayout.addWidget(trailframeMarkerSizesWidget)
-        fadeLayout.addWidget(showTicksOptionWidget)
 
-        motionControlSizeWidget = intFieldWidget(optionVar=self.motionControlSizeOption,
-                                                 defaultValue=0.5,
-                                                 label='Motion path control size',
-                                                 minimum=0.1, maximum=100, step=0.1)
-
-        self.layout.addWidget(motionControlSizeWidget)
         self.layout.addStretch()
         return self.optionWidget
 
@@ -710,7 +695,7 @@ class MotionTrails(toolAbstractFactory):
                          time=(startTime, endTime),
                          simulation=False,
                          bakeOnOverrideLayer=False,
-                         sampleBy=1)   
+                         sampleBy=1)
         pm.delete(list(tempConstraints.values()))
 
         resultLayer = cmds.animLayer('motionPath', override=True)
@@ -725,23 +710,27 @@ class MotionTrails(toolAbstractFactory):
             for i in range(0, offset):
                 curveInfo.append([keyValues[i], keyValues[i + offset], keyValues[i + offset + offset]])
             divisions = int(endTime - startTime)
-            curve = cmds.curve(name=s + '_path', worldSpace=True, p=curveInfo)
+            curve = cmds.curve(name=s + '_path',
+                               bezier=pm.optionVar.get(self.bezierCurveOption, False),
+                               worldSpace=True,
+                               p=curveInfo)
+
             cmds.addAttr(curve, ln="showMarkers", at='bool', dv=True)
             cmds.setAttr(curve + ".showMarkers", edit=True, keyable=True)
             cmds.addAttr(curve, ln='motionPath', at='message')
-
-            resampledCurve = cmds.rebuildCurve(curve,
-                                               ch=False,
-                                               replaceOriginal=True,
-                                               rebuildType=0,
-                                               end=True,
-                                               keepRange=False,
-                                               keepControlPoints=True,
-                                               keepEndPoints=True,
-                                               keepTangents=False,
-                                               spans=divisions,
-                                               degree=3,
-                                               tolerance=0.01)[0]
+            if not pm.optionVar.get(self.bezierCurveOption, False):
+                resampledCurve = cmds.rebuildCurve(curve,
+                                                   ch=False,
+                                                   replaceOriginal=True,
+                                                   rebuildType=0,
+                                                   end=True,
+                                                   keepRange=False,
+                                                   keepControlPoints=True,
+                                                   keepEndPoints=True,
+                                                   keepTangents=False,
+                                                   spans=divisions,
+                                                   degree=3,
+                                                   tolerance=0.01)[0]
 
             cmds.select(tempNodes[s], replace=True)
             cmds.cutKey()
