@@ -123,7 +123,7 @@ class LayerEditor(toolAbstractFactory):
         return [mergeLayersDownButton, additiveExtractButton, counterAnimationButton]
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     def drawMenuBar(self, parentMenu):
         return None

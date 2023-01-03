@@ -33,13 +33,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 
 import maya.cmds as cmds
@@ -72,17 +72,18 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      help=maya.stringTable['tbCommand.select_character_set_objs'],
                                      command=[
-                                              'SelectionTools.select_cheracter_set()']))
+                                         'SelectionTools.select_cheracter_set()']))
         return self.commandList
 
     def assignHotkeys(self):
         return
 
+
 class SelectionTools(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'SelectionTools'
     hotkeyClass = hotkeys()
@@ -110,7 +111,7 @@ class SelectionTools(toolAbstractFactory):
         return None
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     def drawMenuBar(self, parentMenu):
         return None
@@ -170,7 +171,6 @@ class SelectionTools(toolAbstractFactory):
             cmds.select(sel, add=True)
             self.lastSelected = sel[0]
 
-
     def getOppositeControl(self, name, constraint=False, shape=True):
         if ':' in name:
             namespace, control = name.rsplit(':', 1)
@@ -214,3 +214,4 @@ class SelectionTools(toolAbstractFactory):
         if sel in matching:
             matching.remove(sel)
         return matching
+

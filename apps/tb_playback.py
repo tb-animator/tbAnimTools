@@ -121,7 +121,7 @@ class Playback(toolAbstractFactory):
         return self.optionWidget
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     def drawMenuBar(self, parentMenu):
         return None

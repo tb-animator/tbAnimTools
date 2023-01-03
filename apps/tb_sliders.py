@@ -955,7 +955,7 @@ class SlideTools(toolAbstractFactory):
         return None
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return
 
     def drawMenuBar(self, parentMenu):
         return None

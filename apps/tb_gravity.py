@@ -874,7 +874,7 @@ class GravityTools(toolAbstractFactory):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('No selection')
-        tempControl = self.bakeNode(target='COM_Floor')
+        tempControl = self.bakeNode(target='CoM_Floor')
         sel.append(tempControl)
         self.allTools.tools['BakeTools'].bake_to_locator_pinned(sel=sel, constrain=True)
 

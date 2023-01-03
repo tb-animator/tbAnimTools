@@ -117,7 +117,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category, command=['KeyModifiers.clampCurve(low=False)']))
         self.addCommand(self.tb_hkey(name='cycleMirror',
                                      annotation=maya.stringTable['tbCommand.clampKeysAbove'],
-                                     category=self.category, command=['KeyModifiers.cycleMirror']))
+                                     category=self.category, command=['KeyModifiers.cycleMirror()']))
 
         return self.commandList
 
@@ -156,7 +156,7 @@ class KeyModifiers(toolAbstractFactory):
         return self.optionWidget
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     def drawMenuBar(self, parentMenu):
         return None

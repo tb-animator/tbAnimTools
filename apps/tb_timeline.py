@@ -123,7 +123,7 @@ class Timeline(toolAbstractFactory):
         return self.optionWidget
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
         self.range = [self.get_min(), self.get_max()]
         #

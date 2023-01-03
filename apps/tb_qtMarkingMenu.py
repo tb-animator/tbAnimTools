@@ -622,6 +622,7 @@ class EventFilterManager(object):
                 self.recursive_widget_lookup(child, filter)
 
     def addFilterToModelPanels(self, filter):
+        print('addFilterToModelPanels')
         for p in pm.lsUI(editors=True):
             if pm.objectTypeUI(p) == 'modelEditor':
                 self.recursive_widget_lookup(self.getQObjectFromName(p), filter)

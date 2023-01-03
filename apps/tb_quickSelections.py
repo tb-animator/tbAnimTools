@@ -852,7 +852,10 @@ class QssSaveWidget(QWidget):
             self.acceptedFunction()
         if event.key() == Qt.Key_Escape:
             self.close()
-        return super(QssSaveWidget, self).keyPressEvent(event)
+        try:
+            return super(QssSaveWidget, self).keyPressEvent(event)
+        except:
+            return
 
     def mousePressEvent(self, event):
         self.oldPos = event.globalPos()

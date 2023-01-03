@@ -22,7 +22,7 @@
 
 *******************************************************************************
 '''
-defaultSides = {'left': '_l', 'right': '_r'}
+defaultSides = {'left': '_l_', 'right': '_r_'}
 """
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
@@ -61,6 +61,11 @@ class hotkeys(hotKeyAbstractFactory):
     def assignHotkeys(self):
         return pm.warning(self, 'assignHotkeys', ' function not implemented')
 
+mirrorAxis = ["YZ", "XY", "XZ"]
+
+class CharacterDefinition(object):
+    def __init__(self):
+        super(CharacterDefinition, self).__init__()
 
 class CharacterTool(toolAbstractFactory):
     """
@@ -116,13 +121,17 @@ class CharacterTool(toolAbstractFactory):
             sel = cmds.ls(sl=True)
         if not sel:
             return None, None
+        if not isinstance(sel, list):
+            sel = [sel]
         refname, namespace = self.funcs.getCurrentRig(sel)
         if not refname in self.allCharacters.keys():
+            #print ('loading character for %s' % refname)
             self.loadCharacter(refname)
         return refname, namespace
 
     def update(self):
         refname, namespace = self.getSelectedChar()
+
         if refname:
             self.currentRigLabel.setText(refname)
             if self.currentChar != refname:
@@ -130,24 +139,36 @@ class CharacterTool(toolAbstractFactory):
             self.currentChar = refname
             self.currentNamespace = namespace
             self.currentCharData = self.allCharacters[refname]
-            self.leftSideLineEdit.setText(self.currentCharData.get('sides', defaultSides)['left'])
-            self.rightSideLineEdit.setText(self.currentCharData.get('sides', defaultSides)['right'])
+            #print ('refname', refname)
+
+            leftSide = self.currentCharData.get('sides', defaultSides)['left']
+            rightSide = self.currentCharData.get('sides', defaultSides)['right']
+
+            self.leftSideLineEdit.setText(leftSide)
+            self.rightSideLineEdit.setText(rightSide)
+
+            mirrorIndex = self.mirrorPlaneLabelOption.findText(self.currentCharData.get('mirrorAxis', 'YZ"'))
+            self.mirrorPlaneLabelOption.setCurrentIndex(mirrorIndex)
 
     def loadCharacter(self, refname):
         if not refname:
             return
-        print ('loadCharacter', refname, self.charTemplateDir)
+        #print ('loadCharacter', refname, self.charTemplateDir)
         dataFile = os.path.join(self.charTemplateDir, refname + '.json')
         if not os.path.isfile(dataFile):
             self.saveJsonFile(dataFile, dict())
+        # TODO - maybe make a class for this?
         self.allCharacters[refname] = json.load(open(dataFile))
 
     def getCharacterFromSelection(self):
         refname, namespace = self.getSelectedChar()
-        if not refname in self.allCharacters.keys():
-            self.loadCharacter(refname)
+        self.loadCharacterIfNotLoaded(refname)
 
         return refname, self.allCharacters[refname]
+
+    def loadCharacterIfNotLoaded(self, refname):
+        if not refname in self.allCharacters.keys():
+            self.loadCharacter(refname)
 
     def getStrippedSelection(self):
         sel = pm.ls(sl=True)
@@ -156,10 +177,17 @@ class CharacterTool(toolAbstractFactory):
 
         return [x.stripNamespace() for x in sel]
 
+    def setAxis(self, value):
+        self.currentCharData['mirrorAxis'] = value
+
     def setSide(self, side, value):
         sideDict = self.currentCharData.get('sides', defaultSides)
         sideDict[side] = value
         self.currentCharData['sides'] = sideDict
+
+    def _side(self, character, sideName):
+        self.loadCharacterIfNotLoaded(character)
+        return self.allCharacters[character]['sides'][sideName]
 
     def setAllControls(self):
         strippedControls = self.getStrippedSelection()
@@ -174,12 +202,16 @@ class CharacterTool(toolAbstractFactory):
         currentControls = self.currentCharData.get('controls', list())
         self.currentCharData['controls'] = sorted(list(set(currentControls + strippedControls)))
 
-    def selectControls(self):
+    def getAllControls(self):
         controls = self.currentCharData.get('controls', list())
         if not controls:
             return cmds.warning('No controls')
         controls = [self.currentNamespace + ':' + x for x in controls]
-        cmds.select(controls)
+        controls = [c for c in controls if cmds.objExists(c)]
+        return controls
+
+    def selectControls(self):
+        cmds.select(self.getAllControls())
 
     def setAllMeshes(self):
         strippedControls = self.getStrippedSelection()
@@ -216,7 +248,7 @@ class CharacterTool(toolAbstractFactory):
         return controls
 
     def saveCurrentCharacter(self):
-        print ('saveCurrentCharacter')
+        #print ('saveCurrentCharacter')
         if not self.currentChar:
             return
         dataFile = os.path.join(self.charTemplateDir, self.currentChar + '.json')
@@ -280,17 +312,44 @@ class CharacterTool(toolAbstractFactory):
         controlsLayout.addWidget(selectControlsButton)
 
         mirrorGroupbox = QGroupBox('Control Sides')
+        mirrorMainLayout = QVBoxLayout()
+
         mirrorLayout = QHBoxLayout()
-        mirrorGroupbox.setLayout(mirrorLayout)
+        mirrorLayout.setContentsMargins(0, 0, 0, 0)
+        mirrorAxisLayout = QHBoxLayout()
+        mirrorAxisLayout.setContentsMargins(0, 0, 0, 0)
+        mirrorMainLayout.addLayout(mirrorLayout)
+        mirrorMainLayout.addLayout(mirrorAxisLayout)
+        mirrorGroupbox.setLayout(mirrorMainLayout)
 
         leftLabel = QLabel('Left')
         rightLabel = QLabel('Right')
-        self.leftSideLineEdit = QLineEdit('_l')
+        self.leftSideLineEdit = QLineEdit('??')
         self.leftSideLineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
         self.leftSideLineEdit.textChanged.connect(self.sideUpdated)
-        self.rightSideLineEdit = QLineEdit('_r')
+        self.rightSideLineEdit = QLineEdit('??')
         self.rightSideLineEdit.setFixedWidth((2 * buttonWidth) / 3.0)
         self.rightSideLineEdit.textChanged.connect(self.sideUpdated)
+
+        mirrorPlaneLabel = QLabel('Mirror Plane')
+        self.mirrorPlaneLabelOption = QComboBox()
+        for a in mirrorAxis:
+            self.mirrorPlaneLabelOption.addItem(a)
+        self.mirrorPlaneLabelOption.currentIndexChanged.connect(self.mirrorAxisChanged)
+
+        calculateAllMirror = QPushButton('Calculate All mirror values')
+        calculateAllMirror.clicked.connect(self._calculateMirrorAxis)
+        calculateSelectedMirror = QPushButton('Calculate Selected mirror values')
+
+        mirrorLayout.addWidget(leftLabel)
+        mirrorLayout.addWidget(self.leftSideLineEdit)
+        mirrorLayout.addWidget(rightLabel)
+        mirrorLayout.addWidget(self.rightSideLineEdit)
+
+        mirrorAxisLayout.addWidget(mirrorPlaneLabel)
+        mirrorAxisLayout.addWidget(self.mirrorPlaneLabelOption)
+
+        mirrorMainLayout.addWidget(calculateAllMirror)
 
         meshGroupbox = QGroupBox('Meshes')
         meshLayout = QHBoxLayout()
@@ -320,10 +379,7 @@ class CharacterTool(toolAbstractFactory):
         meshLayout.addWidget(appendMeshesButton)
         meshLayout.addWidget(selectMeshesButton)
 
-        mirrorLayout.addWidget(leftLabel)
-        mirrorLayout.addWidget(self.leftSideLineEdit)
-        mirrorLayout.addWidget(rightLabel)
-        mirrorLayout.addWidget(self.rightSideLineEdit)
+
 
         saveLayout = QHBoxLayout()
         saveButton = ToolButton(text='Save',
@@ -342,9 +398,21 @@ class CharacterTool(toolAbstractFactory):
 
         return toolBoxWidget
 
+    def _calculateMirrorAxis(self):
+        refname, namespace = self.getSelectedChar()
+        MirrorTools = self.allTools.tools['MirrorTools']
+        #print MirrorTools
+        controls = self.getAllControls()
+        MirrorTools = self.allTools.tools['MirrorTools']
+        MirrorTools.calculateAllCharacter(refname=refname, character=self.currentCharData, controls=controls)
+        pass
+
     def sideUpdated(self):
         self.setSide('left', self.leftSideLineEdit.text())
         self.setSide('right', self.rightSideLineEdit.text())
+
+    def mirrorAxisChanged(self):
+        self.setAxis(self.mirrorPlaneLabelOption.currentText())
 
     def toolBoxUI(self):
         # if not self.toolbox:

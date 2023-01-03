@@ -1649,7 +1649,7 @@ class Pickwalk(toolAbstractFactory):
 
     def loadLibraryForCurrent(self):
         fname = self.getCurrentRig()
-        print ('Look at me!! %s' % fname)
+        #print ('Look at me!! %s' % fname)
         if not fname:
             sel = cmds.ls(sl=True)
             if not sel:

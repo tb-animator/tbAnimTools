@@ -113,7 +113,7 @@ class PlayblastTool(toolAbstractFactory):
         return self.optionWidget
 
     def showUI(self):
-        return cmds.warning(self, 'showUI', ' function not implemented')
+        return
 
     def drawMenuBar(self, parentMenu):
         return None
