@@ -50,11 +50,11 @@ class hotKeyAbstractFactory(ABC):
 
     @abc.abstractmethod
     def createHotkeyCommands(self):
-        return cmds.warning(self, 'createHotkeyCommands', ' function not implemented')
+        return
 
     @abc.abstractmethod
     def assignHotkeys(self):
-        return cmds.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
     class tb_hkey(object):
         def __init__(self, name="",
@@ -155,7 +155,7 @@ class toolAbstractFactory(ABC):
 
     @abc.abstractmethod
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     @abc.abstractmethod
     def drawMenuBar(self, parentMenu):
