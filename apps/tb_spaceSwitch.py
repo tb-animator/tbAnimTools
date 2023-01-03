@@ -244,7 +244,7 @@ class SpaceSwitch(toolAbstractFactory):
         return self.optionWidget
 
     def showUI(self):
-        return cmds.warning(self, 'optionUI', ' function not implemented')
+        return None
 
     def drawMenuBar(self, parentMenu):
         pm.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
@@ -520,8 +520,9 @@ class SpaceSwitch(toolAbstractFactory):
             controlIndex = controlValues.index(control)
             attribute = self.loadedSpaceData[rigName].spaceControl.keys()[controlIndex]
             attributeType = cmds.getAttr(namespace + ':' + attribute, type=True)
+            node, attr = str(namespace + ':' + attribute).split('.', 1)
             if attributeType == 'enum':
-                node, attr = str(namespace + ':' + attribute).split('.', 1)
+
                 enumValues = cmds.attributeQuery(attr, node=node, listEnum=True)
                 enumList = enumValues[0].split(':')
                 index = cmds.getAttr(namespace + ':' + attribute)
@@ -562,9 +563,9 @@ class SpaceSwitch(toolAbstractFactory):
             attribute = attrKeys[controlValues.index(control)]
             # print ('attribute!', attribute)
 
-            globalValue = self.loadedSpaceData[rigName].spaceGlobalValues[attribute]
-            localValue = self.loadedSpaceData[rigName].spaceLocalValues[attribute]
-            defaultValue = self.loadedSpaceData[rigName].spaceDefaultValues[attribute]
+            globalValue = self.loadedSpaceData[rigName].spaceGlobalValues.get(attribute, 0)
+            localValue = self.loadedSpaceData[rigName].spaceLocalValues.get(attribute, 0)
+            defaultValue = self.loadedSpaceData[rigName].spaceDefaultValues.get(attribute, 0)
             switchValueData[namespace + ':' + attribute] = {str_spaceGlobalValues: globalValue,
                                                             str_spaceLocalValues: localValue,
                                                             str_spaceDefaultValues: defaultValue}[mode]
@@ -722,7 +723,7 @@ class SpaceSwitch(toolAbstractFactory):
                 unknownControls.append(s)
             else:
                 allSpaceAttrs = list(set([x.split('.')[-1] for x in self.loadedSpaceData[rigName].spaceControl.keys()]))
-                # print ('allSpaceAttrs', allSpaceAttrs)
+                #print ('allSpaceAttrs', allSpaceAttrs)
                 if rigName not in self.loadedSpaceData.keys():
                     unknownControls.append(s)
                     continue
@@ -899,6 +900,7 @@ class SpaceSwitch(toolAbstractFactory):
         # if there is no control node specified, just use the main node
         # print ('simpleSpaceSwitch', node, spaceAttribute)
         spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
+        #print ('node', node, 'spaceValue', spaceValue)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
             spaceValue = spaceEnums[spaceValue.lower()]
@@ -1297,13 +1299,15 @@ class SpaceSwitchSetupUI(QMainWindow):
         # print ('spaceControl', self.spaceData.spaceControl.keys())
         self.attrRows = dict()
         for spaceAttribute in self.spaceData.spaceControl.keys():
-            # print ('refreshUI spaceAttribute', spaceAttribute)
+            print ('refreshUI spaceAttribute', spaceAttribute)
             count = self.controlsSubLayout.rowCount()
+
             if spaceAttribute not in self.controlWidgets.keys():
                 self.controlWidgets[spaceAttribute] = SwitchableObjectWidget(self, spaceAttribute)
                 self.controlWidgets[spaceAttribute].objectDeletedSignal.connect(self.deleteEntry)
                 self.attrRows[spaceAttribute] = count + 1
-            self.controlWidgets[spaceAttribute].updateAttributeType(None, spaceAttribute)
+
+                #self.controlWidgets[spaceAttribute].updateAttributeType(None, spaceAttribute)
 
             # TODO = fix this, not showing rows
             self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].spaceAttributeWidget, count + 1, 0)
@@ -1526,7 +1530,8 @@ class SwitchValuesDoubleWidget(QWidget):
 
 
 class SwitchValuesComboWidget(QWidget):
-    editedSignal = Signal(str, str)
+    enumEditedSignal = Signal(str, str)
+    doubleEditedSignal = Signal(str, float)
 
     def __init__(self, key=str_spaceGlobalValues):
         super(SwitchValuesComboWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
@@ -1554,20 +1559,30 @@ class SwitchValuesComboWidget(QWidget):
         # self.mainLayout.addWidget(self.floatWidget)
 
         self.enumWidget.editedSignalKey.connect(self.edited)
-        self.intWidget.editedSignalKey.connect(self.edited)
-        self.floatWidget.editedSignalKey.connect(self.edited)
+        self.intWidget.editedSignalKey.connect(self.doubleEdited)
+        self.floatWidget.editedSignalKey.connect(self.doubleEdited)
 
     def updateEnums(self, enumList, value):
+        self.blockSignals(True)
         self.enumWidget.updateValues(enumList, value)
+        self.blockSignals(False)
 
     def updateDoubles(self, value):
+        self.blockSignals(True)
         self.floatWidget.updateValues(value)
+        self.blockSignals(False)
 
     def updateInts(self, value):
+        self.blockSignals(True)
         self.intWidget.updateValues(value)
+        self.blockSignals(False)
 
     def edited(self, key, value):
-        self.editedSignal.emit(key, value)
+        self.enumEditedSignal.emit(key, value)
+
+    def doubleEdited(self, key, value):
+        print ('doubleEdited', key, value)
+        self.doubleEditedSignal.emit(key, value)
 
     def showEnum(self):
         self.stackWidget.setCurrentWidget(self.enumWidget)
@@ -1619,9 +1634,13 @@ class SwitchableObjectWidget(QWidget):
         self.globalValuesWidgets = SwitchValuesComboWidget(key=str_spaceGlobalValues)
         self.localValuesWidgets = SwitchValuesComboWidget(key=str_spaceLocalValues)
         self.defaultValuesWidgets = SwitchValuesComboWidget(key=str_spaceDefaultValues)
-        self.globalValuesWidgets.editedSignal.connect(self.valuesEdited)
-        self.localValuesWidgets.editedSignal.connect(self.valuesEdited)
-        self.defaultValuesWidgets.editedSignal.connect(self.valuesEdited)
+        self.globalValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
+        self.globalValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
+        self.localValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
+        self.localValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
+        self.defaultValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
+        self.defaultValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
+
 
         objSelectWidgets = [self.controlWidget,
                             ]
@@ -1718,8 +1737,6 @@ class SwitchableObjectWidget(QWidget):
         self.cls.spaceData.__dict__[key][self.key] = value
 
     def updateAttributeType(self, key, value):
-        # print ('updateAttributeType', key, self.key, value)
-
         # swap out existing entry
         if self.key in self.cls.spaceData.spaceGlobalValues.keys():
             self.cls.spaceData.spaceGlobalValues[value] = self.cls.spaceData.spaceGlobalValues.pop(self.key)
@@ -1740,12 +1757,14 @@ class SwitchableObjectWidget(QWidget):
             attrName = value
 
         obj, attr = attrName.split('.')
+
         if not cmds.objExists(obj):
             self.hideAllValueWidgets()
             return False
         if not cmds.attributeQuery(attr, node=obj, exists=True):
             self.hideAllValueWidgets()
             return False
+
         attributeType = cmds.getAttr(attrName, type=True)
         self.attributeTypeFunctions.get(attributeType, self.showDouble)()
         if attributeType == 'enum':
@@ -1763,15 +1782,19 @@ class SwitchableObjectWidget(QWidget):
                                                   defaultVal)
 
         if attributeType == 'int':
-            attrValue = cmds.getAttr(attrName)
-            self.globalValuesWidgets.updateInts(attrValue)
-            self.localValuesWidgets.updateInts(attrValue)
-            self.defaultValuesWidgets.updateInts(attrValue)
+            globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, 0)
+            localVal = self.cls.spaceData.spaceLocalValues.get(self.key, 0)
+            defaultVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
+            self.globalValuesWidgets.updateInts(globalVal)
+            self.localValuesWidgets.updateInts(localVal)
+            self.defaultValuesWidgets.updateInts(defaultVal)
         if attributeType == 'double':
-            attrValue = cmds.getAttr(attrName)
-            self.globalValuesWidgets.updateDoubles(attrValue)
-            self.localValuesWidgets.updateDoubles(attrValue)
-            self.defaultValuesWidgets.updateDoubles(attrValue)
+            globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, 0)
+            localVal = self.cls.spaceData.spaceLocalValues.get(self.key, 0)
+            defaultVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
+            self.globalValuesWidgets.updateDoubles(globalVal)
+            self.localValuesWidgets.updateDoubles(localVal)
+            self.defaultValuesWidgets.updateDoubles(defaultVal)
         # print (key, value)
         # self.updateData(key, value)
         return True
