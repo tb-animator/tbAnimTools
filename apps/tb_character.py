@@ -64,8 +64,88 @@ class hotkeys(hotKeyAbstractFactory):
 mirrorAxis = ["YZ", "XY", "XZ"]
 
 class CharacterDefinition(object):
-    def __init__(self):
+    def __init__(self, jsonFile, char):
         super(CharacterDefinition, self).__init__()
+        self.leftSide = str()
+        self.rightSide = str()
+        self.controls = list()
+        self.mirrorAxis = str()
+        self.meshes = list()
+        self.fromJson(jsonFile)
+        self.jsonFile = jsonFile
+        self.char = char
+
+    def fromJson(self, data):
+        rawJsonData = json.load(open(data))
+        #print ('rawJsonData')
+        #print (rawJsonData)
+        sides = rawJsonData.get('sides', dict())
+        self.leftSide = sides.get('left', '_l')
+        self.rightSide = sides.get('right', '_r')
+        self.controls = rawJsonData.get('controls', list())
+        self.mirrorAxis = rawJsonData.get('mirrorAxis', str())
+        self.meshes = rawJsonData.get('meshes', list())
+
+    def toJson(self):
+        return json.loads(json.dumps(self, default=lambda o: o.json_serialize(), sort_keys=True, indent=4, separators=(',', ': ')))
+
+    def json_serialize(self):
+        returnDict = {}
+        returnDict['sides'] = {'left': self.leftSide, 'right': self.rightSide}
+        returnDict['controls'] = self.controls
+        returnDict['meshes'] = self.meshes
+        returnDict['mirrorAxis'] = self.mirrorAxis
+        # print ('returnDict', returnDict)
+        return returnDict
+
+    def getJsonFile(self):
+        if not self.jsonFile:
+            self.jsonFile = os.path.join(CharacterTool.charTemplateDir, self.char + '.json')
+        return self.jsonFile
+
+    def getSide(self, sideName='left'):
+        if sideName == 'left':
+            return self.leftSide
+        return self.rightSide
+
+    def setSide(self, sideName='left', value='_l'):
+        if sideName == 'left':
+            self.leftSide = value
+        else:
+            self.rightSide = value
+
+    def getMirrorAxis(self):
+        if not self.mirrorAxis:
+            self.mirrorAxis = "YZ"
+        return self.mirrorAxis
+
+    def setControls(self, values):
+        self.controls = values
+
+    def appendControls(self, values):
+        self.controls = list(set(self.controls + values))
+
+    def getControls(self, namespace):
+        controls = [namespace + ':' + x for x in self.controls]
+        controls = [c for c in controls if cmds.objExists(c)]
+        return controls
+
+    def selectControls(self, namespace):
+        cmds.select(self.getControls(namespace))
+
+    def getMeshes(self, namespace):
+        meshes = [namespace + ':' + x for x in self.meshes]
+        meshes = [c for c in meshes if cmds.objExists(c)]
+        return meshes
+
+    def setMeshes(self, values):
+        self.meshes = values
+
+    def appendMeshes(self, values):
+        self.meshes = list(set(self.meshes + values))
+
+    def selectMeshes(self, namespace):
+        cmds.select(self.getMeshes(namespace))
 
 class CharacterTool(toolAbstractFactory):
     """
@@ -141,13 +221,13 @@ class CharacterTool(toolAbstractFactory):
             self.currentCharData = self.allCharacters[refname]
             #print ('refname', refname)
 
-            leftSide = self.currentCharData.get('sides', defaultSides)['left']
-            rightSide = self.currentCharData.get('sides', defaultSides)['right']
+            leftSide = self.currentCharData.getSide('left')
+            rightSide = self.currentCharData.getSide('right')
 
             self.leftSideLineEdit.setText(leftSide)
             self.rightSideLineEdit.setText(rightSide)
 
-            mirrorIndex = self.mirrorPlaneLabelOption.findText(self.currentCharData.get('mirrorAxis', 'YZ"'))
+            mirrorIndex = self.mirrorPlaneLabelOption.findText(self.currentCharData.getMirrorAxis())
             self.mirrorPlaneLabelOption.setCurrentIndex(mirrorIndex)
 
     def loadCharacter(self, refname):
@@ -158,7 +238,8 @@ class CharacterTool(toolAbstractFactory):
         if not os.path.isfile(dataFile):
             self.saveJsonFile(dataFile, dict())
         # TODO - maybe make a class for this?
-        self.allCharacters[refname] = json.load(open(dataFile))
+        self.allCharacters[refname] = CharacterDefinition(dataFile, refname)
+        #self.allCharacters[refname] = json.load(open(dataFile))
 
     def getCharacterFromSelection(self):
         refname, namespace = self.getSelectedChar()
@@ -181,82 +262,69 @@ class CharacterTool(toolAbstractFactory):
         self.currentCharData['mirrorAxis'] = value
 
     def setSide(self, side, value):
-        sideDict = self.currentCharData.get('sides', defaultSides)
-        sideDict[side] = value
-        self.currentCharData['sides'] = sideDict
+        self.currentCharData.setSide(side, value)
 
     def _side(self, character, sideName):
         self.loadCharacterIfNotLoaded(character)
-        return self.allCharacters[character]['sides'][sideName]
+        return self.allCharacters[character].getSide(sideName)
 
     def setAllControls(self):
         strippedControls = self.getStrippedSelection()
         if not strippedControls:
             return cmds.warning('No selection')
-        self.currentCharData['controls'] = sorted(strippedControls)
+        self.currentCharData.setControls(sorted(strippedControls))
 
     def appendControls(self):
         strippedControls = self.getStrippedSelection()
         if not strippedControls:
             return cmds.warning('No selection')
-        currentControls = self.currentCharData.get('controls', list())
-        self.currentCharData['controls'] = sorted(list(set(currentControls + strippedControls)))
+        self.currentCharData.appendControls(sorted(strippedControls))
 
     def getAllControls(self):
-        controls = self.currentCharData.get('controls', list())
-        if not controls:
-            return cmds.warning('No controls')
-        controls = [self.currentNamespace + ':' + x for x in controls]
-        controls = [c for c in controls if cmds.objExists(c)]
-        return controls
+        return self.currentCharData.getControls(self.currentNamespace)
 
     def selectControls(self):
         cmds.select(self.getAllControls())
 
     def setAllMeshes(self):
-        strippedControls = self.getStrippedSelection()
-        if not strippedControls:
+        strippedMeshes = self.getStrippedSelection()
+        if not strippedMeshes:
             return cmds.warning('No selection')
-        self.currentCharData['meshes'] = sorted(strippedControls)
+        self.currentCharData.setMeshes(sorted(strippedMeshes))
 
     def appendMeshes(self):
         strippedControls = self.getStrippedSelection()
         if not strippedControls:
             return cmds.warning('No selection')
-        currentControls = self.currentCharData.get('meshes', list())
-        self.currentCharData['meshes'] = sorted(list(set(currentControls + strippedControls)))
+        self.currentCharData.appendMeshes(sorted(strippedControls))
 
     def selectMeshes(self):
-        meshes = self.currentCharData.get('meshes', list())
-        if not meshes:
-            return cmds.warning('No controls')
-        meshes = [self.currentNamespace + ':' + x for x in meshes]
-        cmds.select(meshes)
+        self.currentCharData.selectMeshes(self.currentNamespace)
 
     def getAllMeshes(self, sel=None):
         refname, namespace = self.getSelectedChar(sel=sel)
         self.loadCharacter(refname)
-        meshes = self.allCharacters[refname].get('meshes', list())
-        meshes = [namespace + ':' + x for x in meshes]
-        return meshes
+        return self.allCharacters[refname].getMeshes(namespace)
 
     def getAllControls(self, sel=None):
         refname, namespace = self.getSelectedChar(sel=sel)
         self.loadCharacter(refname)
-        controls = self.allCharacters[refname].get('controls', list())
-        controls = [namespace + ':' + x for x in controls]
-        return controls
+        return self.allCharacters[refname].getControls(namespace)
 
     def saveCurrentCharacter(self):
         #print ('saveCurrentCharacter')
         if not self.currentChar:
             return
         dataFile = os.path.join(self.charTemplateDir, self.currentChar + '.json')
-        self.saveJsonFile(dataFile, self.currentCharData)
+        self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
 
     @Slot()
     def removeScriptJob(self):
         cmds.scriptJob(kill=self.selectionChangedScriptJob)
+
+    @Slot()
+    def temp(self, data, data2):
+        print (data, data2)
 
     def getToolboxWidget(self, widget):
         buttonWidth = 124
@@ -282,9 +350,14 @@ class CharacterTool(toolAbstractFactory):
         currentLayout.addWidget(lbl)
         currentLayout.addWidget(self.currentRigLabel)
 
-        controlsGroupbox = QGroupBox('Controls')
+        controlsGroupbox = myGroupBox('Controls')
+        controlsGroupbox.clicked.connect(self.temp)
+        controlsVLaout = QVBoxLayout()
         controlsLayout = QHBoxLayout()
-        controlsGroupbox.setLayout(controlsLayout)
+        controlsLayout2 = QHBoxLayout()
+        controlsGroupbox.setLayout(controlsVLaout)
+        controlsVLaout.addLayout(controlsLayout)
+        controlsVLaout.addLayout(controlsLayout2)
 
         defineControlsButton = ToolButton(text='Set Controls',
                                           imgLabel='Tips',
@@ -311,6 +384,32 @@ class CharacterTool(toolAbstractFactory):
         controlsLayout.addWidget(appendControlsButton)
         controlsLayout.addWidget(selectControlsButton)
 
+        defineGlobalButton = ToolButton(text='Set Global',
+                                          imgLabel='Tips',
+                                          width=buttonWidth,
+                                          height=buttonHeight,
+                                          icon=":/character.svg",
+                                          sourceType='py',
+                                          command=self.setAllControls)
+        defineDriverButton = ToolButton(text='Set Driver',
+                                          imgLabel='Tips',
+                                          width=buttonWidth,
+                                          height=buttonHeight,
+                                          icon=":/character.svg",
+                                          sourceType='py',
+                                          command=self.setAllControls)
+        defineExportButton = ToolButton(text='Set Export',
+                                          imgLabel='Tips',
+                                          width=buttonWidth,
+                                          height=buttonHeight,
+                                          icon=":/character.svg",
+                                          sourceType='py',
+                                          command=self.setAllControls)
+
+        controlsLayout2.addWidget(defineGlobalButton)
+        controlsLayout2.addWidget(defineDriverButton)
+        controlsLayout2.addWidget(defineExportButton)
+
         mirrorGroupbox = QGroupBox('Control Sides')
         mirrorMainLayout = QVBoxLayout()
 
@@ -320,6 +419,8 @@ class CharacterTool(toolAbstractFactory):
         mirrorAxisLayout.setContentsMargins(0, 0, 0, 0)
         mirrorMainLayout.addLayout(mirrorLayout)
         mirrorMainLayout.addLayout(mirrorAxisLayout)
+        mirrorTestLayout = QHBoxLayout()
+        mirrorTestLayout.setContentsMargins(0,0,0,0)
         mirrorGroupbox.setLayout(mirrorMainLayout)
 
         leftLabel = QLabel('Left')
@@ -339,6 +440,12 @@ class CharacterTool(toolAbstractFactory):
 
         calculateAllMirror = QPushButton('Calculate All mirror values')
         calculateAllMirror.clicked.connect(self._calculateMirrorAxis)
+        testMirrorSwap = QPushButton('Test Swap')
+        testMirrorSwap.clicked.connect(self._testSwap)
+        testMirrorLtoR = QPushButton('Test Left To Right')
+        testMirrorLtoR.clicked.connect(self._testLeftToRight)
+        testMirrorRtoL = QPushButton('Test Right To Left')
+        testMirrorRtoL.clicked.connect(self._testRightToLeft)
         calculateSelectedMirror = QPushButton('Calculate Selected mirror values')
 
         mirrorLayout.addWidget(leftLabel)
@@ -350,6 +457,10 @@ class CharacterTool(toolAbstractFactory):
         mirrorAxisLayout.addWidget(self.mirrorPlaneLabelOption)
 
         mirrorMainLayout.addWidget(calculateAllMirror)
+        mirrorMainLayout.addLayout(mirrorTestLayout)
+        mirrorTestLayout.addWidget(testMirrorSwap)
+        mirrorTestLayout.addWidget(testMirrorLtoR)
+        mirrorTestLayout.addWidget(testMirrorRtoL)
 
         meshGroupbox = QGroupBox('Meshes')
         meshLayout = QHBoxLayout()
@@ -379,6 +490,18 @@ class CharacterTool(toolAbstractFactory):
         meshLayout.addWidget(appendMeshesButton)
         meshLayout.addWidget(selectMeshesButton)
 
+        spaceSwitchroupbox = QGroupBox('SpaceSwitch')
+        # add in  aUI to choose the space switch attribute names?
+        spaceLayout = QHBoxLayout()
+        spaceSwitchroupbox.setLayout(spaceLayout)
+        tmpSpaceButton = ToolButton(text='Space!',
+                                        imgLabel='Tips',
+                                        width=buttonWidth,
+                                        height=buttonHeight,
+                                        icon=":/out_polySphere.png",
+                                        sourceType='py',
+                                        command=self.setAllMeshes)
+        spaceLayout.addWidget(tmpSpaceButton)
 
 
         saveLayout = QHBoxLayout()
@@ -394,6 +517,8 @@ class CharacterTool(toolAbstractFactory):
         toolBoxLayout.addWidget(controlsGroupbox)
         toolBoxLayout.addWidget(meshGroupbox)
         toolBoxLayout.addWidget(mirrorGroupbox)
+        # TODO - add this back
+        #toolBoxLayout.addWidget(spaceSwitchroupbox)
         toolBoxLayout.addLayout(saveLayout)
 
         return toolBoxWidget
@@ -406,6 +531,15 @@ class CharacterTool(toolAbstractFactory):
         MirrorTools = self.allTools.tools['MirrorTools']
         MirrorTools.calculateAllCharacter(refname=refname, character=self.currentCharData, controls=controls)
         pass
+
+    def _testSwap(self):
+        mel.eval('mirrorSelectedSwap')
+
+    def _testLeftToRight(self):
+        mel.eval('mirrorSelectedLeftToRight')
+
+    def _testRightToLeft(self):
+        mel.eval('mirrorSelectedRightToLeft')
 
     def sideUpdated(self):
         self.setSide('left', self.leftSideLineEdit.text())
@@ -428,3 +562,21 @@ class CharacterTool(toolAbstractFactory):
         self.toolbox.setFixedWidth(320)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
+
+
+class myGroupBox(QGroupBox):
+    """
+    Extension of QGoupBox, add functions for collapsing
+    """
+    clicked = Signal(str, object)
+
+    def __init__(self, title):
+        super(myGroupBox, self).__init__()
+        self.title = title
+        self.setTitle(self.title)
+
+    def mousePressEvent(self, event):
+        child = self.childAt(event.pos())
+        if not child:
+            child = self
+        self.clicked.emit(self.title, child)

@@ -80,7 +80,7 @@ class main_menu(object):
 
         for c in tbtoolCLS.tools.values():
             if hasattr(c, 'productID'):
-                print ('pro app', c.productID)
+                #print ('pro app', c.productID)
                 if c.productID not in ignoredKeys:
                     continue
                 ignoredKeys.pop(ignoredKeys.index(c.productID))

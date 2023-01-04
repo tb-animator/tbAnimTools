@@ -172,7 +172,7 @@ class MirrorTools(toolAbstractFactory):
             namespaceToCharDict[namespace] = refname
 
             if refname not in self.loadedMirrorTables.keys():
-                print ('saving new mirror table file for %s' % refname)
+                # print ('saving new mirror table file for %s' % refname)
                 # print (MirrorData().toJson())
                 self.saveRigFileIfNew(refname, MirrorData().toJson())
             mirrorData = self.loadRigData(MirrorData(), refname)
@@ -286,13 +286,8 @@ class MirrorTools(toolAbstractFactory):
         return None
 
     def getMirrorForControlFromCharacter(self, character, control):
-        sidesDict = character.get('sides', None)
-        if not sidesDict:
-            left = 'l_'
-            right = 'r_'
-        else:
-            left = sidesDict.get('left', 'l_')
-            right = sidesDict.get('right', 'r_')
+        left = character.getSide('left')
+        right = character.getSide('right')
 
         mirroredControl = self.getMirrorControl(control, left, right)
         if not mirroredControl:
@@ -527,7 +522,7 @@ class MirrorTools(toolAbstractFactory):
             pControl = pm.PyNode(control)
             opposite = self.getMirrorForControlFromCharacter(character, control)
             pOpposite = pm.PyNode(opposite)
-            mirrorAxisRaw = character.get('mirrorAxis', 'YZ"')
+            mirrorAxisRaw = character.getMirrorAxis()
             mirrorAxis = self.calculateMirrorAxis(control, opposite, mirrorAxisRaw)
             axisDict = dict()
             mirrorData.controls[pControl.stripNamespace()] = axisDict
