@@ -122,7 +122,7 @@ class module_maker():
 
         for paths in self.maya_plugin_paths:
             out_lines.append('MAYA_PLUG_IN_PATH+:=' + paths)
-        print ('make_module_data', out_lines)
+        #print ('make_module_data', out_lines)
         return out_lines
 
     def write_module_file(self):

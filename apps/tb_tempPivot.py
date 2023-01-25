@@ -235,7 +235,7 @@ class TempPivot(toolAbstractFactory):
             pm.container(asset, edit=True,
                          includeHierarchyBelow=True,
                          force=True,
-                         addNode=control)
+                         addNode=[control, controlParent])
 
             bakeTargets = list()
             targetParents = dict()

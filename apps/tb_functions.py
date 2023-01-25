@@ -90,6 +90,15 @@ pointLists = json.load(open(dataPath))
 acceptedConstraintTypes = ['pairBlend', 'constraint']
 
 
+def getGlobalTools():
+    global tbtoolCLS
+    try:
+        tbtoolCLS = ClassFinder()
+    except:
+        from pluginLookup import ClassFinder
+        tbtoolCLS = ClassFinder()
+    return tbtoolCLS
+
 class functions(object):
     """
     Huge list of functions that scripts 'should' get built from
@@ -389,14 +398,13 @@ class functions(object):
         :return:
         """
         node = pm.PyNode(ref)
-        refObj = node
+        refObj = None
         overrideState = node.overrideEnabled.get()
-        if not overrideState:
-            shape = node.getShape()
-            if shape:
-                overrideState = shape.overrideEnabled.get()
-                if overrideState:
-                    refObj = shape
+        shape = node.getShape()
+        if shape:
+            shapeOverrideState = shape.overrideEnabled.get()
+            if shapeOverrideState:
+                refObj = shape
 
         if not refObj.overrideRGBColors.get():
             if refObj.overrideColor.get() == 0:
@@ -1693,12 +1701,19 @@ class functions(object):
                     continue
         return characters
 
+    def getRefNameFromTopParent(self, walkObject):
+        CharacterTool = getGlobalTools().tools['CharacterTool']
+        CharacterTool.getAllCharacters()
+        refName = CharacterTool.getCharFromTopNode(walkObject)
+        return refName
+
     def getCurrentRig(self, sel=None):
         """
         Used to determine the rig name/file, used when saving out rig data for tools
         :param sel:
         :return:
         """
+        print ('getCurrentRig', sel)
         refName = None
         mapName = None
         fname = None
@@ -1706,19 +1721,22 @@ class functions(object):
             sel = cmds.ls(sl=True)
         namespace = str()
         refNamespace = None
+        if not sel:
+            return None, None
+        if isinstance(sel, list):
+            sel = sel[0]
+        print ('getCurrentRig', sel)
         if sel:
-            refState = cmds.referenceQuery(sel[0], isNodeReferenced=True)
+            refState = cmds.referenceQuery(sel, isNodeReferenced=True)
             if refState:
                 # if it is referenced, check against pickwalk library entries
-                refName = cmds.referenceQuery(sel[0], filename=True, shortName=True).split('.')[0]
-                namespace = cmds.referenceQuery(sel[0], namespace=True)
+                refName = cmds.referenceQuery(sel, filename=True, shortName=True).split('.')[0]
+                namespace = cmds.referenceQuery(sel, namespace=True)
             else:
                 # might just be working in the rig file itself
                 refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
-            '''
-            if ':' in sel[0]:
-                namespace = sel[0].split(':', 1)[0]
-            '''
+                if ':' in sel:
+                    namespace = sel.split(':', 1)[0]
         else:
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
 
@@ -1894,3 +1912,23 @@ class functions(object):
         fromScreen = []
         objects.getSelectionStrings(fromScreen)
         return fromScreen
+
+    def getTopParent(self, sel):
+        """
+        Due to pymel crapping out at non unique names, gotta do this in cmds
+        :param sel:
+        :return:
+        """
+
+        if isinstance(sel, list):
+            sel = sel[0]
+        sel = str(sel)
+        parents = cmds.listRelatives(str(sel), allParents=True, fullPath=True)
+        if not parents:
+            return None
+        parents = parents[0].split('|')
+        for p in parents:
+            if p:
+                return p
+        return None
+

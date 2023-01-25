@@ -25,6 +25,8 @@
 import time
 import pymel.core as pm
 
+QSS_Suffix = '_qss'
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -150,22 +152,28 @@ class QuickSelectionTools(toolAbstractFactory):
         if not os.path.isdir(self.quickSelectFolderDefault):
             os.mkdir(self.quickSelectFolderDefault)
 
-    def create_main_set(self):
-        sel = cmds.ls(sl=True)
-        if not cmds.objExists("QuickSelects"):
+    def create_main_set(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            namespace = ':'
+        else:
+            namespace = sel[0].rsplit(':', 1)[0] + ':'
+        mainSetName = namespace + "QuickSelects"
+        if not cmds.objExists(mainSetName):
             cmds.select(clear=True)
-            main_set = cmds.sets(name="QuickSelects")
+            main_set = cmds.sets(name=mainSetName)
             cmds.select(sel, replace=True)
 
-        return "QuickSelects"
+        return mainSetName
 
     def get_sets(self, forceAll=False):
         all_sets = cmds.ls(sets=True)
         qs_sets = list()
 
-        all_sets = [q for q in all_sets if  cmds.sets(q, query=True, text=True) == 'gCharacterSet']
+        all_sets = [q for q in all_sets if cmds.sets(q, query=True, text=True) == 'gCharacterSet']
         if pm.optionVar.get(self.quickSelectOnQssSuffix, True) and not forceAll:
-            all_sets = [q for q in all_sets if q.endswith('_qss')]
+            all_sets = [q for q in all_sets if q.endswith(QSS_Suffix)]
         ignoreValues = pm.optionVar.get(self.quickSelectionIgnore, '')
 
         ignoredSets = list()
@@ -232,10 +240,15 @@ class QuickSelectionTools(toolAbstractFactory):
                 qs_result = self.check_set_membership(sel, a_set)
                 if qs_result:
                     cmds.select(self.get_set_contents(a_set), add=True)
+                    return
+            for s in sel:
+                # skip non object sets
+                if cmds.nodeType(s) == 'objectSet':
+                    cmds.select(self.get_set_contents(s), add=True)
         else:
             msg = 'no quick selects found for selection'
-            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
-                                   fadeOutTime=4.0)
+            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=5.0,
+                                   fadeOutTime=4.0, fade=False)
 
     @staticmethod
     def existing_obj_in_list(sel):
@@ -315,12 +328,21 @@ class QuickSelectionTools(toolAbstractFactory):
         opposites = list()
         if not mirror:
             return
+        MirrorTools = self.allTools.tools['MirrorTools']
+        CharacterTool = self.allTools.tools['CharacterTool']
         for s in sel:
-            opposites.append(self.funcs.getOppositeControl(s))
+            refName = self.funcs.getRefNameFromTopParent(s)
+            CharacterTool.loadCharacter(refName)
+            mirrorControl = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refName], s)
+            if mirrorControl != s:
+                opposites.append(mirrorControl)
+            else:
+                opposites.append(self.funcs.getOppositeControl(s))
         if opposites:
-            self.save_qs(opposites[0], opposites, colour=self.funcs.getControlColour(opposites[-1]))
+            self.save_qs(opposites[-1], opposites, colour=self.funcs.getControlColour(opposites[-1]))
 
     def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
+        # print ('save colour', colour)
         qs_name = qs_name.split(':')[-1]
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
@@ -336,11 +358,13 @@ class QuickSelectionTools(toolAbstractFactory):
                 if cmds.nodeType(qs_name) == 'objectSet':
                     cmds.delete(qs_name)
             if quick:
-                qs_name += '_qss'
+                if not qs_name.endswith(QSS_Suffix):
+                    qs_name += QSS_Suffix
             qs = cmds.sets(name=qs_name, text="gCharacterSet")
-            print ('qs', qs)
+            # print ('qs', qs)
             self.getSetColour(qs)
-            self.setSetColourFromUI(qs, colour[0]/255, colour[1]/255, colour[2]/255)
+
+            self.setSetColourFromUI(qs, colour[0]/255.0, colour[1]/255.0, colour[2]/255.0)
             cmds.select(qs, replace=True)
             cmds.sets(qs, addElement=self.create_main_set())
             cmds.select(pre_sel, replace=True)
@@ -424,11 +448,17 @@ class QuickSelectionTools(toolAbstractFactory):
         """
         file_name = os.path.join(self.quickSelectSavePath, qss_name)
         rawJsonData = json.load(open(file_name))
-
-        if 'setName' not in rawJsonData.keys():
+        # print ('qss_name')
+        if 'setNames' not in rawJsonData.keys():
             cmds.warning('Loading legacy set')
             for qs_name, qs_objects in rawJsonData.items():
                 self.save_qs_from_file(qs_name, qs_objects)
+            return
+        print (rawJsonData)
+        for qs_name, qs_objects in rawJsonData['setNames'].items():
+            # print ('qs_name', qs_name)
+            # print ('qs_objects', qs_objects)
+            self.save_qs_from_file(qs_name, qs_objects.get('qs_objects', list()))
 
     def restore_qs_from_dir(self):
         qss_files = list()
@@ -491,7 +521,7 @@ class QuickSelectionTools(toolAbstractFactory):
 
     @Slot()
     def delayedShow(self, *args):
-        if time.time() - self.start_time >= 0.1:  # this would be 420 seconds
+        if time.time() - self.start_time >= 0.06:  # this would be 420 seconds
             if self.timer.isActive():
                 self.markingMenuWidget.setVisible(True)
             self.timer.stop()
@@ -501,6 +531,7 @@ class QuickSelectionTools(toolAbstractFactory):
         self.timer.stop()
         self.markingMenuWidget.close()
         self.markingMenuWidget.setVisible(False)
+        self.qs_select()
 
     def build_MM(self, parentMenu=None):
         menuDict = {'NE': list(),
@@ -516,7 +547,7 @@ class QuickSelectionTools(toolAbstractFactory):
         matchedSets, unmatchedSets = self.getMatchingSets(sel, allSets)
         matchedQss = list()
         if matchedSets:
-            matchedQss = [x for x in matchedSets if x.endswith('_qss')]
+            matchedQss = [x for x in matchedSets if x.endswith(QSS_Suffix)]
         # main select quik select button
         tmpLabel = QLabel()
         fontWidth = 0
@@ -636,7 +667,7 @@ class QuickSelectionTools(toolAbstractFactory):
 
         for s in sel:
             setMembership = cmds.listSets(object=s)
-            setMembership = [x for x in setMembership if x.endswith('_qss')]
+            setMembership = [x for x in setMembership if x.endswith(QSS_Suffix)]
         return
         for s in sel:
             if cmds.objectType(s) == 'objectSet':

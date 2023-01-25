@@ -283,19 +283,19 @@ class MirrorTools(toolAbstractFactory):
 
         # Return None as the given name is probably a center control
         # and doesn't have an opposite side.
-        return None
+        return control
 
     def getMirrorForControlFromCharacter(self, character, control):
         left = character.getSide('left')
         right = character.getSide('right')
-
         mirroredControl = self.getMirrorControl(control, left, right)
-        if not mirroredControl:
-            return control
-        if not cmds.objExists(mirroredControl):
-            return control
-        else:
-            return mirroredControl
+
+        # print ('getMirrorForControlFromCharacter', character, control)
+        # print ('left', left)
+        # print ('right', right)
+        # print ('mirroredControl', mirroredControl)
+
+        return mirroredControl
 
     def getMirrorControlsForSelection(self, sel=None):
         if not sel:
@@ -521,6 +521,7 @@ class MirrorTools(toolAbstractFactory):
         for control in controls:
             pControl = pm.PyNode(control)
             opposite = self.getMirrorForControlFromCharacter(character, control)
+
             pOpposite = pm.PyNode(opposite)
             mirrorAxisRaw = character.getMirrorAxis()
             mirrorAxis = self.calculateMirrorAxis(control, opposite, mirrorAxisRaw)
@@ -604,55 +605,60 @@ class MirrorTools(toolAbstractFactory):
         valuesDict = dict()
 
         attrs = cmds.listAttr(fromControl, keyable=True, scalar=True, settable=True, inUse=True)
+        toAttrs = cmds.listAttr(toControl, keyable=True, scalar=True, settable=True, inUse=True)
         strippedFrom = pm.PyNode(fromControl).stripNamespace()
         strippedTo = pm.PyNode(toControl).stripNamespace()
         valuesDict[fromControl] = dict()
         valuesDict[toControl] = dict()
-        for a in attrs:
+        for index, a in enumerate(attrs):
             # print (a, cmds.getAttr(namespace + ':' + control + '.' + a))
             valuesDict[fromControl][a] = cmds.getAttr(fromControl + '.' + a)
+        for index, a in enumerate(toAttrs):
             valuesDict[toControl][a] = cmds.getAttr(toControl + '.' + a)
 
         if self.isMirror(fromControl, character, option):
-            if cmds.attributeQuery(a, node=fromControl, exists=True):
-                attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
-                if not attrEntry:
-                    return
-                for attr, value in valuesDict[toControl].items():
-                    if not cmds.attributeQuery(attr, node=toControl, exists=True):
-                        continue
-                    if not cmds.attributeQuery(attr, node=toControl, keyable=True):
-                        continue
-                    if not cmds.attributeQuery(attr, node=toControl, writable=True):
-                        continue
 
-                    scalar = attrEntry.get(attr, 1)
-                    try:
-                        cmds.setAttr(toControl + '.' + attr,
-                                     valuesDict[fromControl][attr] * scalar,
-                                     clamp=True)
-                    except:
-                        pass
+            attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
+            if not attrEntry:
+                # print ('skip')
+                return
+            for attr, value in valuesDict[toControl].items():
+                if not cmds.attributeQuery(attr, node=toControl, exists=True):
+                    continue
+                if not cmds.attributeQuery(attr, node=toControl, keyable=True):
+                    continue
+                if not cmds.attributeQuery(attr, node=toControl, writable=True):
+                    continue
+
+                scalar = attrEntry.get(attr, 1)
+                # print (toControl + '.' + attr, valuesDict[fromControl][attr] * scalar)
+                try:
+                    cmds.setAttr(toControl + '.' + attr,
+                                 valuesDict[fromControl][attr] * scalar,
+                                 clamp=True)
+                except:
+                    pass
         if self.isMirror(toControl, character, option):
-            if cmds.attributeQuery(a, node=toControl, exists=True):
 
-                attrEntry = self.loadedMirrorTables[character].controls.get(strippedTo, None)
-                if not attrEntry:
-                    return
-                for attr, value in valuesDict[fromControl].items():
-                    if not cmds.attributeQuery(attr, node=fromControl, exists=True):
-                        continue
-                    if not cmds.attributeQuery(attr, node=toControl, keyable=True):
-                        continue
-                    if not cmds.attributeQuery(attr, node=toControl, writable=True):
-                        continue
-                    scalar = attrEntry.get(attr, 1)
-                    try:
-                        cmds.setAttr(fromControl + '.' + attr,
-                                     valuesDict[toControl][attr] * scalar,
-                                     clamp=True)
-                    except:
-                        pass
+            attrEntry = self.loadedMirrorTables[character].controls.get(strippedTo, None)
+            if not attrEntry:
+                # print ('skip')
+                return
+            for attr, value in valuesDict[fromControl].items():
+                if not cmds.attributeQuery(attr, node=fromControl, exists=True):
+                    continue
+                if not cmds.attributeQuery(attr, node=fromControl, keyable=True):
+                    continue
+                if not cmds.attributeQuery(attr, node=fromControl, writable=True):
+                    continue
+                scalar = attrEntry.get(attr, 1)
+                # print (fromControl + '.' + attr, valuesDict[toControl][attr] * scalar)
+                try:
+                    cmds.setAttr(fromControl + '.' + attr,
+                                 valuesDict[toControl][attr] * scalar,
+                                 clamp=True)
+                except:
+                    pass
 
     def mirrorControlOLD(self, controls=list(), option='swap'):
         """

@@ -159,12 +159,13 @@ class SelectionTools(toolAbstractFactory):
                 sel = [self.lastSelected]
 
         splitName = sel[0].split(':')
+        mainNamespace = sel[0].rsplit(':', 1)
         if len(splitName) > 1:
             namespace = splitName[0]
         s = splitName[-1]
         prefix = re.split('[^a-zA-Z0-9]+', s)
 
-        matchingPrefix = self.getSimilarControls(namespace, s, prefix)
+        matchingPrefix = self.getSimilarControls(mainNamespace[0], s, prefix)
 
         if matchingPrefix:
             cmds.select(matchingPrefix, replace=True)

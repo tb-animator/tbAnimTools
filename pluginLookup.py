@@ -96,7 +96,6 @@ class ClassFinder(object):
 
         self.tools = dict()
         for cls in toolClasses:
-            print (cls)
             tool = None
             try:
                 tool = cls()
@@ -118,7 +117,6 @@ class ClassFinder(object):
     def loadAllDependentPlugins(self):
         allPlugins = [x.dependentPlugins for x in self.tools.values()]
         allPlugins = [plugin for dependentPlugins in allPlugins for plugin in dependentPlugins if plugin]
-        print ('loadAllDependentPlugins', allPlugins)
 
         if not allPlugins:
             return
