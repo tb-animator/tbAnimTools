@@ -235,12 +235,12 @@ class QuickSelectionTools(toolAbstractFactory):
             return
 
         all_sets = self.get_sets()
+
         if all_sets:
             for a_set in all_sets:
                 qs_result = self.check_set_membership(sel, a_set)
                 if qs_result:
                     cmds.select(self.get_set_contents(a_set), add=True)
-                    return
             for s in sel:
                 # skip non object sets
                 if cmds.nodeType(s) == 'objectSet':
