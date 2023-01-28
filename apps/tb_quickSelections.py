@@ -325,9 +325,11 @@ class QuickSelectionTools(toolAbstractFactory):
             return cmds.warning('Nothing selected')
         if name:
             self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
+
         opposites = list()
         if not mirror:
             return
+        return cmds.warning('Mirror function temporarily disabled! Check back soon')
         MirrorTools = self.allTools.tools['MirrorTools']
         CharacterTool = self.allTools.tools['CharacterTool']
         for s in sel:
@@ -339,6 +341,7 @@ class QuickSelectionTools(toolAbstractFactory):
             else:
                 opposites.append(self.funcs.getOppositeControl(s))
         if opposites:
+            print ('opposites[-1]', opposites[-1])
             self.save_qs(opposites[-1], opposites, colour=self.funcs.getControlColour(opposites[-1]))
 
     def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
@@ -454,7 +457,7 @@ class QuickSelectionTools(toolAbstractFactory):
             for qs_name, qs_objects in rawJsonData.items():
                 self.save_qs_from_file(qs_name, qs_objects)
             return
-        print (rawJsonData)
+        # print (rawJsonData)
         for qs_name, qs_objects in rawJsonData['setNames'].items():
             # print ('qs_name', qs_name)
             # print ('qs_objects', qs_objects)
