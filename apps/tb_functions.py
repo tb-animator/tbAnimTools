@@ -35,6 +35,16 @@ import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
 
+xAx = om.MVector.xAxis
+yAx = om.MVector.yAxis
+zAx = om.MVector.zAxis
+rad_to_deg = 57.2958
+axisMapping = {
+    0: xAx,
+    1: yAx,
+    2: zAx
+}
+
 API_TYPES = {'animCurve': [om2.MFn.kAnimCurveTimeToAngular,
                            om2.MFn.kAnimCurveTimeToDistance,
                            om2.MFn.kAnimCurveTimeToUnitless,
@@ -88,6 +98,7 @@ dataPath = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, '
 pointLists = json.load(open(dataPath))
 
 acceptedConstraintTypes = ['pairBlend', 'constraint']
+
 
 
 def getGlobalTools():
@@ -398,7 +409,7 @@ class functions(object):
         :return:
         """
         node = pm.PyNode(ref)
-        refObj = None
+        refObj = pm.PyNode(ref)
         overrideState = node.overrideEnabled.get()
         shape = node.getShape()
         if shape:
@@ -775,6 +786,36 @@ class functions(object):
         for layer in layerName:
             cmds.animLayer(str(layer), edit=True, preferred=True)
             cmds.animLayer(str(layer), edit=True, selected=True)
+
+
+    def tagControl(self, asset, target, attribute):
+        asset = str(asset)
+        if not cmds.attributeQuery(attribute, node=asset, exists=True):
+            cmds.addAttr(asset, ln=attribute, at='message')
+        cmds.connectAttr(target + '.message', asset + '.' + attribute)
+
+    def tagControlList(self, asset, targets, attribute=None, prefix='temp', keyList=list()):
+        if not attribute:
+            for index, key in enumerate(keyList):
+                attrName = prefix + key
+                if not cmds.attributeQuery(attrName, node=asset, exists=True):
+                    cmds.addAttr(asset, ln=attrName, at='message')
+                    cmds.connectAttr(targets[index] + '.message', asset + '.' + attrName)
+            return
+        if not cmds.attributeQuery(attribute, node=asset, exists=True):
+            cmds.addAttr(asset, ln=attribute, at='message', multi=True)
+        for index, t in enumerate(targets):
+            cmds.connectAttr(targets[index] + '.message', asset + '.' + attribute + '[%s]' % index)
+
+    def bookEndLayerWeight(self, layer, startTime, endTime):
+        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=startTime - 1, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=startTime, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=endTime, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=endTime + 1, inTangentType='flat',
+                         outTangentType='flat')
 
     def get_all_layer_key_times(self, objects):
         layers = cmds.ls(type='animLayer')
@@ -1235,6 +1276,7 @@ class functions(object):
     def time_conversion():
         return mel.eval('getCadenceLineWorkingUnitInFPS')
 
+    '''
     def getRefName(self, obj):
         refState = cmds.referenceQuery(str(obj), isNodeReferenced=True)
         if refState:
@@ -1243,6 +1285,18 @@ class functions(object):
         else:
             # might just be working in the rig file itself
             return cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+    '''
+
+    def getRefName(self, walkObject):
+        refName = None
+        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
+        if refState:
+            # if it is referenced, check against pickwalk library entries
+            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
+        else:
+            # might just be working in the rig file itself
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        return refName, refState
 
     @staticmethod
     def checkKeyableState(input):
@@ -1742,6 +1796,37 @@ class functions(object):
 
         return refName, namespace  # TODO - fix up data path etc
 
+    def constrainAimToTarget(self, control, target, rotationObject=None, maintainOffset=False):
+        if rotationObject is None:
+            rotationObject = target
+        locatorPos = dt.Vector(pm.xform(target, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        controlPos = dt.Vector(pm.xform(control, query=True, worldSpace=True,
+                                        # translation=True,
+                                        rotatePivot=True))
+        aimVec = (locatorPos - controlPos).normal()
+
+        xDot = aimVec * om.MVector.xAxis
+        yDot = aimVec * om.MVector.yAxis
+        zDot = aimVec * om.MVector.zAxis
+
+        axisList = [abs(xDot), abs(yDot), abs(zDot)]
+        localAxisVecList = [dt.Vector(1, 0, 0), dt.Vector(0, 1, 0), dt.Vector(0, 0, 1)]
+        upXxisIndex = axisList.index(min(axisList))
+
+        aimVector = self.getVectorToTarget(target, control)
+        upVector = localAxisVecList[upXxisIndex]
+        worldUpVector = self.getWorldSpaceVectorOffset(control, target, vec=axisMapping[upXxisIndex])
+        aimConstraint = pm.aimConstraint(target, control,
+                                         aimVector=aimVector,
+                                         worldUpObject=rotationObject,
+                                         #worldUpVector=worldUpVector,
+                                         worldUpVector=upVector,
+                                         upVector=upVector,
+                                         worldUpType='objectRotation',
+                                         maintainOffset=maintainOffset)
+        return aimConstraint
     """
     SELECTION
     

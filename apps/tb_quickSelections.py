@@ -347,6 +347,8 @@ class QuickSelectionTools(toolAbstractFactory):
     def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
         # print ('save colour', colour)
         qs_name = qs_name.split(':')[-1]
+        if not selection:
+            return cmds.warning('Nothing selected')
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
         self.create_main_set()
