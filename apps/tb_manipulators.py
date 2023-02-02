@@ -305,8 +305,12 @@ class Manipulators(toolAbstractFactory):
                                position=pm.optionVar.get(self.key_messageVar, 'topLeft')
                                )
 
-    def zero_channel(self, channels, value):
-        sel = pm.ls(sl=True)
+    def zero_channel(self, channels, value, sel=list()):
+        if not sel:
+            sel = pm.ls(sl=True)
+        if not sel:
+            return
+
         getChannels = self.funcs.getChannels()
         channelSet = set(channels)
         if pm.optionVar.get(tbZeroChannelOptionVar, False):
@@ -337,3 +341,5 @@ class Manipulators(toolAbstractFactory):
 
     def zero_scales(self):
         self.zero_channel(["sx", "sy", "sz"], 1.0)
+
+

@@ -227,14 +227,13 @@ class toolAbstractFactory(ABC):
                                scale=pm.optionVar.get(optionVar, 1),
                                drawType=drawType)
 
-    def createAsset(self, name, imageName=None, transform=False):
+    def createAsset(self, name, imageName=None, transform=False, assetTag=str()):
         if transform:
             asset = cmds.container(name=name,
                                    includeHierarchyBelow=False,
                                    includeTransform=True,
                                    type='dagContainer',
                                    )
-
         else:
             asset = cmds.container(name=name,
                                includeHierarchyBelow=False,
@@ -242,7 +241,11 @@ class toolAbstractFactory(ABC):
                                )
         if imageName:
             pm.setAttr(asset + '.iconName', imageName, type="string")
+        if assetTag:
+            pm.addAttr(asset, ln='assetTag', dt='string')
+            pm.setAttr(asset + '.assetTag', assetTag, type="string")
         cmds.setAttr(asset + '.rmbCommand', self.assetCommandName, type='string')
+
         return asset
 
     def openMM(self):

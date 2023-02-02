@@ -157,6 +157,7 @@ def licenseNewPlugins(*args):
     #print ("Activate New Plugins")
     pLookupCLS = ClassFinder()
     pLookupCLS.installFromZipUI()
+    make_ui()
 
 
 def show_aboutWin(*args):

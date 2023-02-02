@@ -67,17 +67,21 @@ def adjust_color_lightness(r, g, b, factor):
 def darken_color(colour, factor=0.1):
     return adjust_color_lightness(colour[0], colour[1], colour[2], 1 - factor)
 
+
 def hex_to_rgb(hex):
     return [float((hex[x:x + 2])) for x in [1, 3, 5]]
 
-def rgb_to_hex(colour=[0.5, 0.5,0.5]):
+
+def rgb_to_hex(colour=[0.5, 0.5, 0.5]):
     return "#%02x%02x%02x" % (int(colour[0]), int(colour[1]), int(colour[2]))
+
 
 def getColourBasedOnRGB(inputColour, lightColour, darkColour):
     isLight = ((inputColour[0] * 0.299) + (inputColour[1] * 0.587) + (inputColour[2] * 0.114)) > 186
     if isLight:
         return darkColour, False
     return lightColour, True
+
 
 class CustomDialog(QDialog):
     def __init__(self, parent=None):
@@ -780,7 +784,6 @@ class ToolboxButton(QPushButton):
             self.setFixedSize(max(32, ((fontWidth / 64.0) * 64) + 64), 22)
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
-
     def setPopupMenu(self, menuClass):
         self.pop_up_window = menuClass('name', self)
 
@@ -921,9 +924,10 @@ class ToolboxButton(QPushButton):
         pen2 = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.textColour)
 
-
-        if self.isLight: qp.setCompositionMode(qp.CompositionMode_ColorBurn)
-        else: qp.setCompositionMode(qp.CompositionMode_ColorDodge)
+        if self.isLight:
+            qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        else:
+            qp.setCompositionMode(qp.CompositionMode_ColorDodge)
         qp.strokePath(path, pen)
         qp.strokePath(path, pen2)
         qp.setCompositionMode(qp.CompositionMode_Source)
@@ -939,6 +943,7 @@ class ToolboxButton(QPushButton):
     def hidePopup(self):
         if self.pop_up_window:
             self.pop_up_window.close()
+
 
 class ToolboxColourButton(ToolboxButton):
     def setPopupMenu(self, menuClass):
@@ -956,12 +961,12 @@ class ToolboxColourButton(ToolboxButton):
         pop_up_pos = QCursor.pos()
         self.commandExecutedSignal.emit()
         cmds.colorEditor(mini=True,
-                         position=(pop_up_pos.x()-355, pop_up_pos.y()-105),
-                         rgbValue=[x/255 for x in self.colourRGB])
+                         position=(pop_up_pos.x() - 355, pop_up_pos.y() - 105),
+                         rgbValue=[x / 255 for x in self.colourRGB])
         if cmds.colorEditor(query=True, result=True):
             values = cmds.colorEditor(query=True, rgb=True)
-            #print 'RGB = ' + str(values)
-            self.colourChangedSignal.emit(self.labelText, values[0], values[1],values[2])
+            # print 'RGB = ' + str(values)
+            self.colourChangedSignal.emit(self.labelText, values[0], values[1], values[2])
         else:
             return
 
@@ -2435,6 +2440,7 @@ class optionVarBoolWidget(optionVarWidget):
     def sendChangedSignal(self):
         self.changedSignal.emit(self.checkBox.isChecked())
 
+
 class optionVarStringListWidget(optionVarWidget):
     changedSignal = Signal(bool)
 
@@ -2458,6 +2464,7 @@ class optionVarStringListWidget(optionVarWidget):
 
     def sendChangedSignal(self):
         self.changedSignal.emit(self.lineEdit.isChecked())
+
 
 class optionVarListWidget(optionVarWidget):
     """
@@ -2579,13 +2586,15 @@ class ChannelSelectLineEdit(QWidget):
         refState = cmds.referenceQuery(channels[0].split('.')[0], isNodeReferenced=True)
 
         if refState:
-            if self.stripNamespace:
-                refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
-                # print ('refNamespace', refNamespace)
+            refNamespace = cmds.referenceQuery(channels[0].split('.')[0], namespace=True)
+            if not self.stripNamespace:
                 if refNamespace.startswith(':'):
                     refNamespace = refNamespace[1:]
                 channel = channels[0]
-                self.lineEdit.setText(channel.replace(refNamespace, ''))
+                channel = channel.replace(refNamespace, '')
+                if channel.startswith(':'):
+                    channel = channel[1:]
+                self.lineEdit.setText(channel)
             else:
                 self.lineEdit.setText(channels[0].rsplit(':', 1)[-1])
         else:
@@ -2780,10 +2789,12 @@ class ObjectSelectLineEdit(QWidget):
 
     def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(),
                  stripNamespace=False,
+                 lineEditStretches=False,
                  tooltip=str()):
         QWidget.__init__(self)
         self.key = key
         self.stripNamespace = stripNamespace
+        self.lineEditStretches = lineEditStretches
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.mainLayout.setAlignment(Qt.AlignLeft)
@@ -2792,7 +2803,8 @@ class ObjectSelectLineEdit(QWidget):
         # self.label.setFixedWidth(labelWidth)
         self.itemLabel = QLineEdit()
         self.itemLabel.setPlaceholderText(placeholderTest)
-        self.itemLabel.setFixedWidth(lineEditWidth)
+        if not self.lineEditStretches:
+            self.itemLabel.setFixedWidth(lineEditWidth)
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(hint)
         self.cle_action_pick.triggered.connect(self.pickObject)
@@ -2836,10 +2848,12 @@ class ObjectSelectLineEditEnforced(ObjectSelectLineEdit):
     def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(),
                  stripNamespace=False,
                  baseNamespace=str(),
+                 lineEditStretches=False,
                  tooltip=str()):
         super(ObjectSelectLineEditEnforced, self).__init__(key=key, label=label, hint=hint, labelWidth=labelWidth,
                                                            lineEditWidth=lineEditWidth, placeholderTest=placeholderTest,
                                                            stripNamespace=stripNamespace,
+                                                           lineEditStretches=lineEditStretches,
                                                            tooltip=tooltip)
         self.baseNamespace = baseNamespace
         self.itemLabel.textChanged.connect(self.validateText)
@@ -3447,17 +3461,17 @@ class HelpButton(QPushButton):
         self.setStyleSheet(getqss.getStyleSheet())
 
 
-class ToolButton(QPushButton):
-    def __init__(self, toolTip='Help', width=32, height=32):
-        super(ToolButton, self).__init__()
+class SimpleIconButton(QPushButton):
+    def __init__(self, toolTip='Save', text='blank', width=32, height=32, icon=":/save.png"):
+        super(SimpleIconButton, self).__init__()
         # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
-        self.setFixedSize(width, height)
+        #self.setFixedSize(width, height)
 
-        pixmap = QPixmap(":/help.png")
+        pixmap = QPixmap(icon)
         icon = QIcon(pixmap)
 
         self.setIcon(icon)
-
+        self.setText(text)
         self.setFlat(True)
         self.setToolTip(toolTip)
         self.setStyleSheet("background-color: transparent;border: 0px; font-size:12px;text-align:right;")

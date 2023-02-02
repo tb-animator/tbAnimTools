@@ -322,7 +322,7 @@ class AimTools(toolAbstractFactory):
         self.controlInfo = dict()
         for target in self.targets:
             name = target.split(':')[-1]
-            refName = self.funcs.getRefName(target)
+            refName, refState = self.funcs.getRefName(target)
             # compare to see if there is a preset in directionDict
             if refName not in directionDict.keys():
                 data = default
@@ -445,7 +445,7 @@ class AimTools(toolAbstractFactory):
         flipAim = False
         flipUp = False
         distance = 100.0
-        refName = self.funcs.getRefName(sel[0])
+        refName, refState = self.funcs.getRefName(sel[0])
         if refName in self.aimData.keys():
             name = sel[0].split(':')[-1]
             if name in self.aimData[refName].keys():
@@ -564,23 +564,21 @@ class AimTools(toolAbstractFactory):
 
         cmds.select(temp, replace=True)
 
-        mel.eval("simpleBakeToBase")
+        self.allTools.tools['BakeTools'].simpleBake(sel=temp)
         cmds.delete(constraints)
         for index, loc in enumerate(locators):
             pm.pointConstraint(temp[index], loc)
 
-        cmds.select(locators, replace=True)
-        mel.eval("simpleBakeToOverride")
+        self.allTools.tools['BakeTools'].bake_to_override(sel=locators)
         cmds.delete(temp)
         cmds.select(sel, replace=True)
 
     def bakeOutCommand(self, asset):
         control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
         locators = cmds.listConnections(asset + '.message')
-        cmds.select(control, replace=True)
-        cmds.select(locators, add=True)
-
-        mel.eval("simpleBakeToOverride")
+        filteredTargets = locators
+        filteredTargets.append(control)
+        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(asset)
         cmds.select(control)
 
@@ -588,7 +586,7 @@ class AimTools(toolAbstractFactory):
         pm.delete(asset)
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):
-        refName = self.funcs.getRefName(controlName)
+        refName, refState = self.funcs.getRefName(controlName)
         if refName not in self.aimData.keys():
             self.aimData[refName] = dict()
         self.aimData[refName][controlName.split(':')[-1]] = {'aimAxis': aimAxis,

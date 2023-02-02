@@ -426,6 +426,20 @@ class functions(object):
             rgbColour = [x * 255 for x in refObj.overrideColorRGB.get()]
         return rgbColour
 
+    def boldControl(self, ref, control, offset=0):
+        outLineWidth = 1.0
+        ref = pm.PyNode(ref)
+        control = pm.PyNode(control)
+        lineWidth = cmds.displayPref(query=True, lineWidth=True)
+        refLineWidth = ref.lineWidth.get()
+        if refLineWidth < 0.0:
+            # using global line width
+            outLineWidth = 1.0 + offset
+        else:
+            outLineWidth = lineWidth + offset
+        control.lineWidth.set(outLineWidth)
+
+
     def getSetColour(self, ref, control, brightnessOffset=0):
         """
         Copies the colour override from ref to control
@@ -436,16 +450,13 @@ class functions(object):
         node = pm.PyNode(ref)
         control = pm.PyNode(control)
         refObj = node
-        overrideState = node.overrideEnabled.get()
-        if not overrideState:
-            shape = node.getShape()
-            if shape:
-                overrideState = shape.overrideEnabled.get()
-                if overrideState:
-                    refObj = shape
-        control.overrideEnabled.set(True)
-        if not refObj.overrideRGBColors.get():
+        shape = node.getShape()
+        if shape:
+            overrideState = shape.overrideEnabled.get()
+            if overrideState:
+                refObj = shape
 
+        if not refObj.overrideRGBColors.get():
             if refObj.overrideColor.get() == 0:
                 rgbColour = [125, 125, 125]
             else:
@@ -455,7 +466,7 @@ class functions(object):
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         control.overrideColorRGB.set(rgbColourOut)
-
+        control.overrideEnabled.set(True)
         control.overrideRGBColors.set(True)
         # control.overrideColor.set(refObj.overrideColor.get())
         for s in control.getShapes():
@@ -808,11 +819,14 @@ class functions(object):
             cmds.connectAttr(targets[index] + '.message', asset + '.' + attribute + '[%s]' % index)
 
     def bookEndLayerWeight(self, layer, startTime, endTime):
-        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=startTime - 1, inTangentType='flat',
-                         outTangentType='flat')
+        timelineRange = self.getTimelineRange()
+        if int(timelineRange[0]) == int(startTime) and int(timelineRange[-1]) == int(endTime):
+            return
         cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=startTime, inTangentType='flat',
                          outTangentType='flat')
         cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=endTime, inTangentType='flat',
+                         outTangentType='flat')
+        cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=startTime - 1, inTangentType='flat',
                          outTangentType='flat')
         cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=endTime + 1, inTangentType='flat',
                          outTangentType='flat')
@@ -841,8 +855,8 @@ class functions(object):
                     continue
                 if keyTimes[0] is None: keyTimes[0] = times[0]
                 if keyTimes[1] is None: keyTimes[1] = times[-1]
-                if times[0] < keyTimes[0]: keyTimes[0] = times[0]
-                if times[-1] > keyTimes[1]: keyTimes[1] = times[-1]
+                keyTimes[0] = min(keyTimes[0],times[0])
+                keyTimes[-1] = max(keyTimes[1], times[-1])
                 cmds.animLayer(layer, edit=True, selected=False),
                 cmds.animLayer(layer, edit=True, preferred=False)
             for layer in layers:
@@ -1297,6 +1311,28 @@ class functions(object):
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         return refName, refState
+
+    def eulerFilterControl(self, controls, animLayer=None):
+        attrs = ['rotateX', 'rotateY','rotateX']
+        if not isinstance(controls, list):
+            controls = [controls]
+        curves = list()
+        for control in controls:
+            if animLayer:
+                for attr in attrs:
+                    plug = self.getPlugsFromLayer(str(control) + '.' + attr, animLayer)
+                    if not plug:
+                        continue
+                    curve = cmds.listConnections(plug, source=True, destination=False)
+                    if not curve:
+                        continue
+                    curves.append(curve[0])
+                if not curves:
+                    continue
+                cmds.filterCurve(curves, filter='euler')
+            else:
+                cmds.filterCurve(str(control), filter='euler')
+
 
     @staticmethod
     def checkKeyableState(input):
@@ -1767,7 +1803,6 @@ class functions(object):
         :param sel:
         :return:
         """
-        print ('getCurrentRig', sel)
         refName = None
         mapName = None
         fname = None
@@ -1779,7 +1814,6 @@ class functions(object):
             return None, None
         if isinstance(sel, list):
             sel = sel[0]
-        print ('getCurrentRig', sel)
         if sel:
             refState = cmds.referenceQuery(sel, isNodeReferenced=True)
             if refState:

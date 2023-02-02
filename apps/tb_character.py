@@ -60,7 +60,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return None
 
 
 mirrorAxis = ["YZ", "XY", "XZ"]
@@ -340,7 +340,6 @@ class CharacterTool(toolAbstractFactory):
 
     def getCharFromTopNode(self, node):
         topNode = self.funcs.getTopParent(str(node))
-        print ('getCharFromTopNode', topNode)
         if topNode is None:
             # print ('exit')
             return None

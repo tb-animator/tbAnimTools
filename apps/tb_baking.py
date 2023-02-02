@@ -332,18 +332,32 @@ class BakeTools(toolAbstractFactory):
         cmds.setAttr('temp_Preview.scaleY', scale)
         cmds.setAttr('temp_Preview.scaleZ', scale)
 
-    def bake_to_override(self, sampleRate=1):
-        print ('sampleRate', sampleRate)
-        sel = cmds.ls(sl=True)
+    def getBestTimelineRangeForBake(self, sel=list(), keyRange=None):
+        timelineRange = self.funcs.getTimelineRange()
+        if not keyRange:
+            print ('keyRange', keyRange)
+            isHighlighted = self.funcs.isTimelineHighlighted()
+            if isHighlighted:
+                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+                keyRange = [minTime, maxTime]
+            else:
+                keyRange = self.funcs.get_all_layer_key_times(sel)
+                if not keyRange or keyRange[0] == None:
+                    keyRange = timelineRange
+                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
+        return keyRange
+
+    def bake_to_override(self, sampleRate=1, sel=None, layerPrefix='', keyRange=None, deleteConstraints=True,
+                         bookend=True):
+        if not sel:
+            sel = cmds.ls(sl=True)
         if not sel:
             return
         with self.funcs.undoChunk():
             with self.funcs.keepSelection():
                 preContainers = set(pm.ls(type='container'))
                 preBakeLayers = pm.ls(type='animLayer')
-                keyRange = self.funcs.get_all_layer_key_times(sel)
-                if not keyRange or keyRange[0] == None:
-                    keyRange = self.funcs.getTimelineRange()
+                keyRange = self.getBestTimelineRangeForBake(sel, keyRange=keyRange)
 
                 pm.bakeResults(sel,
                                time=(keyRange[0], keyRange[-1]),
@@ -362,17 +376,36 @@ class BakeTools(toolAbstractFactory):
                 postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
                 for newAnimLayer in postBakeLayer:
                     pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
-                    pm.rename(newAnimLayer, 'OverrideBaked')
+                    pm.rename(newAnimLayer, layerPrefix + 'OverrideBaked')
+
+                if deleteConstraints:
+                    if not isinstance(sel, list):
+                        sel = [sel]
+                    for n in sel:
+                        n = str(n)
+                        self.deleteConstraintsForNode(n)
+                        self.clearBlendAttrs(n)
 
                 self.removeContainersPostBake(preContainers)
             self.funcs.select_layer(postBakeLayer)
 
             if sampleRate != 1:
                 for newAnimLayer in postBakeLayer:
-                    self.resampleLayer(str(newAnimLayer), sampleRate)
+                    self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
+            if bookend:
+                self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
+            cmds.refresh()
 
-    def simpleBake(self):
-        sel = cmds.ls(sl=True)
+    def deleteConstraintsForNode(self, n):
+        n = str(n)
+        constraints = cmds.listRelatives(n, type='constraint')
+        if constraints:
+            cmds.delete(constraints)
+
+
+    def simpleBake(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True)
         if not sel:
             return
         with self.funcs.keepSelection():
@@ -510,7 +543,7 @@ class BakeTools(toolAbstractFactory):
                 pm.container(asset, edit=True,
                              includeHierarchyBelow=True,
                              force=True,
-                             addNode=[parentNode,constraint])
+                             addNode=[parentNode, constraint])
 
                 for s in controls:
                     # loc = self.funcs.tempLocator(name=s, suffix='baked')
@@ -661,16 +694,15 @@ class BakeTools(toolAbstractFactory):
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in tempControls]
         filteredTargets = [item for sublist in targets for item in sublist if item]
 
-        pm.select(filteredTargets, replace=True)
-        mel.eval("simpleBakeToOverride")
+        self.bake_to_override(sel=filteredTargets)
         pm.delete(tempControls)
 
     def bakeAllCommand(self, asset, sel):
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        pm.select(filteredTargets, replace=True)
-        mel.eval("simpleBakeToOverride")
+
+        self.bake_to_override(sel=filteredTargets)
         pm.delete(asset)
 
     def deleteSelectedControlsCommand(self, asset, sel):
@@ -707,9 +739,9 @@ class BakeTools(toolAbstractFactory):
                                         maintainOffset=True)
 
     def clearBlendAttrs(self, node):
-        for attr in pm.listAttr(node):
+        for attr in cmds.listAttr(node):
             if 'blendParent' in str(attr):
-                pm.deleteAttr(node, at=attr)
+                cmds.deleteAttr(node, at=attr)
 
     def quickBake(self, node, startTime=None, endTime=None, deleteConstraints=True):
         if not startTime:
@@ -728,7 +760,10 @@ class BakeTools(toolAbstractFactory):
                     if not isinstance(node, list):
                         node = [node]
                     for n in node:
-                        pm.delete(n.listRelatives(type='constraint'))
+                        n = str(n)
+                        constraints = n.listRelatives(type='constraint')
+                        if constraints:
+                            cmds.delete(constraints)
                         self.clearBlendAttrs(n)
             except Exception:
                 cmds.warning(traceback.format_exc())
@@ -1215,8 +1250,12 @@ class BakeTools(toolAbstractFactory):
                 if not allAttrs:
                     return cmds.warning('No controls found in layers, aborting')
                 keyRange = self.funcs.get_all_layer_key_times(allNodes)
+
+                timelineRange = self.funcs.getTimelineRange()
                 if not keyRange or keyRange[0] is None:
-                    keyRange = self.funcs.getTimelineRange()
+                    keyRange = timelineRange
+
+                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
 
                 cmds.bakeResults(allAttrs,
                                  time=(keyRange[0], keyRange[-1]),
@@ -1241,6 +1280,10 @@ class BakeTools(toolAbstractFactory):
         except Exception:
             cmds.warning(traceback.format_exc())
             self.funcs.resumeSkinning()
+
+    def expandKeyRangeToTimelineRange(self, keyRange, timelineRange):
+        keyRange[0] = min(keyRange[0], timelineRange[0])
+        keyRange[1] = max(keyRange[-1], timelineRange[1])
 
     def quickMergeSelectionToNew(self):
         self.quickMergeSelection(base=False)
@@ -1489,7 +1532,7 @@ class BakeTools(toolAbstractFactory):
         for layer in allLayers:
             self.resampleLayer(layer, sample=sample)
 
-    def resampleLayer(self, layer=str(), sample=1):
+    def resampleLayer(self, layer=str(), sample=1, startTime=None, endTime=None):
         if not layer:
             return
         curves = cmds.animLayer(layer, query=True, animCurves=True)
@@ -1497,10 +1540,14 @@ class BakeTools(toolAbstractFactory):
             return
         for c in curves:
             keyTimes = cmds.keyframe(c, query=True, timeChange=True)
+            if not startTime:
+                startTime = keyTimes[0]
+            if not endTime:
+                endTime = keyTimes[-1]
             cmds.bakeResults(c,
                              sampleBy=sample,
                              oversamplingRate=1,
-                             time=(keyTimes[0], (keyTimes[-1])),
+                             time=(startTime, (endTime)),
                              preserveOutsideKeys=True,
                              sparseAnimCurveBake=False)
 

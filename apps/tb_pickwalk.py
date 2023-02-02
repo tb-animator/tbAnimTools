@@ -234,7 +234,8 @@ class PickwalkCreator(object):
         """
         # print ('item', item)
         # print ('sides', sideList)
-        for key, walkDirection in self.walkData.objectDict.items():
+        #for key, walkDirection in self.walkData.objectDict.items():
+        for key in [x for x in self.walkData.objectDict.keys()]:
             mirrorDir = dict()
             # print key, item
             if key == item:
@@ -242,7 +243,7 @@ class PickwalkCreator(object):
                     # print 'not valid for mirror'
                     continue
                 # print ('need to mirror', key)
-                for dir, value in walkDirection.__dict__.items():
+                for dir, value in self.walkData.objectDict[key].__dict__.items():
                     found = False
                     if not value:
                         # print dir, 'is empty'
@@ -1258,7 +1259,7 @@ class Pickwalk(toolAbstractFactory):
                 return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
             refName, refState = self.getRefName(walkObject)
-            print (refName, refState)
+            # print (refName, refState)
             if not refName:
                 # if the object is not referenced, check the top node
                 refName = self.funcs.getRefNameFromTopParent(walkObject)
@@ -1276,8 +1277,8 @@ class Pickwalk(toolAbstractFactory):
                         return
 
             if refName:
-                print ('ok, refname', refName)
-                print ('query against pickwalk library')
+                # print ('ok, refname', refName)
+                # print ('query against pickwalk library')
                 returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
                 if returnedControls == False:
                     # means a standard walk has been performed

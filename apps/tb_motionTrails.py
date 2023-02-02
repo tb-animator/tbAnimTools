@@ -287,8 +287,7 @@ class MotionTrails(toolAbstractFactory):
             '''
 
     def bakeSelectedCommand(self, asset, sel, deleteAll):
-        pm.select(sel, replace=True)
-        mel.eval("simpleBakeToOverride")
+        self.allTools.tools['BakeTools'].bake_to_override(sel=sel)
         if deleteAll:
             pm.delete(asset)
 
@@ -296,8 +295,7 @@ class MotionTrails(toolAbstractFactory):
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        pm.select(filteredTargets, replace=True)
-        mel.eval("simpleBakeToOverride")
+        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(asset)
 
     def createInfoNode(self):
