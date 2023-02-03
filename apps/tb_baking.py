@@ -761,7 +761,7 @@ class BakeTools(toolAbstractFactory):
                         node = [node]
                     for n in node:
                         n = str(n)
-                        constraints = n.listRelatives(type='constraint')
+                        constraints = cmds.listRelatives(n, type='constraint')
                         if constraints:
                             cmds.delete(constraints)
                         self.clearBlendAttrs(n)

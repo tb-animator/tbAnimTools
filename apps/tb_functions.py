@@ -35,6 +35,8 @@ import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
 
+
+
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
 zAx = om.MVector.zAxis
@@ -431,7 +433,10 @@ class functions(object):
         ref = pm.PyNode(ref)
         control = pm.PyNode(control)
         lineWidth = cmds.displayPref(query=True, lineWidth=True)
-        refLineWidth = ref.lineWidth.get()
+        if not pm.attributeQuery('lineWidth', node=ref, exists=True):
+            refLineWidth = 0.0
+        else:
+            refLineWidth = ref.lineWidth.get()
         if refLineWidth < 0.0:
             # using global line width
             outLineWidth = 1.0 + offset
