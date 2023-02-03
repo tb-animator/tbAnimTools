@@ -1258,7 +1258,7 @@ class Pickwalk(toolAbstractFactory):
             if direction not in self.walkDirectionNames.keys():
                 return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
-            refName, refState = self.getRefName(walkObject)
+            refName, refState = self.funcs.getRefName(walkObject)
             # print (refName, refState)
             if not refName:
                 # if the object is not referenced, check the top node
@@ -1322,18 +1322,6 @@ class Pickwalk(toolAbstractFactory):
             finalControls = [str(s) for s in sel] + finalControls
 
         cmds.select(finalControls, replace=True)
-
-
-    def getRefName(self, walkObject):
-        refName = None
-        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
-        if refState:
-            # if it is referenced, check against pickwalk library entries
-            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
-        else:
-            # might just be working in the rig file itself
-            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
-        return refName, refState
 
     def queryNewRig(self, refName, force=False):
         if force:
@@ -1753,16 +1741,11 @@ class Pickwalk(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return None, None
-        refName, refState = self.getRefName(sel[0])
+        refName, refState = self.funcs.getRefName(sel[0])
         if not refName:
-            # if the object is not referenced, check the top node
-            topParent = Pickwalk().funcs.getTopParent(str(sel[0]))
-            # get the UUID
-            UUID = cmds.ls(str(topParent), uuid=True)[0]
-            # see if the UUID is in the character definitions
-            CharacterTool = Pickwalk().allTools.tools['CharacterTool']
-
-            refName = CharacterTool.getCharacterFromUUID(UUID)
+            refName = self.funcs.getRefNameFromTopParent(sel[0])
+            if refName == -1:
+                return None, None
         # print ('getCurrentRig', refName)
 
         if refName in Pickwalk().walkDataLibrary._fileToMapDict.keys():
@@ -4559,7 +4542,7 @@ class pickwalkMainWindow(QMainWindow):
         sel = cmds.ls(sl=True)
         if not sel:
             return None
-        refName, refState = Pickwalk().getRefName(sel[0])
+        refName, refState = Pickwalk().funcs.getRefName(sel[0])
         if not refName:
             # if the object is not referenced, check the top node
             topParent = Pickwalk().funcs.getTopParent(str(sel[0]))

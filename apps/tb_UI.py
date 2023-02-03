@@ -1743,12 +1743,14 @@ class InfoPromptWidget(QWidget):
                  image=str(),
                  imagePath=IconPath,
                  gif=bool,
+                 info=False,
                  error=False,
                  parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                  show=True,
                  showButton=True):
         super(InfoPromptWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
+        self.info = info
         self.error = error
         self.key = key
         self.subKey = subKey
@@ -1853,7 +1855,9 @@ class InfoPromptWidget(QWidget):
         qp = QPainter()
         qp.begin(self)
 
-        if self.error:
+        if self.info:
+            lineColor = QColor(255, 160, 47, 128)
+        elif self.error:
             lineColor = QColor(240, 68, 68, 128)
         else:
             lineColor = QColor(68, 240, 68, 128)

@@ -1306,16 +1306,32 @@ class functions(object):
             return cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
     '''
 
-    def getRefName(self, walkObject):
+    def getRefName(self, sel):
         refName = None
-        refState = cmds.referenceQuery(str(walkObject), isNodeReferenced=True)
+        namespace = ''
+        refState = cmds.referenceQuery(str(sel), isNodeReferenced=True)
         if refState:
             # if it is referenced, check against pickwalk library entries
-            refName = cmds.referenceQuery(str(walkObject), filename=True, shortName=True).split('.')[0]
+            namespace = cmds.referenceQuery(str(sel), namespace=True)
+            refName = cmds.referenceQuery(str(sel), filename=True, shortName=True).split('.')[0]
         else:
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         return refName, refState
+
+    def getRefNameAndState(self, sel):
+        refName = None
+        namespace = ''
+        refState = cmds.referenceQuery(str(sel), isNodeReferenced=True)
+        if refState:
+            # if it is referenced, check against pickwalk library entries
+            namespace = cmds.referenceQuery(str(sel), namespace=True)
+            refName = cmds.referenceQuery(str(sel), filename=True, shortName=True).split('.')[0]
+        else:
+            # might just be working in the rig file itself
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        return refName, refState, namespace
+
 
     def eulerFilterControl(self, controls, animLayer=None):
         attrs = ['rotateX', 'rotateY','rotateX']
@@ -1796,10 +1812,10 @@ class functions(object):
                     continue
         return characters
 
-    def getRefNameFromTopParent(self, walkObject):
+    def getRefNameFromTopParent(self, sel):
         CharacterTool = getGlobalTools().tools['CharacterTool']
         CharacterTool.getAllCharacters()
-        refName = CharacterTool.getCharFromTopNode(walkObject)
+        refName = CharacterTool.getCharFromTopNode(sel)
         return refName
 
     def getCurrentRig(self, sel=None):
@@ -1834,6 +1850,26 @@ class functions(object):
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
 
         return refName, namespace  # TODO - fix up data path etc
+
+    def getCurrentRigAndNamespace(self, sel=None):
+        refName = None
+        refState = False
+        namespace = str()
+        if not sel:
+            return None, None, None
+        if isinstance(sel, list):
+            sel=sel[0]
+        refName, refState, namespace = self.getRefNameAndState(sel)
+        # print (refName, refState, namespace)
+        if not refState:
+            # scene is not referenced, check the top node to see if it's a character
+            refName = self.getRefNameFromTopParent(sel)
+            # print ('getRefNameFromTopParent', refName)
+        if not refName:
+            # not dealing with a character
+            return None, None, None
+
+        return refName, refState, namespace
 
     def constrainAimToTarget(self, control, target, rotationObject=None, maintainOffset=False):
         if rotationObject is None:

@@ -366,10 +366,11 @@ class CharacterTool(toolAbstractFactory):
         :param node:
         :return:
         """
-        # print ('tagTopNodeAsCharacter', node, character)
-        if not cmds.attributeQuery(characterAttribute, node=node, exists=True):
-            cmds.addAttr(node, ln=characterAttribute, dt='string')
-        cmds.setAttr(node + '.' + characterAttribute, character, type='string')
+        print ('tagTopNodeAsCharacter', node, character)
+        topNode = self.funcs.getTopParent(node)
+        if not cmds.attributeQuery(characterAttribute, node=topNode, exists=True):
+            cmds.addAttr(topNode, ln=characterAttribute, dt='string')
+        cmds.setAttr(topNode + '.' + characterAttribute, character, type='string')
         self.tempCharacter = character
 
     def queryCharacter(self, node):
@@ -634,6 +635,10 @@ class CharacterTool(toolAbstractFactory):
         # print ('currentChar', self.currentChar)
         self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
         # print ('UUID', self.currentCharData.UUID)
+        allControls = self.getAllControls()
+        print ('saveCurrentCharacter', allControls)
+        if allControls:
+            self.tagTopNodeAsCharacter(self.currentChar, allControls[0])
         self.getAllCharacters()
 
     def setGlobalControl(self):
