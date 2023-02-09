@@ -1753,7 +1753,7 @@ class functions(object):
 
     def createMTimeArray(self, initialFrame, count):
         mTimeArray = om2.MTimeArray(count, om2.MTime())
-        for x in xrange(count):
+        for x in range(count):
             mTimeArray[x] = om2.MTime(initialFrame + x, om2.MTime.uiUnit())
         return mTimeArray
 
@@ -1856,7 +1856,7 @@ class functions(object):
         refState = False
         namespace = str()
         if not sel:
-            return None, None, None
+            return None, None
         if isinstance(sel, list):
             sel=sel[0]
         refName, refState, namespace = self.getRefNameAndState(sel)

@@ -368,9 +368,9 @@ class CharacterTool(toolAbstractFactory):
         """
         print ('tagTopNodeAsCharacter', node, character)
         topNode = self.funcs.getTopParent(node)
-        if not cmds.attributeQuery(characterAttribute, node=topNode, exists=True):
-            cmds.addAttr(topNode, ln=characterAttribute, dt='string')
-        cmds.setAttr(topNode + '.' + characterAttribute, character, type='string')
+        if not cmds.attributeQuery(characterAttribute, node=str(topNode), exists=True):
+            cmds.addAttr(str(topNode), ln=characterAttribute, dt='string')
+        cmds.setAttr(str(topNode) + '.' + characterAttribute, character, type='string')
         self.tempCharacter = character
 
     def queryCharacter(self, node):

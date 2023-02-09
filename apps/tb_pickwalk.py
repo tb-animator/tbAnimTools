@@ -1804,6 +1804,9 @@ class Pickwalk(toolAbstractFactory):
         self.getAllPickwalkMaps()
 
     def saveAsLibrary(self, defaultName=str(), selectionFilter=list(), base=False):
+        self.defaultPickwalkDir = os.path.normpath(os.path.join(self.dataPath, self.subfolder))
+        if not os.path.isdir(self.defaultPickwalkDir):
+            os.mkdir(self.defaultPickwalkDir)
         save_filename = QFileDialog.getSaveFileName(QWidget(),
                                                     "Save file as",
                                                     self.defaultPickwalkDir + '/' + defaultName,

@@ -133,7 +133,8 @@ class AimTools(toolAbstractFactory):
     aimUpMotionTrailOption = 'aimUpMotionTrailOption'
     aimTempMotionTrailOption = 'aimTempMotionTrailOption'
     mainAssetAttr = 'mainAsset'
-    controlMessageAttr = 'aimedControl'
+    constraintTargetAttr = 'constraintTarget'
+    tempControlPairAttr = 'tempControlPair'
 
     aimAtTempControlScriptJobs = list()
 
@@ -351,10 +352,16 @@ class AimTools(toolAbstractFactory):
 
         pm.addAttr(up, ln=self.mainAssetAttr, at='message')
         pm.addAttr(aim, ln=self.mainAssetAttr, at='message')
-        pm.addAttr(asset, ln=self.controlMessageAttr, at='message')
+        pm.addAttr(up, ln=self.constraintTargetAttr, at='message')
+        pm.addAttr(up, ln=self.tempControlPairAttr, at='message')
+        pm.addAttr(aim, ln=self.constraintTargetAttr, at='message')
+        pm.addAttr(aim, ln=self.tempControlPairAttr, at='message')
         pm.connectAttr(asset + '.message', up + '.' + self.mainAssetAttr)
         pm.connectAttr(asset + '.message', aim + '.' + self.mainAssetAttr)
-        pm.connectAttr(target + '.message', asset + '.' + self.controlMessageAttr)
+        pm.connectAttr(target + '.message', up + '.' + self.constraintTargetAttr)
+        pm.connectAttr(target + '.message', aim + '.' + self.constraintTargetAttr)
+        pm.connectAttr(aim + '.message', up + '.' + self.tempControlPairAttr)
+        pm.connectAttr(up + '.message', aim + '.' + self.tempControlPairAttr)
 
         self.locators.extend([str(up), str(aim)])
         self.controlInfo[target] = [str(aim), aimAxis, str(up), upAxis]
@@ -552,7 +559,7 @@ class AimTools(toolAbstractFactory):
 
     def rebakeCommand(self, asset):
         sel = cmds.ls(sl=True)
-        control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
+        control = cmds.listConnections(asset + '.' + self.constraintTargetAttr)[0]
         locators = cmds.listConnections(asset + '.message')
         temp = list()
         constraints = list()
@@ -574,7 +581,7 @@ class AimTools(toolAbstractFactory):
         cmds.select(sel, replace=True)
 
     def bakeOutCommand(self, asset):
-        control = cmds.listConnections(asset + '.' + self.controlMessageAttr)[0]
+        control = cmds.listConnections(asset + '.' + self.constraintTargetAttr)[0]
         locators = cmds.listConnections(asset + '.message')
         filteredTargets = locators
         filteredTargets.append(control)
@@ -683,9 +690,9 @@ class AimTools(toolAbstractFactory):
 
         asset = self.createAsset(name=control + '_AimAsset')
         pm.addAttr(aimLocator, ln=self.mainAssetAttr, at='message')
-        pm.addAttr(asset, ln=self.controlMessageAttr, at='message')
+        pm.addAttr(asset, ln=self.constraintTargetAttr, at='message')
         pm.connectAttr(asset + '.message', aimLocator + '.' + self.mainAssetAttr)
-        pm.connectAttr(control + '.message', asset + '.' + self.controlMessageAttr)
+        pm.connectAttr(control + '.message', asset + '.' + self.constraintTargetAttr)
 
         pm.container(asset, edit=True,
                      includeHierarchyBelow=True,

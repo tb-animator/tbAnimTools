@@ -744,5 +744,5 @@ def iterSelection(selList):
     generator style iterator over current Maya active selection
     :return: [MObject) an MObject for each item in the selection
     """
-    for i in xrange(selList.length()):
+    for i in range(selList.length()):
         yield selList.getDependNode(i)

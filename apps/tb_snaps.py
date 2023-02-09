@@ -185,7 +185,7 @@ class SnapTools(toolAbstractFactory):
 
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
-            for x in xrange(int(startTime), int(endTime)):
+            for x in range(int(startTime), int(endTime)):
                 cmds.currentTime(x)
                 self.snap_object(original, target, translate, orient)
         else:

@@ -234,6 +234,7 @@ class BakeTools(toolAbstractFactory):
     assetName = 'TempControls'
     worldOffsetAssetName = 'WorldOffsetControls'
     constraintTargetAttr = 'constraintTarget'
+    tempControlPairAttr = 'tempControlPair'
 
     def __new__(cls):
         if BakeTools.__instance is None:
@@ -611,10 +612,15 @@ class BakeTools(toolAbstractFactory):
         sel = pm.ls(sl=True)
         if not sel:
             return
-        asset = pm.container(query=True, findContainer=sel[0])
-        if not asset:
+        assets = list()
+        for s in sel:
+            asset = pm.container(query=True, findContainer=s)
+            if asset not in assets:
+                assets.append(asset)
+
+        if not assets:
             return
-        self.bakeSelectedCommand(asset, sel)
+        self.bakeSelectedCommand(assets, sel)
 
     def bakeAllHotkey(self):
         sel = pm.ls(sl=True)
@@ -690,9 +696,23 @@ class BakeTools(toolAbstractFactory):
         return lockedTranslates, lockedRotates
 
     def bakeSelectedCommand(self, asset, sel):
+        if not isinstance(asset, list):
+            asset = [asset]
         tempControls = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        # print ('tempControls', tempControls)
+        pairedControls = [x for x in tempControls if pm.attributeQuery(self.tempControlPairAttr, node=x, exists=True)]
+        pairedControls = [pm.listConnections(x + '.' + self.tempControlPairAttr) for x in pairedControls]
+        # print ('pairedControls', pairedControls)
+        filteredPairedControls = [item for sublist in pairedControls for item in sublist if item]
+        # print ('filteredPairedControls', filteredPairedControls)
+        filteredPairedControls = [p for p in filteredPairedControls if p not in tempControls]
+        tempControls += filteredPairedControls
+        # print ('tempControls', tempControls)
+
         targets = [cmds.listConnections(s + '.' + self.constraintTargetAttr) for s in tempControls]
-        filteredTargets = [item for sublist in targets for item in sublist if item]
+        # print ('targets', targets)
+        filteredTargets = list(set([item for sublist in targets for item in sublist if item]))
+        # print ('filteredTargets', filteredTargets)
 
         self.bake_to_override(sel=filteredTargets)
         pm.delete(tempControls)
@@ -1023,10 +1043,10 @@ class BakeTools(toolAbstractFactory):
         overrideMTimeArray = None
 
         for attr, curve in baseLayerMFnAnimCurves.items():
-            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
+            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in range(curve.numKeys)]
 
-            baseKeyValues = [curve.value(key) for key in xrange(curve.numKeys)]
-            additiveKeyValues = [additiveMFnAnimCurves[attr].value(key) for key in xrange(curve.numKeys)]
+            baseKeyValues = [curve.value(key) for key in range(curve.numKeys)]
+            additiveKeyValues = [additiveMFnAnimCurves[attr].value(key) for key in range(curve.numKeys)]
 
             initialVal = baseKeyValues[0]
             finalVal = baseKeyValues[-1]
@@ -1043,7 +1063,7 @@ class BakeTools(toolAbstractFactory):
         dg = om2.MDGModifier()
         for key, mcurve in additiveMFnAnimCurves.items():
             sources = additiveLayerMPlugs[key].connectedTo(True, False)
-            for i in xrange(len(sources)):
+            for i in range(len(sources)):
                 dg.disconnect(sources[i], additiveLayerMPlugs[key])
 
             dg.doIt()
@@ -1058,7 +1078,7 @@ class BakeTools(toolAbstractFactory):
             dg.doIt()
 
             sources = baseLayerMPlugs[key].connectedTo(True, False)
-            for i in xrange(len(sources)):
+            for i in range(len(sources)):
                 dg.disconnect(sources[i], baseLayerMPlugs[key])
 
             dg.doIt()
@@ -1139,10 +1159,10 @@ class BakeTools(toolAbstractFactory):
             attrIngored = False
             attrType = cmds.getAttr(attr, type=True)
             attrIngored = attrType in ignoredAttributeTypes
-            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in xrange(curve.numKeys)]
+            keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in range(curve.numKeys)]
 
             # print (keyTimes)
-            keyValues = [curve.value(key) for key in xrange(curve.numKeys)]
+            keyValues = [curve.value(key) for key in range(curve.numKeys)]
             # print (keyValues)
             initialVal = keyValues[0]
             finalVal = keyValues[-1]
@@ -1165,7 +1185,7 @@ class BakeTools(toolAbstractFactory):
         dg = om2.MDGModifier()
         for key, mcurve in additiveMFnAnimCurves.items():
             sources = additiveLayerMPlugs[key].connectedTo(True, False)
-            for i in xrange(len(sources)):
+            for i in range(len(sources)):
                 dg.disconnect(sources[i], additiveLayerMPlugs[key])
 
             dg.doIt()
@@ -1180,7 +1200,7 @@ class BakeTools(toolAbstractFactory):
             dg.doIt()
 
             sources = baseLayerMPlugs[key].connectedTo(True, False)
-            for i in xrange(len(sources)):
+            for i in range(len(sources)):
                 dg.disconnect(sources[i], baseLayerMPlugs[key])
 
             dg.doIt()
