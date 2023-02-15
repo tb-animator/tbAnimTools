@@ -519,7 +519,10 @@ class MirrorTools(toolAbstractFactory):
 
         allAttrs = ['rotateX', 'rotateY', 'rotateZ', 'translateX', 'translateY', 'translateZ']
         for control in controls:
+            if not cmds.objectType(control, isAType='transform'):
+                continue
             pControl = pm.PyNode(control)
+
             opposite = self.getMirrorForControlFromCharacter(character, control)
 
             pOpposite = pm.PyNode(opposite)

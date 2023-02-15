@@ -662,6 +662,30 @@ class functions(object):
         startTime, endTime = self.getTimelineRange()
         return [x for x in self.get_all_key_times_for_node(sel) if x <= endTime and x >= startTime]
 
+    def getBestTimelineRangeForBake(self, sel=list(), keyRange=None):
+        timelineRange = self.getTimelineRange()
+        isHighlighted = self.isTimelineHighlighted()
+        if keyRange:
+            return keyRange
+        keyRange = [timelineRange[0], timelineRange[1]]
+        if isHighlighted:
+            minTime, maxTime = self.getTimelineHighlightedRange()
+            keyRange = [minTime, maxTime]
+        '''
+        if not keyRange:
+            print ('keyRange', keyRange)
+            isHighlighted = self.funcs.isTimelineHighlighted()
+            if isHighlighted:
+                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+                keyRange = [minTime, maxTime]
+            else:
+                keyRange = self.funcs.get_all_layer_key_times(sel)
+                if not keyRange or keyRange[0] == None:
+                    keyRange = timelineRange
+                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
+        '''
+        return keyRange
+
     def get_keys_indexes_at_frame(self, node=None, time=None):
         if not time:
             time = pm.getCurrentTime()
@@ -824,9 +848,12 @@ class functions(object):
             cmds.connectAttr(targets[index] + '.message', asset + '.' + attribute + '[%s]' % index)
 
     def bookEndLayerWeight(self, layer, startTime, endTime):
+        print ('layer', layer)
+        '''
         timelineRange = self.getTimelineRange()
         if int(timelineRange[0]) == int(startTime) and int(timelineRange[-1]) == int(endTime):
             return
+        '''
         cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=startTime, inTangentType='flat',
                          outTangentType='flat')
         cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=endTime, inTangentType='flat',
@@ -1330,6 +1357,9 @@ class functions(object):
         else:
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+        if namespace.startswith(':'):
+            # print ('removing :')
+            namespace=namespace[1:]
         return refName, refState, namespace
 
 
@@ -1868,7 +1898,9 @@ class functions(object):
         if not refName:
             # not dealing with a character
             return None, None, None
-
+        if namespace.startswith(':'):
+            # print ('removing :')
+            namespace=namespace[1:]
         return refName, refState, namespace
 
     def constrainAimToTarget(self, control, target, rotationObject=None, maintainOffset=False):

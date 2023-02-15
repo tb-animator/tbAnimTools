@@ -67,6 +67,7 @@ mirrorAxis = ["YZ", "XY", "XZ"]
 defaultLeft = '_L_'
 defaultRight = '_R_'
 
+
 class CharacterDefinition(object):
     def __init__(self, jsonFile, char):
         super(CharacterDefinition, self).__init__()
@@ -175,6 +176,7 @@ class CharacterDefinition(object):
     def getControls(self, namespace):
         controls = [namespace + ':' + x for x in self.controls]
         controls = [c for c in controls if cmds.objExists(c)]
+        # controls = [c for c in controls if cmds.objectType(c, isAType='transform')]
         return controls
 
     def selectControls(self, namespace):
@@ -338,6 +340,16 @@ class CharacterTool(toolAbstractFactory):
                     sourceType='mel',
                     parent=parentMenu)
 
+    def getCharacterByName(self, char, openUI=False):
+        # print ('getCharacterByName', char)
+        print (char not in self.allCharacters.keys())
+        if char not in self.allCharacters.keys():
+            self.loadCharacterIfNotLoaded(char, node=None)
+            if openUI:
+                self.toolBoxUI(
+                    message='This rig appears to be new, whatever you were doing just now probably needs something to be set up here')
+        return self.allCharacters.get(char, None)
+
     def getCharFromTopNode(self, node):
         topNode = self.funcs.getTopParent(str(node))
         if topNode is None:
@@ -417,7 +429,7 @@ class CharacterTool(toolAbstractFactory):
         if refname not in self.allCharacters.keys():
             # print ('loading character for %s' % refname)
             self.createNewCharacter(sel)
-            #self.loadCharacter(refname)
+            # self.loadCharacter(refname)
         return refname, namespace
 
     def update(self):
@@ -492,7 +504,6 @@ class CharacterTool(toolAbstractFactory):
         if not refname in self.allCharacters.keys():
             self.loadCharacter(refname, node=node)
 
-
     def getAllCharacters(self):
         self.loadCharacterLibrary()
         self.jsonFiles = list()
@@ -545,7 +556,7 @@ class CharacterTool(toolAbstractFactory):
         return self.characterLibrary
 
     def getStrippedSelection(self):
-        sel = cmds.ls(sl=True)
+        sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return None
 
@@ -667,7 +678,7 @@ class CharacterTool(toolAbstractFactory):
     def temp(self, data, data2):
         print (data, data2)
 
-    def getToolboxWidget(self, widget):
+    def getToolboxWidget(self, widget, message=''):
         buttonWidth = 124
         buttonHeight = 28
         '''
@@ -680,6 +691,14 @@ class CharacterTool(toolAbstractFactory):
         toolBoxWidget = QWidget()
         toolBoxWidget.setContentsMargins(0, 0, 0, 0)
         toolBoxLayout = QVBoxLayout()
+        if message:
+            messageLabel = QLabel(message)
+            messageLabel.setWordWrap(True)
+            messageLabel.setStyleSheet("""QLabel{   
+            font-weight: bold;
+            }
+            """)
+            toolBoxLayout.addWidget(messageLabel)
         toolBoxLayout.setContentsMargins(0, 0, 0, 0)
         toolBoxWidget.setLayout(toolBoxLayout)
         viewLayout = QHBoxLayout()
@@ -891,12 +910,12 @@ class CharacterTool(toolAbstractFactory):
     def mirrorAxisChanged(self):
         self.setAxis(self.mirrorPlaneLabelOption.currentText())
 
-    def toolBoxUI(self):
+    def toolBoxUI(self, message=''):
         # if not self.toolbox:
         self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                   title='tb Character Definition', text=str(),
                                   lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
-        self.toolboxWidget = self.getToolboxWidget(self.toolbox)
+        self.toolboxWidget = self.getToolboxWidget(self.toolbox, message=message)
         self.toolbox.mainLayout.addWidget(self.toolboxWidget)
 
         self.toolbox.show()

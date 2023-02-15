@@ -417,10 +417,17 @@ class AimTools(toolAbstractFactory):
         return self.axisDict[axis] * flipVector[flip]
 
     def bake(self):
+        '''
+
+        :return:
+        '''
+        '''
         keyRange = self.funcs.get_all_layer_key_times(self.targets)
         if keyRange[0] is None:
             keyRange = self.funcs.getTimelineRange()
+        '''
         bakeLayer = cmds.animLayer('AimBakeLocators', override=True)
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         cmds.bakeResults(self.locators, time=(keyRange[0], keyRange[1]),
                          simulation=False,
                          attribute='translate',
@@ -678,12 +685,12 @@ class AimTools(toolAbstractFactory):
             keyTimes = [cmds.playbackOptions(query=True, min=True), cmds.playbackOptions(query=True, max=True)]
         min_key = min(keyTimes)
         max_key = max(keyTimes)
-
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         pm.bakeResults(aimLocator,
                        attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
                        simulation=False,
                        minimizeRotation=False,
-                       time=(min_key, max_key))
+                       time=(keyRange[0], keyRange[1]))
         pm.delete(tempConstraint)
 
         constraint = self.constrainAimToTarget(str(control), str(aimLocator))
@@ -717,11 +724,12 @@ class AimTools(toolAbstractFactory):
         max_key = max(keyTimes)
 
         constraint = pm.parentConstraint(control, target, maintainOffset=True)
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         pm.bakeResults(target,
                        attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
                        simulation=False,
                        minimizeRotation=False,
-                       time=(min_key, max_key))
+                       time=(keyRange[0], keyRange[1]))
         pm.delete(constraint)
 
     def getLocalVector(self, node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):

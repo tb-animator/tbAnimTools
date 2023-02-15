@@ -219,18 +219,20 @@ class BakeTools(toolAbstractFactory):
     funcs = functions()
 
     quickBakeSimOption = 'tbQuickBakeUseSim'
+
     quickBakeRemoveContainerOption = 'tbQuickBakeRemoveContainer'
-    tempControlMotionTrailOption = 'tbTempControlMotionTrailOption'
-    tempControlChannelOption = 'tbTempControlChannelOption'
-    bakeSimObjectCountOption = 'tbBakeSimObjectCountOption'
+    tbTempControlMotionTrailOption = 'tbTempControlMotionTrailOption'
+    tbTempControlChannelOption = 'tbTempControlChannelOption'
+    tbBakeSimObjectCountOption = 'tbBakeSimObjectCountOption'
+    tbBakeLocatorSizeOption = 'tbBakeLocatorSize'
+    tbBakeWorldOffsetSizeOption = 'tbBakeWorldOffsetSize'
+    tbMotionControlSizeOption = 'tbMotionControlSize'
+
     overrideLayerColour = 19
     additiveLayerColour = 18
 
     assetCommandName = 'tempControlCommand'
 
-    crossSizeOption = 'tbBakeLocatorSize'
-    worldOffsetSizeOption = 'tbBakeWorldOffsetSize'
-    motionControlizeOption = 'tbMotionControlSize'
     assetName = 'TempControls'
     worldOffsetAssetName = 'WorldOffsetControls'
     constraintTargetAttr = 'constraintTarget'
@@ -254,15 +256,18 @@ class BakeTools(toolAbstractFactory):
 
     def optionUI(self):
         super(BakeTools, self).optionUI()
+        topFormLayout = QFormLayout()
+        bookendOptionWidget = optionVarBoolWidget('Bookend layer weight when baking to layer ', self.bookendBakeOption)
+        bookendHighlightOptionWidget = optionVarBoolWidget('Bookend layer weight when baking to layer\nWith the timeslider highlighted ', self.bookendBakeHighlightOption)
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
         containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
                                                     self.quickBakeRemoveContainerOption)
 
-        crossSizeWidget = intFieldWidget(optionVar=self.crossSizeOption,
+        crossSizeWidget = intFieldWidget(optionVar=self.tbBakeLocatorSizeOption,
                                          defaultValue=1.0,
                                          label='Baked locator control size',
                                          minimum=0.1, maximum=100, step=0.1)
-        worldOffsetSizeWidget = intFieldWidget(optionVar=self.worldOffsetSizeOption,
+        worldOffsetSizeWidget = intFieldWidget(optionVar=self.tbBakeWorldOffsetSizeOption,
                                                defaultValue=0.5,
                                                label='World offset control size',
                                                minimum=0.1, maximum=100, step=0.1)
@@ -275,26 +280,35 @@ class BakeTools(toolAbstractFactory):
         constraintChannelInfo = infoLabel([
             'Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
         constraintChannelWidget = optionVarBoolWidget('Constrain Highlighted Channels',
-                                                      self.tempControlChannelOption)
+                                                      self.tbTempControlChannelOption)
 
         tempControlHeader = subHeader('Bake Simulation')
         tempControlInfo = infoLabel(['When baking many objects it is often faster to use simulation.',
                                      'Experiment to see where the threshold lies on your machine. Set the value below to automatically toggle bake sim when baking many objects'])
 
-        bakeSimThresholdWidget = intFieldWidget(optionVar=self.bakeSimObjectCountOption,
+        bakeSimThresholdWidget = intFieldWidget(optionVar=self.tbBakeSimObjectCountOption,
                                                 defaultValue=10,
                                                 label='Bake Simulation when baking more than > objects',
                                                 minimum=1, maximum=100, step=1)
         motionTrailHeader = subHeader('Motion Trails')
         motionTrailInfo = infoLabel(['Add motion trails to newly created temp controls.'])
         motionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Controls',
-                                                self.tempControlMotionTrailOption)
+                                                self.tbTempControlMotionTrailOption)
 
+        self.layout.addLayout(topFormLayout)
+        self.layout.addWidget(bookendOptionWidget)
+        self.layout.addWidget(bookendHighlightOptionWidget)
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
-        # self.layout.addWidget(motionControlSizeWidget)
         self.layout.addWidget(worldOffsetSizeWidget)
+        topFormLayout.addRow(bookendOptionWidget.labelText, bookendOptionWidget)
+        topFormLayout.addRow(bookendHighlightOptionWidget.labelText, bookendHighlightOptionWidget)
+        topFormLayout.addRow(simOptionWidget.labelText, simOptionWidget)
+        topFormLayout.addRow(containerOptionWidget.labelText, containerOptionWidget)
+        topFormLayout.addRow(crossSizeWidget.label, crossSizeWidget)
+        # self.layout.addWidget(motionControlSizeWidget)
+        topFormLayout.addRow(worldOffsetSizeWidget.label, worldOffsetSizeWidget)
 
         self.layout.addWidget(constraintChannelHeader)
         self.layout.addWidget(constraintChannelInfo)
@@ -322,7 +336,7 @@ class BakeTools(toolAbstractFactory):
     def drawPreview(self):
         self.funcs.tempControl(name='temp',
                                suffix='Preview',
-                               scale=pm.optionVar.get(self.crossSizeOption, 1),
+                               scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1),
                                drawType='cross')
 
     def updatePreview(self, scale):
@@ -335,6 +349,12 @@ class BakeTools(toolAbstractFactory):
 
     def getBestTimelineRangeForBake(self, sel=list(), keyRange=None):
         timelineRange = self.funcs.getTimelineRange()
+        isHighlighted = self.funcs.isTimelineHighlighted()
+        keyRange = [timelineRange[0], timelineRange[1]]
+        if isHighlighted:
+            minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+            keyRange = [minTime, maxTime]
+        '''
         if not keyRange:
             print ('keyRange', keyRange)
             isHighlighted = self.funcs.isTimelineHighlighted()
@@ -346,10 +366,14 @@ class BakeTools(toolAbstractFactory):
                 if not keyRange or keyRange[0] == None:
                     keyRange = timelineRange
                 self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
+        '''
         return keyRange
 
     def bake_to_override(self, sampleRate=1, sel=None, layerPrefix='', keyRange=None, deleteConstraints=True,
                          bookend=True):
+        print ('THIS')
+        print ('keyRange', keyRange)
+        highlighted = self.funcs.isTimelineHighlighted()
         if not sel:
             sel = cmds.ls(sl=True)
         if not sel:
@@ -358,10 +382,12 @@ class BakeTools(toolAbstractFactory):
             with self.funcs.keepSelection():
                 preContainers = set(pm.ls(type='container'))
                 preBakeLayers = pm.ls(type='animLayer')
-                keyRange = self.getBestTimelineRangeForBake(sel, keyRange=keyRange)
+                keyRange = self.funcs.getBestTimelineRangeForBake(sel, keyRange=keyRange)
+                newAnimLayer = pm.animLayer('resultLayerBLANKNAME', override=True, passthrough=True)
 
                 pm.bakeResults(sel,
                                time=(keyRange[0], keyRange[-1]),
+                               destinationLayer=str(newAnimLayer),
                                simulation=False,
                                sampleBy=1,
                                oversamplingRate=1,
@@ -374,10 +400,9 @@ class BakeTools(toolAbstractFactory):
                                minimizeRotation=True,
                                controlPoints=False,
                                shape=False)
-                postBakeLayer = [x for x in pm.ls(type='animLayer') if x not in preBakeLayers]
-                for newAnimLayer in postBakeLayer:
-                    pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
-                    pm.rename(newAnimLayer, layerPrefix + 'OverrideBaked')
+
+                pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
+                pm.rename(newAnimLayer, layerPrefix + 'OverrideBaked')
 
                 if deleteConstraints:
                     if not isinstance(sel, list):
@@ -388,13 +413,23 @@ class BakeTools(toolAbstractFactory):
                         self.clearBlendAttrs(n)
 
                 self.removeContainersPostBake(preContainers)
-            self.funcs.select_layer(postBakeLayer)
+            self.funcs.select_layer(str(newAnimLayer))
 
             if sampleRate != 1:
-                for newAnimLayer in postBakeLayer:
-                    self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
-            if bookend:
-                self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
+                self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
+            if not highlighted:
+                print ('Not highlighted')
+                # timeline isn't highlighted, do we bookend the weight anyway?
+                if pm.optionVar.get(self.bookendBakeOption, False):
+                    print ('bookend')
+                    self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
+            else:
+                print ('highlighted')
+                # timeline is highlighted, do we bookend the weight for "convenience"?
+                if pm.optionVar.get(self.bookendBakeHighlightOption, False):
+                    print ('bookend')
+                    self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
+
             cmds.refresh()
 
     def deleteConstraintsForNode(self, n):
@@ -410,9 +445,7 @@ class BakeTools(toolAbstractFactory):
         if not sel:
             return
         with self.funcs.keepSelection():
-            keyRange = self.funcs.get_all_layer_key_times(sel)
-            if not keyRange[0]:
-                keyRange = self.funcs.getTimelineRange()
+            keyRange = self.funcs.getBestTimelineRangeForBake(sel)
             pm.bakeResults(sel,
                            time=(keyRange[0], keyRange[-1]),
                            simulation=False,
@@ -454,7 +487,7 @@ class BakeTools(toolAbstractFactory):
                             self.createAsset(ns + self.assetName, imageName=None)
                         asset = ns + self.assetName
                         loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
-                                                     scale=pm.optionVar.get(self.crossSizeOption, 1))
+                                                     scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1))
                         pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                         pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                         const = pm.parentConstraint(s, loc)
@@ -466,6 +499,7 @@ class BakeTools(toolAbstractFactory):
                                      addNode=loc)
                 if locs:
                     preContainers = set(pm.ls(type='container'))
+                    keyRange = self.funcs.getBestTimelineRangeForBake()
                     pm.bakeResults(locs,
                                    simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                                    sampleBy=1,
@@ -479,8 +513,8 @@ class BakeTools(toolAbstractFactory):
                                    minimizeRotation=True,
                                    controlPoints=False,
                                    shape=False,
-                                   time=[pm.playbackOptions(query=True, minTime=True),
-                                         pm.playbackOptions(query=True, maxTime=True)],
+                                   time=[keyRange[0],
+                                         keyRange[1]],
                                    )
                     self.removeContainersPostBake(preContainers)
                     if constrain:
@@ -498,7 +532,7 @@ class BakeTools(toolAbstractFactory):
                                          includeHierarchyBelow=True,
                                          force=True,
                                          addNode=constraint)
-                if pm.optionVar.get(self.tempControlMotionTrailOption, False):
+                if pm.optionVar.get(self.tbTempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
                             cmds.select(str(l), replace=True)
@@ -550,7 +584,7 @@ class BakeTools(toolAbstractFactory):
                     # loc = self.funcs.tempLocator(name=s, suffix='baked')
 
                     loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
-                                                 scale=pm.optionVar.get(self.crossSizeOption, 1))
+                                                 scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1))
                     pm.parent(loc, parentNode)
                     pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                     pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
@@ -564,6 +598,7 @@ class BakeTools(toolAbstractFactory):
 
                 if locs:
                     preContainers = set(pm.ls(type='container'))
+                    keyRange = self.funcs.getBestTimelineRangeForBake()
                     pm.bakeResults(locs,
                                    simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                                    sampleBy=1,
@@ -577,8 +612,8 @@ class BakeTools(toolAbstractFactory):
                                    minimizeRotation=True,
                                    controlPoints=False,
                                    shape=False,
-                                   time=[pm.playbackOptions(query=True, minTime=True),
-                                         pm.playbackOptions(query=True, maxTime=True)],
+                                   time=[keyRange[0],
+                                         keyRange[1]],
                                    )
                     self.removeContainersPostBake(preContainers)
                     if constrain:
@@ -770,11 +805,12 @@ class BakeTools(toolAbstractFactory):
             endTime = pm.playbackOptions(query=True, maxTime=True)
         with self.funcs.suspendUpdate():
             try:
+                keyRange = self.getBestTimelineRangeForBake()
                 pm.bakeResults(node,
                                simulation=False,
                                disableImplicitControl=False,
-                               time=[startTime,
-                                     endTime],
+                               time=[keyRange[0],
+                                     keyRange[1]],
                                sampleBy=1)
                 if deleteConstraints:
                     if not isinstance(node, list):
@@ -883,7 +919,7 @@ class BakeTools(toolAbstractFactory):
         affectedLayers = cmds.animLayer([driver], q=True, affectedLayers=True)
         if animLayer[0] not in affectedLayers:
             return cmds.warning('driver control is not found in the selected layer')
-        keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
+        #keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
         if not keyRange:
             return cmds.warning('driver control does not appear to have any keys in the selected layer')
         resultLayer = pm.animLayer(animLayer[0] + '_Counter')
@@ -908,6 +944,7 @@ class BakeTools(toolAbstractFactory):
         # bake out the result values
 
         preContainers = set(pm.ls(type='container'))
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         pm.bakeResults(allAttrs,
                        time=(keyRange[0], keyRange[-1]),
                        destinationLayer=resultLayer,
@@ -947,6 +984,8 @@ class BakeTools(toolAbstractFactory):
         pm.animLayer(resultLayer, edit=True, override=False)
 
     def additiveExtractSelection(self):
+        print ('additiveExtractSelection')
+
         sel = cmds.ls(sl=True)
         if sel:
             self.additiveExtract(sel)
@@ -1115,11 +1154,10 @@ class BakeTools(toolAbstractFactory):
         :param nodes:
         :return:
         """
-        keyRange = self.funcs.getTimelineHighlightedRange()
-        if keyRange[0] == keyRange[1]:
-            keyRange = self.funcs.getTimelineRange()
+        print ('additiveExtract', nodes)
         overrideLayer = cmds.animLayer('AdditiveBase', override=True)
-
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+        print ('key range', keyRange)
         cmds.bakeResults(nodes,
                          time=(keyRange[0], keyRange[-1]),
                          destinationLayer=overrideLayer,
@@ -1161,17 +1199,20 @@ class BakeTools(toolAbstractFactory):
             attrIngored = attrType in ignoredAttributeTypes
             keyTimes = [om2.MTime(curve.input(key).value, om2.MTime.uiUnit()) for key in range(curve.numKeys)]
 
-            # print (keyTimes)
+            # print (keyTimes[0], keyTimes[-1])
             keyValues = [curve.value(key) for key in range(curve.numKeys)]
             # print (keyValues)
             initialVal = keyValues[0]
             finalVal = keyValues[-1]
             keyRange = keyTimes[-1] - keyTimes[0]
             # print (initialVal, finalVal, keyRange)
+            # print ('keyRange', keyRange.value)
             blendedValues = []
             for index, key in enumerate(keyTimes):
-                alpha = key.value / keyRange.value
+                alpha = (key.value-keyTimes[0].value) / keyRange.value
+                # print(attr, keyTimes[0].value, key.value, 'alpha', alpha,  keyRange.value)
                 progress = ((finalVal - initialVal) * alpha) + initialVal
+                # print (attr, key, progress)
                 if attrIngored:
                     blendedValues.append(progress)
                 else:
@@ -1182,6 +1223,7 @@ class BakeTools(toolAbstractFactory):
                 additiveMTimeArray = self.funcs.createMTimeArray(keyTimes[0].value,
                                                                  int(keyTimes[-1].value) - int(keyTimes[0].value) + 1)
                 overrideMTimeArray = self.funcs.createMTimePairArray(keyTimes[0], keyTimes[-1])
+            # print ('additiveMTimeArray', additiveMTimeArray)
         dg = om2.MDGModifier()
         for key, mcurve in additiveMFnAnimCurves.items():
             sources = additiveLayerMPlugs[key].connectedTo(True, False)
@@ -1269,6 +1311,8 @@ class BakeTools(toolAbstractFactory):
                     return cmds.warning('No controls found in layers, aborting')
                 if not allAttrs:
                     return cmds.warning('No controls found in layers, aborting')
+                '''
+                # removing this and just reverting to timeline range
                 keyRange = self.funcs.get_all_layer_key_times(allNodes)
 
                 timelineRange = self.funcs.getTimelineRange()
@@ -1276,7 +1320,8 @@ class BakeTools(toolAbstractFactory):
                     keyRange = timelineRange
 
                 self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
-
+                '''
+                keyRange = self.funcs.getBestTimelineRangeForBake()
                 cmds.bakeResults(allAttrs,
                                  time=(keyRange[0], keyRange[-1]),
                                  # destinationLayer=rootLayer,
@@ -1325,15 +1370,14 @@ class BakeTools(toolAbstractFactory):
                     return cmds.warning('Objects do not appear to be in any animation layers')
 
                 resultLayer = cmds.animLayer(override=True)
-                keyRange = self.funcs.get_all_layer_key_times(selection)
-                if not keyRange or keyRange[0] == None:
-                    keyRange = self.funcs.getTimelineRange()
 
+                keyRange = self.funcs.getBestTimelineRangeForBake()
                 if base:
+
                     cmds.bakeResults(selection,
                                      time=(keyRange[0], keyRange[-1]),
                                      # destinationLayer=rootLayer,
-                                     simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
+                                     simulation=len(selection) > pm.optionVar.get(self.tbBakeSimObjectCountOption, 10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1350,7 +1394,7 @@ class BakeTools(toolAbstractFactory):
                     cmds.bakeResults(selection,
                                      time=(keyRange[0], keyRange[-1]),
                                      destinationLayer=resultLayer,
-                                     simulation=len(selection) > pm.optionVar.get(self.bakeSimObjectCountOption, 10),
+                                     simulation=len(selection) > pm.optionVar.get(self.tbBakeSimObjectCountOption, 10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1405,12 +1449,12 @@ class BakeTools(toolAbstractFactory):
             rotationRoot = self.funcs.tempControl(name=s,
                                                   suffix='worldOffset',
                                                   drawType='orb',
-                                                  scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
+                                                  scale=pm.optionVar.get(self.tbBakeWorldOffsetSizeOption, 0.5))
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
             rotateAnimOffsetNode = self.funcs.tempControl(name=s,
                                                           suffix='localOffset',
                                                           drawType='diamond',
-                                                          scale=pm.optionVar.get(self.worldOffsetSizeOption, 0.5))
+                                                          scale=pm.optionVar.get(self.tbBakeWorldOffsetSizeOption, 0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
@@ -1441,8 +1485,9 @@ class BakeTools(toolAbstractFactory):
                          addNode=rotationRoot)
 
         bakeTargets = list(rotationRoots.values()) + list(rotateAnimNodes.values())
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         pm.bakeResults(bakeTargets,
-                       time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
+                       time=(keyRange[0], keyRange[1]),
                        simulation=False,
                        sampleBy=1,
                        oversamplingRate=1,
@@ -1525,8 +1570,9 @@ class BakeTools(toolAbstractFactory):
             translateAnimOFfsetNodes[s] = translateAnimOFfsetNode
             rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
         bakeTargets = list(translateAnimNodes.values()) + list(rotateAnimNodes.values())
+        keyRange = self.funcs.getBestTimelineRangeForBake()
         pm.bakeResults(bakeTargets,
-                       time=(pm.playbackOptions(query=True, min=True), pm.playbackOptions(query=True, max=True)),
+                       time=(keyRange[0], keyRange[1]),
                        simulation=False,
                        sampleBy=1,
                        oversamplingRate=1,

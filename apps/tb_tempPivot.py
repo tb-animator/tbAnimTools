@@ -151,10 +151,13 @@ class TempPivot(toolAbstractFactory):
         cmds.menuItem(divider=True)
 
     def bakeSelectedCommand(self, asset, sel):
+        print ('sel', sel)
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
 
         pm.select(filteredTargets, replace=True)
+        keyRange = self.funcs.getBestTimelineRangeForBake(sel)
+        print ('bakeAllCommand', 'keyRange', keyRange)
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(targets)
 
@@ -162,7 +165,8 @@ class TempPivot(toolAbstractFactory):
         nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
-        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
+
+        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets, keyRange=keyRange)
         pm.delete(asset)
 
     def deleteControlsCommand(self, asset, sel):
@@ -250,9 +254,9 @@ class TempPivot(toolAbstractFactory):
 
             if constraints:
                 pm.delete(constraints)
-
+            keyRange = self.funcs.getBestTimelineRangeForBake()
             pm.bakeResults(bakeTargets,
-                           time=(keyRangeStart, keyRangeEnd),
+                           time=(keyRange[0], keyRange[1]),
                            simulation=False,
                            sampleBy=1)
             pm.delete(mainConstraint)
@@ -273,6 +277,124 @@ class TempPivot(toolAbstractFactory):
         cmds.setToolTo(cmds.currentCtx())
         cmds.ctxEditMode()
         self.completedScriptJob(sel, loc, frame)
+
+    def createPersistentTempPivotFromSelection(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+        with self.funcs.undoChunk():
+            self.createPersistentTempPivot(sel)
+
+    def createPersistentTempPivot(self, sel):
+        """
+        Create a temp control, moved to where you want it
+        After deselecting it, bake the main control to this
+        Leave a small node behind that can be repositioned and rebaked to quickly
+        :param sel:
+        :return:
+        """
+        mainControl = sel[-1]
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+        print ('keyRange', keyRange)
+        loc = self.createControl(mainControl)
+        frame = cmds.currentTime(query=True)
+        cmds.MoveTool()
+        cmds.manipMoveContext('Move', edit=True, mode=0)
+        cmds.setToolTo(cmds.currentCtx())
+        cmds.ctxEditMode()
+        self.createPersistentTempPivotScriptJob(sel, loc, frame, keyRange)
+
+    def createPersistentTempPivotScriptJob(self, targets, loc, frame, keyRange):
+        self.scriptJobs.append(
+            pm.scriptJob(runOnce=True, event=['SelectionChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
+        self.scriptJobs.append(
+            pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
+        # self.scriptJobs.append(pm.scriptJob(runOnce=True, timeChange=partial(self.bake, targets, loc, frame)))
+
+    def bakePersistentTempPivot(self, targets, loc, frame, keyRange):
+        self.clearScriptJobs()
+
+        with self.funcs.undoChunk():
+            cmds.currentTime(frame)
+            mainTarget = targets[-1]
+            constraints = list()
+            tempNull = self.funcs.tempNull(name=mainTarget, suffix='piv')
+            tempNull.displayHandle.set(True)
+
+            self.funcs.getSetColour(tempNull, mainTarget, brightnessOffset=0.05)
+            # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
+
+            control = self.funcs.tempControl(name=mainTarget, suffix='Pivot', drawType='orb',
+                                             scale=pm.optionVar.get(self.crossSizeOption, 1))
+            constraintState, inputs, constraints = self.funcs.isConstrained(mainTarget)
+
+            controlParent = cmds.createNode('transform', name=mainTarget + '_Pivot_grp')
+            pm.parent(control, controlParent)
+
+            if constraintState and constraints:
+                constrainTargets = self.funcs.getConstrainTargets(constraints[0])
+                constraintWeightAliases = self.funcs.getConstrainWeights(constraints[0])
+                pm.parentConstraint(constrainTargets[0], controlParent)  # TODO = make this support blended constraints?
+            else:
+                parentNode = cmds.listRelatives(mainTarget, parent=True)
+                if parentNode:
+                    pm.parentConstraint(parentNode, controlParent)
+
+            pm.delete(pm.parentConstraint(loc, control))
+            pm.delete(pm.parentConstraint(loc, tempNull))
+            pm.parentConstraint(targets[-1], tempNull, maintainOffset=True)
+
+            mainConstraint = pm.parentConstraint(targets[-1], control, maintainOffset=True)
+            keyRangeStart = cmds.playbackOptions(query=True, min=True)
+            keyRangeEnd = cmds.playbackOptions(query=True, max=True)
+
+            ps = pm.PyNode(targets[-1])
+            ns = ps.namespace()
+            if not cmds.objExists(ns + self.assetName):
+                self.createAsset(ns + self.assetName, imageName=None)
+            asset = ns + self.assetName
+
+            pm.addAttr(control, ln=self.constraintTargetAttr, at='message')
+            pm.connectAttr(targets[-1] + '.message', control + '.' + self.constraintTargetAttr)
+
+            pm.container(asset, edit=True,
+                         includeHierarchyBelow=True,
+                         force=True,
+                         addNode=[control, controlParent])
+
+            bakeTargets = list()
+            targetParents = dict()
+            targetConstraints = dict()
+
+            for t in targets:
+                grp = pm.createNode('transform', name=str(t) + '_tmpGrp')
+                pm.parent(grp, control)
+                targetParents[t] = grp
+                targetConstraints[t] = pm.parentConstraint(t, grp)
+                bakeTargets.append(grp)
+
+                pm.container(asset, edit=True,
+                             includeHierarchyBelow=True,
+                             force=True,
+                             addNode=grp)
+
+            bakeTargets.append(control)
+
+            if constraints:
+                pm.delete(constraints)
+            # keyRange = self.funcs.getBestTimelineRangeForBake()
+            pm.bakeResults(bakeTargets,
+                           time=(keyRange[0], keyRange[1]),
+                           simulation=False,
+                           sampleBy=1)
+            pm.delete(mainConstraint)
+            pm.delete(targetConstraints.values())
+            for t in targets:
+                pm.parentConstraint(targetParents[t], t)
+            pm.select(control, replace=True)
+
+            pm.delete(loc)
+
 
     def createTempPivotFromSelection(self):
         sel = cmds.ls(sl=True, type='transform')
@@ -457,9 +579,9 @@ class TempPivot(toolAbstractFactory):
 
             keyRangeStart = cmds.playbackOptions(query=True, min=True)
             keyRangeEnd = cmds.playbackOptions(query=True, max=True)
-
+            keyRange = self.funcs.getBestTimelineRangeForBake()
             pm.bakeResults(tempControls,
-                           time=(keyRangeStart, keyRangeEnd),
+                           time=(keyRange[0], keyRange[1]),
                            simulation=False,
                            sampleBy=1)
             self.funcs.resumeSkinning()
@@ -470,7 +592,6 @@ class TempPivot(toolAbstractFactory):
                 self.funcs.safeParentConstraint(tempControlsGrps[index+1], t, orientOnly=False, maintainOffset=True)
 
             pm.select(mainControl, replace=True)
-
 
     def constrainAimToTarget(self, constrainedControl=str(), aimTarget=str(), upObject=str()):
         locatorPos = dt.Vector(pm.xform(aimTarget, query=True, worldSpace=True,
@@ -500,5 +621,7 @@ class TempPivot(toolAbstractFactory):
                                          worldUpType='objectRotation',
                                          maintainOffset=False)
         return aimConstraint
+
+
 # cls = temp()
 # cls.createTempPivot(cmds.ls(sl=True))

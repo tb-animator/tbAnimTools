@@ -150,6 +150,7 @@ class SelectionTools(toolAbstractFactory):
         If there is no selection, it will reselect the last known character
         :return:
         """
+        finalControls = list()
         namespace = str()
         sel = cmds.ls(sl=True)
         if not sel:
@@ -157,20 +158,29 @@ class SelectionTools(toolAbstractFactory):
                 return
             if cmds.objExists(self.lastSelected):
                 sel = [self.lastSelected]
+        CharacterTool = self.allTools.tools['CharacterTool']
+        characters = self.funcs.splitSelectionToCharacters(sel)
 
-        splitName = sel[0].split(':')
-        mainNamespace = sel[0].rsplit(':', 1)
-        if len(splitName) > 1:
-            namespace = splitName[0]
-        s = splitName[-1]
-        prefix = re.split('[^a-zA-Z0-9]+', s)
+        for ch, controls in characters.items():
+            refname, namespace = CharacterTool.getSelectedChar(controls[0])
+            allControls = CharacterTool.getCharacterByName(refname).controls
+            if allControls:
+                finalControls.extend([namespace + c for c in allControls])
+            else:
+                splitName = controls[0].split(':')
+                mainNamespace = controls[0].rsplit(':', 1)
+                if len(splitName) > 1:
+                    namespace = splitName[0]
+                s = splitName[-1]
+                prefix = re.split('[^a-zA-Z0-9]+', s)
 
-        matchingPrefix = self.getSimilarControls(mainNamespace[0], s, prefix)
+                matchingPrefix = self.getSimilarControls(mainNamespace[0], controls, prefix)
 
-        if matchingPrefix:
-            cmds.select(matchingPrefix, replace=True)
-            cmds.select(sel, add=True)
-            self.lastSelected = sel[0]
+                if matchingPrefix:
+                    finalControls.extend(matchingPrefix)
+        finalControls = [c for c in finalControls if cmds.objExists(c)]
+        cmds.select(finalControls, add=True)
+        self.lastSelected = sel[0]
 
     def getOppositeControl(self, name, constraint=False, shape=True):
         if ':' in name:

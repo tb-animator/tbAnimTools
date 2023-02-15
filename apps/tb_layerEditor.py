@@ -58,6 +58,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      help=maya.stringTable['tbCommand.select_best_layer'],
                                      command=['LayerEditor.selectBestLayer()']))
+        self.addCommand(self.tb_hkey(name='toggleLayerWeight',
+                                     annotation='',
+                                     category=self.category,
+                                     help=maya.stringTable['tbCommand.toggleLayerWeight'],
+                                     command=['LayerEditor.toggleLayerWeight()']))
 
         return self.commandList
 
@@ -362,6 +367,18 @@ class LayerEditor(toolAbstractFactory):
         cmds.refresh(suspend=True)
         cmds.currentTime(cmds.currentTime(query=True))
         cmds.refresh(suspend=False)
+
+    def toggleLayerWeight(self):
+        layers = self.funcs.get_selected_layers()
+        if not layers:
+            return
+        if layers[-1] == 'BaseAnimation':
+            return
+        currentWeight = int(cmds.getAttr('{0}.weight'.format(layers[-1])))
+        cmds.setAttr('{0}.weight'.format(layers[-1]), int(currentWeight <= 0.5))
+        cmds.setKeyframe('{0}.weight'.format(layers[-1]))
+        cmds.keyTangent('{0}.weight'.format(layers[-1]), inTangentType='flat', outTangentType='flat')
+
 
     def setLayerWeightNoRefresh(self, layers, weight):
         for layer in layers:

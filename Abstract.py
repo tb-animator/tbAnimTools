@@ -124,6 +124,9 @@ class toolAbstractFactory(ABC):
     deferredLoadDone = False
     rootDirectory = os.path.dirname(__file__)
 
+    bookendBakeOption = 'tbBookendBake'
+    bookendBakeHighlightOption = 'tbBookendBakeHighlight'
+
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
             toolAbstractFactory.__instance = object.__new__(cls)
