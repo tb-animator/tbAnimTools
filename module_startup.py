@@ -47,13 +47,15 @@ class initialise(object):
         '''
 
     def load_everything(self):
-        import tbtoolsInstaller
-        tbtoolsInstaller.module_maker().install()
-        try:
-            self.check_for_updates()
-        except Exception as e:
-            pm.error(e)
-        #self.loadRMB()
+        import os
+        if os.name == 'nt':
+            import tbtoolsInstaller
+            tbtoolsInstaller.module_maker().install()
+            try:
+                self.check_for_updates()
+            except Exception as e:
+                pm.error(e)
+            #self.loadRMB()
         import apps.tb_optionVars as tbo
         #import apps.tb_keyCommands as tb_hotKeys
         '''
