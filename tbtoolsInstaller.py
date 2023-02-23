@@ -74,7 +74,7 @@ class module_maker():
         self.win_versions = ['win32', 'win64'][pm.about(is64=True)]
         self.maya_version = pm.about(version=True)
         self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
-        self.python_paths = ['', 'apps', 'proApps/Python3', 'proApps/Python2']  # empty string is the base dir (don't forget again)
+        self.python_paths = ['', 'apps', 'proApps/Python39', 'proApps/Python3', 'proApps/Python2']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
         self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
         self.maya_common_plugin_paths = ['plugins/common']
