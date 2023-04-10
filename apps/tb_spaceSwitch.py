@@ -898,33 +898,35 @@ class SpaceSwitch(toolAbstractFactory):
         if not cmds.objExists(node):
             return pm.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
-        # print ('simpleSpaceSwitch', node, spaceAttribute)
+
         spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
-        #print ('node', node, 'spaceValue', spaceValue)
+
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
             spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
             spaceValue = spaceEnums[spaceValue.lower()]
 
-        # might not work nicely with frozen transforms
-        worldRotation = pm.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
+        # store the matrix
+        storedMtx = self.funcs.getMatrix(node)
 
-        # get the world pivot
-        prePivot = dt.Vector(pm.xform(node, query=True, worldSpace=True, rotatePivot=True))
-
+        # swap the space value
         pm.setAttr(spaceSwitchAttr, spaceValue)
-        resultRelativeTranslation = dt.Vector(
-            pm.xform(node, query=True, relative=True, worldSpace=True, translation=True))
-        postPivot = dt.Vector(pm.xform(node, query=True, worldSpace=True, rotatePivot=True))
 
-        outTranslation = resultRelativeTranslation + (prePivot - postPivot)
+        # get the new matrix
+        postMtx = self.funcs.getMatrix(node)
+        # also the parent matrix
+        parentMtx = self.funcs.getMatrix(node, matrix='parentMatrix')
 
-        # reset the position
-        # maya has a persistent bug where it sometimes ignores an xform command, so we perform it twice here
-        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
-        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
-        # reset the orientation
-        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
-        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
+        # get the new position and rotation
+        pos, rot = self.funcs.getMatrixOffset(node, storedMtx, postMtx, parentMtx)
+
+        # rotate is
+        cmds.xform(node, relative=True, rotation=rot)
+
+        postMtx = self.funcs.getMatrix(node)
+        parentMtx = self.funcs.getMatrix(node, matrix='parentMatrix')
+        pos, rot = self.funcs.getMatrixOffset(node, storedMtx, postMtx, parentMtx)
+        # translate it
+        cmds.xform(node, relative=True, translation=pos)
 
         if pm.keyframe(node, query=True) and pm.autoKeyframe(state=True, q=True):
             try:

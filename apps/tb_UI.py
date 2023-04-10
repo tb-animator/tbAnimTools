@@ -2434,8 +2434,10 @@ class optionVarBoolWidget(optionVarWidget):
         self.checkBox.setChecked(pm.optionVar.get(self.optionVar, False))
         pm.optionVar(intValue=(self.optionVar, pm.optionVar.get(self.optionVar, False)))
         self.checkBox.clicked.connect(self.checkBoxEdited)
-        self.layout.addWidget(self.labelText)
+        if len(label):
+            self.layout.addWidget(self.labelText)
         self.layout.addWidget(self.checkBox)
+        self.layout.addStretch()
 
     def checkBoxEdited(self):
         pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
@@ -3051,6 +3053,82 @@ class radioGroupVertical(object):
         for button in self.buttons:
             if button.isChecked() == True:
                 pm.optionVar[self.optionVar] = button.text()
+
+class radioGroupVertical(object):
+    layout = None
+    optionVar = None
+    dirButton = None
+    optionVarList = list()
+    optionVar = str()
+    optionValue = str()
+
+    def __init__(self, formLayout=QFormLayout, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str(),
+                 tooltips=list()):
+        super(radioGroupVertical, self).__init__()
+        self.tooltips = tooltips
+        self.optionVarList = optionVarList
+        self.optionVar = optionVar
+        self.defaultValue = defaultValue
+        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+
+        self.btnGrp = QButtonGroup()  # Letter group
+        self.returnedWidgets = list()
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
+            self.buttons.append(QRadioButton(option))
+            self.btnGrp.addButton(self.buttons[index])
+            self.returnedWidgets.append(['option', self.buttons[index]])
+            self.buttons[index].setChecked(self.optionValue == option)
+            self.buttons[index].toggled.connect(self.buttonChecked)
+            try:
+                self.buttons[index].setToolTip(self.tooltips[index])
+            except:
+                pass
+
+    def buttonChecked(self, value):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                pm.optionVar[self.optionVar] = button.text()
+
+
+class RadioGroup(QWidget):
+    editedSignal = Signal(str)
+    optionVar = None
+    dirButton = None
+    optionVarList = list()
+    optionVar = str()
+    optionValue = str()
+
+    def __init__(self, optionVarList=list(), defaultValue=str(), label=str(),
+                 tooltips=list()):
+        super(RadioGroup, self).__init__()
+        self.tooltips = tooltips
+        self.optionVarList = optionVarList
+        self.defaultValue = defaultValue
+        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        self.formLayout = QFormLayout()
+        self.setLayout(self.formLayout)
+        self.btnGrp = QButtonGroup()  # Letter group
+        self.returnedWidgets = list()
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
+            self.buttons.append(QRadioButton(option))
+            self.btnGrp.addButton(self.buttons[index])
+            self.returnedWidgets.append(['option', self.buttons[index]])
+            self.buttons[index].setChecked(self.optionValue == option)
+            self.buttons[index].toggled.connect(self.buttonChecked)
+
+            self.formLayout.addRow(option, self.buttons[index])
+
+            try:
+                self.buttons[index].setToolTip(self.tooltips[index])
+            except:
+                pass
+
+    def buttonChecked(self, value):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                self.editedSignal.emit(button.text())
 
 
 class LicenseWin(BaseDialog):

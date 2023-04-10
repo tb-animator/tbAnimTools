@@ -56,6 +56,9 @@ axisMapping = {
 __author__ = 'tom.bailey'
 
 assetCommandName = 'tempPivotControlCommand'
+assetPointCommandName = 'tempPivotControlPointCommand'
+
+
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('tempPivot'))
@@ -65,6 +68,15 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['TempPivot.createTempPivotFromSelection()']))
+        self.addCommand(self.tb_hkey(name='createTempPivotAtSelection',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.createTempPivotAtSelection()']))
+        self.addCommand(self.tb_hkey(name='createPersistentTempPivot',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.createPersistentTempPivotFromSelection()']))
+
         self.addCommand(self.tb_hkey(name='createTempPivotHierarchy',
                                      annotation='',
                                      category=self.category,
@@ -72,8 +84,11 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='createTempParent', annotation='',
                                      category=self.category, command=['TempPivot.tempParent()']))
         self.addCommand(self.tb_hkey(name=assetCommandName,
-                                     annotation='right click menu for temp controls',
+                                     annotation='NOT FOR HOTKEYS',
                                      category=self.category, command=['TempPivot.assetRmbCommand()']))
+        self.addCommand(self.tb_hkey(name=assetPointCommandName,
+                                     annotation='NOT FOR HOTKEYS',
+                                     category=self.category, command=['TempPivot.assetRmbPointCommand()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -94,7 +109,9 @@ class TempPivot(toolAbstractFactory):
     tempParentScriptJobs = list()
     crossSizeOption = 'tbBakeLocatorSize'
     assetName = 'TempPivotControls'
+    assetTempName = 'TempPivotPoints'
     constraintTargetAttr = 'constraintTarget'
+    pivotControlAttr = 'pivotControl'
     assetCommandName = assetCommandName
     tempControlSizeOption = 'tbTempParentSizeOption'
 
@@ -150,6 +167,43 @@ class TempPivot(toolAbstractFactory):
         cmds.menuItem(label='Delete all temp pivots', command=pm.Callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
+    def assetRmbPointCommand(self):
+        panel = cmds.getPanel(underPointer=True)
+        parentMMenu = panel + 'ObjectPop'
+        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
+        sel = pm.ls(sl=True)
+        asset = pm.container(query=True, findContainer=sel[0])
+
+        cmds.menuItem(label='Temp Pivot Tools', enable=False, boldFont=True, image='container.svg')
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Update temp point position',
+                      command=pm.Callback(self.updateTempPivotPositions, asset, sel))
+        cmds.menuItem(label='Create temp pivot control', command=pm.Callback(self.createTempPivotFromPoint, asset, sel))
+
+    def updateTempPivotPositions(self, asset, sel):
+        if not sel:
+            return
+        for s in sel:
+            constraints = cmds.listRelatives(str(s), type='parentConstraint')
+            if not constraints:
+                continue
+            targetList = cmds.parentConstraint(constraints[0], query=True, targetList=True)
+            cmds.parentConstraint(targetList, constraints[0], edit=True, maintainOffset=True)
+
+    def createTempPivotFromPoint(self, asset, sel):
+        if not sel:
+            return
+        for s in sel:
+            frame = cmds.currentTime(query=True)
+            if not cmds.attributeQuery(self.pivotControlAttr, node=str(s), exists=True):
+                return cmds.warning('Attribute not found')
+            control = cmds.listConnections(str(s) + '.' + self.pivotControlAttr)
+            if not control:
+                return cmds.warning('Control connection not found')
+            self.completedScriptJob(control[0], str(s), frame)
+            self.bake(control, str(s), frame, deletePoint=False)
+            return
+
     def bakeSelectedCommand(self, asset, sel):
         print ('sel', sel)
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
@@ -166,7 +220,7 @@ class TempPivot(toolAbstractFactory):
         targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
 
-        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets, keyRange=keyRange)
+        self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(asset)
 
     def deleteControlsCommand(self, asset, sel):
@@ -191,7 +245,7 @@ class TempPivot(toolAbstractFactory):
             except:
                 pass
 
-    def bake(self, targets, loc, frame):
+    def bake(self, targets, loc, frame, deletePoint=True):
         self.clearScriptJobs()
 
         with self.funcs.undoChunk():
@@ -265,7 +319,14 @@ class TempPivot(toolAbstractFactory):
                 pm.parentConstraint(targetParents[t], t)
             pm.select(control, replace=True)
 
-            pm.delete(loc)
+            if deletePoint: pm.delete(loc)
+
+    def createTempPivotAtLastSelected(self, sel):
+        controls = sel[:-1]
+        loc = sel[-1]
+
+        frame = cmds.currentTime(query=True)
+        self.bake(controls, loc, frame, deletePoint=False)
 
     def createTempPivot(self, sel):
         mainControl = sel[-1]
@@ -295,7 +356,7 @@ class TempPivot(toolAbstractFactory):
         """
         mainControl = sel[-1]
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        print ('keyRange', keyRange)
+
         loc = self.createControl(mainControl)
         frame = cmds.currentTime(query=True)
         cmds.MoveTool()
@@ -306,9 +367,11 @@ class TempPivot(toolAbstractFactory):
 
     def createPersistentTempPivotScriptJob(self, targets, loc, frame, keyRange):
         self.scriptJobs.append(
-            pm.scriptJob(runOnce=True, event=['SelectionChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
+            pm.scriptJob(runOnce=True, event=['SelectionChanged',
+                                              partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
         self.scriptJobs.append(
-            pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
+            pm.scriptJob(runOnce=True,
+                         event=['ToolChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
         # self.scriptJobs.append(pm.scriptJob(runOnce=True, timeChange=partial(self.bake, targets, loc, frame)))
 
     def bakePersistentTempPivot(self, targets, loc, frame, keyRange):
@@ -362,6 +425,20 @@ class TempPivot(toolAbstractFactory):
                          force=True,
                          addNode=[control, controlParent])
 
+            # make the temp node assets
+            if not cmds.objExists(ns + self.assetTempName):
+                self.createAsset(ns + self.assetTempName, imageName=None, assetCommandName=assetPointCommandName)
+            tempAsset = ns + self.assetTempName
+
+            # tag the temp node back to the control
+            pm.addAttr(tempNull, ln=self.pivotControlAttr, at='message')
+            pm.connectAttr(mainTarget + '.message', tempNull + '.' + self.pivotControlAttr)
+
+            pm.container(tempAsset, edit=True,
+                         includeHierarchyBelow=True,
+                         force=True,
+                         addNode=[tempNull])
+
             bakeTargets = list()
             targetParents = dict()
             targetConstraints = dict()
@@ -395,13 +472,21 @@ class TempPivot(toolAbstractFactory):
 
             pm.delete(loc)
 
-
     def createTempPivotFromSelection(self):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('no valid selection')
         with self.funcs.undoChunk():
             self.createTempPivot(sel)
+
+    def createTempPivotAtSelection(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+        if len(sel) == 1:
+            return cmds.warning('Select at least 2 objects')
+        with self.funcs.undoChunk():
+            self.createTempPivotAtLastSelected(sel)
 
     def tempParent(self):
         sel = pm.ls(sl=True)
@@ -541,7 +626,7 @@ class TempPivot(toolAbstractFactory):
                              force=True,
                              addNode=[control])
 
-            for index in range(len(tempControls)-1):
+            for index in range(len(tempControls) - 1):
                 pm.parent(tempControls[index], tempControls[index + 1])
 
             constraints.append(pm.parentConstraint(targets[-1], mainControl, maintainOffset=True))
@@ -565,9 +650,9 @@ class TempPivot(toolAbstractFactory):
             for index in range(len(tempControlsGrps) - 1, -1, -1):
                 pm.pointConstraint(tempControls[index], tempControlsGrps[index])
                 if index > 0:
-                    constraint = self.constrainAimToTarget(constrainedControl = str(tempControlsGrps[index]),
-                                                           aimTarget = str(tempControls[index-1]),
-                                                           upObject = str(tempControls[index]))
+                    constraint = self.constrainAimToTarget(constrainedControl=str(tempControlsGrps[index]),
+                                                           aimTarget=str(tempControls[index - 1]),
+                                                           upObject=str(tempControls[index]))
                     '''
                     aimConstraint = pm.aimConstraint(tempControls[index-1], tempControlsGrps[index],
                                                      worldUpObject=tempControls[index],
@@ -589,7 +674,7 @@ class TempPivot(toolAbstractFactory):
             pm.delete(constraints)
 
             for index, t in enumerate(targets):
-                self.funcs.safeParentConstraint(tempControlsGrps[index+1], t, orientOnly=False, maintainOffset=True)
+                self.funcs.safeParentConstraint(tempControlsGrps[index + 1], t, orientOnly=False, maintainOffset=True)
 
             pm.select(mainControl, replace=True)
 
@@ -621,7 +706,6 @@ class TempPivot(toolAbstractFactory):
                                          worldUpType='objectRotation',
                                          maintainOffset=False)
         return aimConstraint
-
 
 # cls = temp()
 # cls.createTempPivot(cmds.ls(sl=True))
