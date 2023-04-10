@@ -72,6 +72,7 @@ class ClassFinder(object):
         else:
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python2')
             self.proToolsVerionDirectory = 'proApps.Python2'
+        # sys.path.append(self.proToolsDirectory)
 
         self.loadPluginsByClass()
         self.applyAnimLayerTabModification()
