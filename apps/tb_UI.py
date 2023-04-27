@@ -2434,8 +2434,10 @@ class optionVarBoolWidget(optionVarWidget):
         self.checkBox.setChecked(pm.optionVar.get(self.optionVar, False))
         pm.optionVar(intValue=(self.optionVar, pm.optionVar.get(self.optionVar, False)))
         self.checkBox.clicked.connect(self.checkBoxEdited)
-        self.layout.addWidget(self.labelText)
+        if len(label):
+            self.layout.addWidget(self.labelText)
         self.layout.addWidget(self.checkBox)
+        self.layout.addStretch()
 
     def checkBoxEdited(self):
         pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
