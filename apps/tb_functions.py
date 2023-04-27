@@ -2124,3 +2124,39 @@ class functions(object):
                 return p
         return None
 
+    @staticmethod
+    def connect_message_attrs_to_multi_attr(obj_list, dest_node, dest_attr):
+        """
+        Connects the message attributes of a list of objects to a multi attribute on another node.
+        :param obj_list: list of objects to connect
+        :param dest_node: destination node for the multi attribute
+        :param dest_attr: destination multi attribute name
+        """
+        # create an empty list to store the source message attributes
+        source_attrs = []
+
+        # iterate over each object in the list
+        for obj in obj_list:
+            # append the source attribute name to the list
+            source_attrs.append(obj + '.message')
+
+        # create the multi attribute on the destination node
+        cmds.addAttr(dest_node, ln=dest_attr, at="message", multi=True)
+
+        # iterate over each source attribute and connect it to the multi attribute
+        for i, source_attr in enumerate(source_attrs):
+            dest_attr_index = i
+            # connect the source attribute to the corresponding index of the multi attribute
+            cmds.connectAttr(source_attr, "%s.%s[%d]" % (dest_node, dest_attr, dest_attr_index))
+
+    def flattenList(self, lst):
+        """
+        Flattens a list of lists into a single list.
+        """
+        result = []
+        for elem in lst:
+            if isinstance(elem, list):
+                result.extend(self.flattenList(elem))
+            else:
+                result.append(elem)
+        return result

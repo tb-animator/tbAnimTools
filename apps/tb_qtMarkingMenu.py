@@ -51,8 +51,8 @@ class ViewportRadialMenu(ViewportDialog):
         self.centralPoint = QPoint(0, 0)  # the central point of the radial menu
         self.parentPos = QPoint(0, 0)  # the button position that raised this menu
         self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
-        self.radius = 100
-        self.ringWidth = 50
+        self.radius = 64
+        self.ringWidth = 40
         self.innerRing = self.radius - 0.5*self.ringWidth
         self.outerRing = self.radius + 0.5*self.ringWidth
         self.ringColour = QColor(255, 160, 47, 32)

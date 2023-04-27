@@ -760,10 +760,10 @@ class ToolboxButton(QPushButton):
         self.setMouseTracking(True)
         self.popupSubMenu = popupSubMenu
         self.pop_up_window = None
+        fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
+        fontHeight = self.fontMetrics().boundingRect(self.text()).height() + 8
 
-        if not fixedWidth:
-            fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
-        else:
+        if fixedWidth:
             fontWidth = fixedWidth + 16
         if icon:
             fontWidth += iconWidth
@@ -781,7 +781,7 @@ class ToolboxButton(QPushButton):
         if isSmall:
             self.setFixedSize(22, 22)
         else:
-            self.setFixedSize(max(32, ((fontWidth / 64.0) * 64) + 64), 22)
+            self.setFixedSize(max(32, ((fontWidth / 64.0) * 64) + 64), fontHeight)
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     def setPopupMenu(self, menuClass):
@@ -3051,6 +3051,82 @@ class radioGroupVertical(object):
         for button in self.buttons:
             if button.isChecked() == True:
                 pm.optionVar[self.optionVar] = button.text()
+
+class radioGroupVertical(object):
+    layout = None
+    optionVar = None
+    dirButton = None
+    optionVarList = list()
+    optionVar = str()
+    optionValue = str()
+
+    def __init__(self, formLayout=QFormLayout, optionVarList=list(), optionVar=str(), defaultValue=str(), label=str(),
+                 tooltips=list()):
+        super(radioGroupVertical, self).__init__()
+        self.tooltips = tooltips
+        self.optionVarList = optionVarList
+        self.optionVar = optionVar
+        self.defaultValue = defaultValue
+        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+
+        self.btnGrp = QButtonGroup()  # Letter group
+        self.returnedWidgets = list()
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
+            self.buttons.append(QRadioButton(option))
+            self.btnGrp.addButton(self.buttons[index])
+            self.returnedWidgets.append(['option', self.buttons[index]])
+            self.buttons[index].setChecked(self.optionValue == option)
+            self.buttons[index].toggled.connect(self.buttonChecked)
+            try:
+                self.buttons[index].setToolTip(self.tooltips[index])
+            except:
+                pass
+
+    def buttonChecked(self, value):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                pm.optionVar[self.optionVar] = button.text()
+
+
+class RadioGroup(QWidget):
+    editedSignal = Signal(str)
+    optionVar = None
+    dirButton = None
+    optionVarList = list()
+    optionVar = str()
+    optionValue = str()
+
+    def __init__(self, optionVarList=list(), defaultValue=str(), label=str(),
+                 tooltips=list()):
+        super(RadioGroup, self).__init__()
+        self.tooltips = tooltips
+        self.optionVarList = optionVarList
+        self.defaultValue = defaultValue
+        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        self.formLayout = QFormLayout()
+        self.setLayout(self.formLayout)
+        self.btnGrp = QButtonGroup()  # Letter group
+        self.returnedWidgets = list()
+        self.buttons = list()
+        for index, option in enumerate(self.optionVarList):
+            self.buttons.append(QRadioButton(option))
+            self.btnGrp.addButton(self.buttons[index])
+            self.returnedWidgets.append(['option', self.buttons[index]])
+            self.buttons[index].setChecked(self.optionValue == option)
+            self.buttons[index].toggled.connect(self.buttonChecked)
+
+            self.formLayout.addRow(option, self.buttons[index])
+
+            try:
+                self.buttons[index].setToolTip(self.tooltips[index])
+            except:
+                pass
+
+    def buttonChecked(self, value):
+        for button in self.buttons:
+            if button.isChecked() == True:
+                self.editedSignal.emit(button.text())
 
 
 class LicenseWin(BaseDialog):

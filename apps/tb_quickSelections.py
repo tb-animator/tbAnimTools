@@ -159,6 +159,8 @@ class QuickSelectionTools(toolAbstractFactory):
             namespace = ':'
         else:
             namespace = sel[0].rsplit(':', 1)[0] + ':'
+        if namespace.startswith(':'):
+            namespace = namespace[1:]
         mainSetName = namespace + "QuickSelects"
         if not cmds.objExists(mainSetName):
             cmds.select(clear=True)

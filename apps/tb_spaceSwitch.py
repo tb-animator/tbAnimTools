@@ -920,11 +920,11 @@ class SpaceSwitch(toolAbstractFactory):
 
         # reset the position
         # maya has a persistent bug where it sometimes ignores an xform command, so we perform it twice here
-        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
-        cmds.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
+        pm.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
+        pm.xform(node, absolute=True, worldSpace=True, translation=outTranslation)
         # reset the orientation
-        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
-        cmds.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
+        pm.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
+        pm.xform(node, absolute=True, worldSpace=True, rotation=worldRotation)
 
         if pm.keyframe(node, query=True) and pm.autoKeyframe(state=True, q=True):
             try:

@@ -41,7 +41,10 @@ class main_menu(object):
         tbtoolsCLS = ClassFinder()
         pm.setParent(pm.melGlobals['gMainWindow'])
         if pm.menu(self.main_menu, exists=True):
-            pm.deleteUI(self.main_menu)
+            try:
+                pm.deleteUI(self.main_menu)
+            except:
+                pass
         self.main_menu = pm.menu("tbAnimTools", label="tbAnimTools", tearOff=True)
 
         pm.menuItem(label="Options", command=open_options, image='hotkeySetSettings.png', parent=self.main_menu)

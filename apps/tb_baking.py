@@ -133,6 +133,10 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
                                      help=maya.stringTable['tbCommand.bakeToLocator']))
+        self.addCommand(self.tb_hkey(name='bakeToLocatorPinned', annotation='',
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_locator_pinned(constrain=True, orientOnly=False)'],
+                                     help=maya.stringTable['tbCommand.bakeToLocator']))
         self.addCommand(
             self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
                          category=self.category,

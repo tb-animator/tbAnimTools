@@ -230,7 +230,7 @@ class toolAbstractFactory(ABC):
                                scale=pm.optionVar.get(optionVar, 1),
                                drawType=drawType)
 
-    def createAsset(self, name, imageName=None, transform=False, assetTag=str()):
+    def createAsset(self, name, imageName=None, transform=False, assetTag=str(), assetCommandName=str()):
         if transform:
             asset = cmds.container(name=name,
                                    includeHierarchyBelow=False,
@@ -247,7 +247,10 @@ class toolAbstractFactory(ABC):
         if assetTag:
             pm.addAttr(asset, ln='assetTag', dt='string')
             pm.setAttr(asset + '.assetTag', assetTag, type="string")
-        cmds.setAttr(asset + '.rmbCommand', self.assetCommandName, type='string')
+        if not assetCommandName:
+            cmds.setAttr(asset + '.rmbCommand', self.assetCommandName, type='string')
+        else:
+            cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
 
         return asset
 
