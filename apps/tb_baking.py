@@ -262,7 +262,9 @@ class BakeTools(toolAbstractFactory):
         super(BakeTools, self).optionUI()
         topFormLayout = QFormLayout()
         bookendOptionWidget = optionVarBoolWidget('Bookend layer weight when baking to layer ', self.bookendBakeOption)
-        bookendHighlightOptionWidget = optionVarBoolWidget('Bookend layer weight when baking to layer\nWith the timeslider highlighted ', self.bookendBakeHighlightOption)
+        bookendHighlightOptionWidget = optionVarBoolWidget(
+            'Bookend layer weight when baking to layer\nWith the timeslider highlighted ',
+            self.bookendBakeHighlightOption)
         simOptionWidget = optionVarBoolWidget('Bake to locator uses Simulation ', self.quickBakeSimOption)
         containerOptionWidget = optionVarBoolWidget('Remove containers post bake     ',
                                                     self.quickBakeRemoveContainerOption)
@@ -375,8 +377,8 @@ class BakeTools(toolAbstractFactory):
 
     def bake_to_override(self, sampleRate=1, sel=None, layerPrefix='', keyRange=None, deleteConstraints=True,
                          bookend=True):
-        print ('THIS')
-        print ('keyRange', keyRange)
+        print('THIS')
+        print('keyRange', keyRange)
         highlighted = self.funcs.isTimelineHighlighted()
         if not sel:
             sel = cmds.ls(sl=True)
@@ -422,16 +424,16 @@ class BakeTools(toolAbstractFactory):
             if sampleRate != 1:
                 self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
             if not highlighted:
-                print ('Not highlighted')
+                print('Not highlighted')
                 # timeline isn't highlighted, do we bookend the weight anyway?
                 if pm.optionVar.get(self.bookendBakeOption, False):
-                    print ('bookend')
+                    print('bookend')
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
             else:
-                print ('highlighted')
+                print('highlighted')
                 # timeline is highlighted, do we bookend the weight for "convenience"?
                 if pm.optionVar.get(self.bookendBakeHighlightOption, False):
-                    print ('bookend')
+                    print('bookend')
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
 
             cmds.refresh()
@@ -441,7 +443,6 @@ class BakeTools(toolAbstractFactory):
         constraints = cmds.listRelatives(n, type='constraint')
         if constraints:
             cmds.delete(constraints)
-
 
     def simpleBake(self, sel=None):
         if not sel:
@@ -923,7 +924,7 @@ class BakeTools(toolAbstractFactory):
         affectedLayers = cmds.animLayer([driver], q=True, affectedLayers=True)
         if animLayer[0] not in affectedLayers:
             return cmds.warning('driver control is not found in the selected layer')
-        #keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
+        keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
         if not keyRange:
             return cmds.warning('driver control does not appear to have any keys in the selected layer')
         resultLayer = pm.animLayer(animLayer[0] + '_Counter')
@@ -988,7 +989,7 @@ class BakeTools(toolAbstractFactory):
         pm.animLayer(resultLayer, edit=True, override=False)
 
     def additiveExtractSelection(self):
-        print ('additiveExtractSelection')
+        print('additiveExtractSelection')
 
         sel = cmds.ls(sl=True)
         if sel:
@@ -1158,10 +1159,10 @@ class BakeTools(toolAbstractFactory):
         :param nodes:
         :return:
         """
-        print ('additiveExtract', nodes)
+        print('additiveExtract', nodes)
         overrideLayer = cmds.animLayer('AdditiveBase', override=True)
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        print ('key range', keyRange)
+        print('key range', keyRange)
         cmds.bakeResults(nodes,
                          time=(keyRange[0], keyRange[-1]),
                          destinationLayer=overrideLayer,
@@ -1213,7 +1214,7 @@ class BakeTools(toolAbstractFactory):
             # print ('keyRange', keyRange.value)
             blendedValues = []
             for index, key in enumerate(keyTimes):
-                alpha = (key.value-keyTimes[0].value) / keyRange.value
+                alpha = (key.value - keyTimes[0].value) / keyRange.value
                 # print(attr, keyTimes[0].value, key.value, 'alpha', alpha,  keyRange.value)
                 progress = ((finalVal - initialVal) * alpha) + initialVal
                 # print (attr, key, progress)
@@ -1262,7 +1263,7 @@ class BakeTools(toolAbstractFactory):
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
-        return
+        self.funcs.bookEndLayerWeight(str(additiveLayer), keyRange[0], keyRange[-1])
 
     def getLayerNodesAndConstraints(self):
         allLayers = cmds.ls(type='animLayer')

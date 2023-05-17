@@ -27,6 +27,7 @@ import pymel.core as pm
 import maya.mel as mel
 from Abstract import hotKeyAbstractFactory
 import maya
+import maya.OpenMaya as om
 
 maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
@@ -43,7 +44,7 @@ else:
     from shiboken2 import wrapInstance
 import maya.cmds as cmds
 import maya.mel as mel
-
+from maya import OpenMayaUI as omui
 from Abstract import *
 from functools import partial
 
@@ -156,13 +157,13 @@ class TimeDragger(toolAbstractFactory):
         stepDragInfo = infoLabel([maya.stringTable['y_tb_timeDragger.stepDragInfo']])
 
         StepFramesWidget = intFieldWidget(optionVar=self.stepFrameCount_var,
-                                               defaultValue=1,
-                                               label='Step every x frames',
-                                               minimum=1, maximum=100, step=1)
+                                          defaultValue=1,
+                                          label='Step every x frames',
+                                          minimum=1, maximum=100, step=1)
         EvenOnlyOptionWidget = optionVarBoolWidget('Step on even frames only',
                                                    self.step_optionVar)
         unconstrainedOptionWidget = optionVarBoolWidget('Step ouside of playback range',
-                                                   self.step_unconstrained)
+                                                        self.step_unconstrained)
 
         self.layout.addWidget(snapOrderHeader)
         self.layout.addWidget(stepDragInfo)
@@ -194,8 +195,8 @@ class TimeDragger(toolAbstractFactory):
 
     def drag(self, state):
         self.update_options()
-        #print (self.get_previous_ctx())
-        #print ("state", state)
+        # print (self.get_previous_ctx())
+        # print ("state", state)
         cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=not state)
         if state:
             mel.eval('storeLastAction("restoreLastContext ' + self.get_previous_ctx() + '")')
@@ -237,7 +238,7 @@ class TimeDragger(toolAbstractFactory):
                 pass
             self.step = pm.optionVar.get(self.stepFrameCount_var, 1)
             self.even_only = pm.optionVar.get(self.step_optionVar, True)
-            #print ("step even", self.even_only)
+            # print ("step even", self.even_only)
             cmds.setToolTo(self.step_ctx)
         else:
             mel.eval('invokeLastAction')
@@ -283,9 +284,14 @@ class TimeDragger(toolAbstractFactory):
         self.initialPos = value
         self.start_time = cmds.currentTime(query=True)
 
+    def timeDragMouseMovedQuery(self, startPos, currentPos):
+        distance = currentPos - self.initialPos
+        step_destination = self.start_time + int(distance * 0.05) * 1  # self.step
+        return step_destination
+
     def timeDragMouseMoved(self, startPos, currentPos):
         distance = currentPos - self.initialPos
-        step_destination = self.start_time + int(distance * 0.05) * 1 #self.step
+        step_destination = self.start_time + int(distance * 0.05) * 1  # self.step
         if self.even_only:
             # snap to odd frames only
             step_destination = int(step_destination / 2) * 2 + 1
@@ -298,9 +304,11 @@ class TimeDragger(toolAbstractFactory):
         distance = currentPos - self.initialPos
         step_destination = self.start_time + (distance * 0.05)
         if pm.optionVar.get(self.step_unconstrained, False):
-            pm.setCurrentTime(step_destination)
+            # pm.setCurrentTime(step_destination)
+            om.MAnimControl.setCurrentTime(step_destination)
         else:
-            pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
+            om.MAnimControl.setCurrentTime(
+                max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
 
     def timeDragMouseWheel(self, value):
         pm.setCurrentTime(pm.currentTime(query=True) + value)
@@ -331,6 +339,146 @@ class TimeDragger(toolAbstractFactory):
         cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=True)
         cmds.currentTime(int(cmds.currentTime(query=True)))
 
+    def select_time_slider_range_start(self, start,
+                                       sliderWidget,
+                                       slider_height,
+                                       step):
+        app = QApplication.instance()
+
+        a_pos = QPoint((step * start), slider_height / 2.0)
+        # Trigger some mouse events on the Time Control
+        # Somehow we need to have some move events around
+        # it so the UI correctly understands it stopped
+        # clicking, etc.
+        # sliderWidget.blockSignals(True)
+        # cmds.refresh(su=True)
+        event = QMouseEvent(QEvent.MouseMove,
+                            a_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.NoModifier)
+        app.sendEvent(sliderWidget, event)
+
+        event = QMouseEvent(QEvent.MouseButtonPress,
+                            a_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.ShiftModifier)
+        app.sendEvent(sliderWidget, event)
+        event = QMouseEvent(QEvent.MouseButtonRelease,
+                            a_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.ShiftModifier)
+        app.sendEvent(sliderWidget, event)
+        app.processEvents()
+        # cmds.refresh(su=False)
+
+    def update_selected_time_slider_range(self, start, end,
+                                          sliderWidget,
+                                          slider_height,
+                                          step,
+                                          cls):
+        cls.isUpdating = True
+        try:
+            app = QApplication.instance()
+            print('update_', start, end)
+            a_pos = QPoint((step * start), slider_height / 2.0)
+            b_pos = QPoint((step * end) - step, slider_height / 2.0)
+            # Trigger some mouse events on the Time Control
+            # Somehow we need to have some move events around
+            # it so the UI correctly understands it stopped
+            # clicking, etc.
+            # sliderWidget.blockSignals(True)
+            # cmds.refresh(su=True)
+
+            event = QMouseEvent(QEvent.MouseMove,
+                                a_pos,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.NoModifier)
+            app.sendEvent(sliderWidget, event)
+
+            event = QMouseEvent(QEvent.MouseButtonPress,
+                                a_pos,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.ShiftModifier)
+            app.sendEvent(sliderWidget, event)
+
+            event = QMouseEvent(QEvent.MouseMove,
+                                b_pos,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.ShiftModifier)
+            app.sendEvent(sliderWidget, event)
+
+            event = QMouseEvent(QEvent.MouseButtonRelease,
+                                b_pos,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.MouseButton.MiddleButton,
+                                Qt.ShiftModifier)
+            app.sendEvent(sliderWidget, event)
+
+            app.processEvents()
+        finally:
+            cls.isUpdating = False
+        # sliderWidget.blockSignals(False)
+
+    def select_time_slider_range(self, start, end,
+                                 sliderWidget,
+                                 slider_height,
+                                 step):
+        app = QApplication.instance()
+
+        a_pos = QPoint((step * start), slider_height / 2.0)
+        b_pos = QPoint((step * end) - step, slider_height / 2.0)
+        # Trigger some mouse events on the Time Control
+        # Somehow we need to have some move events around
+        # it so the UI correctly understands it stopped
+        # clicking, etc.
+        # sliderWidget.blockSignals(True)
+        # cmds.refresh(su=True)
+
+        event = QMouseEvent(QEvent.MouseMove,
+                            a_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.NoModifier)
+        app.sendEvent(sliderWidget, event)
+
+        event = QMouseEvent(QEvent.MouseButtonPress,
+                            a_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.ShiftModifier)
+        app.sendEvent(sliderWidget, event)
+
+        event = QMouseEvent(QEvent.MouseMove,
+                            b_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.ShiftModifier)
+        app.sendEvent(sliderWidget, event)
+
+        event = QMouseEvent(QEvent.MouseButtonRelease,
+                            b_pos,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.MouseButton.MiddleButton,
+                            Qt.ShiftModifier)
+        app.sendEvent(sliderWidget, event)
+
+        event = QMouseEvent(QEvent.MouseMove,
+                            b_pos,
+                            Qt.MouseButton.LeftButton,
+                            Qt.MouseButton.LeftButton,
+                            Qt.NoModifier)
+        app.sendEvent(sliderWidget, event)
+        app.processEvents()
+        # cmds.refresh(su=False)
+        # sliderWidget.blockSignals(False)
+
+
 class TimeDragDialog(QDialog):
     mouseMovedSignal = Signal(float, float)
     mouseWheelSignal = Signal(float)
@@ -340,12 +488,21 @@ class TimeDragDialog(QDialog):
     bufferMin = 100
     bufferMax = 200
 
+    shiftKeyDown = False
+    shiftDownTime = None
+    isUpdating = False
+
     def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
         super(TimeDragDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
         self.keyPressHandler = None
 
+        self.minTime = None
+        self.maxTime = None
+        self.previousTime = None
+        self.lastUpdateTime = None
+        self.delta = None
         self.menuDict = menuDict
         self.parentMenu = parentMenu
         self.invokedKey = None
@@ -387,6 +544,17 @@ class TimeDragDialog(QDialog):
             self.app.installEventFilter(self.keyPressHandler)
 
     def show(self):
+        """Sow and initialize"""
+        widgetStr = mel.eval('$gPlayBackSlider=$gPlayBackSlider')
+        ptr = omui.MQtUtil.findControl(widgetStr)
+        self.slider = wrapInstance(long(ptr), QWidget)
+        min_time = cmds.playbackOptions(query=True, minTime=True)
+        max_time = cmds.playbackOptions(query=True, maxTime=True)
+        self.slider_width = self.slider.size().width()
+        self.slider_height = self.slider.size().height()
+        self.buffer = 6
+        self.slider_step = float(self.slider_width - self.buffer) / (max_time - min_time + 1)
+
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
         screens = QApplication.screens()
@@ -423,6 +591,10 @@ class TimeDragDialog(QDialog):
         self.setFocus()
         self.openedSignal.emit(self.cursorPos.x())
 
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ShiftModifier:
+            self.shiftKeyPressed()
+
     def hide(self):
         super(TimeDragDialog, self).hide()
 
@@ -437,7 +609,6 @@ class TimeDragDialog(QDialog):
         xOffset = 10  # border?
         self.cursorPos = QPoint(self.cursorPos.x() - self.screenGeo.left(), self.cursorPos.y() - self.screenGeo.top())
         self.move(self.screenGeo.left(), self.screenGeo.top())
-
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -463,6 +634,10 @@ class TimeDragDialog(QDialog):
         qp.end()
 
     def mouseMoveEvent(self, event):
+        if self.isUpdating:
+            return
+        currentTime = cmds.currentTime(query=True)
+        if not self.lastUpdateTime: self.lastUpdateTime = cmds.currentTime(query=True)
         if QCursor.pos().x() < self.screenGeo.left() + self.bufferMin:
             QCursor.setPos(self.screenGeo.left() + self.width() - self.bufferMax, QCursor.pos().y())
             self.updateInitialSignal.emit(QCursor.pos().x())
@@ -473,32 +648,84 @@ class TimeDragDialog(QDialog):
 
         self.currentCursorPos = QCursor.pos()
 
-        self.mouseMovedSignal.emit(self.cursorPos.x(), QCursor.pos().x())
+        updateTime = cmds.currentTime(query=True)
+        # print (currentTime, updateTime)
+        delta = updateTime - currentTime
+
+        if self.lastUpdateTime:
+            self.delta = currentTime - self.lastUpdateTime
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ShiftModifier:
+            self.shiftKeyPressed()
+        resultTime = TimeDragger().timeDragMouseMovedQuery(self.cursorPos.x(), QCursor.pos().x())
+        if self.shiftKeyDown:
+            delta = resultTime - self.lastUpdateTime
+            # print('l', self.lastUpdateTime, 'r', resultTime)
+            # print ('delta', delta)
+
+            if abs(int(delta)) > 0:
+                print('move', delta, currentTime, updateTime)
+
+                TimeDragger().update_selected_time_slider_range(self.shiftDownTime,
+                                                                resultTime,
+                                                                self.slider,
+                                                                self.slider_height,
+                                                                self.slider_step,
+                                                                self)
+                cmds.currentTime(resultTime)
+        else:
+            self.mouseMovedSignal.emit(self.cursorPos.x(), QCursor.pos().x())
+
+        # TODO - gotta do an update version, which drags from the last updated position
+
+        self.previousTime = cmds.currentTime(query=True)
+        self.lastUpdateTime = float(resultTime)
 
     def mousePressEvent(self, event):
         # print ('mousePressEvent', event)
         event.accept()
 
-    def tabletEvent(self, e):
-        print(e.pressure())
+    # def tabletEvent(self, e):
+    #     print(e.pressure())
 
     def keyPressEvent(self, event):
+
         if event.type() == event.KeyPress:
             if self.recentlyOpened:
-                if event.key() is not None:
+                if event.key() is not None and event.key() != Qt.Key_Shift:
                     self.invokedKey = event.key()
                     self.recentlyOpened = False
 
         if not self.invokedKey or self.invokedKey == event.key():
             return
         super(TimeDragDialog, self).keyPressEvent(event)
+        if event.key() == Qt.Key_Shift:
+            self.shiftKeyPressed()
 
+    def shiftKeyPressed(self):
+        if not self.shiftKeyDown:
+            self.shiftKeyDown = True
+            self.shiftDownTime = cmds.currentTime(query=True)
+            self.minTime = cmds.currentTime(query=True)
+            self.maxTime = cmds.currentTime(query=True)
+            TimeDragger().select_time_slider_range_start(self.minTime,
+                                                         self.slider,
+                                                         self.slider_height,
+                                                         self.slider_step)
     def keyReleaseEvent(self, event):
         if event.isAutoRepeat():
             return
-        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
-            if not self.invokedKey or self.invokedKey == event.key():
-                self.close()
+        if event.key() == Qt.Key_Shift:
+            if self.shiftKeyDown:
+                self.shiftKeyDown = False
+                self.minTime = None
+                self.maxTime = None
+                self.previousTime = None
+                print('key released')
+                return
+            # self.close()
+        elif not self.invokedKey or self.invokedKey == event.key():
+            self.close()
 
     def wheelEvent(self, event):
         if event.delta() > 0:
@@ -507,3 +734,16 @@ class TimeDragDialog(QDialog):
             value = 1
         self.mouseWheelSignal.emit(value)
 
+
+'''
+import tb_functions as tbf
+reload(tbf)
+funcs = tbf.functions()
+import tb_timeDragger as drg
+reload(drg)
+acls = drg.TimeDragger()
+acls.funcs = tbf.functions()
+acls.allTools = tbtoolCLS
+tbtoolCLS = ClassFinder()
+tbtoolCLS.tools[acls.toolName] = acls
+'''

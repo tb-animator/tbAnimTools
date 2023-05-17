@@ -156,6 +156,8 @@ class QuickSelectionTools(toolAbstractFactory):
         if not sel:
             sel = cmds.ls(sl=True)
         if not sel:
+            return
+        elif ':' not in sel[0]:
             namespace = ':'
         else:
             namespace = sel[0].rsplit(':', 1)[0] + ':'

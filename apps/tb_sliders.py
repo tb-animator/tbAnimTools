@@ -1033,6 +1033,7 @@ class SlideTools(toolAbstractFactory):
 
         if any([isinstance(x, CollapsibleBox) for x in widgets]):
             return
+        # print ('modding graphEditor')
         graphEditKeyWidget = GraphEdKeySliderWidget()
         graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
         graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
@@ -1087,7 +1088,7 @@ class SlideTools(toolAbstractFactory):
                 index += 1
                 buttonList.append(list())
             buttonList[-1].append(x)
-        buttonList[2][0].objectName()
+
         collapsedWidgets = list()
         for index, grp in enumerate(buttonList):
             optionVarName = grp[0].objectName() + '_collapseState'
@@ -1115,6 +1116,7 @@ class SlideTools(toolAbstractFactory):
             cBox.setContentLayout(cBoxLayout)
 
             layout.addWidget(cBox)
+            # layout.resize(layout.sizeHint())
         for widget in collapsedWidgets:
             widget.show()
         # print ('added a slider')

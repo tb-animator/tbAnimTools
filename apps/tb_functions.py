@@ -848,7 +848,6 @@ class functions(object):
             cmds.connectAttr(targets[index] + '.message', asset + '.' + attribute + '[%s]' % index)
 
     def bookEndLayerWeight(self, layer, startTime, endTime):
-        print ('layer', layer)
         '''
         timelineRange = self.getTimelineRange()
         if int(timelineRange[0]) == int(startTime) and int(timelineRange[-1]) == int(endTime):

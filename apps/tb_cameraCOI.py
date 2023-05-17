@@ -346,6 +346,7 @@ class CameraPivot(toolAbstractFactory):
 
     def createCameraPivotScriptJob(self):
         self.removePivotScriptJobs()
+        '''
         if self.SomethingSelectedScriptJob != -1:
             self.SomethingSelectedScriptJob = (cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt)))
         if self.DragReleaseScriptJob != -1:
@@ -354,3 +355,4 @@ class CameraPivot(toolAbstractFactory):
             self.ModelPanelSetFocusScriptJob = (cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt)))
         if self.playbackModeChangedScriptJob != -1:
             self.playbackModeChangedScriptJob = (cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt)))
+        '''

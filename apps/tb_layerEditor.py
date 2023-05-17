@@ -63,7 +63,16 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      help=maya.stringTable['tbCommand.toggleLayerWeight'],
                                      command=['LayerEditor.toggleLayerWeight()']))
-
+        self.addCommand(self.tb_hkey(name='setLayerWeightZero',
+                                     annotation='',
+                                     category=self.category,
+                                     help=maya.stringTable['tbCommand.toggleLayerWeight'],
+                                     command=['LayerEditor.setLayerWeightFromTimeline(value=0)']))
+        self.addCommand(self.tb_hkey(name='setLayerWeightOne',
+                                     annotation='',
+                                     category=self.category,
+                                     help=maya.stringTable['tbCommand.toggleLayerWeight'],
+                                     command=['LayerEditor.setLayerWeightFromTimeline(value=1)']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -379,6 +388,18 @@ class LayerEditor(toolAbstractFactory):
         cmds.setKeyframe('{0}.weight'.format(layers[-1]))
         cmds.keyTangent('{0}.weight'.format(layers[-1]), inTangentType='flat', outTangentType='flat')
 
+    def setLayerWeightFromTimeline(self, value=1):
+        layers = self.funcs.get_selected_layers()
+        if not layers:
+            return
+        if layers[-1] == 'BaseAnimation':
+            return
+        timeRange = [cmds.currentTime(query=True)]
+        if self.funcs.isTimelineHighlighted():
+            timeRange = self.funcs.getTimelineHighlightedRange()
+        for time in timeRange:
+            cmds.setKeyframe('{0}.weight'.format(layers[-1]), time=time, value=value)
+            cmds.keyTangent('{0}.weight'.format(layers[-1]), inTangentType='flat', outTangentType='flat')
 
     def setLayerWeightNoRefresh(self, layers, weight):
         for layer in layers:
@@ -411,7 +432,7 @@ class LayerEditor(toolAbstractFactory):
         self.refreshHack()
         self.setLayerWeight(layers, 1.0)
 
-    def bookEndLayerWeight(self, layer, startTime, endTime):
+    def bookEndLayerWeight(self, layer, startTime, endTime, innerValue=1, outerValue=0):
         cmds.setKeyframe('{0}.weight'.format(layer), value=0.0, time=startTime - 1, inTangentType='flat',
                          outTangentType='flat')
         cmds.setKeyframe('{0}.weight'.format(layer), value=1.0, time=startTime, inTangentType='flat',

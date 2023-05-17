@@ -92,11 +92,6 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='setTangentsFlat',
                                      annotation='Sets your current key selection or timeline key to flat',
                                      category=self.category, command=['KeyModifiers.setTangentsFlat()']))
-        '''
-        self.addCommand(self.tb_hkey(name='toggleDockedGraphEditor',
-                                     annotation='Toggle the collapsed state of the graph editor - if docked',
-                                     category=self.category, command=['KeyModifiers.toggleDockedGraphEd()']))
-        '''
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
                                      category=self.category, command=['KeyModifiers.level()']))

@@ -308,7 +308,9 @@ class ViewModeTool(toolAbstractFactory):
                          xray=not cmds.modelEditor(panel, query=True, xray=True))
 
     def toggleDockedGraphEd(self):
-        self.funcs.toggleDockedGraphEd()
+        with self.funcs.undoNoQueue():
+            self.funcs.toggleDockedGraphEd()
+            self.allTools.tools['GraphEditor'].loadGraphEditorModifications()
 
     def toggleMenuBarVisibility(self):
         state = int(pm.optionVar['mainWindowMenubarVis'])

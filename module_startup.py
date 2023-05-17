@@ -70,4 +70,6 @@ class initialise(object):
         #mutils.executeDeferred('import apps.tb_keyCommands as tb_hotKeys;keyLoader = tb_hotKeys.tbToolLoader();keyLoader.assignHotkeysFromLoadedClasses()')
         # camera pivot update
         mutils.executeDeferred('import maya.mel as mel')
-        mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')
+
+        # mutils.executeDeferred('import maya.mel as mel; mel.eval("createToolbar")')
+        # mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')

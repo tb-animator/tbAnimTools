@@ -113,7 +113,7 @@ class GraphEditor(toolAbstractFactory):
         return None
 
     def deferredLoad(self):
-        self.deferredLoadJob = cmds.scriptJob(event=('graphEditorChanged', self.loadGraphEditorModifications))
+        self.deferredLoadJob = cmds.scriptJob(event=('graphEditorChanged', self.loadGraphEditorModifications), runOnce=True)
 
     def loadGraphEditorModifications(self, *args):
         ge = cmds.getPanel(scriptType="graphEditor")
