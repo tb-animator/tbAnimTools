@@ -2160,7 +2160,7 @@ class DragButton(QLabel):
         self.uiParent = uiParent
         self.masterDragger = masterDragger
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-        self.setFixedSize(20, 20)
+        self.setFixedSize(20 * dpiScale(), 20 * dpiScale())
         self.halfWidth = (0.5 * self.width())
         self.baseIcon = QPixmap(os.path.join(IconPath, baseIcon))
         self.hoverIcon = QPixmap(os.path.join(IconPath, hoverIcon))
@@ -2406,7 +2406,7 @@ class DragButton(QLabel):
 
 class sliderBar(QLabel):
     uiParent = None
-    barWidth = 303
+    barWidth = 303 * dpiScale()
 
     def __init__(self, uiParent, width):
         QLabel.__init__(self)
@@ -2559,11 +2559,11 @@ class sliderWidget(QWidget):
         self.mediumAnchorPositions = list()
         self.smallAnchorPositions = list()
         self.tweenClass = None
-        self.barWidth = 302
+        self.barWidth = 302 * dpiScale()
         self.largeAnchorPositions = largeAnchors
         self.mediumAnchorPositions = mediumAnchors
         self.smallAnchorPositions = smallAnchors
-        self.setFixedSize(500, 64)
+        self.setFixedSize(500 * dpiScale(), 64 * dpiScale())
         self.mainLayout = QHBoxLayout(self)
         # self.setStyleSheet('QWidget{margin-left:-1px;}')
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -2699,7 +2699,7 @@ class sliderWidget(QWidget):
         qp.setRenderHint(QPainter.Antialiasing)
         # qp.setCompositionMode(qp.CompositionMode_Source)
         # qp.setCompositionMode(qp.CompositionMode_Darken)
-        qp.drawRoundedRect(QRect(0, 0, 321, 52), 4, 4)
+        qp.drawRoundedRect(QRect(0, 0, 321 * dpiScale(), 52 * dpiScale()), 4, 4)
 
         # qp.setCompositionMode(qp.CompositionMode_Clear)
 
@@ -3264,7 +3264,7 @@ class SliderWidget(BaseDialog):
         self.recentlyOpened = False
         self.invokedKey = None
         self.modeList = modeList
-        self.setFixedSize(270, 60)
+        self.setFixedSize(270 * dpiScale(), 60 * dpiScale())
         self.setWindowOpacity(0.9)
         #
         if not showInfo:
@@ -3326,7 +3326,7 @@ class SliderWidget(BaseDialog):
         self.comboBox.currentIndexChanged.connect(self.modeChanged)
         width = self.comboBox.minimumSizeHint().width()
         self.comboBox.view().setMinimumWidth(width)
-        self.comboBox.setMinimumWidth(width + 16)
+        self.comboBox.setMinimumWidth((width + 16) * dpiScale())
         # self.resize(self.sizeHint())
         self.setFocusPolicy(Qt.StrongFocus)
         self.infoText.setText(self.baseLabel)
@@ -3334,6 +3334,7 @@ class SliderWidget(BaseDialog):
         # emit the mode change signal to load the labels
         self.modeChangedSignal.emit(self.currentMode)
         self.overlayLabel.move(20, self.height() - 20)
+        self.setFixedSize(270 * dpiScale(), self.sizeHint().height())
 
     def show(self):
         super(SliderWidget, self).show()
@@ -3437,6 +3438,7 @@ class SliderWidget(BaseDialog):
             self.sliderReleased(cancel=True)
         if event.button() == Qt.LeftButton:
             self.restoreSlider()
+        super(SliderWidget, self).mousePressEvent(event)
 
     def sliderValueChanged(self):
         if self.slider_2.value() > self.slider_2.maximum() * 0.6:
@@ -3467,7 +3469,7 @@ class SliderWidget(BaseDialog):
                                 click_pos,
                                 Qt.MouseButton.LeftButton,
                                 Qt.MouseButton.LeftButton,
-                                Qt.Modifier)
+                                Qt.NoModifier)
             QApplication.instance().sendEvent(self, event)
             self.slider_2.setEnabled(False)
             # self.slider_2.clearFocus()

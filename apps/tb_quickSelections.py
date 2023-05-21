@@ -132,7 +132,7 @@ class QuickSelectionTools(toolAbstractFactory):
         quickSelectOnQssWidget = optionVarBoolWidget('Quick select selection only on sets named _qss',
                                                      self.quickSelectOnQssSuffix)
         quickSelectIgnoreListWidget = optionVarStringListWidget('Ignore lists with suffix (separate multiple with ;)',
-                                                     self.quickSelectionIgnore)
+                                                                self.quickSelectionIgnore)
 
         self.layout.addWidget(dirWidget)
         self.layout.addWidget(quickSelectOnQssWidget)
@@ -195,7 +195,7 @@ class QuickSelectionTools(toolAbstractFactory):
             all_sets.remove(s)
 
         for qs_name in all_sets:
-            #if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
+            # if cmds.sets(qs_name, query=True, text=True) == 'gCharacterSet':
             self.addColourAttribute(qs_name)
             qs_sets.append(qs_name)
 
@@ -324,28 +324,23 @@ class QuickSelectionTools(toolAbstractFactory):
         dialog.acceptedCBSignal.connect(self.getSaveQssSignal)
 
     def getSaveQssSignal(self, name, quick, mirror):
+        """
+
+        :param name:
+        :param quick:
+        :param mirror:
+        :return:
+        """
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected')
         if name:
             self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
 
-        opposites = list()
-        if not mirror:
-            return
-        return cmds.warning('Mirror function temporarily disabled! Check back soon')
         MirrorTools = self.allTools.tools['MirrorTools']
-        CharacterTool = self.allTools.tools['CharacterTool']
-        for s in sel:
-            refName = self.funcs.getRefNameFromTopParent(s)
-            CharacterTool.loadCharacter(refName)
-            mirrorControl = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refName], s)
-            if mirrorControl != s:
-                opposites.append(mirrorControl)
-            else:
-                opposites.append(self.funcs.getOppositeControl(s))
+        mirrorControls = MirrorTools.splitControls(sel)
+        opposites = [x[1] for x in mirrorControls]
         if opposites:
-            print ('opposites[-1]', opposites[-1])
             self.save_qs(opposites[-1], opposites, colour=self.funcs.getControlColour(opposites[-1]))
 
     def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
@@ -363,17 +358,24 @@ class QuickSelectionTools(toolAbstractFactory):
             newSetNamespace = pm.PyNode(existing_obj[0]).namespace()
             if newSetNamespace:
                 qs_name = newSetNamespace + ':' + qs_name
-            if cmds.objExists(qs_name):
-                if cmds.nodeType(qs_name) == 'objectSet':
-                    cmds.delete(qs_name)
+            if qs_name.startswith(':'):
+                qs_name = qs_name[1:]
+
+
             if quick:
                 if not qs_name.endswith(QSS_Suffix):
                     qs_name += QSS_Suffix
+
+            if cmds.objExists(qs_name):
+                if cmds.nodeType(qs_name) == 'objectSet':
+                    # TODO - maybe add a query to replace here?
+                    cmds.delete(qs_name)
+
             qs = cmds.sets(name=qs_name, text="gCharacterSet")
             # print ('qs', qs)
             self.getSetColour(qs)
 
-            self.setSetColourFromUI(qs, colour[0]/255.0, colour[1]/255.0, colour[2]/255.0)
+            self.setSetColourFromUI(qs, colour[0] / 255.0, colour[1] / 255.0, colour[2] / 255.0)
             cmds.select(qs, replace=True)
             cmds.sets(qs, addElement=self.create_main_set())
             cmds.select(pre_sel, replace=True)
@@ -540,7 +542,8 @@ class QuickSelectionTools(toolAbstractFactory):
         self.timer.stop()
         self.markingMenuWidget.close()
         self.markingMenuWidget.setVisible(False)
-        self.qs_select()
+        if not self.markingMenuWidget.hasExecutedCommand:
+            self.qs_select()
 
     def build_MM(self, parentMenu=None):
         menuDict = {'NE': list(),
@@ -587,7 +590,7 @@ class QuickSelectionTools(toolAbstractFactory):
         for mset in matchedSets:
             setColour = self.getSetColoursForUI(mset)
 
-            button = ToolboxButton(label='A', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+            button = ToolboxButton(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
                                    command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
                                    closeOnPress=False,
                                    icon=':\create.png',
@@ -615,7 +618,7 @@ class QuickSelectionTools(toolAbstractFactory):
         for mset in unmatchedSets:
             setColour = self.getSetColoursForUI(mset)
 
-            button = ToolboxButton(label='+', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
+            button = ToolboxButton(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
                                    command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
                                    closeOnPress=False,
                                    icon=':\create.png',

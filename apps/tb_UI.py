@@ -57,6 +57,11 @@ helpPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Help')
 baseIconFile = 'checkBox.png'
 
 
+def dpiScale():
+    dpi_scale_factor = QApplication.primaryScreen().logicalDotsPerInch() / 96.0
+    return dpi_scale_factor
+
+
 def adjust_color_lightness(r, g, b, factor):
     h, l, s = rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
     l = max(min(l * factor, 1.0), 0.0)
@@ -285,7 +290,7 @@ class ViewportDialog(QDialog):
 
         self.recentlyOpened = False
         self.activeButton = None
-        self.centralRadius = 16
+        self.centralRadius = 16 * dpiScale()
         self.scalar = math.cos(math.radians(45)) * self.centralRadius
         self.allButtons = list()
         self.widgets = {'NE': list(),
@@ -327,7 +332,7 @@ class ViewportDialog(QDialog):
         self.tooltipEnabled = True
 
     def returnButtonHovered(self):
-        print ('returnButtonHovered')
+        print('returnButtonHovered')
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -515,10 +520,10 @@ class ViewportDialog(QDialog):
         shadowGrad.setColorAt(1, centralColourFade)
         qp.setPen(QPen(QBrush(empty), 0))
         qp.setBrush(QBrush(shadowGrad))
-        qp.drawEllipse(self.cursorPos.x() - 300,
-                       self.cursorPos.y() - 300,
-                       600,
-                       600)
+        qp.drawEllipse(self.cursorPos.x() - (300 * dpiScale()),
+                       self.cursorPos.y() - (300 * dpiScale()),
+                       600 * dpiScale(),
+                       600 * dpiScale())
 
         # central dot
         qp.setBrush(QBrush(lineColor))
@@ -655,7 +660,7 @@ class ReturnButton(QPushButton):
     def __init__(self, label, parent, cls=None, closeOnPress=True, radial=False):
         super(ReturnButton, self).__init__(label, parent)
         self.setIcon(QIcon(':\polySpinEdgeBackward.png'))
-        self.setFixedSize(32, 32)
+        self.setFixedSize(32 * dpiScale(), 32 * dpiScale())
         self.cls = cls
         self.radial = radial
         self.closeOnPress = closeOnPress
@@ -749,7 +754,7 @@ class ToolboxButton(QPushButton):
         self.executeOnHover = True
         self.subMenu = subMenu  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
-        self.setFixedSize(48, 22)
+        self.setFixedSize(48 * dpiScale(), 22 * dpiScale())
         self.executed = False
         self.labelText = label
         self.cls = cls
@@ -760,13 +765,13 @@ class ToolboxButton(QPushButton):
         self.setMouseTracking(True)
         self.popupSubMenu = popupSubMenu
         self.pop_up_window = None
-        fontWidth = self.fontMetrics().boundingRect(self.text()).width() + 16
-        fontHeight = self.fontMetrics().boundingRect(self.text()).height() + 8
+        fontWidth = self.fontMetrics().boundingRect(self.text()).width() + (16 * dpiScale())
+        fontHeight = self.fontMetrics().boundingRect(self.text()).height() + (8 * dpiScale())
 
         if fixedWidth:
-            fontWidth = fixedWidth + 16
+            fontWidth = fixedWidth + (16 * dpiScale())
         if icon:
-            fontWidth += iconWidth
+            fontWidth += (iconWidth * dpiScale())
         self.setText(str())
 
         if popupSubMenu:
@@ -778,10 +783,14 @@ class ToolboxButton(QPushButton):
             self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:
             self.pixmap = QPixmap()
+
         if isSmall:
-            self.setFixedSize(22, 22)
+            self.setFixedSize(22 * dpiScale(), 22 * dpiScale())
         else:
-            self.setFixedSize(max(32, ((fontWidth / 64.0) * 64) + 64), fontHeight)
+            minVal = 32 * dpiScale()
+            scaleVar = 64.0 * dpiScale()
+            maxVal = ((fontWidth / scaleVar) * scaleVar) + scaleVar
+            self.setFixedSize(max(minVal, maxVal), fontHeight)
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     def setPopupMenu(self, menuClass):
@@ -796,7 +805,7 @@ class ToolboxButton(QPushButton):
         :param pos:
         :return:
         """
-        pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
+        pop_up_pos = self.mapToGlobal(QPoint(8* dpiScale(), self.height() + 8* dpiScale()))
         if self.pop_up_window:
             self.pop_up_window.move(pop_up_pos)
 
@@ -987,7 +996,7 @@ class ToolboxDoubleButton(QWidget):
         self.hideLabel = hideLabel
         self.colour = colour
         self.colourDark = colourDark
-        self.setFixedHeight(22)
+        self.setFixedHeight(22 * dpiScale())
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setSpacing(0)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -3054,6 +3063,7 @@ class radioGroupVertical(object):
             if button.isChecked() == True:
                 pm.optionVar[self.optionVar] = button.text()
 
+
 class radioGroupVertical(object):
     layout = None
     optionVar = None
@@ -3547,7 +3557,7 @@ class SimpleIconButton(QPushButton):
     def __init__(self, toolTip='Save', text='blank', width=32, height=32, icon=":/save.png"):
         super(SimpleIconButton, self).__init__()
         # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
-        #self.setFixedSize(width, height)
+        # self.setFixedSize(width, height)
 
         pixmap = QPixmap(icon)
         icon = QIcon(pixmap)
@@ -3621,7 +3631,7 @@ class ToolButton(QPushButton):
             cmds.shelfButton(shelfButton, e=True, command=self.command, sourceType=self.sourceType)
             return
         elif modifiers == Qt.AltModifier:
-            print ('assign hotkey')
+            print('assign hotkey')
             return
         return super(ToolButton, self).mousePressEvent(event)
 
