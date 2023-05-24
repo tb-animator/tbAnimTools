@@ -102,7 +102,8 @@ class SnapTools(toolAbstractFactory):
     funcs = None
 
     transformTranslateDict = dict()
-    relativeTransformDict = dict()
+    transformClipboard = dict()
+    relativeTransformClipboard = dict()
     relativeTransformLastParent = str()
     relativeTransformLastControls = list()
     transformRotateDict = dict()
@@ -123,6 +124,45 @@ class SnapTools(toolAbstractFactory):
     def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
+
+    def loadData(self):
+        super(SnapTools, self).loadData()
+        self.transformClipboard = self.rawJsonData.get('transformClipboard', dict())
+        self.relativeTransformClipboard = self.rawJsonData.get('relativeTransformClipboard', dict())
+        self.transformTranslateDict = self.rawJsonData.get('transformTranslateDict', dict())
+        self.transformRotateDict = self.rawJsonData.get('transformRotateDict', dict())
+        self.transformMatrixDict = self.rawJsonData.get('transformMatrixDict', dict())
+
+    def toJson(self):
+        jsonData = '''{}'''
+        self.classData = json.loads(jsonData)
+        self.classData['relativeTransformClipboard'] = dict()
+        self.classData['transformTranslateDict'] = dict()
+        self.classData['transformRotateDict'] = dict()
+        self.classData['transformMatrixDict'] = dict()
+        self.classData['relativeTransformLastParent'] = parent
+        self.classData['relativeTransformLastControls'] = targets
+
+        for key, value in self.transformClipboard.items():
+            value = [value(i, j) for i in range(4) for j in range(4)]
+            self.classData['transformClipboard'][key] = value
+
+        for key, value in self.transformTranslateDict.items():
+            # value = [value(i, j) for i in range(4) for j in range(4)]
+            self.classData['transformTranslateDict'][key] = value
+
+        for key, value in self.transformRotateDict.items():
+            # value = [value(i, j) for i in range(4) for j in range(4)]
+            self.classData['transformRotateDict'][key] = value
+
+        for key, value in self.transformMatrixDict.items():
+            # value = [value(i, j) for i in range(4) for j in range(4)]
+            self.classData['transformMatrixDict'][key] = value
+
+        for key, value in self.relativeTransformClipboard.items():
+            self.classData['relativeTransformClipboard'][key] = dict()
+            for subKey, v in value.items():
+                self.classData['relativeTransformClipboard'][key][subKey] = [x for x in v]
 
     """
     Declare an interface for operations that create abstract product
@@ -221,7 +261,7 @@ class SnapTools(toolAbstractFactory):
             pm.xform(original, rotateOrder=node_ro, preserve=True)
 
     def init_relative_transform_key(self, key):
-        self.relativeTransformDict[key] = self.relativeTransformDict.get(key, dict())
+        self.relativeTransformClipboard[key] = self.relativeTransformClipboard.get(key, dict())
 
     def store_relative_transform(self):
         sel = cmds.ls(selection=True)
@@ -237,9 +277,12 @@ class SnapTools(toolAbstractFactory):
         parentMatrix = om2.MMatrix(self.get_world_matrix(parent))
         for target in targets:
             targetMatrix = om2.MMatrix(self.get_world_matrix(target))
-            self.relativeTransformDict[parent][target] = targetMatrix * parentMatrix.inverse()
+            self.relativeTransformClipboard[parent][target] = targetMatrix * parentMatrix.inverse()
+
         self.relativeTransformLastParent = parent
         self.relativeTransformLastControls = targets
+
+        self.saveData()
 
     def restore_relative_transform_for_target(self):
         sel = cmds.ls(selection=True)
@@ -269,6 +312,7 @@ class SnapTools(toolAbstractFactory):
             self.restore_relative_transform(parent, sel)
 
     def restore_relative_transform(self, parent, targets):
+        self.loadData()
         channels = self.funcs.getChannels()
         #print ('channels', channels)
         self.init_relative_transform_key(parent)
@@ -286,9 +330,10 @@ class SnapTools(toolAbstractFactory):
             tempConstraints = list()
             parentMatrix = om2.MMatrix(self.get_world_matrix(parent))
             for target in targets:
-                targetMatrix = self.relativeTransformDict[parent].get(target, None)
+                targetMatrix = self.relativeTransformClipboard[parent].get(target, None)
                 if not targetMatrix:
                     continue
+                targetMatrix = om2.MMatrix(targetMatrix)
                 if constrain:
                     tempNode, tempConstraint = self.set_transform(target, targetMatrix * parentMatrix,
                                                                   channels=channels)
@@ -304,23 +349,28 @@ class SnapTools(toolAbstractFactory):
         sel = cmds.ls(selection=True)
         if not sel:
             return
+        pos = list()
+        rot = list()
+        mtx = list()
         for s in sel:
             pos = self.get_world_space(s)
             rot = self.get_world_rotation(s)
             mtx = self.funcs.getMatrix(s)
-            self.transformTranslateDict[s] = pos
-            self.transformRotateDict[s] = rot
-            self.transformMatrixDict[s] = mtx
+            self.transformTranslateDict[s] = [x for x in pos]
+            self.transformRotateDict[s] = [x for x in rot]
+            self.transformMatrixDict[s] = [x for x in mtx]
 
-        self.transformTranslateDict['LASTUSED'] = pos
-        self.transformRotateDict['LASTUSED'] = rot
-        self.transformMatrixDict['LASTUSED'] = mtx
-        pass
+        self.transformTranslateDict['LASTUSED'] = [x for x in pos]
+        self.transformRotateDict['LASTUSED'] = [x for x in rot]
+        self.transformMatrixDict['LASTUSED'] = [x for x in mtx]
+
+        self.saveData()
 
     def restore_transform(self):
         sel = cmds.ls(selection=True)
         if not sel:
             return
+        self.loadData()
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
             for x in range(int(startTime), int(endTime)):
@@ -333,9 +383,9 @@ class SnapTools(toolAbstractFactory):
         if len(sel) == 1:
             pos = self.transformTranslateDict.get('LASTUSED', None)
             rot = self.transformRotateDict.get('LASTUSED', None)
-            storedMtx = self.transformMatrixDict.get('LASTUSED', None)
-            postMtx = self.funcs.getMatrix(sel[0])
-            parentMtx = self.funcs.getMatrix(sel[0], matrix='parentMatrix')
+            storedMtx = om2.MMatrix(self.transformMatrixDict.get('LASTUSED', None))
+            postMtx = om2.MMatrix(self.funcs.getMatrix(sel[0]))
+            parentMtx = om2.MMatrix(self.funcs.getMatrix(sel[0], matrix='parentMatrix'))
 
             pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
             if rot:
@@ -352,7 +402,7 @@ class SnapTools(toolAbstractFactory):
         for s in sel:
             pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
             rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
-            storedMtx = self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None))
+            storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))
             if rot:
                 #self.set_world_rotation(s, rot)
                 postMtx = self.funcs.getMatrix(s)

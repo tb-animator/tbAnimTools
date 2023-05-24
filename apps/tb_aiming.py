@@ -199,6 +199,10 @@ class AimTools(toolAbstractFactory):
                                                      self.aimUpMotionTrailOption)
         aimTempMotionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Control',
                                                        self.aimTempMotionTrailOption)
+        formLayout = QFormLayout()
+        formLayout.addRow(aimFwdMotionTrailWidget.labelText, aimFwdMotionTrailWidget.checkBox)
+        formLayout.addRow(aimUpMotionTrailWidget.labelText, aimUpMotionTrailWidget.checkBox)
+        formLayout.addRow(aimTempMotionTrailWidget.labelText, aimTempMotionTrailWidget.checkBox)
 
         self.aimWidget.itemLayout.addStretch()
         self.layout.addWidget(infoText)
@@ -208,9 +212,7 @@ class AimTools(toolAbstractFactory):
         self.layout.addWidget(crossSizeWidget)
         self.layout.addWidget(motionTrailHeader)
         self.layout.addWidget(motionTrailInfo)
-        self.layout.addWidget(aimFwdMotionTrailWidget)
-        self.layout.addWidget(aimUpMotionTrailWidget)
-        self.layout.addWidget(aimTempMotionTrailWidget)
+        self.layout.addLayout(formLayout)
         self.layout.addStretch()
         self.aimWidget.editedSignal.connect(self.updateDefault)
         return self.optionWidget

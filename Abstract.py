@@ -6,6 +6,7 @@ import pymel.core as pm
 import maya.mel as mel
 import json
 import textwrap
+import shutil
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -23,9 +24,10 @@ import maya.cmds as cmds
 from apps.tb_functions import functions
 import tb_helpStrings
 from apps.tb_UI import *
-
+import apps.tb_fileTools as ft
 # compatible with Python 2 *and* 3:
 ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
+
 
 
 class hotKeyAbstractFactory(ABC):
@@ -126,6 +128,7 @@ class toolAbstractFactory(ABC):
 
     bookendBakeOption = 'tbBookendBake'
     bookendBakeHighlightOption = 'tbBookendBakeHighlight'
+    mainDataOption = 'tb_mainDataOption'
 
     def __new__(cls):
         if toolAbstractFactory.__instance is None:
@@ -165,9 +168,10 @@ class toolAbstractFactory(ABC):
         return None
 
     def initData(self):
-        self.dataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
+        baseDataPath = pm.optionVar.get(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        self.dataPath = os.path.join(baseDataPath, 'appData')
         if not os.path.isdir(self.dataPath):
-            os.mkdir(self.dataPath)
+            os.makedirs(self.dataPath)
         self.dataFile = os.path.join(self.dataPath, self.toolName + '.json')
 
     def toJson(self):
@@ -186,6 +190,44 @@ class toolAbstractFactory(ABC):
 
         jsonFile.write(jsonString)
         jsonFile.close()
+
+    def revertAppData(self):
+        pm.optionVar['mainDataOption'] = os.path.normpath(os.path.dirname(__file__))
+        mel.eval('SavePreferences')
+        raiseOk('appData location reverted to default/n'
+                'RESTART MAYA NOW',
+                title='RESTART MAYA NOW')
+
+    def copyAppData(self):
+        """
+        Copy the appData folder to a nother location
+        :return:
+        """
+        print ('copying')
+        baseDataPath = pm.optionVar.get(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        dataPath = os.path.join(baseDataPath, 'appData')
+        selected_directory = ft.selectDirectory(baseDataPath)
+        if not selected_directory:
+            return
+        if selected_directory == self.dataPath:
+            return cmds.warning('Cannot copy to that location')
+        # get the subfolder appData
+        result_directory = os.path.join(selected_directory, 'appData')
+        # copy the whole existing folder structure to the new location
+        try:
+            shutil.copytree(dataPath, result_directory)
+            # set the current data path to the new location
+            self.dataPath = selected_directory
+            # set the option variable and save preferences
+            pm.optionVar[self.mainDataOption] = selected_directory
+            mel.eval('SavePreferences')
+        except:
+            raiseError('Failed to copy appData folder to new location')
+            return
+        finally:
+            raiseOk('Copied appData folder to new location RESTART MAYA NOW',
+                    title='RESTART MAYA NOW')
+
 
     def loadData(self):
         self.initData()

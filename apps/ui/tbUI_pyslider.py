@@ -19,7 +19,7 @@ sliderStyleSheet = """
 QSlider {{ margin: 0px;
  height: 20px;
  border: 1px solid #2d2d2d;
- border-radius: 5px;
+ border-radius: 5px;`
  }}
 QSlider::groove:horizontal {{
     height: 20px;

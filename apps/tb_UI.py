@@ -33,6 +33,7 @@ import maya.api.OpenMayaUI as omui2
 import pymel.core as pm
 from functools import partial
 import subprocess
+import tb_fileTools as ft
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -133,7 +134,7 @@ class BaseDialog(QDialog):
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
 
-        self.setFixedSize(400, 120)
+        self.setFixedSize(400 * dpiScale(), 120 * dpiScale())
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
         self.mainLayout.setContentsMargins(4, 4, 4, 4)
@@ -147,14 +148,15 @@ class BaseDialog(QDialog):
         self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
         self.titleText.setFont(QFont('Lucida Console', 12))
-        self.titleText.setStyleSheet("font-weight: lighter; font-size: 12px;")
+        self.titleText.setStyleSheet("font-weight: lighter; font-size: 12;")
         self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
         self.titleText.setStyleSheet("QLabel {"
                                      "border-width: 0;"
                                      "border-radius: 4;"
                                      "border-style: solid;"
                                      "border-color: #222222;"
-                                     "font-weight: bold; font-size: 12px;}"
+                                     "font-weight: bold; font-size: 12;"
+                                     "}"
                                      )
 
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -805,7 +807,7 @@ class ToolboxButton(QPushButton):
         :param pos:
         :return:
         """
-        pop_up_pos = self.mapToGlobal(QPoint(8* dpiScale(), self.height() + 8* dpiScale()))
+        pop_up_pos = self.mapToGlobal(QPoint(8 * dpiScale(), self.height() + 8 * dpiScale()))
         if self.pop_up_window:
             self.pop_up_window.move(pop_up_pos)
 
@@ -1954,6 +1956,20 @@ class InfoPromptWidget(QWidget):
             self.move(position_x, position_y)
         super(InfoPromptWidget, self).show()
 
+def raiseOk(errorMessage, title='Success'):
+    prompt = InfoPromptWidget(title=title,
+                              buttonText='Ok',
+                              error=False,
+                              # image='curves.png',
+                              helpString=errorMessage)
+
+
+def raiseError(errorMessage, title='Failed'):
+    prompt = InfoPromptWidget(title=title,
+                              buttonText='Ok',
+                              error=True,
+                              helpString=errorMessage)
+    return False
 
 class ChannelInputWidget(QWidget):
     """
@@ -2529,7 +2545,7 @@ class filePathWidget(QWidget):
     optionVar = None
     dirButton = None
 
-    def __init__(self, optionVar, defaultValue):
+    def __init__(self, optionVar, defaultValue, requiresRestart=False):
         super(filePathWidget, self).__init__()
         self.optionVar = optionVar
         self.path = pm.optionVar.get(self.optionVar, defaultValue)
@@ -2543,18 +2559,19 @@ class filePathWidget(QWidget):
         self.layout.addWidget(self.dirButton)
         self.dirButton.clicked.connect(self.selectDirectory)
 
+        self.requiresRestart = requiresRestart
+
     def selectDirectory(self, *args):
-        dialog = QFileDialog(None, caption="Pick Folder")
-        dialog.setOption(QFileDialog.DontUseNativeDialog, False)
-        dialog.setDirectory(self.path)
-        dialog.setOption(QFileDialog.ShowDirsOnly, True)
-        selected_directory = dialog.getExistingDirectory()
+        selected_directory = ft.selectDirectory(basePath=self.path)
 
         if selected_directory:
             pm.optionVar[self.optionVar] = selected_directory
             self.path = selected_directory
             self.pathLineEdit.setText(self.path)
-
+        if self.requiresRestart:
+            mel.eval('SavePreferences')
+            raiseOk('RESTART MAYA NOW',
+                    title='RESTART MAYA NOW')
 
 class ChannelSelectLineEdit(QWidget):
     label = None
@@ -3578,9 +3595,9 @@ class ToolButton(QPushButton):
         self.pixmap = None
         self.sourceType = sourceType
         if width:
-            self.setFixedWidth(width)
+            self.setFixedWidth(width * dpiScale())
         if height:
-            self.setFixedHeight(height)
+            self.setFixedHeight(height * dpiScale())
         self.setLayout(QGridLayout())
         self.label = QLabel(text)
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)

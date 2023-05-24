@@ -113,7 +113,6 @@ class WalkData(object):
                     self.jsonObjectInfo['objectDict'].pop(k)
                     # print ('popping', k)
 
-
     def save(self, filePath, selectionFilter=list()):
         """
 
@@ -234,7 +233,7 @@ class PickwalkCreator(object):
         """
         # print ('item', item)
         # print ('sides', sideList)
-        #for key, walkDirection in self.walkData.objectDict.items():
+        # for key, walkDirection in self.walkData.objectDict.items():
         for key in [x for x in self.walkData.objectDict.keys()]:
             mirrorDir = dict()
             # print key, item
@@ -718,9 +717,9 @@ class Pickwalk(toolAbstractFactory):
 
     fingerNames = [['thumb', 'Thumb', 'Thumb', 'Thumb'],
                    ['index', 'Index', 'IndexFinger', 'Index'],
-                   ['middle', 'Middle', 'MiddleFinger','Mid'],
-                   ['ring', 'Ring', 'RingFinger','Ring'],
-                   ['pinky', 'Pinky', 'PinkyFinger','Pinkie']]
+                   ['middle', 'Middle', 'MiddleFinger', 'Mid'],
+                   ['ring', 'Ring', 'RingFinger', 'Ring'],
+                   ['pinky', 'Pinky', 'PinkyFinger', 'Pinkie']]
 
     walkDirectionNames = {'up': 'pickUp',
                           'down': 'pickDown',
@@ -1395,7 +1394,6 @@ class Pickwalk(toolAbstractFactory):
                                                          offset=self.walkIncrementMap[direction])
                     vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
 
-
                     if vaildObject:
                         mirrorStart = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
                                                                                    walkObject)
@@ -1459,7 +1457,7 @@ class Pickwalk(toolAbstractFactory):
                 return returnedControls
         return returnedControls
 
-    def findPreExistingEntries(self, walkObjectStripped, namespace,  direction):
+    def findPreExistingEntries(self, walkObjectStripped, namespace, direction):
         # print ('findPreExistingEntries', walkObjectStripped, direction)
         node = str(walkObjectStripped)
         # print ('node', node)
@@ -1771,7 +1769,6 @@ class Pickwalk(toolAbstractFactory):
             refName = self.getReferenceName(sel)
             self.queryNewRig(refName)
             return None, None
-
 
         self.pickwalkCreator.load(fname)
         self.setMirrorValuesFromCharacter(fname, mapName)
@@ -4017,6 +4014,7 @@ class mirrorPickwalkWidget(QFrame):
     def __init__(self, CLS=None, label='Mirror Selected Controls', *args, **kwargs):
         QFrame.__init__(self, *args, **kwargs)
         self.CLS = CLS
+
         self.fromInputOption = self.CLS.walkData.mirrorNames.get('left', '_L')
         self.toInputOption = self.CLS.walkData.mirrorNames.get('right', '_R')
         self.setMaximumWidth(420)
@@ -4055,12 +4053,14 @@ class mirrorPickwalkWidget(QFrame):
                                      )
 
         self.fromInput = QLineEdit(self.fromInputOption)
+        self.fromInput.setReadOnly(True)
         self.toInput = QLineEdit(self.toInputOption)
+        self.toInput.setReadOnly(True)
         self.mirrorBtn = QPushButton('Mirror selection')
         self.mirrorBtn.clicked.connect(self.sendMirrorSignal)
-        self.layout.addWidget(self.fromLabel)
-        self.layout.addWidget(self.fromInput)
-        self.layout.addWidget(self.toInput)
+        # self.layout.addWidget(self.fromLabel)
+        # self.layout.addWidget(self.fromInput)
+        # self.layout.addWidget(self.toInput)
         self.layout.addWidget(self.mirrorBtn)
 
         self.fromLabel.setFixedWidth(48)
@@ -4071,6 +4071,13 @@ class mirrorPickwalkWidget(QFrame):
         self.toInput.textChanged.connect(self.toChanged)
 
         self.updateMirrorLabels()
+
+        self.fromInput.setStyleSheet("QLineEdit[readOnly=\"true\"] {"
+                                     "background-color: #323232;"
+                                     "}");
+        self.toInput.setStyleSheet("QLineEdit[readOnly=\"true\"] {"
+                                     "background-color: #323232;"
+                                     "}");
         # line edit input mask
         # reg_ex = QRegExp("[a-z-A-Z0123456789_,]+")
         # fromInput_validator = QRegExpValidator(reg_ex, self.fromInput)
@@ -4375,7 +4382,6 @@ class pickwalkMainWindow(QMainWindow):
         saveSelectedAsBase_action = QAction('Save Selection as shared base', self)
         saveSelectedAsBase_action.triggered.connect(self.saveSelectionAsBase)
 
-
         mergeSelected_action = QAction('Load (replace selected controls)', self)
         mergeSelected_action.triggered.connect(self.loadLibraryToSelection)
 
@@ -4400,7 +4406,6 @@ class pickwalkMainWindow(QMainWindow):
         edit_menu.addAction(assign_action)
         edit_menu.addAction(saveSelectedAsBase_action)
         edit_menu.addAction(open_action)
-
 
         file_menu.addAction(load_action)
         file_menu.addAction(open_action)
@@ -4492,7 +4497,7 @@ class pickwalkMainWindow(QMainWindow):
         # self.SCRIPT_JOB_NUMBER = cmds.scriptJob(event=['SelectionChanged', self.onSelectionChange], protected=True)
 
         self.setSimpleMode()
-        #self.loadLibraryForCurrent()
+        # self.loadLibraryForCurrent()
 
     def show(self):
         super(pickwalkMainWindow, self).show()
@@ -4580,15 +4585,25 @@ class pickwalkMainWindow(QMainWindow):
         fname, mapName = Pickwalk().loadLibraryForCurrent()
         if not fname:
             fname, mapName = Pickwalk().getCurrentRig()
-        # print ('UI load', fname, mapName)
+        print('UI load', fname, mapName)
         if not fname:
             self.pickwalkCreator.walkData = WalkData()
             self.setTitleLabel('NONE')
         else:
             # print ('here')
             self.pickwalkCreator = Pickwalk().pickwalkCreator
-            # print Pickwalk().pickwalkCreator.walkData.mirrorNames
+            CharacterTool = Pickwalk().allTools.tools['CharacterTool']
+            CharacterTool.loadCharacterIfNotLoaded(mapName)
+            print(self.pickwalkCreator.walkData.mirrorNames)
+            print(CharacterTool.allCharacters[mapName])
+            print(CharacterTool.allCharacters[mapName].leftSide)
+            print(CharacterTool.allCharacters[mapName].rightSide)
+            print(Pickwalk().pickwalkCreator.walkData.mirrorNames)
+            self.pickwalkCreator.walkData.mirrorNames['left'] = CharacterTool.allCharacters[mapName].leftSide
+            self.pickwalkCreator.walkData.mirrorNames['right'] = CharacterTool.allCharacters[mapName].rightSide
+
             self.setTitleLabel(fname)
+
         self.refreshUI()
 
     def setTitleLabel(self, fname):

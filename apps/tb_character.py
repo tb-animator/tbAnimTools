@@ -330,7 +330,8 @@ class CharacterTool(toolAbstractFactory):
         self.getAllCharacters()
 
     def optionUI(self):
-        return super(CharacterTool, self).optionUI()
+        super(CharacterTool, self).optionUI()
+        return self.optionWidget
 
     def showUI(self):
         return cmds.warning(self, 'optionUI', ' function not implemented')
@@ -342,7 +343,7 @@ class CharacterTool(toolAbstractFactory):
 
     def getCharacterByName(self, char, openUI=False):
         # print ('getCharacterByName', char)
-        print (char not in self.allCharacters.keys())
+        print(char not in self.allCharacters.keys())
         if char not in self.allCharacters.keys():
             self.loadCharacterIfNotLoaded(char, node=None)
             if openUI:
@@ -378,7 +379,7 @@ class CharacterTool(toolAbstractFactory):
         :param node:
         :return:
         """
-        print ('tagTopNodeAsCharacter', node, character)
+        print('tagTopNodeAsCharacter', node, character)
         topNode = self.funcs.getTopParent(node)
         if not cmds.attributeQuery(characterAttribute, node=str(topNode), exists=True):
             cmds.addAttr(str(topNode), ln=characterAttribute, dt='string')
@@ -647,7 +648,7 @@ class CharacterTool(toolAbstractFactory):
         self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
         # print ('UUID', self.currentCharData.UUID)
         allControls = self.getAllControls()
-        print ('saveCurrentCharacter', allControls)
+        print('saveCurrentCharacter', allControls)
         if allControls:
             self.tagTopNodeAsCharacter(self.currentChar, allControls[0])
         self.getAllCharacters()
@@ -676,7 +677,7 @@ class CharacterTool(toolAbstractFactory):
 
     @Slot()
     def temp(self, data, data2):
-        print (data, data2)
+        print(data, data2)
 
     def getToolboxWidget(self, widget, message=''):
         buttonWidth = 124
@@ -712,12 +713,12 @@ class CharacterTool(toolAbstractFactory):
 
         controlsGroupbox = myGroupBox('Controls')
         # controlsGroupbox.clicked.connect(self.temp)
-        controlsVLaout = QVBoxLayout()
+        controlsVLayout = QVBoxLayout()
         controlsLayout = QHBoxLayout()
         controlsLayout2 = QHBoxLayout()
-        controlsGroupbox.setSubLayout(controlsVLaout)
-        controlsVLaout.addLayout(controlsLayout)
-        controlsVLaout.addLayout(controlsLayout2)
+        controlsGroupbox.setSubLayout(controlsVLayout)
+        controlsVLayout.addLayout(controlsLayout)
+        controlsVLayout.addLayout(controlsLayout2)
 
         defineControlsButton = ToolButton(text='Set Controls',
                                           imgLabel='Tips',
@@ -866,8 +867,8 @@ class CharacterTool(toolAbstractFactory):
         saveLayout = QHBoxLayout()
         saveButton = ToolButton(text='Save',
                                 icon=":/save.png", sourceType='py',
-                                height=22,
-                                width=64,
+                                height=26,
+                                width=80,
                                 command=self.saveCurrentCharacter)
         saveLayout.addStretch()
         saveLayout.addWidget(saveButton)
@@ -921,7 +922,7 @@ class CharacterTool(toolAbstractFactory):
         self.toolbox.show()
         self.toolbox.widgetClosed.connect(self.removeScriptJob)
         self.toolbox.setFixedSize(self.toolbox.sizeHint())
-        self.toolbox.setFixedWidth(320)
+        self.toolbox.setFixedWidth(320 * dpiScale())
         self.toolboxWidget.setEnabled(False)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
@@ -942,7 +943,7 @@ class myGroupBox(QGroupBox):
         self.titleDict = {True: '%s  ...' % self.title, False: self.title}
         self.setTitle(self.title)
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 12 * dpiScale(), 0, 0)
         layout.setSpacing(0)
         self.widget = QWidget()
         self.setLayout(layout)

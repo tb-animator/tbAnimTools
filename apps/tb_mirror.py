@@ -175,10 +175,13 @@ class MirrorTools(toolAbstractFactory):
                 # print ('saving new mirror table file for %s' % refname)
                 # print (MirrorData().toJson())
                 self.saveRigFileIfNew(refname, MirrorData().toJson())
-            mirrorData = self.loadRigData(MirrorData(), refname)
+            mirrorData = self.loadMirrorData(refname)
             # print ('mirrorData', mirrorData)
             self.loadedMirrorTables[refname] = mirrorData
         self.namespaceToCharDict = namespaceToCharDict
+
+    def loadMirrorData(self, refname):
+        return self.loadRigData(MirrorData(), refname)
 
     def loadRigData(self, dataCLS, rigName):
         subPath = os.path.join(self.dataPath, self.subFolder)
