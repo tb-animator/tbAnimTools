@@ -133,6 +133,9 @@ class SnapTools(toolAbstractFactory):
         self.transformRotateDict = self.rawJsonData.get('transformRotateDict', dict())
         self.transformMatrixDict = self.rawJsonData.get('transformMatrixDict', dict())
 
+        self.relativeTransformLastParent = self.rawJsonData.get('relativeTransformLastParent', str())
+        self.relativeTransformLastControls = self.rawJsonData.get('relativeTransformLastControls', list())
+
     def toJson(self):
         jsonData = '''{}'''
         self.classData = json.loads(jsonData)
@@ -140,8 +143,8 @@ class SnapTools(toolAbstractFactory):
         self.classData['transformTranslateDict'] = dict()
         self.classData['transformRotateDict'] = dict()
         self.classData['transformMatrixDict'] = dict()
-        self.classData['relativeTransformLastParent'] = parent
-        self.classData['relativeTransformLastControls'] = targets
+        self.classData['relativeTransformLastParent'] = self.relativeTransformLastParent
+        self.classData['relativeTransformLastControls'] = self.relativeTransformLastControls
 
         for key, value in self.transformClipboard.items():
             value = [value(i, j) for i in range(4) for j in range(4)]
@@ -306,7 +309,7 @@ class SnapTools(toolAbstractFactory):
             sel = self.relativeTransformLastControls
         if not sel:
             return  # TODO - make this use all the last stored controls
-
+        self.loadData()
         parent = self.relativeTransformLastParent
         with self.funcs.keepSelection():
             self.restore_relative_transform(parent, sel)
