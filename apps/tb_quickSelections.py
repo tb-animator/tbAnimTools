@@ -50,6 +50,44 @@ from Abstract import *
 from tb_UI import *
 import getStyleSheet as getqss
 
+_repeat_function = None
+_args = None
+_kwargs = None
+
+import inspect
+
+def get_class_that_defined_method(meth):
+    for cls in inspect.getmro(meth.im_class):
+        if meth.__name__ in cls.__dict__:
+            return cls
+    return None
+
+def repeatable(function):
+    '''A decorator that will make commands repeatable in maya'''
+
+    def decoratorCode(*args, **kwargs):
+        functionReturn = None
+        argString = ''
+        if args:
+            for each in args:
+                argString += str(each) + ', '
+
+        if kwargs:
+            for key, item in kwargs.iteritems():
+                argString += str(key) + '=' + str(item) + ', '
+
+        commandToRepeat = 'python("global tbtoolCLS;tbtoolCLS.tools[\'QuickSelectionSets\'].' + function.__name__ + '()")'
+
+        functionReturn = function(*args, **kwargs)
+        try:
+            cmds.repeatLast(ac=commandToRepeat, acl=function.__name__)
+        except:
+            pass
+
+        return functionReturn
+
+    return decoratorCode
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -233,7 +271,8 @@ class QuickSelectionTools(toolAbstractFactory):
         self.addColourAttribute(name)
         return cmds.getAttr(name + '.Colour')[0]
 
-    def qs_select(self):
+    @repeatable
+    def qs_select(self, *args, **kwargs):
         sel = cmds.ls(sl=True)
         if not sel:
             return
@@ -311,7 +350,7 @@ class QuickSelectionTools(toolAbstractFactory):
             msg = "can't save a quick selection set with nothing selected!"
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
                                    fadeOutTime=4.0)
-
+    @repeatable
     def saveQssDialog(self, quick=False):
         sel = cmds.ls(selection=True)
         if not sel:
