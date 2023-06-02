@@ -7,6 +7,7 @@ import maya.mel as mel
 import json
 import textwrap
 import shutil
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -25,9 +26,9 @@ from apps.tb_functions import functions
 import tb_helpStrings
 from apps.tb_UI import *
 import apps.tb_fileTools as ft
+
 # compatible with Python 2 *and* 3:
 ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
-
 
 
 class hotKeyAbstractFactory(ABC):
@@ -118,7 +119,7 @@ class toolAbstractFactory(ABC):
     layout = None
     classData = dict()
     rawJsonData = None
-    assetCommandName ='blankCommandName'
+    assetCommandName = 'blankCommandName'
     assetTitleLabel = 'Empty'
 
     dependentPlugins = list()
@@ -203,7 +204,7 @@ class toolAbstractFactory(ABC):
         Copy the appData folder to a nother location
         :return:
         """
-        print ('copying')
+        print('copying')
         baseDataPath = pm.optionVar.get(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         dataPath = os.path.join(baseDataPath, 'appData')
         selected_directory = ft.selectDirectory(baseDataPath)
@@ -227,7 +228,6 @@ class toolAbstractFactory(ABC):
         finally:
             raiseOk('Copied appData folder to new location RESTART MAYA NOW',
                     title='RESTART MAYA NOW')
-
 
     def loadData(self):
         self.initData()
@@ -281,9 +281,9 @@ class toolAbstractFactory(ABC):
                                    )
         else:
             asset = cmds.container(name=name,
-                               includeHierarchyBelow=False,
-                               includeTransform=True,
-                               )
+                                   includeHierarchyBelow=False,
+                                   includeTransform=True,
+                                   )
         if imageName:
             pm.setAttr(asset + '.iconName', imageName, type="string")
         if assetTag:
