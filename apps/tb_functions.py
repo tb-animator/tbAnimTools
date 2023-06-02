@@ -388,19 +388,35 @@ class functions(object):
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
-        control, shape = self.drawControl(points, scale=float(scale))
+        control, shape = self.drawControl(points, scale=1)
+        blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control.rename(name + '_' + suffix)
+        blendControl.rename(name + '_' + suffix + '_bs')
 
+        # change this for z up
         control.rotateOrder.set(3)
-        control.scaleX.set(channelBox=True)
-        control.scaleY.set(channelBox=True)
-        control.scaleZ.set(channelBox=True)
-        control.scaleX.set(keyable=unlockScale)
-        control.scaleY.set(keyable=unlockScale)
-        control.scaleZ.set(keyable=unlockScale)
+        # control.scaleX.set(channelBox=True)
+        # control.scaleY.set(channelBox=True)
+        # control.scaleZ.set(channelBox=True)
+        # control.scaleX.set(keyable=unlockScale)
+        # control.scaleY.set(keyable=unlockScale)
+        # control.scaleZ.set(keyable=unlockScale)
         shape.overrideEnabled.set(True)
         shape.overrideRGBColors.set(True)
         shape.overrideColorRGB.set(color)
+
+        # add the blendshape stuff as well, for scale
+        blendshape_node = cmds.blendShape(str(blendControl), str(control))
+        # Create a blend weight attribute
+        pm.addAttr(control, longName='drawScale', attributeType='float', defaultValue=scale, minValue=0.001)
+        pm.setAttr(control + ".drawScale", edit=True, keyable=True)
+        reverse = cmds.createNode('reverse')
+        pm.connectAttr(control + '.drawScale', reverse + '.inputX')
+
+        # Connect the blend weight attribute to the blendshape node
+        pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl), force=True)
+
+        pm.delete(blendControl)
         return control
 
     def getControlColour(self, ref):
