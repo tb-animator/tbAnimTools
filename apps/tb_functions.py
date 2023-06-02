@@ -385,7 +385,7 @@ class functions(object):
         loc.getShape().overrideColorRGB.set(color)
         return loc
 
-    def tempControl_broken(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         control, shape = self.drawControl(points, scale=1)
@@ -405,20 +405,21 @@ class functions(object):
         shape.overrideRGBColors.set(True)
         shape.overrideColorRGB.set(color)
 
-        # add the blendshape stuff as well, for scale
-        blendshape_node = cmds.blendShape(str(blendControl), str(control))
-        # Create a blend weight attribute
-        pm.addAttr(control, longName='drawScale', attributeType='float', defaultValue=scale, minValue=0.001)
-        pm.setAttr(control + ".drawScale", edit=True, keyable=True)
-        reverse = cmds.createNode('reverse')
-        pm.connectAttr(control + '.drawScale', reverse + '.inputX')
+        try:
+            # add the blendshape stuff as well, for scale
+            blendshape_node = cmds.blendShape(str(blendControl), str(control))
+            # Create a blend weight attribute
+            pm.addAttr(control, longName='drawScale', attributeType='float', defaultValue=scale, minValue=0.001)
+            pm.setAttr(control + ".drawScale", edit=True, keyable=True)
+            reverse = cmds.createNode('reverse')
+            pm.connectAttr(control + '.drawScale', reverse + '.inputX')
 
-        # Connect the blend weight attribute to the blendshape node
-        pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl), force=True)
-
-        pm.delete(blendControl)
+            # Connect the blend weight attribute to the blendshape node
+            pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl).rsplit(':', 1)[-1], force=True)
+        finally:
+            pm.delete(blendControl)
         return control
-
+    '''
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
@@ -439,7 +440,7 @@ class functions(object):
         # add the blendshape stuff as well
         
         return control
-
+    '''
     def getControlColour(self, ref):
         """
         Get the colour for a control in rgb
