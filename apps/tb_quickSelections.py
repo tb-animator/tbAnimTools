@@ -95,9 +95,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.commandList = list()
 
         # quick selection set - select
-        self.addCommand(self.tb_hkey(name='tbOpenQuickSelectionMMenu',
-                                     annotation='useful comment',
-                                     category=self.category, command=['QuickSelectionSets.openMM()']))
+
         self.addCommand(self.tb_hkey(name='select_quick_select_set_objs',
                                      annotation='',
                                      category=self.category,
@@ -114,6 +112,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='create a new quick selection set from current selection',
                                      category=self.category,
                                      command=['QuickSelectionSets.saveQssDialog()']))
+
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
+        self.addCommand(self.tb_hkey(name='tbOpenQuickSelectionMMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['QuickSelectionSets.openMM()']))
         return self.commandList
 
     def assignHotkeys(self):

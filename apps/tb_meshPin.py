@@ -55,12 +55,13 @@ assetCommandName = 'meshPinControlCommand'
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory(self.helpStrings.category.get('layers'))
+        self.setCategory(self.helpStrings.category.get('TempControls'))
         self.addCommand(self.tb_hkey(name='createMeshPin',
                                      annotation='Merges all layers',
                                      category=self.category, command=['MeshPinTool.createMeshPin()'],
                                      help=maya.stringTable['tbCommand.createMeshPin']))
 
+        self.setCategory(self.helpStrings.category.get('ignore'))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='right click menu for temp controls',
                                      category=self.category, command=['MeshPinTool.assetRmbCommand()'],

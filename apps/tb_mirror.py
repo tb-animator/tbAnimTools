@@ -48,31 +48,56 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os, stat
 import pickle
-
+IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
 from Abstract import *
 
 mirrorPlane = {'YZ': [-1, 1, 1],
                'XZ': [1, -1, 1],
                'XY': [1, 1, -1]}
 
+def repeatable(function):
+    '''A decorator that will make commands repeatable in maya'''
+
+    def decoratorCode(*args, **kwargs):
+        functionReturn = None
+        argString = ''
+        if args:
+            for each in args:
+                argString += str(each) + ', '
+
+        if kwargs:
+            for key, item in kwargs.iteritems():
+                argString += str(key) + '=' + str(item) + ', '
+
+        commandToRepeat = 'python("global tbtoolCLS;tbtoolCLS.tools[\'MirrorTools\'].' + function.__name__ + '()")'
+
+        functionReturn = function(*args, **kwargs)
+        try:
+            cmds.repeatLast(ac=commandToRepeat, acl=function.__name__)
+        except:
+            pass
+
+        return functionReturn
+
+    return decoratorCode
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
-        self.setCategory(self.helpStrings.category.get('Mirror'))
         self.commandList = list()
         # all curve selector
-
+        self.setCategory(self.helpStrings.category.get('mirror'))
         self.addCommand(self.tb_hkey(name='mirrorSelectedSwap',
                                      annotation='',
                                      category=self.category,
                                      help='Blank',
                                      command=['MirrorTools.mirrorSelection(option="swap")']))
+
         self.addCommand(self.tb_hkey(name='mirrorSelectedLeftToRight',
                                      annotation='',
                                      category=self.category,
                                      help='Blank',
                                      command=['MirrorTools.mirrorSelection(option="toRight")']))
-        # char set selector
+
         self.addCommand(self.tb_hkey(name='mirrorSelectedRightToLeft',
                                      annotation='',
                                      category=self.category,
@@ -80,6 +105,23 @@ class hotkeys(hotKeyAbstractFactory):
                                      command=[
                                          'MirrorTools.mirrorSelection(option="toLeft")']))
 
+        self.addCommand(self.tb_hkey(name='mirrorSelectedToOpposite',
+                                     annotation='',
+                                     category=self.category,
+                                     help='Blank',
+                                     command=[
+                                         'MirrorTools.mirrorSelection(option="toOpposite")']))
+
+        self.addCommand(self.tb_hkey(name='mirrorSelectedFromOpposite',
+                                     annotation='',
+                                     category=self.category,
+                                     help='Blank',
+                                     command=[
+                                         'MirrorTools.mirrorSelection(option="fromOpposite")']))
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
+        self.addCommand(self.tb_hkey(name='mirrorMarkingMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['MirrorTools.openMM()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -206,6 +248,54 @@ class MirrorTools(toolAbstractFactory):
         dataFile = os.path.join(self.subPath, refname + '.json')
         self.saveJsonFile(dataFile, json.loads(jsonData))
 
+    def openMM(self):
+        self.build_MM()
+        self.markingMenuWidget.show()
+
+    def build_MM(self, parentMenu=None):
+        menuDict = {'NE': list(),
+                    'NW': list(),
+                    'SE': list(),
+                    'SW': list()
+                    }
+
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+
+        if sel:
+            menuDict['SE'].append(ToolboxButton(label='Mirror Pose',
+                                                parent=self.markingMenuWidget,
+                                                icon=IconPath + '\mirrorSwap.png',
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: MirrorTools().mirrorSelection(option="swap"),
+                                                closeOnPress=True))
+            menuDict['SE'].append(ToolboxButton(label='Mirror Left To Right',
+                                                parent=self.markingMenuWidget,
+                                                icon=IconPath + '\mirrorLeftToRight.png',
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: MirrorTools().mirrorSelection(option="toRight"),
+                                                closeOnPress=True))
+            menuDict['SE'].append(ToolboxButton(label='Mirror Right To Left',
+                                                parent=self.markingMenuWidget,
+                                                icon=IconPath + '\mirrorRightToLeft.png',
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: MirrorTools().mirrorSelection(option="toLeft"),
+                                                closeOnPress=True))
+            menuDict['SE'].append(ToolboxButton(label='Mirror To Opposite',
+                                                parent=self.markingMenuWidget,
+                                                icon=':selectObject.png',
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: MirrorTools().mirrorSelection(option="toOpposite"),
+                                                closeOnPress=True))
+            menuDict['SE'].append(ToolboxButton(label='Mirror From Opposite',
+                                                parent=self.markingMenuWidget,
+                                                icon=':selectObject.png',
+                                                cls=self.markingMenuWidget,
+                                                command=lambda: MirrorTools().mirrorSelection(option="fromOpposite"),
+                                                closeOnPress=True))
     @staticmethod
     def _replace(name, old, new, count=1):
         """
@@ -566,8 +656,19 @@ class MirrorTools(toolAbstractFactory):
             return self.matchSideName(control, CharacterTool._side(character, 'right'))
         if option == 'toRight':
             return self.matchSideName(control, CharacterTool._side(character, 'left'))
+        if option == 'toOpposite':
+            # check the object against the selection?
+            return control in cmds.ls(sl=True)
+        if option == 'fromOpposite':
+            # check the object against the selection?
+            return control not in cmds.ls(sl=True)
 
     def splitControls(self, controls):
+        """
+
+        :param controls:
+        :return:
+        """
         characters = self.funcs.splitSelectionToCharacters(controls)
         self.loadDataForCharacters(characters)
         CharacterTool = self.allTools.tools['CharacterTool']
@@ -588,15 +689,17 @@ class MirrorTools(toolAbstractFactory):
             matched.append(opposite)
             controlPairs.append([c, opposite, rigName])
         return controlPairs
-
+    @repeatable
     def mirrorSelection(self, controls=list(), option='swap'):
-        if not controls:
-            controls = cmds.ls(sl=True)
-        if not controls:
-            return cmds.warning('No selection')
-        splitControls = self.splitControls(controls)
-        for src, dst, char in splitControls:
-            self.mirrorControl(src, dst, char, option=option)
+        with self.funcs.undoChunk():
+            if not controls:
+                controls = cmds.ls(sl=True)
+            if not controls:
+                return cmds.warning('No selection')
+            splitControls = self.splitControls(controls)
+            # print (splitControls)
+            for src, dst, char in splitControls:
+                self.mirrorControl(src, dst, char, option=option)
 
     def mirrorControl(self, fromControl, toControl, character, option='swap', timeOffset=0):
         """

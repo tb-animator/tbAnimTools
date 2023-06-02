@@ -58,153 +58,187 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('layers'))
         self.addCommand(self.tb_hkey(name='quickMergeAllLayers',
                                      annotation='Merges all layers',
-                                     category=self.category, command=['BakeTools.quickMergeAllLayers()'],
+                                     category=self.category,
+                                     command=['BakeTools.quickMergeAllLayers()'],
                                      help=maya.stringTable['tbCommand.quickMergeAllLayers']))
 
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToNew',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.quickMergeSelectionToNew()'],
+                                     category=self.category,
+                                     command=['BakeTools.quickMergeSelectionToNew()'],
                                      help=maya.stringTable['tbCommand.quickMergeSelectionToNew']))
 
         self.addCommand(self.tb_hkey(name='quickMergeSelectionToBase',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.quickMergeSelectionToBase()'],
+                                     category=self.category,
+                                     command=['BakeTools.quickMergeSelectionToBase()'],
                                      help=maya.stringTable['tbCommand.quickMergeSelectionToBase']))
 
         self.addCommand(self.tb_hkey(name='bakeConstraintToAdditive',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bakeConstraintToAdditiveSelection()'],
+                                     category=self.category,
+                                     command=['BakeTools.bakeConstraintToAdditiveSelection()'],
                                      help=maya.stringTable['tbCommand.bakeConstraintToAdditive']))
         self.addCommand(self.tb_hkey(name='additiveExtractSelection',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.additiveExtractSelection()'],
+                                     category=self.category,
+                                     command=['BakeTools.additiveExtractSelection()'],
                                      help=maya.stringTable['tbCommand.additiveExtractSelection']))
 
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bake_to_override()'],
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_override()'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride_2s',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=2)'],
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_override(sampleRate=2)'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride_3s',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=3)'],
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_override(sampleRate=3)'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride_4s',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=4)'],
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_override(sampleRate=4)'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride_5s',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bake_to_override(sampleRate=5)'],
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_override(sampleRate=5)'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
         self.addCommand(self.tb_hkey(name='simpleBakeToOverride_x',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.bakeOnXUI()'],
+                                     category=self.category,
+                                     command=['BakeTools.bakeOnXUI()'],
                                      help=maya.stringTable['tbCommand.simpleBakeToOverride']))
 
         self.addCommand(self.tb_hkey(name='simpleBakeToBase',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.simpleBake()'],
+                                     category=self.category,
+                                     command=['BakeTools.simpleBake()'],
                                      help=maya.stringTable['tbCommand.simpleBakeToBase']))
 
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.addAdditiveLayer()'],
+                                     category=self.category,
+                                     command=['BakeTools.addAdditiveLayer()'],
                                      help=maya.stringTable['tbCommand.quickCreateAdditiveLayer']))
         self.addCommand(self.tb_hkey(name='quickCreateAdditiveLayer_Component',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.addAdditiveLayer(component=False)'],
+                                     category=self.category,
+                                     command=['BakeTools.addAdditiveLayer(component=False)'],
                                      help=maya.stringTable['tbCommand.quickCreateAdditiveLayer']))
         self.addCommand(self.tb_hkey(name='quickCreateOverrideLayer',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.addOverrideLayer()'],
+                                     category=self.category,
+                                     command=['BakeTools.addOverrideLayer()'],
                                      help=maya.stringTable['tbCommand.quickCreateOverrideLayer']))
 
         self.addCommand(self.tb_hkey(name='counterAnimLayer',
                                      annotation='',
-                                     category=self.category, command=['BakeTools.counterLayerAnimation()'],
+                                     category=self.category,
+                                     command=['BakeTools.counterLayerAnimation()'],
                                      help=maya.stringTable['tbCommand.counterAnimLayer']))
 
         self.setCategory(self.helpStrings.category.get('constraints'))
-        self.addCommand(self.tb_hkey(name='bakeToLocator', annotation='',
+        self.addCommand(self.tb_hkey(name='simpleConstraintOffset',
+                                     annotation='constrain to objects with offset',
                                      category=self.category,
-                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
-                                     help=maya.stringTable['tbCommand.bakeToLocator']))
-        self.addCommand(self.tb_hkey(name='bakeToLocatorPinned', annotation='',
-                                     category=self.category,
-                                     command=['BakeTools.bake_to_locator_pinned(constrain=True, orientOnly=False)'],
-                                     help=maya.stringTable['tbCommand.bakeToLocator']))
-        self.addCommand(
-            self.tb_hkey(name='bakeToLocatorRotation', annotation='constrain to object to locator - rotate only',
-                         category=self.category,
-                         command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
-                         help=maya.stringTable['tbCommand.bakeToLocatorRotation']))
-        self.addCommand(
-            self.tb_hkey(name='redirectSelected', annotation='constrain to object to locator - rotate only',
-                         category=self.category,
-                         command=['BakeTools.redirectSelected()'],
-                         help=maya.stringTable['tbCommand.redirectSelected']))
-        self.addCommand(
-            self.tb_hkey(name='worldOffsetSelection', annotation='worldOffsetSelection',
-                         category=self.category,
-                         command=['BakeTools.worldOffsetSelection()'],
-                         help=maya.stringTable['tbCommand.worldOffsetSelection']))
-        self.addCommand(
-            self.tb_hkey(name='worldOffsetSelectionRotation', annotation='worldOffsetSelection',
-                         category=self.category,
-                         command=['BakeTools.worldOffsetSelectionRotation()'],
-                         help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
-
-        self.addCommand(self.tb_hkey(name='simpleConstraintOffset', annotation='constrain to objects with offset',
-                                     category=self.category, command=[
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffset']))
-        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset', annotation='constrain to objects with NO offset',
-                                     category=self.category, command=[
+        self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset',
+                                     annotation='constrain to objects with NO offset',
+                                     category=self.category,
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffset']))
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake',
                                      annotation='constrain to objects with offset - post baked',
-                                     category=self.category, command=[
+                                     category=self.category,
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffsetPostBake']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake',
                                      annotation='constrain to objects with NO offset - post baked',
-                                     category=self.category, command=[
+                                     category=self.category,
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffsetPostBake']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse',
                                      annotation='constrain to objects with offset - post baked, constraint reversed',
-                                     category=self.category, command=[
+                                     category=self.category,
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffsetPostBakeReverse']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse',
                                      annotation='constrain to objects with NO offset - post baked, constraint reversed',
-                                     category=self.category, command=[
+                                     category=self.category,
+                                     command=[
                 'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffsetPostBakeReverse']))
-        self.addCommand(self.tb_hkey(name=assetCommandName,
-                                     annotation='right click menu for temp controls',
-                                     category=self.category, command=['BakeTools.assetRmbCommand()'],
-                                     help='Do not assign to a hotkey'))
+
         self.addCommand(self.tb_hkey(name='bakeOutSelectedTempControls',
                                      annotation='right click menu for temp controls',
-                                     category=self.category, command=['BakeTools.bakeSelectedHotkey()'],
+                                     category=self.category,
+                                     command=['BakeTools.bakeSelectedHotkey()'],
                                      help=maya.stringTable['tbCommand.kbakeOutSelected']))
         self.addCommand(self.tb_hkey(name='bakeOutAllTempControls',
                                      annotation='right click menu for temp controls',
-                                     category=self.category, command=['BakeTools.bakeAllHotkey()'],
+                                     category=self.category,
+                                     command=['BakeTools.bakeAllHotkey()'],
                                      help=maya.stringTable['tbCommand.kbakeOutAll']))
         self.addCommand(self.tb_hkey(name='removeAllTempControls',
                                      annotation='right click menu for temp controls',
-                                     category=self.category, command=['BakeTools.removeAllHotkey()'],
+                                     category=self.category,
+                                     command=['BakeTools.removeAllHotkey()'],
                                      help=maya.stringTable['tbCommand.kremoveAll']))
+
+        self.setCategory(self.helpStrings.category.get('TempControls'))
+        self.addCommand(self.tb_hkey(name='bakeToLocator',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=False)'],
+                                     help=maya.stringTable['tbCommand.bakeToLocator']))
+        self.addCommand(self.tb_hkey(name='bakeToLocatorPinned',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_locator_pinned(constrain=True, orientOnly=False)'],
+                                     help=maya.stringTable['tbCommand.bakeToLocator']))
+        self.addCommand(self.tb_hkey(name='bakeToLocatorRotation',
+                                     annotation='constrain to object to locator - rotate only',
+                                     category=self.category,
+                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
+                                     help=maya.stringTable['tbCommand.bakeToLocatorRotation']))
+        self.addCommand(self.tb_hkey(name='redirectSelected',
+                                     annotation='constrain to object to locator - rotate only',
+                                     category=self.category,
+                                     command=['BakeTools.redirectSelected()'],
+                                     help=maya.stringTable['tbCommand.redirectSelected']))
+        self.addCommand(self.tb_hkey(name='worldOffsetSelection',
+                                     annotation='worldOffsetSelection',
+                                     category=self.category,
+                                     command=['BakeTools.worldOffsetSelection()'],
+                                     help=maya.stringTable['tbCommand.worldOffsetSelection']))
+        self.addCommand(self.tb_hkey(name='worldOffsetSelectionRotation',
+                                     annotation='worldOffsetSelection',
+                                     category=self.category,
+                                     command=['BakeTools.worldOffsetSelectionRotation()'],
+                                     help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+
+        self.setCategory(self.helpStrings.category.get('ignore'))
+        self.addCommand(self.tb_hkey(name=assetCommandName,
+                                     annotation='right click menu for temp controls',
+                                     category=self.category,
+                                     command=['BakeTools.assetRmbCommand()'],
+                                     help='Do not assign to a hotkey'))
 
         return self.commandList
 

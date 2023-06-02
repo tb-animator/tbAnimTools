@@ -368,6 +368,8 @@ class mainHotkeyWindow(QMainWindow):
 
     def populateTreeView(self):
         for index, cat in enumerate(sorted(self.commandCategories.keys())):
+            if 'Ignore' in cat:
+                continue
             categoryItem = QStandardItem(cat.split('tbAnimTools_')[-1])
             categoryItem.setEditable(False)
 

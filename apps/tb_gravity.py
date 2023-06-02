@@ -88,12 +88,14 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.quickDrop()'],
                                      help=''))
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.openMM()']))
         self.addCommand(self.tb_hkey(name='GravtiyToolsMMReleased',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.closeMM()']))
+        self.setCategory(self.helpStrings.category.get('ui'))
         self.addCommand(self.tb_hkey(name='GravityToolsOpenUI',
                                      annotation='useful comment',
                                      category=self.category, command=['GravityTools.toolBoxUI()'],

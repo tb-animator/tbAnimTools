@@ -82,10 +82,16 @@ assetCommandName = 'aimToolAssetMenu'
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.commandList = list()
-        self.setCategory(self.helpStrings.category.get('constraints'))
+        self.setCategory(self.helpStrings.category.get('TempControls'))
         self.addCommand(self.tb_hkey(name='bakeAim',
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.quickAim()']))
+
+        self.addCommand(self.tb_hkey(name='aimAtTempControl',
+                                     annotation='Creates a new control at your selection, position it then deselect to bake it out',
+                                     category=self.category, command=['AimTools.aimAtTempControl()']))
+
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
         self.addCommand(self.tb_hkey(name='aimToolsMMPressed',
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.openMM()']))
@@ -93,9 +99,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.closeMM()']))
 
-        self.addCommand(self.tb_hkey(name='aimAtTempControl',
-                                     annotation='Creates a new control at your selection, position it then deselect to bake it out',
-                                     category=self.category, command=['AimTools.aimAtTempControl()']))
+        self.setCategory(self.helpStrings.category.get('ignore'))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.assetRmbCommand()']))

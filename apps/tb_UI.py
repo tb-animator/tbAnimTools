@@ -734,7 +734,7 @@ class ToolboxButton(QPushButton):
     def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
                  subMenuClass=None,
                  subMenu=None,
-                 iconWidth=16, iconHeight=16,
+                 iconWidth=32, iconHeight=32,
                  isSmall=False,
                  fixedWidth=None,
                  colour=[55, 55, 55],

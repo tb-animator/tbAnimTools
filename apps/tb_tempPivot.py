@@ -88,6 +88,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='createTempParentLastSelected', annotation='',
                                      category=self.category, command=['TempPivot.tempParentLastSelected()']))
 
+        self.setCategory(self.helpStrings.category.get('ignore'))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='NOT FOR HOTKEYS',
                                      category=self.category, command=['TempPivot.assetRmbCommand()']))

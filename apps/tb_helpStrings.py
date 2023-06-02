@@ -18,6 +18,11 @@ category = {'snap': '%s_Snaps' % tbAnimTools,
             'footpath': '%s_FootPath' % tbAnimTools,
             'ikfk': '%s_IKFK' % tbAnimTools,
             'noise': '%s_Noise' % tbAnimTools,
+            'ignore': '%s_Ignore' % tbAnimTools,
+            'TempControls': '%s_TempControls' % tbAnimTools,
+            'markingMenus': '%s_MarkingMenus' % tbAnimTools,
+            'ui': '%s_UI' % tbAnimTools,
+            'mirror': '%s_Mirror' % tbAnimTools,
             }
 quickMergeSelectionToNew = 'Fast bake currently selected objects to a new layer'
 quickMergeSelectionToBase = 'Fast bake currently selected objects to the base layer'

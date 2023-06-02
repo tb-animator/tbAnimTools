@@ -588,32 +588,13 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('pickwalk'))
         self.commandList = list()
-        self.addCommand(self.tb_hkey(name='tbOpenPickwalkCreator',
-                                     annotation='OpenPickwalkCreator',
-                                     category=self.category,
-                                     command=['Pickwalk.openCreator()'],
-                                     help=self.helpStrings.OpenPickwalkCreator))
-        self.addCommand(self.tb_hkey(name='tbOpenPickwalkLibrary',
-                                     annotation='OpenPickwalkLibrary',
-                                     category=self.category,
-                                     command=['Pickwalk.openLibrary()'],
-                                     help=self.helpStrings.OpenPickwalkLibrary))
-        self.addCommand(self.tb_hkey(name='tbOpenPickwalkConditionUI',
-                                     annotation='Open the conditional pickwalk creator UI',
-                                     category=self.category,
-                                     help='Open the conditional pickwalk creator UI',
-                                     command=['Pickwalk.openPickwalkConditionUI()']))
+
         self.addCommand(self.tb_hkey(name='tbAssignExistingPickwalkCondition',
                                      annotation='Open the conditional pickwalk creator UI',
                                      category=self.category,
                                      help='Open the conditional pickwalk creator UI',
                                      command=['Pickwalk.openAssignExistingConditionUI()']))
-        self.addCommand(self.tb_hkey(name='tbPickwalkMMPressed',
-                                     annotation='useful comment',
-                                     category=self.category, command=['Pickwalk.openMM()']))
-        self.addCommand(self.tb_hkey(name='tbPickwalkMMReleased',
-                                     annotation='useful comment',
-                                     category=self.category, command=['Pickwalk.closeMM()']))
+
         self.addCommand(self.tb_hkey(name='tbPickwalkUp',
                                      annotation='pickwalk up, defaults to message attrs, then standard maya function',
                                      category=self.category,
@@ -681,6 +662,31 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='Create a new pickwalk, raise the ui if needed',
                                      category=self.category,
                                      command=["Pickwalk.walkCreate('right', condition=True)"]))
+
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
+        self.addCommand(self.tb_hkey(name='tbPickwalkMMPressed',
+                                     annotation='useful comment',
+                                     category=self.category, command=['Pickwalk.openMM()']))
+        self.addCommand(self.tb_hkey(name='tbPickwalkMMReleased',
+                                     annotation='useful comment',
+                                     category=self.category, command=['Pickwalk.closeMM()']))
+
+        self.setCategory(self.helpStrings.category.get('ui'))
+        self.addCommand(self.tb_hkey(name='tbOpenPickwalkCreator',
+                                     annotation='OpenPickwalkCreator',
+                                     category=self.category,
+                                     command=['Pickwalk.openCreator()'],
+                                     help=self.helpStrings.OpenPickwalkCreator))
+        self.addCommand(self.tb_hkey(name='tbOpenPickwalkLibrary',
+                                     annotation='OpenPickwalkLibrary',
+                                     category=self.category,
+                                     command=['Pickwalk.openLibrary()'],
+                                     help=self.helpStrings.OpenPickwalkLibrary))
+        self.addCommand(self.tb_hkey(name='tbOpenPickwalkConditionUI',
+                                     annotation='Open the conditional pickwalk creator UI',
+                                     category=self.category,
+                                     help='Open the conditional pickwalk creator UI',
+                                     command=['Pickwalk.openPickwalkConditionUI()']))
 
         return self.commandList
 

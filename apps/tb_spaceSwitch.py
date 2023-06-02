@@ -56,12 +56,6 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('spaceSwitch'))
         self.commandList = list()
 
-        self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchMenu',
-                                     annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.openMM()']))
-        self.addCommand(self.tb_hkey(name='tbCloseSpaceSwitchMenu',
-                                     annotation='useful comment',
-                                     category=self.category, command=['SpaceSwitch.closeMM()']))
 
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
                                      annotation='useful comment',
@@ -96,6 +90,15 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='selects all space switch controls for selected rigs',
                                      category=self.category, command=['SpaceSwitch.selectAllSpaceSwitchControls()']))
 
+        self.setCategory(self.helpStrings.category.get('markingMenus'))
+        self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.openMM()']))
+        self.addCommand(self.tb_hkey(name='tbCloseSpaceSwitchMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.closeMM()']))
+
+        self.setCategory(self.helpStrings.category.get('ui'))
         self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchDataEditor',
                                      annotation='useful comment',
                                      category=self.category, command=['SpaceSwitch.openEditorWindow()']))

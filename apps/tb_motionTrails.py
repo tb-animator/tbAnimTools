@@ -83,6 +83,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category, command=['MotionTrails.offlineMotionTrailSelected()'],
                                      help=maya.stringTable['tbCommand.motionPathSelected']))
+        self.setCategory(self.helpStrings.category.get('ignore'))
         self.addCommand(self.tb_hkey(name=assetCommandName,
                                      annotation='right click menu for offline motion trails',
                                      category=self.category, command=['MotionTrails.assetRmbCommand()']))
