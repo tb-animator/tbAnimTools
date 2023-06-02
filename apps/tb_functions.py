@@ -385,7 +385,7 @@ class functions(object):
         loc.getShape().overrideColorRGB.set(color)
         return loc
 
-    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
+    def tempControl_broken(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         control, shape = self.drawControl(points, scale=1)
@@ -417,6 +417,27 @@ class functions(object):
         pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl), force=True)
 
         pm.delete(blendControl)
+        return control
+
+    def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
+                    unlockScale=False):
+        points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
+        control, shape = self.drawControl(points, scale=float(scale))
+        control.rename(name + '_' + suffix)
+
+        control.rotateOrder.set(3)
+        control.scaleX.set(channelBox=True)
+        control.scaleY.set(channelBox=True)
+        control.scaleZ.set(channelBox=True)
+        control.scaleX.set(keyable=unlockScale)
+        control.scaleY.set(keyable=unlockScale)
+        control.scaleZ.set(keyable=unlockScale)
+        shape.overrideEnabled.set(True)
+        shape.overrideRGBColors.set(True)
+        shape.overrideColorRGB.set(color)
+
+        # add the blendshape stuff as well
+        
         return control
 
     def getControlColour(self, ref):
