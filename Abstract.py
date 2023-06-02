@@ -63,10 +63,14 @@ class hotKeyAbstractFactory(ABC):
         def __init__(self, name="",
                      annotation="",
                      category="tb_tools",
+                     niceName=None,
                      ctx=str(),
                      language='python',
                      command=[""], help=str()):
             self.name = name
+            if not niceName:
+                niceName = name
+            self.niceName = niceName
             self.annotation = annotation
             self.ctx = ctx
             self.category = category

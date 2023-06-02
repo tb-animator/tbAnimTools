@@ -351,7 +351,8 @@ class mainHotkeyWindow(QMainWindow):
         index = self.treeView.selectedIndexes()[0]
         item = self.model.itemFromIndex(self.proxyModel.mapToSource(index))
         print (item.text())
-        if item.text() + 'NameCommand' in self.commandData.keys():
+        print (item.comnmandName)
+        if item.comnmandName + 'NameCommand' in self.commandData.keys():
             commandWidget = CommandHelpWidget(item.text(), cls=self)
             self.optionUIScrollArea.setWidget(commandWidget)
         # self.toolOptionStack.setCurrentIndex(index)
@@ -372,9 +373,11 @@ class mainHotkeyWindow(QMainWindow):
                 continue
             categoryItem = QStandardItem(cat.split('tbAnimTools_')[-1])
             categoryItem.setEditable(False)
+            categoryItem.comnmandName = None
 
             for command in sorted(self.commandCategories[cat]):
                 hotkey = QStandardItem(command.replace('NameCommand', ''))
+                hotkey.comnmandName = command.replace('NameCommand', '')
                 hotkey.setEditable(False)
 
                 categoryItem.appendRow(hotkey)
