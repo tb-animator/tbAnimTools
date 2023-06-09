@@ -33,7 +33,7 @@ import maya.api.OpenMayaUI as omui2
 import pymel.core as pm
 from functools import partial
 import subprocess
-import tb_fileTools as ft
+import apps.tb_fileTools as ft
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
