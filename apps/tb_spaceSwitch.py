@@ -676,7 +676,7 @@ class SpaceSwitch(toolAbstractFactory):
             spaceSwitchAttr = pm.Attribute(key)
             spaceValue = values[key]
             if not isinstance(values[key], int) and not isinstance(values[key], float):
-                spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
+                spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().items())
                 spaceValue = spaceEnums[spaceValue.lower()]
 
             cmds.setKeyframe(key, time=(startTime, endTime), value=spaceValue)

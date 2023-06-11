@@ -73,7 +73,7 @@ def repeatable(function):
                 argString += str(each) + ', '
 
         if kwargs:
-            for key, item in kwargs.iteritems():
+            for key, item in kwargs.items():
                 argString += str(key) + '=' + str(item) + ', '
 
         commandToRepeat = 'python("global tbtoolCLS;tbtoolCLS.tools[\'QuickSelectionSets\'].' + function.__name__ + '()")'
