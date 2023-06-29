@@ -734,7 +734,7 @@ class ToolboxButton(QPushButton):
     def __init__(self, label, parent, cls=None, icon=str(), command=None, closeOnPress=True, popupSubMenu=False,
                  subMenuClass=None,
                  subMenu=None,
-                 iconWidth=32, iconHeight=32,
+                 iconWidth=24, iconHeight=24,
                  isSmall=False,
                  fixedWidth=None,
                  colour=[55, 55, 55],
@@ -2818,12 +2818,15 @@ class hotKeyWidget(QWidget):
 class ObjectSelectLineEdit(QWidget):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
+    editedSignalKeyList = Signal(str, list)
 
     def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(),
                  stripNamespace=False,
                  lineEditStretches=False,
+                 isMultiple=False,
                  tooltip=str()):
         QWidget.__init__(self)
+        self.isMultiple = isMultiple
         self.key = key
         self.stripNamespace = stripNamespace
         self.lineEditStretches = lineEditStretches
@@ -2848,14 +2851,24 @@ class ObjectSelectLineEdit(QWidget):
     def pickObject(self):
         # print ('pickObject')
         sel = pm.ls(sl=True)
+        objectList = list()
         if not sel:
             return
-        if self.stripNamespace:
-            s = str(sel[0]).split(':', 1)[-1]
+        if self.isMultiple:
+            if self.stripNamespace:
+                objectList = [str(x).split(':', 1)[-1] for x in sel]
+                s = ' '.join(objectList)
+            else:
+                objectList = [str(x) for x in sel]
+                s = ' '.join(objectList)
         else:
-            s = str(sel[0])
+            if self.stripNamespace:
+                s = str(sel[0]).split(':', 1)[-1]
+            else:
+                s = str(sel[0])
         self.itemLabel.setText(s)
         self.pickedSignal.emit(s)
+        self.editedSignalKeyList.emit(self.key, objectList)
         # self.editedSignalKey.emit(self.key, str(sel[0]))
 
     def setTextNoUpdate(self, text):

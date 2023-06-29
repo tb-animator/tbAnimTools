@@ -36,6 +36,40 @@
     },
     {
       "sliderData": {
+        "mode": "SmoothGaussian",
+        "label": "SmoothGaussian",
+        "icon": "tweenSmooth.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "SmoothGaussian",
+        "label": "SmoothGaussian",
+        "icon": "tweenSmoothGauss.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Smooth Gaussian"
+    },
+    {
+      "sliderData": {
+        "mode": "SmoothButterworth",
+        "label": "Smooth Moving Average",
+        "icon": "tweenSmoothAverage.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "SmoothButterworth",
+        "label": "Smooth Moving Average",
+        "icon": "tweenSmoothAverage.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "Smooth Moving Average"
+    },
+    {
+      "sliderData": {
         "mode": "Noise",
         "label": "Noise",
         "axisLabelX": "Freq",
@@ -125,7 +159,7 @@
       },
       "toolTipSmall": "Close gap between first+previous or last+next keys"
     },
-        {
+    {
       "sliderData": {
         "mode": "Ease",
         "label": "Ease",

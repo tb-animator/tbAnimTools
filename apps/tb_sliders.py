@@ -33,11 +33,14 @@ import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
 from maya.api import OpenMaya
 from copy import deepcopy
+
 '''
 blend to magnet (relative pose)
 
 '''
 fn_SMOOTH = 'Smooth'
+fn_SMOOTHGAUSS = 'SmoothGaussian'
+fn_SMOOTHBUTTER = 'SmoothButterworth'
 fn_SCALEFROMFIRST = 'ScaleFromFirst'
 fn_SCALEFROMLAST = 'ScaleFromLast'
 fn_CLOSEGAP = 'Fill Gap'
@@ -882,6 +885,8 @@ class SlideTools(toolAbstractFactory):
     keyTweenKeys = [fn_BREAKDOWN,
                     fn_BREAKDOWNGROUP,
                     fn_SMOOTH,
+                    fn_SMOOTHGAUSS,
+                    fn_SMOOTHBUTTER,
                     fn_BLOAT,
                     fn_SCALEFROMFIRST,
                     fn_SCALEFROMLAST,
@@ -889,6 +894,8 @@ class SlideTools(toolAbstractFactory):
                     ]
     toolBarTweenKeys = [[fn_BREAKDOWN, fn_BREAKDOWNGROUP],
                         [fn_SMOOTH, fn_SMOOTH],
+                        [fn_SMOOTHGAUSS, fn_SMOOTHGAUSS],
+                        [fn_SMOOTHBUTTER, fn_SMOOTHBUTTER],
                         [fn_BLOAT, fn_BLOAT],
                         [fn_SCALEFROMFIRST, fn_SCALEFROMFIRST],
                         [fn_SCALEFROMLAST, fn_SCALEFROMLAST],
@@ -917,6 +924,8 @@ class SlideTools(toolAbstractFactory):
             fn_NOISE: SlideTools.__instance.tweenNoise,
             fn_NOISELOOP: SlideTools.__instance.tweenNoiseLoop,
             fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours,
+            fn_SMOOTHGAUSS: SlideTools.__instance.tweenSmoothGauss,
+            fn_SMOOTHBUTTER: SlideTools.__instance.tweenSmoothHighPass,
             fn_SCALEFROMFIRST: SlideTools.__instance.scaleFromFirstKey,
             fn_SCALEFROMLAST: SlideTools.__instance.scaleFromLastKey,
             fn_CLOSEGAP: SlideTools.__instance.closeGapFirstKey,
@@ -994,8 +1003,8 @@ class SlideTools(toolAbstractFactory):
             self.xformWidget.moveToCursor()
         self.xformWidget.show()
         self.xformWidget.raise_()
-        #self.app.installEventFilter(self.keyPressHandler)
-        #self.keyPressHandler.addUI(self.xformWidget)
+        # self.app.installEventFilter(self.keyPressHandler)
+        # self.keyPressHandler.addUI(self.xformWidget)
 
     def xformSliderBeginSignal(self, key, value):
         self.xformTweenClasses[key].startDrag(value)
@@ -1039,8 +1048,8 @@ class SlideTools(toolAbstractFactory):
         graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
         graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
         graphEditKeyWidget.modeChanged()
-        #graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
-        #graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
+        # graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
+        # graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
 
         widgets[0].addWidget(graphEditKeyWidget)  # .setParent(phLayout)
         '''
@@ -1061,8 +1070,8 @@ class SlideTools(toolAbstractFactory):
             # xformWidget.setToolTip(self.keyTweenToolTips[mode])
             # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
             # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
-            #xformWidget.setPopupMenu(SliderButtonPopupMenu)
-            #xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
+            # xformWidget.setPopupMenu(SliderButtonPopupMenu)
+            # xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
             xformWidget.popup.sliderBeginSignal.connect(self.keySliderBeginSignal)
             xformWidget.popup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
             xformWidget.popup.sliderEndedSignal.connect(self.keySliderEndSignal)
@@ -1071,7 +1080,7 @@ class SlideTools(toolAbstractFactory):
             xformWidget.altPopup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
             xformWidget.altPopup.sliderEndedSignal.connect(self.keySliderEndSignal)
 
-            #self.keyPressHandler.addUI(xformWidget)
+            # self.keyPressHandler.addUI(xformWidget)
             widgets[0].addWidget(xformWidget)  # .setParent(phLayout)
 
         parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]
@@ -1384,7 +1393,7 @@ class SlideTools(toolAbstractFactory):
             for i in range(len(keyframeData.keyIndexes)):
                 # time alpha in 0-1 range
                 outValue = outValues[i] - (startDelta * (1 - keyframeData.timeAlpha[i])) - (
-                            keyframeData.timeAlpha[i] * endDelta)
+                        keyframeData.timeAlpha[i] * endDelta)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
 
@@ -1429,8 +1438,8 @@ class SlideTools(toolAbstractFactory):
         else:
             alphaBlend = self.mapValue(blendAlpha, -100, 0, -1, 0)
         alphaBlend = self.mapValue(blendAlpha, -100, 100, 1, -1)
-        #alphaBlend = max(0, min(1, alphaBlend))
-        #powerAlpha = -powerAlpha
+        # alphaBlend = max(0, min(1, alphaBlend))
+        # powerAlpha = -powerAlpha
 
         for curve, keyframeData in self.keyframeData.items():
             startValue = self.keyframeRefData[curve].previousValues[keyframeData.keyIndexes[0]]
@@ -1706,7 +1715,192 @@ class SlideTools(toolAbstractFactory):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
+    def tweenSmoothHighPass(self, alpha, alphaB, animCurveChange):
+        """
+        # TODO - actually do it
+        Smooths keys to nearest neighbours, taking spacing into account
+        :param alpha:
+        :return:
+        """
 
+        # self.keyframeRefData
+        # smooth iteration pass
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        alphaB = self.normalizeAlpha(alphaB, -100, 100, range=[-10, 10])
+
+        if not self.keyframeData:
+            return
+
+        for curve, keyframeData in self.keyframeData.items():
+            keyframeData.keyValues = self.highpass_smoothing(self.keyframeRefData[curve].keyValues, 0.9)
+            for x in range(abs(int(alphaB))):
+                keyframeData.keyValues = self.highpass_smoothing(keyframeData.keyValues, 0.9)
+
+            keyframeData.isCached = True
+
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+    def tweenSmoothGauss(self, alpha, alphaB, animCurveChange):
+        """
+        # TODO - actually do it
+        Smooths keys to nearest neighbours, taking spacing into account
+        :param alpha:
+        :return:
+        """
+        # self.keyframeRefData
+        # smooth iteration pass
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        flipped = False
+        if not self.keyframeData:
+            return
+        if alpha == 0:
+            for curve, keyframeData in self.keyframeData.items():
+                for i in range(len(keyframeData.keyIndexes)):
+                    outValue = self.keyframeRefData[curve].keyValues[i]
+                    self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                           change=animCurveChange)
+            return
+
+        for curve, keyframeData in self.keyframeData.items():
+            if keyframeData.isCached:
+                continue
+            if alpha < 0:
+                alpha *= -1
+                flipped = True
+            keyframeData.keyValues = self.gaussian_smoothing(self.keyframeRefData[curve].keyValues, alpha)
+
+            # keyframeData.isCached = True
+
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                if flipped:
+                    outValue = self.keyframeRefData[curve].keyValues[i] - (-1*(
+                        self.keyframeRefData[curve].keyValues[i] - keyframeData.keyValues[i]))
+                else:
+                    outValue = keyframeData.keyValues[i]
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def tweenSmoothButter(self, alpha, alphaB, animCurveChange):
+        """
+        # TODO - actually do it
+        Smooths keys to nearest neighbours, taking spacing into account
+        :param alpha:
+        :return:
+        """
+        # self.keyframeRefData
+        # smooth iteration pass
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        flipped = False
+        if not self.keyframeData:
+            return
+        if alpha == 0:
+            for curve, keyframeData in self.keyframeData.items():
+                for i in range(len(keyframeData.keyIndexes)):
+                    outValue = self.keyframeRefData[curve].keyValues[i]
+                    self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                           change=animCurveChange)
+            return
+
+        for curve, keyframeData in self.keyframeData.items():
+            if keyframeData.isCached:
+                continue
+            if alpha < 0:
+                alpha *= -1
+                flipped = True
+            keyframeData.keyValues = self.butterworth_filter(self.keyframeRefData[curve].keyValues, 7.00, 40.0, 1)
+
+            # keyframeData.isCached = True
+
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.keyframeRefData[curve].keyValues[i] + (
+                        self.keyframeRefData[curve].keyValues[i] - keyframeData.keyValues[i])
+                outValue = lerpFloat(outValue, self.keyframeRefData[curve].keyValues[i], alpha)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+    def gaussian_smoothing(self, data, sigma):
+        smoothed_data = []
+        kernel_radius = int(2 * math.ceil(2 * sigma) + 1)
+        kernel = []
+
+        for x in range(-kernel_radius, kernel_radius + 1):
+            weight = math.exp(-0.5 * (x / sigma) ** 2)
+            kernel.append(weight)
+
+        kernel_sum = sum(kernel)
+
+        for i in range(len(data)):
+            smoothed_value = 0.0
+            normalization_factor = 0.0
+
+            for j in range(len(kernel)):
+                index = i + j - kernel_radius
+
+                if index >= 0 and index < len(data):
+                    smoothed_value += kernel[j] * data[index]
+                    normalization_factor += kernel[j]
+
+            smoothed_data.append(smoothed_value / normalization_factor)
+
+        return smoothed_data
+
+    def highpass_smoothing(self, data, alpha):
+        smoothed_data = [data[0]]  # Initialize the smoothed data with the first value of the input data
+        for i in range(1, len(data)):
+            smoothed_value = alpha * data[i] + (1 - alpha) * smoothed_data[i - 1]
+            smoothed_data.append(smoothed_value)
+        return smoothed_data
+    def butterworth_filter(self, data, cutoff_freq, sampling_rate, order):
+        filtered_data = []
+        nyquist_freq = 0.5 * sampling_rate
+        normalized_cutoff = cutoff_freq / nyquist_freq
+        tan_half_normalized_cutoff = math.tan(math.pi * normalized_cutoff * 0.5)
+        sqr_tan_half_normalized_cutoff = tan_half_normalized_cutoff ** 2
+
+        c = [0.0] * (order + 1)
+        d = [0.0] * (order + 1)
+
+        c[0] = sqr_tan_half_normalized_cutoff + 2.0 * tan_half_normalized_cutoff + 1.0
+        c[1] = 2.0 * (sqr_tan_half_normalized_cutoff - 1.0) / c[0]
+
+        for i in range(2, order + 1):
+            c[i] = (2.0 * sqr_tan_half_normalized_cutoff - 2.0) / c[i - 1]
+
+        d[0] = 1.0 / c[0]
+        d[1] = 0.0
+
+        for i in range(2, order + 1):
+            d[i] = (-2.0 * tan_half_normalized_cutoff) / c[i - 1] * d[i - 1] - d[i - 2]
+
+        for i in range(len(data)):
+            filtered_value = 0.0
+
+            for j in range(order + 1):
+                index = i - j
+
+                if index >= 0:
+                    filtered_value += c[j] * data[index]
+
+            for j in range(1, order + 1):
+                index = i - j
+
+                if index >= 0:
+                    filtered_value -= d[j] * filtered_data[index]
+
+            filtered_data.append(filtered_value)
+
+        return filtered_data
+
+    def comb(self, n, k):
+        if k > n or k < 0:
+            return 0
+        if k == 0 or k == n:
+            return 1
+        return math.factorial(n) / (math.factorial(k) * math.factorial(n - k))
     def tweenSmoothNeighboursKey(self, keyframeData):
         """
         Update the previous and next values based on the smoothed list
@@ -1858,7 +2052,6 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], newValue,
                                                        change=animCurveChange)
     '''
-
 
     def getAnimCurveSelectionAPI(self):
         om2SelectionList = om2.MGlobal.getActiveSelectionList()
