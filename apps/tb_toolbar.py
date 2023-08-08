@@ -27,13 +27,13 @@ import maya.cmds as cmds
 
 from Abstract import *
 import maya
-import ui.tbUI_toolbar as tbuit
+import apps.ui.tbUI_toolbar as tbuit
 try:
     reload(tbuit)
 except:
     import importlib
     importlib.reload(tbuit)
-from ui.tbUI_toolbar import *
+from apps.ui.tbUI_toolbar import *
 str_TOOLBAR = 'tbAnimTools'
 
 qtVersion = pm.about(qtVersion=True)
