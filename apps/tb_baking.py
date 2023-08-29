@@ -1659,6 +1659,14 @@ class BakeTools(toolAbstractFactory):
     def bakeOnXUI(self):
         wd = bakeOnXWidget(title='Bake to key per (x) frames', label='Frames', buttonText="Bake", default="Bake")
 
+    def bakeChannel(self):
+        curves = self.funcs.get_selected_curves()
+        for c in curves:
+            cmds.bakeResults(c,
+                             sampleBy=1,
+                             oversamplingRate=1,
+                             preserveOutsideKeys=1)
+
 
 class bakeOnXWidget(IntInputWidget):
     def __init__(self, title=str(), label=str(), buttonText="Accept", default="Accept"):

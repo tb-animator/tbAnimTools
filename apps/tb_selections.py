@@ -167,11 +167,15 @@ class SelectionTools(toolAbstractFactory):
             if allControls:
                 finalControls.extend([namespace + c for c in allControls])
             else:
-                splitName = controls[0].split(':')
-                mainNamespace = controls[0].rsplit(':', 1)
-                if len(splitName) > 1:
-                    namespace = splitName[0]
-                s = splitName[-1]
+                if ':' in controls[0]:
+                    splitName = controls[0].split(':')
+                    mainNamespace = controls[0].rsplit(':', 1)
+                    if len(splitName) > 1:
+                        namespace = splitName[0]
+                    s = splitName[-1]
+                else:
+                    mainNamespace = ':'
+                    s = controls[0]
                 prefix = re.split('[^a-zA-Z0-9]+', s)
 
                 matchingPrefix = self.getSimilarControls(mainNamespace[0], controls, prefix)

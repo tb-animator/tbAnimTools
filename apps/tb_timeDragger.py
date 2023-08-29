@@ -547,7 +547,7 @@ class TimeDragDialog(QDialog):
         """Sow and initialize"""
         widgetStr = mel.eval('$gPlayBackSlider=$gPlayBackSlider')
         ptr = omui.MQtUtil.findControl(widgetStr)
-        self.slider = wrapInstance(long(ptr), QWidget)
+        self.slider = wrapInstance(int(ptr), QWidget)
         min_time = cmds.playbackOptions(query=True, minTime=True)
         max_time = cmds.playbackOptions(query=True, maxTime=True)
         self.slider_width = self.slider.size().width()
