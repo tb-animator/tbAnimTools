@@ -367,7 +367,7 @@ class LayerEditor(toolAbstractFactory):
             return
         if cmds.undoInfo(query=True, stateWithoutFlush=True):
             cmds.undoInfo(stateWithoutFlush=False)
-            self.refreshHack()
+            # self.refreshHack()
             cmds.undoInfo(stateWithoutFlush=True)
         cmds.floatField('AnimLayerTabWeightField', edit=True, value=value)
         self.setLayerWeightNoRefresh(layers, value)
