@@ -13,7 +13,9 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
-from ..tb_UI import intFieldWidget
+from ..tb_UI import intFieldWidget, dpiScale
+
+
 
 sliderStyleSheet = """
 QSlider {{ margin: 0px;
@@ -265,7 +267,7 @@ class sliderButton(QPushButton):
 
         adjust_style = sliderStyleSheet.format()
         # self.setStyleSheet(adjust_style)
-        self.setFixedSize(20, 20)
+        self.setFixedSize(20 * dpiScale(), 20 * dpiScale())
 
 class SliderFloatField(QWidget):
     valueChanged = Signal(float)

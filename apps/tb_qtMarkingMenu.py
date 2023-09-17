@@ -478,7 +478,7 @@ class RadialToolboxButton(ToolboxButton):
         if icon:
             fontWidth += iconWidth
         self.setText(str())
-        self.setFixedSize(36, 36)
+        self.setFixedSize(36 * dpiScale(), 36 * dpiScale())
         self.pixmap = QPixmap()
         if icon:
             self.icon = os.path.join(IconPath, icon)

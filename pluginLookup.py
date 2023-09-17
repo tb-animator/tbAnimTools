@@ -195,11 +195,13 @@ class ClassFinder(object):
     def applyAnimLayerTabModification(self):
         try:
             animLayerLayouts = self.tools['LayerEditor'].modifyAnimLayerTab()
+
             if not animLayerLayouts:
                 return
             widgets = self.collectAnimLayerTabWidgets()
             for widget in widgets:
                 animLayerLayouts[-1].insertWidget(0, widget)
+
         except Exception:
             cmds.warning('Failing to modify animLayerTab ::', cmds.warning(traceback.format_exc()))
 

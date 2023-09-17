@@ -77,7 +77,7 @@ import maya.api.OpenMaya as OpenMaya
 import maya.OpenMaya as om
 
 assetCommandName = 'aimToolAssetMenu'
-
+maya.utils.loadStringResourcesForModule(__name__)
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -322,7 +322,8 @@ class AimTools(toolAbstractFactory):
 
     def aimToLocators(self, directionDict=dict(), default=dict(), forceDefault=False):
         sel = cmds.ls(sl=True)
-        if not sel: return
+        if not sel:
+            return
         self.targets = sel
         self.constraints = list()
         self.locators = list()
@@ -477,8 +478,8 @@ class AimTools(toolAbstractFactory):
                 scale = self.aimData[refName][name].get('scale', 1.0)
         prompt = AimAxisDialog(parent=self.funcs.getMainWindow(),
                                controlName=sel[0],
-                               title='Assign default aim for control',
-                               text=sel[0],
+                               title='Set Default Aim Values',
+                               text='Control : {s}'.format(s=sel[0]),
                                itemList=['x', 'y', 'z'],
                                aimAxis=aimAxis,
                                upAxis=upAxis,
@@ -561,7 +562,7 @@ class AimTools(toolAbstractFactory):
         asset = pm.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-        print ("asset", asset)
+        print("asset", asset)
 
         cmds.menuItem(label='Aim Tool', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
@@ -845,3 +846,309 @@ def getLocalVecToWorldSpaceAPI(node, vec=om.MVector.yAxis, offset=om.MVector(0, 
     vec = ((vec * matrix).normal() * mult)
     vec += offset
     return vec.x, vec.y, vec.z
+
+
+class AimAxisDialog(BaseDialog):
+    assignSignal = Signal(str, str, str, bool, bool, float, float)
+    editedSignal = Signal(str, str, str, bool, bool, float, float)
+    closeSignal = Signal()
+
+    def __init__(self, controlName=str, parent=None,
+                 title='Set Default',
+                 text='Set the parameters for the selected object',
+                 itemList=['x', 'y', 'z'],
+                 aimAxis='x',
+                 upAxis='z',
+                 flipAim=False,
+                 flipUp=False,
+                 distance=100,
+                 scale=1.0):
+        super(AimAxisDialog, self).__init__(parent=parent, title=title, text=text)
+        # self.setFixedSize(300 * dpiScale(), 400 * dpiScale())
+        self.controlName = controlName
+        self.aimAxis = aimAxis
+        self.upAxis = upAxis
+        self.flipAim = flipAim
+        self.flipUp = flipUp
+        buttonLayout = QHBoxLayout()
+        self.assignButton = QPushButton('Assign')
+        self.assignButton.clicked.connect(self.assignPressed)
+        self.assignButton.setFixedHeight(22 * dpiScale())
+        self.cancelButton = QPushButton('Cancel')
+        self.cancelButton.setFixedHeight(22 * dpiScale())
+        self.cancelButton.clicked.connect(self.close)
+        self.aimHelpButton = HelpButton(width=22, height=22)
+        self.aimHelpButton.clicked.connect(self.openCreateHelpWindow)
+        self.aimWidget = AimAxisWidgetVertical(itemList=itemList,
+                                               aimAxis=aimAxis,
+                                               upAxis=upAxis,
+                                               flipAim=flipAim,
+                                               flipUp=flipUp,
+                                               distance=distance,
+                                               scale=scale)
+        '''
+        aimLabel = QLabel('Aim Axis')
+        upLabel = QLabel('Up Axis')
+        flipAimLabel = QLabel('Flip Aim')
+        flipUpLabel = QLabel('Flip Up')
+        self.flipAimCB = QCheckBox()
+        self.flipAimCB.setChecked(flipAim)
+        self.flipUpCB = QCheckBox()
+        self.flipUpCB.setChecked(flipUp)
+        self.itemLayout = QHBoxLayout()
+        self.aimComboBox = QComboBox()
+        for item in itemList:
+            self.aimComboBox.addItem(item)
+        self.upComboBox = QComboBox()
+        for item in itemList:
+            self.upComboBox.addItem(item)
+        self.aimComboBox.setFixedWidth(32)
+        self.upComboBox.setFixedWidth(32)
+
+        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
+        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
+
+        self.distanceSpinBox = QDoubleSpinBox()
+        distanceLabel = QLabel('Distance')
+        self.distanceSpinBox.setFixedWidth(80)
+        self.distanceSpinBox.setValue(distance)
+        self.distanceSpinBox.setMaximum(1000.0)
+        self.distanceSpinBox.setSingleStep(0.1)
+        self.itemLayout.addWidget(aimLabel)
+        self.itemLayout.addWidget(self.aimComboBox)
+        self.itemLayout.addWidget(upLabel)
+        self.itemLayout.addWidget(self.upComboBox)
+        self.itemLayout.addWidget(flipAimLabel)
+        self.itemLayout.addWidget(self.flipAimCB)
+        self.itemLayout.addWidget(flipUpLabel)
+        self.itemLayout.addWidget(self.flipUpCB)
+        self.itemLayout.addWidget(distanceLabel)
+        self.itemLayout.addWidget(self.distanceSpinBox)
+        '''
+        self.layout.addWidget(self.aimWidget)
+        self.layout.addLayout(buttonLayout)
+        buttonLayout.addWidget(self.assignButton)
+        buttonLayout.addWidget(self.cancelButton)
+        buttonLayout.addWidget(self.aimHelpButton)
+        '''
+        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.flipAimCB.clicked.connect(self.widgetedited)
+        self.flipUpCB.clicked.connect(self.widgetedited)
+        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
+        '''
+        self.aimWidget.editedSignal.connect(self.widgetedited)
+        self.setFixedSize(self.sizeHint())
+
+    def openCreateHelpWindow(self):
+        helpWidget = InfoPromptWidget(title=maya.stringTable['AimTools.CreateHelpTitle'],
+                                      buttonText='Ok',
+                                      imagePath=helpPath,
+                                      error=False,
+                                      image=maya.stringTable['AimTools.AimToolDefaultHelp'],
+                                      gif=maya.stringTable['AimTools.CreateIsGif'],
+                                      helpString=maya.stringTable['AimTools.CreateHelp'])
+
+    def assignPressed(self):
+        self.assignSignal.emit(self.controlName,
+                               str(self.aimWidget.aimComboBox.currentText()),
+                               str(self.aimWidget.upComboBox.currentText()),
+                               self.aimWidget.flipAimCB.isChecked(),
+                               self.aimWidget.flipUpCB.isChecked(),
+                               self.aimWidget.distanceSpinBox.value(),
+                               self.aimWidget.scaleSpinBox.value()
+                               )
+        self.close()
+
+    def close(self):
+        self.closeSignal.emit()
+        super(AimAxisDialog, self).close()
+
+    def widgetedited(self, aim, up, flipAim, flipUp, distance, scale):
+        self.editedSignal.emit(self.controlName,
+                               aim,
+                               up,
+                               flipAim,
+                               flipUp,
+                               distance,
+                               scale
+                               )
+
+
+class AimAxisWidget(QWidget):
+    editedSignal = Signal(str, str, bool, bool, float, float)
+
+    def __init__(self, itemList=['x', 'y', 'z'],
+                 aimAxis='x',
+                 upAxis='z',
+                 flipAim=False,
+                 flipUp=False,
+                 distance=100.0,
+                 scale=1.0):
+        super(AimAxisWidget, self).__init__()
+        self.aimAxis = aimAxis
+        self.upAxis = upAxis
+        self.flipAim = flipAim
+        self.flipUp = flipUp
+        self.distance = distance
+        self.scale = scale
+        self.itemLayout = QHBoxLayout()
+        self.setLayout(self.itemLayout)
+        aimLabel = QLabel('Aim Axis')
+        upLabel = QLabel('Up Axis')
+        flipAimLabel = QLabel('Flip Aim')
+        flipUpLabel = QLabel('Flip Up')
+        self.flipAimCB = QCheckBox()
+        self.flipAimCB.setChecked(flipAim)
+        self.flipUpCB = QCheckBox()
+        self.flipUpCB.setChecked(flipUp)
+        self.aimComboBox = QComboBox()
+        for item in itemList:
+            self.aimComboBox.addItem(item)
+        self.upComboBox = QComboBox()
+        for item in itemList:
+            self.upComboBox.addItem(item)
+        self.aimComboBox.setFixedWidth(32)
+        self.upComboBox.setFixedWidth(32)
+
+        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
+        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
+
+        self.scaleSpinBox = QDoubleSpinBox()
+        scaleLabel = QLabel('Scale')
+        self.scaleSpinBox.setFixedWidth(80)
+        self.scaleSpinBox.setValue(scale)
+        self.scaleSpinBox.setMinimum(0.01)
+        self.scaleSpinBox.setSingleStep(0.1)
+
+        self.distanceSpinBox = QDoubleSpinBox()
+        distanceLabel = QLabel('Distance')
+        self.distanceSpinBox.setFixedWidth(80)
+        self.distanceSpinBox.setValue(distance)
+        self.distanceSpinBox.setMaximum(1000.0)
+        self.distanceSpinBox.setSingleStep(1)
+
+        self.itemLayout.addWidget(aimLabel)
+        self.itemLayout.addWidget(self.aimComboBox)
+        self.itemLayout.addWidget(upLabel)
+        self.itemLayout.addWidget(self.upComboBox)
+        self.itemLayout.addWidget(flipAimLabel)
+        self.itemLayout.addWidget(self.flipAimCB)
+        self.itemLayout.addWidget(flipUpLabel)
+        self.itemLayout.addWidget(self.flipUpCB)
+        self.itemLayout.addWidget(distanceLabel)
+        self.itemLayout.addWidget(self.distanceSpinBox)
+
+        # draw scale
+        self.itemLayout.addWidget(scaleLabel)
+        self.itemLayout.addWidget(self.scaleSpinBox)
+
+        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.flipAimCB.clicked.connect(self.widgetedited)
+        self.flipUpCB.clicked.connect(self.widgetedited)
+        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
+        self.scaleSpinBox.valueChanged.connect(self.widgetedited)
+
+    def widgetedited(self, *args):
+        self.editedSignal.emit(str(self.aimComboBox.currentText()),
+                               str(self.upComboBox.currentText()),
+                               self.flipAimCB.isChecked(),
+                               self.flipUpCB.isChecked(),
+                               self.distanceSpinBox.value(),
+                               self.scaleSpinBox.value()
+                               )
+
+
+class AimAxisWidgetVertical(QWidget):
+    editedSignal = Signal(str, str, bool, bool, float, float)
+
+    def __init__(self, itemList=['x', 'y', 'z'],
+                 aimAxis='x',
+                 upAxis='z',
+                 flipAim=False,
+                 flipUp=False,
+                 distance=100.0,
+                 scale=1.0):
+        super(AimAxisWidgetVertical, self).__init__()
+        self.aimAxis = aimAxis
+        self.upAxis = upAxis
+        self.flipAim = flipAim
+        self.flipUp = flipUp
+        self.distance = distance
+        self.scale = scale
+        self.itemLayout = QFormLayout()
+        self.setLayout(self.itemLayout)
+        aimLabel = QLabel('Aim Axis')
+        upLabel = QLabel('Up Axis')
+        flipAimLabel = QLabel('Flip Aim')
+        flipUpLabel = QLabel('Flip Up')
+        self.flipAimCB = QCheckBox()
+        self.flipAimCB.setChecked(flipAim)
+        self.flipUpCB = QCheckBox()
+        self.flipUpCB.setChecked(flipUp)
+        self.aimComboBox = QComboBox()
+        for item in itemList:
+            self.aimComboBox.addItem(item)
+        self.upComboBox = QComboBox()
+        for item in itemList:
+            self.upComboBox.addItem(item)
+        self.aimComboBox.setFixedWidth(32 * dpiScale())
+        self.upComboBox.setFixedWidth(32 * dpiScale())
+
+        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
+        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
+
+        self.scaleSpinBox = QDoubleSpinBox()
+        scaleLabel = QLabel('Scale')
+        self.scaleSpinBox.setFixedWidth(80 * dpiScale())
+        self.scaleSpinBox.setValue(scale)
+        self.scaleSpinBox.setMinimum(0.01)
+        self.scaleSpinBox.setSingleStep(0.1)
+
+        self.distanceSpinBox = QDoubleSpinBox()
+        distanceLabel = QLabel('Distance')
+        self.distanceSpinBox.setFixedWidth(80 * dpiScale())
+        self.distanceSpinBox.setValue(distance)
+        self.distanceSpinBox.setMaximum(1000.0)
+        self.distanceSpinBox.setSingleStep(1)
+
+        # self.itemLayout.addWidget(aimLabel)
+        # self.itemLayout.addWidget(self.aimComboBox)
+        # self.itemLayout.addWidget(upLabel)
+        # self.itemLayout.addWidget(self.upComboBox)
+        # self.itemLayout.addWidget(flipAimLabel)
+        # self.itemLayout.addWidget(self.flipAimCB)
+        # self.itemLayout.addWidget(flipUpLabel)
+        # self.itemLayout.addWidget(self.flipUpCB)
+        # self.itemLayout.addWidget(distanceLabel)
+        # self.itemLayout.addWidget(self.distanceSpinBox)
+
+        aimLabel.setFixedWidth(64*dpiScale())
+        upLabel.setFixedWidth(64*dpiScale())
+        flipAimLabel.setFixedWidth(64*dpiScale())
+        flipUpLabel.setFixedWidth(64*dpiScale())
+        distanceLabel.setFixedWidth(64*dpiScale())
+        scaleLabel.setFixedWidth(64*dpiScale())
+        self.itemLayout.addRow(aimLabel, self.aimComboBox)
+        self.itemLayout.addRow(upLabel, self.upComboBox)
+        self.itemLayout.addRow(flipAimLabel, self.flipAimCB)
+        self.itemLayout.addRow(flipUpLabel, self.flipUpCB)
+        self.itemLayout.addRow(distanceLabel, self.distanceSpinBox)
+        self.itemLayout.addRow(scaleLabel, self.scaleSpinBox)
+
+        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
+        self.flipAimCB.clicked.connect(self.widgetedited)
+        self.flipUpCB.clicked.connect(self.widgetedited)
+        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
+        self.scaleSpinBox.valueChanged.connect(self.widgetedited)
+
+    def widgetedited(self, *args):
+        self.editedSignal.emit(str(self.aimComboBox.currentText()),
+                               str(self.upComboBox.currentText()),
+                               self.flipAimCB.isChecked(),
+                               self.flipUpCB.isChecked(),
+                               self.distanceSpinBox.value(),
+                               self.scaleSpinBox.value()
+                               )

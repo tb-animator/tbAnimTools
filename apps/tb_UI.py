@@ -35,6 +35,8 @@ from functools import partial
 import subprocess
 import apps.tb_fileTools as ft
 
+
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -62,6 +64,7 @@ def dpiScale():
     dpi_scale_factor = QApplication.primaryScreen().logicalDotsPerInch() / 96.0
     return dpi_scale_factor
 
+margin = 4 * dpiScale()
 
 def adjust_color_lightness(r, g, b, factor):
     h, l, s = rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
@@ -137,7 +140,7 @@ class BaseDialog(QDialog):
         self.setFixedSize(400 * dpiScale(), 120 * dpiScale())
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        self.mainLayout.setContentsMargins(margin, margin, margin, margin)
         self.layout = QVBoxLayout()
         self.titleLayout = QHBoxLayout()
         self.titleLayout.setSpacing(0)
@@ -147,17 +150,17 @@ class BaseDialog(QDialog):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
         self.titleText = QLabel(title)
-        self.titleText.setFont(QFont('Lucida Console', 12))
-        self.titleText.setStyleSheet("font-weight: lighter; font-size: 12;")
-        self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
-        self.titleText.setStyleSheet("QLabel {"
-                                     "border-width: 0;"
-                                     "border-radius: 4;"
-                                     "border-style: solid;"
-                                     "border-color: #222222;"
-                                     "font-weight: bold; font-size: 12;"
-                                     "}"
-                                     )
+        # self.titleText.setFont(QFont('Lucida Console', 12))
+        # self.titleText.setStyleSheet("font-weight: lighter; font-size: 12px;")
+        # self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        # self.titleText.setStyleSheet("QLabel {"
+        #                              "border-width: 0;"
+        #                              "border-radius: 4;"
+        #                              "border-style: solid;"
+        #                              "border-color: #222222;"
+        #                              "font-weight: bold; font-size: 12px;"
+        #                              "}"
+        #                              )
 
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel(text)
@@ -189,13 +192,13 @@ class BaseDialog(QDialog):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
         qp.end()
 
     def keyReleaseEvent(self, event):
@@ -317,7 +320,7 @@ class ViewportDialog(QDialog):
 
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        self.mainLayout.setContentsMargins(margin, margin, margin, margin)
         if self.parentMenu:
             self.invokedKey = self.parentMenu.invokedKey
             self.returnButton = ReturnButton(label='', parent=self, cls=self)
@@ -500,7 +503,7 @@ class ViewportDialog(QDialog):
         centralColourMid = QColor(68, 68, 68, 32)
         centralColourFade = QColor(68, 68, 68, 0)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
@@ -513,7 +516,7 @@ class ViewportDialog(QDialog):
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setBrush(QBrush(blank))
-        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
 
         # subtle central shadow
         shadowGrad = QRadialGradient(self.cursorPos, 200)
@@ -536,7 +539,7 @@ class ViewportDialog(QDialog):
         # print (self.currentCursorPos.x(), self.currentCursorPos.y())
 
         if self.activeButton:
-            qp.setPen(QPen(QBrush(linePenColor), 4))
+            qp.setPen(QPen(QBrush(linePenColor), 4 * dpiScale()))
             offset = 0
             buttonPos = self.activeButton.absPos
             '''
@@ -832,7 +835,7 @@ class ToolboxButton(QPushButton):
 
     def setHoverSS(self):
         self.borderColour = QColor(255, 160, 47)
-        self.borderWidth = 1
+        self.borderWidth = 1 * dpiScale()
         self.setStyleSheet("ToolboxButton {"
                            "text-align:left;"
                            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #222936, stop: 0.1 #222936, stop: 0.5 #222936, stop: 0.9 #222936, stop: 1 #222936);"
@@ -842,7 +845,7 @@ class ToolboxButton(QPushButton):
 
     def setNonHoverSS(self):
         self.borderColour = QColor(30, 30, 30)
-        self.borderWidth = 1
+        self.borderWidth = 1 * dpiScale()
         self.setStyleSheet("ToolboxButton {"
                            "color: #b1b1b1;"
                            "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 %s, stop: 0.1 %s, stop: 0.5 %s, stop: 0.9 %s, stop: 1 %s);"
@@ -1073,7 +1076,7 @@ class ToolboxDoubleButton(QWidget):
             qp.setBrush(QBrush(grad))
 
         qp.setPen(QPen(QBrush(lineColor), 0))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 8 * dpiScale(), 8 * dpiScale())
 
         qp.end()
 
@@ -1098,7 +1101,7 @@ class ToolboDivider(QLabel):
 
     def __init__(self, label, parent, cls=None):
         super(ToolboDivider, self).__init__(label, parent)
-        self.setFixedSize(128, 22)
+        self.setFixedSize(128* dpiScale(), 22* dpiScale())
         self.cls = cls
         self.setMouseTracking(True)
         self.setStyleSheet("background-color: transparent;")
@@ -1114,202 +1117,7 @@ class ToolboDivider(QLabel):
         pass
 
 
-class AimAxisWidget(QWidget):
-    editedSignal = Signal(str, str, bool, bool, float, float)
 
-    def __init__(self, itemList=['x', 'y', 'z'],
-                 aimAxis='x',
-                 upAxis='z',
-                 flipAim=False,
-                 flipUp=False,
-                 distance=100.0,
-                 scale=1.0):
-        super(AimAxisWidget, self).__init__()
-        self.aimAxis = aimAxis
-        self.upAxis = upAxis
-        self.flipAim = flipAim
-        self.flipUp = flipUp
-        self.distance = distance
-        self.scale = scale
-        self.itemLayout = QHBoxLayout()
-        self.setLayout(self.itemLayout)
-        aimLabel = QLabel('Aim Axis')
-        upLabel = QLabel('Up Axis')
-        flipAimLabel = QLabel('Flip Aim')
-        flipUpLabel = QLabel('Flip Up')
-        self.flipAimCB = QCheckBox()
-        self.flipAimCB.setChecked(flipAim)
-        self.flipUpCB = QCheckBox()
-        self.flipUpCB.setChecked(flipUp)
-        self.aimComboBox = QComboBox()
-        for item in itemList:
-            self.aimComboBox.addItem(item)
-        self.upComboBox = QComboBox()
-        for item in itemList:
-            self.upComboBox.addItem(item)
-        self.aimComboBox.setFixedWidth(32)
-        self.upComboBox.setFixedWidth(32)
-
-        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
-        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
-
-        self.scaleSpinBox = QDoubleSpinBox()
-        scaleLabel = QLabel('Scale')
-        self.scaleSpinBox.setFixedWidth(80)
-        self.scaleSpinBox.setValue(scale)
-        self.scaleSpinBox.setMinimum(0.01)
-        self.scaleSpinBox.setSingleStep(0.1)
-
-        self.distanceSpinBox = QDoubleSpinBox()
-        distanceLabel = QLabel('Distance')
-        self.distanceSpinBox.setFixedWidth(80)
-        self.distanceSpinBox.setValue(distance)
-        self.distanceSpinBox.setMaximum(1000.0)
-        self.distanceSpinBox.setSingleStep(1)
-
-        self.itemLayout.addWidget(aimLabel)
-        self.itemLayout.addWidget(self.aimComboBox)
-        self.itemLayout.addWidget(upLabel)
-        self.itemLayout.addWidget(self.upComboBox)
-        self.itemLayout.addWidget(flipAimLabel)
-        self.itemLayout.addWidget(self.flipAimCB)
-        self.itemLayout.addWidget(flipUpLabel)
-        self.itemLayout.addWidget(self.flipUpCB)
-        self.itemLayout.addWidget(distanceLabel)
-        self.itemLayout.addWidget(self.distanceSpinBox)
-
-        # draw scale
-        self.itemLayout.addWidget(scaleLabel)
-        self.itemLayout.addWidget(self.scaleSpinBox)
-
-        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
-        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
-        self.flipAimCB.clicked.connect(self.widgetedited)
-        self.flipUpCB.clicked.connect(self.widgetedited)
-        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
-        self.scaleSpinBox.valueChanged.connect(self.widgetedited)
-
-    def widgetedited(self, *args):
-        self.editedSignal.emit(str(self.aimComboBox.currentText()),
-                               str(self.upComboBox.currentText()),
-                               self.flipAimCB.isChecked(),
-                               self.flipUpCB.isChecked(),
-                               self.distanceSpinBox.value(),
-                               self.scaleSpinBox.value()
-                               )
-
-
-class AimAxisDialog(BaseDialog):
-    assignSignal = Signal(str, str, str, bool, bool, float, float)
-    editedSignal = Signal(str, str, str, bool, bool, float, float)
-    closeSignal = Signal()
-
-    def __init__(self, controlName=str, parent=None,
-                 title='Assign default aim for control',
-                 text='what  what?',
-                 itemList=['x', 'y', 'z'],
-                 aimAxis='x',
-                 upAxis='z',
-                 flipAim=False,
-                 flipUp=False,
-                 distance=100,
-                 scale=1.0):
-        super(AimAxisDialog, self).__init__(parent=parent, title=title, text=text)
-        self.setFixedSize(580, 130)
-        self.controlName = controlName
-        self.aimAxis = aimAxis
-        self.upAxis = upAxis
-        self.flipAim = flipAim
-        self.flipUp = flipUp
-        buttonLayout = QHBoxLayout()
-        self.assignButton = QPushButton('Assign')
-        self.assignButton.clicked.connect(self.assignPressed)
-        self.cancelButton = QPushButton('Cancel')
-        self.cancelButton.clicked.connect(self.close)
-
-        self.aimWidget = AimAxisWidget(itemList=itemList,
-                                       aimAxis=aimAxis,
-                                       upAxis=upAxis,
-                                       flipAim=flipAim,
-                                       flipUp=flipUp,
-                                       distance=distance,
-                                       scale=scale)
-        '''
-        aimLabel = QLabel('Aim Axis')
-        upLabel = QLabel('Up Axis')
-        flipAimLabel = QLabel('Flip Aim')
-        flipUpLabel = QLabel('Flip Up')
-        self.flipAimCB = QCheckBox()
-        self.flipAimCB.setChecked(flipAim)
-        self.flipUpCB = QCheckBox()
-        self.flipUpCB.setChecked(flipUp)
-        self.itemLayout = QHBoxLayout()
-        self.aimComboBox = QComboBox()
-        for item in itemList:
-            self.aimComboBox.addItem(item)
-        self.upComboBox = QComboBox()
-        for item in itemList:
-            self.upComboBox.addItem(item)
-        self.aimComboBox.setFixedWidth(32)
-        self.upComboBox.setFixedWidth(32)
-
-        self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
-        self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
-
-        self.distanceSpinBox = QDoubleSpinBox()
-        distanceLabel = QLabel('Distance')
-        self.distanceSpinBox.setFixedWidth(80)
-        self.distanceSpinBox.setValue(distance)
-        self.distanceSpinBox.setMaximum(1000.0)
-        self.distanceSpinBox.setSingleStep(0.1)
-        self.itemLayout.addWidget(aimLabel)
-        self.itemLayout.addWidget(self.aimComboBox)
-        self.itemLayout.addWidget(upLabel)
-        self.itemLayout.addWidget(self.upComboBox)
-        self.itemLayout.addWidget(flipAimLabel)
-        self.itemLayout.addWidget(self.flipAimCB)
-        self.itemLayout.addWidget(flipUpLabel)
-        self.itemLayout.addWidget(self.flipUpCB)
-        self.itemLayout.addWidget(distanceLabel)
-        self.itemLayout.addWidget(self.distanceSpinBox)
-        '''
-        self.layout.addWidget(self.aimWidget)
-        self.layout.addLayout(buttonLayout)
-        buttonLayout.addWidget(self.assignButton)
-        buttonLayout.addWidget(self.cancelButton)
-        '''
-        self.aimComboBox.currentIndexChanged.connect(self.widgetedited)
-        self.upComboBox.currentIndexChanged.connect(self.widgetedited)
-        self.flipAimCB.clicked.connect(self.widgetedited)
-        self.flipUpCB.clicked.connect(self.widgetedited)
-        self.distanceSpinBox.valueChanged.connect(self.widgetedited)
-        '''
-        self.aimWidget.editedSignal.connect(self.widgetedited)
-
-    def assignPressed(self):
-        self.assignSignal.emit(self.controlName,
-                               str(self.aimWidget.aimComboBox.currentText()),
-                               str(self.aimWidget.upComboBox.currentText()),
-                               self.aimWidget.flipAimCB.isChecked(),
-                               self.aimWidget.flipUpCB.isChecked(),
-                               self.aimWidget.distanceSpinBox.value(),
-                               self.aimWidget.scaleSpinBox.value()
-                               )
-        self.close()
-
-    def close(self):
-        self.closeSignal.emit()
-        super(AimAxisDialog, self).close()
-
-    def widgetedited(self, aim, up, flipAim, flipUp, distance, scale):
-        self.editedSignal.emit(self.controlName,
-                               aim,
-                               up,
-                               flipAim,
-                               flipUp,
-                               distance,
-                               scale
-                               )
 
 
 class PickListDialog(BaseDialog):
@@ -1401,7 +1209,7 @@ class PickwalkQueryWidget(QDialog):
         # self.setLayout(self.layout)
 
         # self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(400, 120)
+        self.setFixedSize(400* dpiScale(), 120* dpiScale())
         mainLayout = QVBoxLayout()
         layout = QVBoxLayout()
         buttonLayout = QHBoxLayout()
@@ -1451,13 +1259,13 @@ class PickwalkQueryWidget(QDialog):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def assignNewRig(self, *args):
@@ -1683,13 +1491,13 @@ class TextInputWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def acceptedFunction(self, *args):
@@ -1877,13 +1685,13 @@ class InfoPromptWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
         qp.end()
 
     def acceptedFunction(self, *args):
@@ -1990,7 +1798,7 @@ class ChannelInputWidget(QWidget):
         self.windowFlags()
         self.setWindowTitle('Custom')
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(300, 64)
+        self.setFixedSize(300* dpiScale(), 64* dpiScale())
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
@@ -2040,13 +1848,13 @@ class ChannelInputWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def pickChannel(self, *args):
@@ -2146,13 +1954,13 @@ class IntInputWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def acceptedFunction(self, *args):
@@ -2252,13 +2060,13 @@ class ObjectInputWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def pickObject(self):
@@ -2363,13 +2171,13 @@ class promptWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def confirm(self, *args):
@@ -3553,7 +3361,7 @@ class MiniButton(QPushButton):
     def __init__(self, icon=baseIconFile, toolTip='Close'):
         super(MiniButton, self).__init__()
         # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
-        self.setFixedSize(18, 18)
+        self.setFixedSize(18 * dpiScale(), 18 * dpiScale())
 
         pixmap = QPixmap(os.path.join(IconPath, icon))
         icon = QIcon(pixmap)
@@ -3570,7 +3378,7 @@ class HelpButton(QPushButton):
     def __init__(self, toolTip='Help', width=32, height=32):
         super(HelpButton, self).__init__()
         # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
-        self.setFixedSize(width, height)
+        self.setFixedSize(width * dpiScale(), height * dpiScale())
 
         pixmap = QPixmap(":/help.png")
         icon = QIcon(pixmap)
@@ -3802,8 +3610,10 @@ class AnimLayerTabButton(QPushButton):
 
     def __init__(self, icon='', toolTip=''):
         super(AnimLayerTabButton, self).__init__()
-        self.setIcon(QIcon(":/{0}".format(icon)))
-        self.setFixedSize(18, 18)
+        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(18 * dpiScale(), 18 * dpiScale())
+
+        self.setIcon(pixmap)
+        self.setFixedSize(18 * dpiScale(), 18 * dpiScale())
         self.setFlat(True)
         self.setToolTip(toolTip)
         self.setStyleSheet("background-color: transparent;border: 0px")
@@ -3991,13 +3801,13 @@ class testDialog(QDialog):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
         qp.end()
 
     def move_UI(self):
@@ -4169,7 +3979,7 @@ class OverlayContents(QWidget):
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
         path = QPainterPath()
-        path.addRoundedRect(QRectF(self.rect()), 4, 4)
+        path.addRoundedRect(QRectF(self.rect()), 4 * dpiScale(), 4 * dpiScale())
         # mask = QRegion(path.toFillPolygon().toPolygon())
         pen = QPen(Qt.white, .2)
         linePen = QPen(Qt.white, 2, Qt.SolidLine)
@@ -4328,13 +4138,13 @@ class OfflineActivateInputWidget(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
-        qp.setPen(QPen(QBrush(lineColor), 2))
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.drawRoundedRect(self.rect(), 16 * dpiScale(), 16 * dpiScale())
         qp.end()
 
     def acceptedFunction(self, *args):
@@ -4513,12 +4323,12 @@ class PopupSlider(QWidget):
         pixmap = QPixmap(os.path.join(IconPath, icon))
         self.button = QLabel('B')
         self.overlayLabelAlignment = Qt.AlignLeft
-        self.button.setPixmap(pixmap.scaled(24, 24))
+        self.button.setPixmap(pixmap.scaled(24 * dpiScale(), 24 * dpiScale()))
 
-        self.button.setFixedSize(24, 24)
+        self.button.setFixedSize(24 * dpiScale(), 24 * dpiScale())
         self.setLayout(layout)
-        self.margin = 2
-        self.padding = 4
+        self.margin = 2  * dpiScale()
+        self.padding = 4  * dpiScale()
         self.baseWidth = width
         layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
         layout.addWidget(self.button)
@@ -4552,7 +4362,7 @@ class PopupSlider(QWidget):
         self.minValue = (width * 0.25) + (self.button.width() * 0.5)
         self.maxValue = (width * 0.75) - (self.button.width() * 0.5)
         self.overshootMin = (self.button.width() * 0.5)
-        self.overshootMax = (width) - (self.button.width() * 0.5) - 2.0
+        self.overshootMax = (width * dpiScale()) - (self.button.width() * 0.5) - 2.0
         self.range = self.maxValue - self.minValue
         self.overshootRange = self.overshootMax - self.overshootMin
 
@@ -4581,7 +4391,7 @@ class PopupSlider(QWidget):
 
     def setIcon(self, icon):
         pixmap = QPixmap(os.path.join(IconPath, icon))
-        self.button.setPixmap(pixmap.scaled(24, 24))
+        self.button.setPixmap(pixmap.scaled(24 * dpiScale(), 24 * dpiScale()))
 
     def mousePressEvent(self, event):
         self.setFocus()
@@ -4654,8 +4464,8 @@ class PopupSlider(QWidget):
         righBarPos = self.rightBorder - self.leftBorder + 4
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setBrush(QBrush(self.midGrey))
-        qp.setPen(QPen(QBrush(self.midGrey), 2))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 4, 4)
+        qp.setPen(QPen(QBrush(self.midGrey), 2 * dpiScale()))
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 4 * dpiScale(), 4 * dpiScale())
 
         qp.setCompositionMode(qp.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
@@ -4681,7 +4491,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt((self.height() - 6.0) / self.height(), self.clear)
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2, 2)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2 * dpiScale(), 2 * dpiScale())
 
         backgroundGradient = QLinearGradient(0.0, 0.0, self.width(), 0.0)
         backgroundGradient.setColorAt(0, self.midGreyFaint)
@@ -4689,7 +4499,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt((self.width() - 6.0) / self.width(), self.clear)
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2, 2)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2 * dpiScale(), 2 * dpiScale())
 
         backgroundGradient = QLinearGradient(self.leftBorder, 0.0, self.rightBorder + 2, 0)
         backgroundGradient.setColorAt(0, self.midGreyFaint)
@@ -4698,7 +4508,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
         # qp.setBrush(QBrush(self.red))
-        qp.drawRoundedRect(self.leftBorder, 0, righBarPos, self.height(), 2, 2)
+        qp.drawRoundedRect(self.leftBorder, 0, righBarPos, self.height(), 2 * dpiScale(), 2 * dpiScale())
 
         lineColor = QColor(68, 68, 68, 64)
         qp.setPen(QPen(QBrush(lineColor), 0))
@@ -4755,7 +4565,7 @@ class PopupSlider(QWidget):
         qp.setCompositionMode(qp.CompositionMode_Source)
         qp.setBrush(QBrush(self.midGrey))
         qp.setPen(QPen(QBrush(self.midGrey), 2))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 4, 4)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 4 * dpiScale(), 4 * dpiScale())
 
         lineColor = QColor(68, 68, 68, 64)
         qp.setPen(QPen(QBrush(lineColor), 0))
@@ -4785,7 +4595,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt((self.height() - 6.0) / self.height(), self.clear)
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2, 2)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2 * dpiScale(), 2 * dpiScale())
 
         backgroundGradient = QLinearGradient(0.0, 0.0, self.width(), 0.0)
         backgroundGradient.setColorAt(0, self.midGreyFaint)
@@ -4794,7 +4604,7 @@ class PopupSlider(QWidget):
         backgroundGradient.setColorAt(1, self.midGreyFaint)
         qp.setBrush(QBrush(backgroundGradient))
         qp.setPen(QPen(QBrush(self.clear), 0))
-        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2, 2)
+        qp.drawRoundedRect(0, 0, self.width(), self.height(), 2 * dpiScale(), 2 * dpiScale())
 
         backgroundGradient = QLinearGradient(self.leftBorder, self.leftBorder, self.leftBorder, self.rightBorder)
         backgroundGradient.setColorAt(0, self.midGrey)
@@ -4913,8 +4723,8 @@ class ToolbarButton(QLabel):
         self.currentIcon = icon
         self.baseWidth = width
         self.baseHeight = height
-        self.iconWidth = iconWidth
-        self.iconHeight = iconHeight
+        self.iconWidth = iconWidth * dpiScale()
+        self.iconHeight = iconHeight * dpiScale()
         self.pixmap = QPixmap(os.path.join(IconPath, icon))
         self.altPixmap = QPixmap(os.path.join(IconPath, altIcon))
         self.setPixmap(self.pixmap.scaled(self.iconWidth, self.iconHeight))
@@ -4940,6 +4750,7 @@ class ToolbarButton(QLabel):
                                            showCloseButton=False,
                                            show=False,
                                            showButton=False)
+        self.setFixedSize(22 * dpiScale(), 22 * dpiScale())
 
     def keyPressEvent(self, event):
         self.tooltipState = self.getTooltipState()
@@ -5067,6 +4878,7 @@ class ButtonWidget(QWidget):
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
 
         pos = QCursor.pos()
+        self.setFixedSize(22 * dpiScale(), 22 * dpiScale())
         size = self.sizeHint() * 0.5
         self.cachedCursorPos = QPoint(0, 0)
         self.move(pos.x() - size.width(), pos.y() - size.height())

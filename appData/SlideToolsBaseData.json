@@ -175,7 +175,6 @@
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
         "icon": "tweenEase2D.png",
-        "icon": "tweenEase2D.png",
         "vertical": true,
         "closeOnRelease": true
       },

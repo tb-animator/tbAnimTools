@@ -42,7 +42,7 @@ else:
 
 import pymel.core.datatypes as dt
 import maya.OpenMaya as om
-
+maya.utils.loadStringResourcesForModule(__name__)
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
 zAx = om.MVector.zAxis
@@ -182,9 +182,10 @@ class TempPivot(toolAbstractFactory):
 
         cmds.menuItem(label='Temp Pivot Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
-        cmds.menuItem(label='Update temp point position',
+        cmds.menuItem(label=maya.stringTable['TempPivot.updatePivot'],
                       command=pm.Callback(self.updateTempPivotPositions, asset, sel))
-        cmds.menuItem(label='Create temp pivot control', command=pm.Callback(self.createTempPivotFromPoint, asset, sel))
+        cmds.menuItem(label=maya.stringTable['TempPivot.bakePointToControl'], command=pm.Callback(self.createTempPivotFromPoint, asset, sel))
+        cmds.menuItem(label=maya.stringTable['TempPivot.saveTempPivots'], command=pm.Callback(self.savePivotsForControl, asset, sel))
 
     def updateTempPivotPositions(self, asset, sel):
         if not sel:
@@ -195,6 +196,11 @@ class TempPivot(toolAbstractFactory):
                 continue
             targetList = cmds.parentConstraint(constraints[0], query=True, targetList=True)
             cmds.parentConstraint(targetList, constraints[0], edit=True, maintainOffset=True)
+
+    def savePivotsForControl(self, asset, sel):
+        if not sel:
+            return
+        print ('savePivotsForControl', sel)
 
     def createTempPivotFromPoint(self, asset, sel):
         if not sel:

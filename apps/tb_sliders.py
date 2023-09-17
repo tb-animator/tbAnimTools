@@ -1036,7 +1036,7 @@ class SlideTools(toolAbstractFactory):
             if not self.keyTweenMethods[key].instance:
                 self.keyTweenMethods[key].instance = value()
         '''
-
+        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
 
@@ -1104,7 +1104,7 @@ class SlideTools(toolAbstractFactory):
             state = pm.optionVar.get(optionVarName, False)
             cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
             collapsedWidgets.append(cBox)
-            cBox.setFixedHeight(24)
+            cBox.setFixedHeight(24 * dpiScale())
             cBoxLayout = QHBoxLayout()
             cBoxLayout.setAlignment(Qt.AlignLeft)
             cBoxLayout.setContentsMargins(0, 0, 0, 0)
@@ -1119,7 +1119,7 @@ class SlideTools(toolAbstractFactory):
                 if type(button) == QButtonGroup:
                     continue
                 if index == 0:
-                    button.setFixedSize(22, 22)
+                    button.setFixedSize(22 * dpiScale(), 22 * dpiScale())
                 cBoxLayout.addWidget(button)
 
             cBox.setContentLayout(cBoxLayout)
@@ -1715,6 +1715,7 @@ class SlideTools(toolAbstractFactory):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
+
     def tweenSmoothHighPass(self, alpha, alphaB, animCurveChange):
         """
         # TODO - actually do it
@@ -1743,6 +1744,7 @@ class SlideTools(toolAbstractFactory):
                 outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
+
     def tweenSmoothGauss(self, alpha, alphaB, animCurveChange):
         """
         # TODO - actually do it
@@ -1777,8 +1779,8 @@ class SlideTools(toolAbstractFactory):
         for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes)):
                 if flipped:
-                    outValue = self.keyframeRefData[curve].keyValues[i] - (-1*(
-                        self.keyframeRefData[curve].keyValues[i] - keyframeData.keyValues[i]))
+                    outValue = self.keyframeRefData[curve].keyValues[i] - (-1 * (
+                            self.keyframeRefData[curve].keyValues[i] - keyframeData.keyValues[i]))
                 else:
                     outValue = keyframeData.keyValues[i]
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
@@ -1822,6 +1824,7 @@ class SlideTools(toolAbstractFactory):
                 outValue = lerpFloat(outValue, self.keyframeRefData[curve].keyValues[i], alpha)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
+
     def gaussian_smoothing(self, data, sigma):
         smoothed_data = []
         kernel_radius = int(2 * math.ceil(2 * sigma) + 1)
@@ -1854,6 +1857,7 @@ class SlideTools(toolAbstractFactory):
             smoothed_value = alpha * data[i] + (1 - alpha) * smoothed_data[i - 1]
             smoothed_data.append(smoothed_value)
         return smoothed_data
+
     def butterworth_filter(self, data, cutoff_freq, sampling_rate, order):
         filtered_data = []
         nyquist_freq = 0.5 * sampling_rate
@@ -1901,6 +1905,7 @@ class SlideTools(toolAbstractFactory):
         if k == 0 or k == n:
             return 1
         return math.factorial(n) / (math.factorial(k) * math.factorial(n - k))
+
     def tweenSmoothNeighboursKey(self, keyframeData):
         """
         Update the previous and next values based on the smoothed list
@@ -3395,7 +3400,7 @@ class sliderButton(QPushButton):
 
         adjust_style = sliderStyleSheet.format()
         # self.setStyleSheet(adjust_style)
-        self.setFixedSize(20, 20)
+        self.setFixedSize(20 * dpiScale(), 20 * dpiScale())
 
 
 class SliderWidget(BaseDialog):
@@ -3502,7 +3507,7 @@ class SliderWidget(BaseDialog):
         self.overlayLabel = QLabel('', self)
         self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
         self.overlayLabel.setEnabled(False)
-        self.overlayLabel.setFixedWidth(60)
+        self.overlayLabel.setFixedWidth(60 * dpiScale())
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
 
         self.comboBox = QComboBox()
@@ -3527,7 +3532,7 @@ class SliderWidget(BaseDialog):
         # emit the mode change signal to load the labels
         self.modeChangedSignal.emit(self.currentMode)
         self.overlayLabel.move(20, self.height() - 20)
-        self.setFixedSize(270 * dpiScale(), self.sizeHint().height())
+        self.setFixedSize(270, self.sizeHint().height())
 
     def show(self):
         super(SliderWidget, self).show()
@@ -3539,7 +3544,7 @@ class SliderWidget(BaseDialog):
     def moveToCursor(self):
         pos = QCursor.pos()
         xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
+        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - (16*dpiScale()))
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -3840,7 +3845,7 @@ class GraphEdKeySliderWidget_OLD(QWidget):
         # self.autoFillBackground = True
         # self.windowFlags()
         # self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedHeight(24)
+        self.setFixedHeight(24 * dpiScale())
 
         self.isDragging = False
 
@@ -3894,7 +3899,7 @@ class GraphEdKeySliderWidget_OLD(QWidget):
         self.overlayLabel = QLabel('', self)
         self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
         self.overlayLabel.setEnabled(False)
-        self.overlayLabel.setFixedWidth(60)
+        self.overlayLabel.setFixedWidth(60 * dpiScale())
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.labelYPos = 6
         self.overlayLabel.setAlignment(Qt.AlignLeft)
@@ -4058,7 +4063,7 @@ class GraphEdKeySliderWidget(QWidget):
         # self.autoFillBackground = True
         # self.windowFlags()
         # self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedHeight(24)
+        self.setFixedHeight(24 * dpiScale())
 
         self.isDragging = False
 
@@ -4066,7 +4071,7 @@ class GraphEdKeySliderWidget(QWidget):
         self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
 
         self.slider = PopupSlider(closeOnRelease=False, mode=modeList[0], icon='',
-                                  width=200, minValue=-100, maxValue=100, overshootMin=-200, overshootMax=200)
+                                  width=200* dpiScale(), minValue=-100, maxValue=100, overshootMin=-200, overshootMax=200)
         self.slider.sliderUpdateSignal.connect(self.sliderUpdate)
         self.slider.sliderEndedSignal.connect(self.sliderEnd)
         # self.slider.sliderMoved.connect(self.sliderValueChanged)
@@ -4082,7 +4087,7 @@ class GraphEdKeySliderWidget(QWidget):
         self.mainLayout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
 
         self.comboBox = QComboBox()
-        self.comboBox.setFixedHeight(24)
+        self.comboBox.setFixedHeight(24 * dpiScale())
         self.comboBox.setStyleSheet(getqss.getStyleSheet())
 
         # self.overshootButton.lockSignal.connect(self.toggleOvershoot)
@@ -4106,11 +4111,11 @@ class GraphEdKeySliderWidget(QWidget):
         self.overlayLabel = QLabel('', self)
         self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
         self.overlayLabel.setEnabled(False)
-        self.overlayLabel.setFixedWidth(60)
+        self.overlayLabel.setFixedWidth(60 * dpiScale())
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.labelYPos = 6
         self.overlayLabel.setAlignment(Qt.AlignLeft)
-        self.overlayLabel.move(10, self.labelYPos)
+        self.overlayLabel.move(10* dpiScale(), self.labelYPos)
         self.setFocusPolicy(Qt.NoFocus)
 
     def show(self):

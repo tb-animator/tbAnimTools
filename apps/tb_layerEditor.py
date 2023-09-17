@@ -91,7 +91,7 @@ class LayerEditor(toolAbstractFactory):
     hasAppliedUI = False
 
     useCustomUIOption = 'tUseCustomLayerEditor'
-    buttonSize = 18
+    buttonSize = 18 * dpiScale()
 
     selectBestLayerTimer = -1
     selectBestLayerRepeat = False
@@ -110,7 +110,6 @@ class LayerEditor(toolAbstractFactory):
         Put this in the startup script, not on class initialize
         """
 
-
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -118,7 +117,8 @@ class LayerEditor(toolAbstractFactory):
 
     def optionUI(self):
         super(LayerEditor, self).optionUI()
-        customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart', self.useCustomUIOption)
+        customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart',
+                                                      self.useCustomUIOption)
         customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTabToggled)
         self.layout.addWidget(customLayerEditorWidget)
         self.layout.addStretch()
@@ -126,11 +126,11 @@ class LayerEditor(toolAbstractFactory):
 
     def animLayerTabUI(self):
         mergeLayersDownButton = self.customButton(icon='moveButtonDown.png',
-                                                       toolTip='Fast Merge all Layers')
+                                                  toolTip='Fast Merge all Layers')
         additiveExtractButton = self.customButton(icon='Amplify.png',
-                                                       toolTip='Additive Extract Selected Layer')
+                                                  toolTip='Additive Extract Selected Layer')
         counterAnimationButton = self.customButton(icon='arcLengthDim.png',
-                                                       toolTip='Counter animation layer')
+                                                   toolTip='Counter animation layer')
         mergeLayersDownButton.clicked.connect(self.fastMergeAllButtonCommmand)
         additiveExtractButton.clicked.connect(self.additiveExtractButtonCommmand)
         counterAnimationButton.clicked.connect(self.counterAnimationButtonCommmand)
@@ -143,11 +143,11 @@ class LayerEditor(toolAbstractFactory):
         return None
 
     def modifyAnimLayerTabToggled(self, *args):
-        print ('modifyAnimLayerTabToggled', args)
+        print('modifyAnimLayerTabToggled', args)
         from pluginLookup import ClassFinder
-        print ('ClassFinder',ClassFinder)
+        print('ClassFinder', ClassFinder)
         ClassFinder().applyAnimLayerTabModification()
-        print ('DONE')
+        print('DONE')
 
     def modifyAnimLayerTab(self):
         if self.hasAppliedUI:
@@ -155,7 +155,7 @@ class LayerEditor(toolAbstractFactory):
         if not pm.optionVar.get(self.useCustomUIOption, False):
             return
         self.styleSheet = getStyleSheet()
-        buttonSize = 22
+        buttonSize = 22 * dpiScale()
 
         self.animLayerTabName = 'AnimLayerTab'
         self.animLayerTab = wrapInstance(int(omui.MQtUtil.findControl(self.animLayerTabName)), QWidget)
@@ -167,6 +167,7 @@ class LayerEditor(toolAbstractFactory):
         animLayerLayout.setAttribute(Qt.WA_StyledBackground, True)
         animLayerLayout.setStyleSheet('background-color: red')
         animLayerLayout.objectName()
+
         animLayerTabWidgets = animLayerLayout.children()[1:]
 
         self.zeroKeyAnimLayerButton = animLayerTabWidgets[0]
@@ -203,6 +204,7 @@ class LayerEditor(toolAbstractFactory):
 
         # widget to wrap the top buttons
         topButtonWidget = QWidget()
+
         topButtonLayout = QHBoxLayout()
         topButtonLeftLayout = QHBoxLayout()
         topButtonRightLayout = QHBoxLayout()
@@ -217,8 +219,8 @@ class LayerEditor(toolAbstractFactory):
         topButtonLeftLayout.addWidget(self.zeroWeightAnimLayerButton)
         topButtonLeftLayout.addWidget(self.fullWeightAnimLayerButton)
 
-        #topButtonRightLayout.addWidget(self.additiveExtractButton)
-        #topButtonRightLayout.addWidget(self.mergeLayersDownButton)
+        # topButtonRightLayout.addWidget(self.additiveExtractButton)
+        # topButtonRightLayout.addWidget(self.mergeLayersDownButton)
         topButtonRightLayout.addWidget(self.moveLayerUpButton)
         topButtonRightLayout.addWidget(self.moveLayerDownButton)
         topButtonRightLayout.addWidget(self.emptyAnimLayerButton)
@@ -245,8 +247,8 @@ class LayerEditor(toolAbstractFactory):
 
         topButtonWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         weightSliderWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        topButtonWidget.setFixedHeight(22)
-        weightSliderWidget.setFixedHeight(22)
+        topButtonWidget.setFixedHeight(24 * dpiScale())
+        weightSliderWidget.setFixedHeight(22 * dpiScale())
 
         # topButtonWidget.setStyleSheet(self.styleSheet)
         weightSliderWidget.setStyleSheet(self.styleSheet)
@@ -285,8 +287,6 @@ class LayerEditor(toolAbstractFactory):
 
         # connections
         self.curveButton.clicked.connect(self.curveButtonCommand)
-
-
         self.hasAppliedUI = True
         return topButtonLeftLayout, topButtonRightLayout
 
@@ -348,7 +348,7 @@ class LayerEditor(toolAbstractFactory):
         cmds.select(weightCurves, replace=True)
 
     def weightSliderReleasedCommand(self):
-        print ('weightSliderReleasedCommand')
+        print('weightSliderReleasedCommand')
         layers = cmds.treeView('AnimLayerTabanimLayerEditor', query=True, selectItem=True)
         value = cmds.floatSlider('AnimLayerTabWeightSlider', query=True, value=True)
         baseLayer = cmds.animLayer(query=True, root=True)
