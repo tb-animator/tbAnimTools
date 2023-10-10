@@ -331,6 +331,30 @@ class ViewModeTool(toolAbstractFactory):
         cmds.workspaceControl(panel, edit=True,
                               collapse=not cmds.workspaceControl(panel, query=True, collapse=True))
 
+    import maya.cmds as cmds
+
+    def fixCamera(self):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        cam = sel[0]
+        null = cmds.createNode('transform')
+        cmds.delete(cmds.parentConstraint(cam, null))
+        pos = cmds.xform(null, query=True, translation=True, absolute=True, worldSpace=True)
+        rot = cmds.xform(null, query=True, rotation=True, absolute=True, worldSpace=True)
+
+        cmds.setAttr(cam + '.translate', 0, 0, 0)
+        cmds.setAttr(cam + '.rotate', 0, 0, 0)
+        cmds.setAttr(cam + '.rotatePivot', 0, 0, 0)
+        mel.eval("channelBoxCommand -freezeTranslate;")
+        cmds.setAttr(cam + '.translate', 0, 0, 0)
+
+        cmds.xform(cam, translation=pos, absolute=True, worldSpace=True)
+        cmds.xform(cam, translation=pos, absolute=True, worldSpace=True)
+        cmds.xform(cam, rotation=rot, absolute=True, worldSpace=True)
+        cmds.delete(null)
+
+
     def loadData(self):
         super(ViewModeTool, self).loadData()
         self.viewData = self.rawJsonData.get('viewData', dict())

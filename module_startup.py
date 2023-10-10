@@ -28,7 +28,7 @@ import maya.utils as mutils
 import pymel.core as pm
 import maya.mel as mel
 import tbtoolsUpdater as upd
-
+import maya.cmds as cmds
 
 class initialise(object):
     def check_for_updates(self):
@@ -48,6 +48,9 @@ class initialise(object):
 
     def load_everything(self):
         import os
+        if cmds.about(batch=True):
+            return
+
         if os.name == 'nt':
             import tbtoolsInstaller
             tbtoolsInstaller.module_maker().install()

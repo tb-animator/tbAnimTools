@@ -617,7 +617,9 @@ class MirrorTools(toolAbstractFactory):
             pControl = pm.PyNode(control)
 
             opposite = self.getMirrorForControlFromCharacter(character, control)
-
+            # print ('opposite', opposite)
+            if not maya.cmds.objExists(opposite):
+                continue
             pOpposite = pm.PyNode(opposite)
             mirrorAxisRaw = character.getMirrorAxis()
             mirrorAxis = self.calculateMirrorAxis(control, opposite, mirrorAxisRaw)

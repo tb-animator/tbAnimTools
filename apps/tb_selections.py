@@ -163,9 +163,12 @@ class SelectionTools(toolAbstractFactory):
 
         for ch, controls in characters.items():
             refname, namespace = CharacterTool.getSelectedChar(controls[0])
-            allControls = CharacterTool.getCharacterByName(refname).controls
+            # print ('refname: %s, namespace: %s' % (refname, namespace))
+            allControls = CharacterTool.getCharacterByName(refname, openUI=True).controls
+            # print ('allControls', allControls)
             if allControls:
-                finalControls.extend([namespace + c for c in allControls])
+                finalControls.extend([namespace + ':' + c for c in allControls])
+                # print ('finalControls', finalControls)
             else:
                 if ':' in controls[0]:
                     splitName = controls[0].split(':')

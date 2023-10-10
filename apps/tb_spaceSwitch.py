@@ -558,9 +558,9 @@ class SpaceSwitch(toolAbstractFactory):
             # print (namespace, control)
             rigName = self.namespaceToCharDict[namespace]
             # print ('rigName', rigName)
-            attrKeys = self.loadedSpaceData[rigName].spaceControl.keys()
-            controlValues = self.loadedSpaceData[rigName].spaceControl.values()
-            # print ('controlValues', controlValues)
+            attrKeys = list(self.loadedSpaceData[rigName].spaceControl.keys())
+            controlValues = list(self.loadedSpaceData[rigName].spaceControl.values())
+            # print ('controlValues!!!!', controlValues)
             if control not in controlValues:
                 continue
             attribute = attrKeys[controlValues.index(control)]
@@ -659,7 +659,7 @@ class SpaceSwitch(toolAbstractFactory):
             cmds.parentConstraint(s, str(loc))
 
         with self.funcs.suspendUpdate():
-            cmds.bakeResults(locators.values(),
+            cmds.bakeResults(list(locators.values()),
                              time=(startTime, endTime),
                              simulation=False,
                              sampleBy=1)
@@ -668,9 +668,10 @@ class SpaceSwitch(toolAbstractFactory):
             tempConstraints[s] = str(
                 self.funcs.safeParentConstraint(locators[s], s, orientOnly=False, maintainOffset=False))
 
-        cmds.animLayer(resultLayer, edit=True, attribute=spaceAttributes.keys())
+        cmds.animLayer(resultLayer, edit=True, attribute=list(spaceAttributes.keys()))
         cmds.animLayer(resultLayer, edit=True, selected=True)
         cmds.animLayer(resultLayer, edit=True, preferred=True)
+
         for key, attr in spaceAttributes.items():
             # print ('key, attr', key, attr)
             spaceSwitchAttr = pm.Attribute(key)
@@ -688,8 +689,8 @@ class SpaceSwitch(toolAbstractFactory):
                              simulation=False,
                              sampleBy=1)
 
-        cmds.delete(tempConstraints.values())
-        cmds.delete(locators.values())
+        cmds.delete(list(tempConstraints.values()))
+        cmds.delete(list(locators.values()))
 
     def getAllAnimatedChannels(self, controls):
         allAttributes = list()
@@ -731,8 +732,8 @@ class SpaceSwitch(toolAbstractFactory):
                     unknownControls.append(s)
                     continue
                 # print (self.loadedSpaceData[rigName].spaceControl.items())
-                attrs = self.loadedSpaceData[rigName].spaceControl.keys()
-                values = self.loadedSpaceData[rigName].spaceControl.values()
+                attrs = list(self.loadedSpaceData[rigName].spaceControl.keys())
+                values = list(self.loadedSpaceData[rigName].spaceControl.values())
                 if control in values:
                     # print ('control in values', control, values.index(control))
                     attr = attrs[values.index(control)]
@@ -821,7 +822,8 @@ class SpaceSwitch(toolAbstractFactory):
         # print ('switchFromData attributes', attributes)
         # print ('switchFromData values', values)
         timeDict = dict()
-        selection = attributes.values()
+        selection = list(attributes.values())
+        attributeKeyList = list(attributes.keys())
         for s in selection:
             timeDict[s] = self.getMatchRange(s, timeline=False)
 
@@ -834,7 +836,7 @@ class SpaceSwitch(toolAbstractFactory):
                     for index, s in enumerate(selection):
                         if s not in timeDict.keys():
                             continue
-                        attributeKey = attributes.keys()[index]
+                        attributeKey = attributeKeyList[index]
                         # print ('attributeKey', attributeKey)
                         self.simpleSpaceSwitch(node=s,
                                                spaceValue=values[attributeKey],
@@ -842,8 +844,9 @@ class SpaceSwitch(toolAbstractFactory):
                 for control in selection:
                     cmds.filterCurve(control + '.rotateX', control + '.rotateY', control + '.rotateZ')
         else:
+            print ('selection', selection)
             for index, s in enumerate(selection):
-                attributeKey = attributes.keys()[index]
+                attributeKey = attributeKeyList[index]
                 # print ('attributeKey', attributeKey)
                 self.simpleSpaceSwitch(node=s,
                                        spaceValue=values[attributeKey],
@@ -905,9 +908,16 @@ class SpaceSwitch(toolAbstractFactory):
         spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
 
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
-            spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().iteritems())
+            spaceEnums = dict((k.lower(), v) for k, v in list(spaceSwitchAttr.getEnums().items()))
             spaceValue = spaceEnums[spaceValue.lower()]
 
+        rotation = cmds.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
+        translation = cmds.xform(node, query=True, absolute=True, worldSpace=True, translation=True)
+        print ('spaceAttribute', spaceAttribute)
+        cmds.setAttr(spaceAttribute, spaceValue)
+        cmds.xform(node, absolute=True, worldSpace=True, translation=translation)
+        cmds.xform(node, absolute=True, worldSpace=True, rotation=rotation)
+        '''
         # store the matrix
         storedMtx = self.funcs.getMatrix(node)
 
@@ -930,7 +940,7 @@ class SpaceSwitch(toolAbstractFactory):
         pos, rot = self.funcs.getMatrixOffset(node, storedMtx, postMtx, parentMtx)
         # translate it
         cmds.xform(node, relative=True, translation=pos)
-
+        '''
         if pm.keyframe(node, query=True) and pm.autoKeyframe(state=True, q=True):
             try:
                 cmds.setKeyframe(node + '.translate')
@@ -1255,7 +1265,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         pass
         self.spaceData.limbs[inputData] = self.spaceData.limbs[self.currentLimb].__class__()
         for k, v in self.spaceData.limbs[self.currentLimb].__dict__.items():
-            if k is 'limbWidget':
+            if k == 'limbWidget':
                 continue
             self.spaceData.limbs[inputData].__dict__[k] = v
 

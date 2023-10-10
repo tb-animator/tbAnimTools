@@ -288,9 +288,13 @@ class TempPivot(toolAbstractFactory):
                 constraintWeightAliases = self.funcs.getConstrainWeights(constraints[0])
                 pm.parentConstraint(constrainTargets[0], controlParent)  # TODO = make this support blended constraints?
             else:
-                parentNode = cmds.listRelatives(mainTarget, parent=True)
-                if parentNode:
-                    pm.parentConstraint(parentNode, controlParent)
+                if cmds.listConnections(mainTarget + '.offsetParentMatrix'):
+                    print ('offsetParentMatrix')
+                    pass
+                else:
+                    parentNode = cmds.listRelatives(mainTarget, parent=True)
+                    if parentNode:
+                        pm.parentConstraint(parentNode, controlParent)
 
             pm.delete(pm.parentConstraint(loc, control))
 

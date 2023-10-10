@@ -70,6 +70,23 @@
     },
     {
       "sliderData": {
+        "mode": "Split",
+        "label": "Split",
+        "icon": "split.png",
+        "closeOnRelease": true,
+        "vertical": false
+      },
+      "altSliderData": {
+        "mode": "Split",
+        "label": "Split",
+        "icon": "split.png",
+        "closeOnRelease": true,
+        "vertical": false
+      },
+      "toolTipSmall": "<b>LMB</b> Split values <br><b> </b> "
+    },
+    {
+      "sliderData": {
         "mode": "Noise",
         "label": "Noise",
         "axisLabelX": "Freq",
@@ -176,6 +193,27 @@
         "axisLabelX": "Prev/Next",
         "icon": "tweenEase2D.png",
         "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTipSmall": "WIP"
+    },
+        {
+      "sliderData": {
+        "mode": "Resample",
+        "label": "Resample",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "resample.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Resample",
+        "label": "Resample",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "resample.png",
+        "vertical": false,
         "closeOnRelease": true
       },
       "toolTipSmall": "WIP"

@@ -1915,7 +1915,8 @@ class functions(object):
                     namespace = sel.split(':', 1)[0]
         else:
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
-
+        if namespace.startswith(':'):
+            namespace = namespace[1:]
         return refName, namespace  # TODO - fix up data path etc
 
     def getCurrentRigAndNamespace(self, sel=None):
@@ -2154,7 +2155,7 @@ class functions(object):
         sel = str(sel)
         parents = cmds.listRelatives(str(sel), allParents=True, fullPath=True)
         if not parents:
-            return None
+            return sel
         parents = parents[0].split('|')
         for p in parents:
             if p:

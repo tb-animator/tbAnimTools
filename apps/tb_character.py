@@ -342,9 +342,8 @@ class CharacterTool(toolAbstractFactory):
                     parent=parentMenu)
 
     def getCharacterByName(self, char, openUI=False):
-        # print ('getCharacterByName', char)
-        print(char not in self.allCharacters.keys())
         if char not in self.allCharacters.keys():
+            print('Loacing character {}'.format(char))
             self.loadCharacterIfNotLoaded(char, node=None)
             if openUI:
                 self.toolBoxUI(
@@ -502,7 +501,7 @@ class CharacterTool(toolAbstractFactory):
         return refname, self.allCharacters[refname]
 
     def loadCharacterIfNotLoaded(self, refname, node=None):
-        if not refname in self.allCharacters.keys():
+        if refname not in self.allCharacters.keys():
             self.loadCharacter(refname, node=node)
 
     def getAllCharacters(self):
@@ -771,7 +770,7 @@ class CharacterTool(toolAbstractFactory):
         controlsLayout2.addWidget(defineDriverButton)
         controlsLayout2.addWidget(defineExportButton)
 
-        mirrorGroupbox = myGroupBox('Control Sides')
+        mirrorGroupbox = myGroupBox('Control Sides / Mirror')
         mirrorMainLayout = QVBoxLayout()
 
         mirrorLayout = QHBoxLayout()
@@ -997,3 +996,32 @@ class AssignCharacterDialog(BaseDialog):
     def assignPressed(self):
         self.assignSignal.emit(str(self.itemComboBox.currentText()), str(self.rigName))
         self.close()
+
+
+class mirrorChannelWidget(QWidget):
+    def __init__(self):
+        super(mirrorChannelWidget, self).__init__()
+        self.formLayout = QFormLayout()
+        self.setLayout(self.formLayout)
+
+        self.translateBox = QLineEdit()
+
+
+class flipButton(QPushButton):
+    pressedSignal = Signal(bool)
+
+    def __init__(self, value, state):
+        super(flipButton, self).__init__()
+        self.labels = {True: 'Flip', False: 'NoFlip'}
+        self.colours = {True: 'Flip', False: 'NoFlip'}
+        self.setCheckable(True)
+        self.setChecked(state)
+        self.value = value
+        self.state = state
+
+        self.clicked.connect(self.toggle)
+
+    def toggle(self):
+        self.state = not self.state
+        self.setChecked()
+        self.setText(self.labels[self.state])

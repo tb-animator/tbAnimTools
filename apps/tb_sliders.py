@@ -34,6 +34,14 @@ import maya.api.OpenMayaAnim as oma2
 from maya.api import OpenMaya
 from copy import deepcopy
 
+# temp
+# from importlib import reload
+# import tb_UI as tbui
+# reload(tbui)
+from apps.tb_UI import *
+import ui.tbUI_pyslider as pys
+from apps.ui.tbUI_pyslider import SliderToolbarWidget, PopupSlider, PopupSliderButton
+
 '''
 blend to magnet (relative pose)
 
@@ -49,8 +57,10 @@ fn_EASE2D = 'Ease2D'
 fn_EASEOFFSET = 'EaseOffset'
 fn_EASEOFFSET2D = 'EaseOffset2D'
 fn_BLOAT = 'Amplify'
+fn_SPLIT = 'Split'
 fn_BREAKDOWN = 'Tween'
 fn_NOISE = 'Noise'
+fn_RESAMPLE = 'Resample'
 fn_NOISELOOP = 'NoiseLoop'
 fn_BREAKDOWNGROUP = 'TweenGrp'
 
@@ -102,6 +112,27 @@ dragTint = QColor(0, 128, 0)
 translateAttributes = ['tx', 'ty', 'tz']
 rotateAttributes = ['rx', 'ry', 'rz']
 scaleAttributes = ['sx', 'sy', 'sz']
+
+curveTypeScalar = {
+    'animCurveTL': 1,
+    'animCurveTA': 1.0 / 57.296,
+}
+
+
+def getFps():
+    return maya.OpenMaya.MTime(1, maya.OpenMaya.MTime.kSeconds).asUnits(maya.OpenMaya.MTime.uiUnit())
+
+
+def recursive_subdivide(pair, steps_remaining):
+    if steps_remaining == 0:
+        return [pair[0], pair[1]]
+
+    mid = (pair[0] + pair[1]) / 2
+    lower_half = recursive_subdivide([pair[0], mid], steps_remaining - 1)
+    upper_half = recursive_subdivide([mid, pair[1]], steps_remaining - 1)
+
+    # Combine and return the two halves
+    return lower_half[:-1] + upper_half
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -746,9 +777,6 @@ class keyframeTween(tweenBase):
         self.selectedKeyValues = dict()
         self.curvePreviousValues = dict()
         self.curveNextValues = dict()
-
-        import tb_functions as funcs
-        reload(funcs)
         self.funcs = funcs.functions()
 
     def apply(self):
@@ -867,6 +895,7 @@ class SlideTools(toolAbstractFactory):
         fn_BREAKDOWNGROUP: 'tweenGroup.png',
         fn_BLOAT: 'tweenAmp.png',
         fn_SMOOTH: 'tweenSmooth.png',
+        fn_SMOOTHBUTTER: 'tweenSmooth.png',
         fn_SCALEFROMFIRST: 'tweenScaleFirst.png',
         fn_SCALEFROMLAST: 'tweenScaleLast.png',
         fn_CLOSEGAP: 'tweenFill.png',
@@ -921,7 +950,9 @@ class SlideTools(toolAbstractFactory):
             fn_BREAKDOWN: SlideTools.__instance.tweenPreviousCurrentNext,
             fn_BREAKDOWNGROUP: SlideTools.__instance.tweenPreviousNextGroup,
             fn_BLOAT: SlideTools.__instance.tweenBloat,
+            fn_SPLIT: SlideTools.__instance.tweenSplit,
             fn_NOISE: SlideTools.__instance.tweenNoise,
+            fn_RESAMPLE: SlideTools.__instance.resample,
             fn_NOISELOOP: SlideTools.__instance.tweenNoiseLoop,
             fn_SMOOTH: SlideTools.__instance.tweenSmoothNeighbours,
             fn_SMOOTHGAUSS: SlideTools.__instance.tweenSmoothGauss,
@@ -993,6 +1024,7 @@ class SlideTools(toolAbstractFactory):
 
         if not self.xformWidget:
             self.xformWidget = XformSliderWidget()
+
             self.xformWidget.sliderBeginSignal.connect(self.xformSliderBeginSignal)
             self.xformWidget.sliderUpdateSignal.connect(self.xformSliderUpdateSignal)
             self.xformWidget.sliderEndedSignal.connect(self.xformSliderEndSignal)
@@ -1036,6 +1068,10 @@ class SlideTools(toolAbstractFactory):
             if not self.keyTweenMethods[key].instance:
                 self.keyTweenMethods[key].instance = value()
         '''
+        print('modifyGraphEditorToolbar')
+        if int(cmds.about(version=True)) >= 2024:
+            self.modifyGraphEditorToolbar_2024(graphEditor)
+            return
         # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
@@ -1061,7 +1097,7 @@ class SlideTools(toolAbstractFactory):
         self.loadData()
 
         for valueDict in self.rawJsonBaseData['toolbarSliders']:
-            xformWidget = ButtonWidget(**valueDict)
+            xformWidget = PopupSliderButton(**valueDict)
             '''
             xformWidget = ButtonWidget(closeOnRelease=True, mode=mode, altMode=alt,
                                        icon=self.keyTweenIcons[mode], altIcon=self.keyTweenIcons[alt],
@@ -1119,7 +1155,7 @@ class SlideTools(toolAbstractFactory):
                 if type(button) == QButtonGroup:
                     continue
                 if index == 0:
-                    button.setFixedSize(22 * dpiScale(), 22 * dpiScale())
+                    button.setFixedSize(24 * dpiScale(), 24 * dpiScale())
                 cBoxLayout.addWidget(button)
 
             cBox.setContentLayout(cBoxLayout)
@@ -1129,6 +1165,168 @@ class SlideTools(toolAbstractFactory):
         for widget in collapsedWidgets:
             widget.show()
         # print ('added a slider')
+
+    def modifyGraphEditorToolbar_2024(self, graphEditor):
+        # check tween classes
+        '''
+
+        :return:
+        '''
+        '''
+        for key, value in self.keyTweenDict.items():
+            if not self.keyTweenMethods[key]:
+                self.keyTweenMethods[key] = value()
+            if not self.keyTweenMethods[key].instance:
+                self.keyTweenMethods[key].instance = value()
+        '''
+        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
+        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
+        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
+        for widget in widgets:
+            if any([isinstance(x, CollapsibleBox) for x in widget.children()]):
+                return
+        # try:
+        if True:
+            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1]
+            # print ('parentWidget', parentWidget)
+            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1]
+            # print ('parentWidget', parentWidget)
+            parentWidget = graphEditor1.children()[-1].children()[1]
+            # verticalLayout = QVBoxLayout()
+            # verticalLayout.addWidget(parentWidget)
+            parentLayout = parentWidget.parent()
+            # graphEditor1.children()[-1].addLayout(verticalLayout)
+            if any([isinstance(x, CollapsibleBox) for x in widgets]):
+                return
+            # print ('modding graphEditor')
+            graphEditKeyWidget = GraphEdKeySliderWidget()
+            graphEditKeyWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
+            graphEditKeyWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+            graphEditKeyWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
+            graphEditKeyWidget.modeChanged()
+            # graphEditKeyWidget.sliderCancelSignal.connect(self.keySliderCancelSignal)
+            # graphEditKeyWidget.modeChangedSignal.connect(self.graphEditKeySliderModeChangeSignal)
+            sliderParentWidget = QWidget()
+            sliderLayout = QHBoxLayout()
+            sliderParentWidget.setLayout(sliderLayout)
+            sliderLayout.setAlignment(Qt.AlignLeft)
+            sliderLayout.setContentsMargins(0, 0, 0, 0)
+            sliderLayout.setSpacing(0)
+            sliderLayout.addWidget(graphEditKeyWidget)  # .setParent(phLayout)
+            '''
+            slider = PopupSlider(closeOnRelease=False, mode=fn_BREAKDOWN, icon=self.keyTweenIcons[fn_BREAKDOWN],
+                                 width=200, minValue=-50, maxValue=50, overshootMin=-100, overshootMax=100)
+    
+            widgets[0].addWidget(slider)  # .setParent(phLayout)
+            '''
+            self.loadData()
+
+            for valueDict in self.rawJsonBaseData['toolbarSliders']:
+                xformWidget = SliderToolbarWidget(**valueDict)
+                xformWidget.button.setPopupMenu(TweenButtonPopup)
+                '''
+                xformWidget = ButtonWidget(closeOnRelease=True, mode=mode, altMode=alt,
+                                           icon=self.keyTweenIcons[mode], altIcon=self.keyTweenIcons[alt],
+                                           altSliderIsDual=True)
+                '''
+                # xformWidget.setToolTip(self.keyTweenToolTips[mode])
+                # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
+                # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
+                # xformWidget.setPopupMenu(SliderButtonPopupMenu)
+                # xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
+                xformWidget.popup.sliderBeginSignal.connect(self.keySliderBeginSignal)
+                xformWidget.popup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+                xformWidget.popup.sliderEndedSignal.connect(self.keySliderEndSignal)
+
+                xformWidget.altPopup.sliderBeginSignal.connect(self.keySliderBeginSignal)
+                xformWidget.altPopup.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+                xformWidget.altPopup.sliderEndedSignal.connect(self.keySliderEndSignal)
+
+                # self.keyPressHandler.addUI(xformWidget)
+                sliderLayout.addWidget(xformWidget)  # .setParent(phLayout)
+
+            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1]
+
+            # parentWidget.setFixedHeight(24)
+            widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
+
+            layout = widgets[0]
+            tempWidget = QWidget()
+            tempLayout = QVBoxLayout()
+            tempWidget.setLayout(tempLayout)
+            layout.addWidget(tempWidget)
+            # btn = QPushButton('TEMP')
+            # btn2 = QPushButton('TEMP2')
+            # tempLayout.addWidget(btn)
+            # tempLayout.addWidget(btn2)
+            dupeLayout = QHBoxLayout()
+            dupeLayout.setSpacing(0)
+            dupeLayout.setContentsMargins(0, 0, 0, 0)
+            customLayout = QHBoxLayout()
+            customLayout.setSpacing(0)
+            customLayout.setContentsMargins(0, 0, 0, 0)
+            customLayout.setAlignment(Qt.AlignCenter)
+            tempLayout.addLayout(dupeLayout)
+            tempLayout.addLayout(customLayout)
+            buttons = widgets[1:]
+            for b in buttons:
+                dupeLayout.addWidget(b)
+            # dupeLayout.addStretch()
+            state = pm.optionVar.get('geSliderToolbar', False)
+            cBox = CollapsibleBox(isCollapsed=state, optionVar='geSliderToolbar')
+            cBox.setFixedHeight(30 * dpiScale())
+
+            cBox.setContentLayout(sliderLayout)
+
+            customLayout.addWidget(cBox)
+            # layout.resize(layout.sizeHint())
+
+            cBox.show()
+
+            '''index = 0
+            buttonList = [[]]
+            for x in widgets:
+                if (type(x) == QFrame):
+                    index += 1
+                    buttonList.append(list())
+                buttonList[-1].append(x)
+    
+            collapsedWidgets = list()
+            for index, grp in enumerate(buttonList):
+                optionVarName = grp[0].objectName() + '_collapseState'
+                state = pm.optionVar.get(optionVarName, False)
+                cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
+                collapsedWidgets.append(cBox)
+                cBox.setFixedHeight(24 * dpiScale())
+                cBoxLayout = QHBoxLayout()
+                cBoxLayout.setAlignment(Qt.AlignLeft)
+                cBoxLayout.setContentsMargins(0, 0, 0, 0)
+                cBoxLayout.setSpacing(0)
+    
+                for button in grp:
+                    if type(button) == QLayout:
+                        continue
+                    if type(button) == QFrame:
+                        button.deleteLater()
+                        continue
+                    if type(button) == QButtonGroup:
+                        continue
+                    if index == 0:
+                        button.setFixedSize(22 * dpiScale(), 22 * dpiScale())
+                    cBoxLayout.addWidget(button)
+    
+                cBox.setContentLayout(cBoxLayout)
+    
+                layout.addWidget(cBox)
+                # layout.resize(layout.sizeHint())
+            for widget in collapsedWidgets:
+                widget.show()
+            # print ('added a slider')'''
+
+            graphEditor1.__dict__['modified'] = True
+            print('graphEditor1', graphEditor1.__dict__['modified'])
+        # except:
+        #     return
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -1269,7 +1467,10 @@ class SlideTools(toolAbstractFactory):
 
     def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(),
                    animCurveChange=None):
-        self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
+        try:
+            self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
+        finally:
+            cmds.undoInfo(stateWithoutFlush=True)
 
     def tweenPreviousNextGroup(self, alpha, alphaB, animCurveChange):
         if not self.keyframeData:
@@ -1397,6 +1598,53 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
 
+    def resample(self, alpha, alpha2, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        steps = int(self.normalizeAlpha(alpha, 0, 100, range=[0, 10]))
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes) - 1):
+                divisions = recursive_subdivide([self.keyframeRefData[curve].keyTimes[i],
+                                                 self.keyframeRefData[curve].nextKeyTimes[keyframeData.keyIndexes[i]]],
+                                                steps)
+                # print ('existing divisions', keyframeData.divisions)
+                divisionRawTimes = [int(d * getFps()) for d in divisions]
+                # print ('divisionTimes', divisionRawTimes)
+                if divisions:
+                    if len(divisions) > 2:
+                        self.keyframeData[curve].divisions.extend(divisionRawTimes[1:-1])
+                        self.keyframeData[curve].divisions = sorted(list(set(keyframeData.divisions)))
+                for keyTime in self.keyframeData[curve].divisions[::-1]:
+                    # print('self.keyframeRefData[curve].keyTimes', self.keyframeRefData[curve].keyFrameTimes)
+                    if keyTime not in self.keyframeRefData[curve].keyTimes:
+                        currentKeyTimes = cmds.keyframe(curve, q=True)
+                        currentKeyIndexes = cmds.keyframe(curve, q=True, indexValue=True)
+
+                        # print ('currentKeyIndexes', currentKeyTimes)
+                        # print ('key', keyTime)
+                        if keyTime in currentKeyTimes:
+                            key_index = currentKeyTimes.index(keyTime)
+                            # print ('currentKeyTimes', currentKeyTimes)
+                            # print ('currentKeyIndexes', currentKeyIndexes)
+                            # print('keyTime {s} not in original keys'.format(s=keyTime), om2.MTime(int(keyTime * getFps()),
+                            #                                                                 om2.MTime.uiUnit()))
+                            # key_index = self.selectedCurveDict[curve].findClosest(om2.MTime(int(keyTime * getFps()),
+                            #                                                                 om2.MTime.uiUnit()))
+                            # print(keyTime, 'key_index', key_index)
+                            if key_index:
+                                self.selectedCurveDict[curve].remove(key_index, change=animCurveChange)
+
+                # change this to clear up the previous breakdowns
+                if len(divisions) > 2:
+                    # print('sub divisions', divisions[1:-1][::-1])
+                    divisionTimes = [om2.MTime(int(d * getFps()), om2.MTime.uiUnit()) for d in divisions[1:-1]]
+
+                    for keyTime in divisionTimes:
+                        self.selectedCurveDict[curve].insertKey(keyTime, breakdown=False,
+                                                                change=animCurveChange)
+
     def tweenNoise(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
             return
@@ -1408,7 +1656,8 @@ class SlideTools(toolAbstractFactory):
                                               freqAlpha=alpha,
                                               seed=keyframeData.seed,
                                               currentValue=keyframeData.keyValues[i],
-                                              currentTime=keyframeData.keyTimes[i])
+                                              currentTime=keyframeData.keyTimes[i],
+                                              curveType=keyframeData.curveType)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
 
@@ -1626,6 +1875,36 @@ class SlideTools(toolAbstractFactory):
                 keyValue = lerpFloat(endValue, startValue, outVal)
 
                 outValue = lerpFloat(keyValue, self.keyframeRefData[curve].keyValues[i], alphaBlend)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def tweenSplit(self, alpha, alphaB, animCurveChange):
+        '''
+        Splits the key values up and down, alternates up and down every key
+        :param alpha:
+        :param alphaB:
+        :param animCurveChange:
+        :return:
+        '''
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.items():
+            firstIndex = keyframeData.keyIndexes[0]
+            lastIndex = keyframeData.keyIndexes[-1]
+            for i in range(len(keyframeData.keyIndexes)):
+                # index = keyframeData.keyIndexes[i]
+                currentIndex = keyframeData.keyIndexes[i]
+                outValue = self.tweenSplitKey(alpha=alpha,
+                                              firstValue=keyframeData.previousValues[firstIndex],
+                                              lastValue=keyframeData.nextValues[lastIndex],
+                                              firstTime=keyframeData.previousKeyTimes[firstIndex],
+                                              lastTime=keyframeData.nextKeyTimes[lastIndex],
+                                              currentValue=keyframeData.keyValues[i],
+                                              currentTime=keyframeData.keyTimes[i],
+                                              curveType=keyframeData.curveType,
+                                              index=i)
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
 
@@ -2016,7 +2295,8 @@ class SlideTools(toolAbstractFactory):
                       freqAlpha=float(),
                       seed=float(),
                       currentValue=float(),
-                      currentTime=float()):
+                      currentTime=float(),
+                      curveType=None):
         """
         :param ampAlpha:
         :param previousValue:
@@ -2024,7 +2304,27 @@ class SlideTools(toolAbstractFactory):
         :return:
         """
         freq = seed + (currentTime * (freqAlpha * 0.1))
-        return mel.eval('noise({x})'.format(x=freq)) * (ampAlpha * 0.01) + currentValue
+        ampScalar = self.getScalarForCurveType(curveType)
+        return mel.eval('noise({x})'.format(x=freq)) * (ampAlpha * 0.01 * ampScalar) + currentValue
+
+    def resampleKey(self, ampAlpha=float(),
+                    freqAlpha=float(),
+                    seed=float(),
+                    currentValue=float(),
+                    currentTime=float(),
+                    curveType=None):
+        """
+        :param ampAlpha:
+        :param previousValue:
+        :param nextValue:
+        :return:
+        """
+        freq = seed + (currentTime * (freqAlpha * 0.1))
+        ampScalar = self.getScalarForCurveType(curveType)
+        return mel.eval('noise({x})'.format(x=freq)) * (ampAlpha * 0.01 * ampScalar) + currentValue
+
+    def getScalarForCurveType(self, curveType):
+        return curveTypeScalar.get(curveType, 'animCurveTL')
 
     def tweenBloatKey(self, alpha=float(),
                       firstValue=float(),
@@ -2058,6 +2358,55 @@ class SlideTools(toolAbstractFactory):
                                                        change=animCurveChange)
     '''
 
+    def tweenSplitKey(self, alpha=float(),
+                      firstValue=float(),
+                      lastValue=float(),
+                      firstTime=float(),
+                      lastTime=float(),
+                      currentValue=float(),
+                      currentTime=float(),
+                      curveType=None,
+                      index=0):
+        """
+        :param alpha:
+        :param previousValue:
+        :param nextValue:
+        :return:
+        """
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        ampScalar = self.getScalarForCurveType(curveType)
+
+        if index % 2 == 0:
+            print('Even')
+            if alpha < 0.0:  # blend to linear
+                resultScalar = ampScalar * alpha * -1
+                return currentValue + resultScalar
+            else:
+                resultScalar = ampScalar * alpha
+                return currentValue - resultScalar
+
+        else:
+            print('Odd')
+            if alpha < 0.0:  # blend to linear
+                resultScalar = ampScalar * alpha
+                return currentValue + resultScalar
+            else:
+                resultScalar = ampScalar * alpha * -1
+                return currentValue - resultScalar
+
+        return currentValue + resultScalar
+
+    '''
+    def testLerp(self):
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                # print (keyframeData.keyValues[i])
+                newValue = keyframeData.keyValues[i] + 1
+
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], newValue,
+                                                       change=animCurveChange)
+    '''
+
     def getAnimCurveSelectionAPI(self):
         om2SelectionList = om2.MGlobal.getActiveSelectionList()
         selectionIterator = om2.MItSelectionList(om2SelectionList, om2.MFn.kAnimCurve)
@@ -2081,9 +2430,11 @@ class SlideTools(toolAbstractFactory):
         curveRefDataDict = {}
         for curveName, curve in selectedAnimCurveDict.items():
             keyTimes = list()
+            keyFrameTimes = cmds.keyframe(curveName, q=True)
             keyValues = list()
             keyIndexes = cmds.keyframe(curveName, q=True, selected=True, indexValue=True)
             allkeyIndexes = cmds.keyframe(curveName, q=True, indexValue=True)
+            curveType = cmds.nodeType(curveName)
             # print (curveName, keyIndexes)
 
             previousKeyTimes = dict()
@@ -2157,7 +2508,8 @@ class SlideTools(toolAbstractFactory):
             wideTimeAlphas = [float(x - previousKeyTimes[keyIndexes[0]]) / float(
                 nextKeyTimes[keyIndexes[-1]] - previousKeyTimes[keyIndexes[0]]) for x in keyTimes]
 
-            keyframeData = KeyframeData(keyTimes=keyTimes,
+            keyframeData = KeyframeData(keyFrameTimes=keyFrameTimes,
+                                        keyTimes=keyTimes,
                                         keyValues=keyValues,
                                         keyIndexes=keyIndexes,
                                         previousKeyTimes=previousKeyTimes,
@@ -2171,10 +2523,12 @@ class SlideTools(toolAbstractFactory):
                                         outTangents=outTangents,
                                         bezierTangents=bezierTangents,
                                         timeAlpha=timeAlphas,
-                                        wideTimeAlpha=wideTimeAlphas
+                                        wideTimeAlpha=wideTimeAlphas,
+                                        curveType=curveType
                                         )
             # duplicate of the data, to use for multiple iterations of smoothing
-            keyframeRefData = KeyframeData(keyTimes=[x for x in keyTimes],
+            keyframeRefData = KeyframeData(keyFrameTimes=[x for x in keyFrameTimes],
+                                           keyTimes=[x for x in keyTimes],
                                            keyValues=[x for x in keyValues],
                                            keyIndexes=[x for x in keyIndexes],
                                            previousKeyTimes={k: v for k, v in previousKeyTimes.items()},
@@ -2220,6 +2574,7 @@ class KeyframeData(object):
     """
 
     def __init__(self,
+                 keyFrameTimes=list(),
                  keyTimes=list(),
                  keyValues=list(),
                  keyIndexes=list(),
@@ -2237,10 +2592,12 @@ class KeyframeData(object):
                  outTangents=list(),
                  bezierTangents=list(),
                  timeAlpha=list(),
-                 wideTimeAlpha=list()
+                 wideTimeAlpha=list(),
+                 curveType=None
                  ):
         self.seed = random.random() * 9999
         self.keyTimes = keyTimes
+        self.keyFrameTimes = keyFrameTimes
         self.keyValues = keyValues
         self.keyIndexes = keyIndexes
 
@@ -2260,6 +2617,9 @@ class KeyframeData(object):
         self.isCached = False
         self.timeAlpha = timeAlpha
         self.wideTimeAlpha = wideTimeAlpha
+        self.curveType = curveType
+
+        self.divisions = list()
 
 
 class keypressHandler(QObject):
@@ -3327,7 +3687,7 @@ class PySlider(QSlider):
     def resetStyle(self):
         self.setStyleSheet(self.adjust_style)
 
-    def toggleOvershoot(self, overshootState):
+    def toggleOvershoot(self, overshootState, value):
         self.overshootState = overshootState
         if self.overshootState:
             self.setMaximum(self.maxOvershootValue)
@@ -3416,8 +3776,8 @@ class SliderWidget(BaseDialog):
     minOvershootValue = -201
     maxValue = 101
     maxOvershootValue = 201
-    baseSliderWidth = 260
-    baseWidth = 270
+    baseSliderWidth = 350 * dpiScale()
+    baseWidth = baseSliderWidth + (8 * dpiScale())
 
     baseLabel = 'baseLabel'
     shiftLabel = 'shiftLabel'
@@ -3462,7 +3822,8 @@ class SliderWidget(BaseDialog):
         self.recentlyOpened = False
         self.invokedKey = None
         self.modeList = modeList
-        self.setFixedSize(270 * dpiScale(), 60 * dpiScale())
+        self.regularWidth = 500 * dpiScale()
+        self.setFixedSize(self.baseWidth, 60 * dpiScale())
         self.setWindowOpacity(0.9)
         #
         if not showInfo:
@@ -3484,12 +3845,26 @@ class SliderWidget(BaseDialog):
 
         self.container = QFrame()
         self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
+        slider_height = 28
+        self.slider_2 = pys.Slider(
+            margin=0,
+            bg_height=slider_height,
+            bg_radius=6,
+            handle_width=slider_height,
+            bg_color="#373E4C",
+            bg_color_hover="#4c566b",
+            handle_height=slider_height,
+            handle_radius=4,
+            handle_color="#373E4C",
+            handle_color_hover="#435270",
+            handle_color_pressed="#435270",
+        icon = os.path.join(IconPath,'iceCream.png').replace('\\','//'))
+        # self.slider_2 = PySlider()
+        # self.slider_2.setStyleSheet(sliderStyleSheet.format())
 
-        self.slider_2 = PySlider()
         self.slider_2.setOrientation(Qt.Horizontal)
         self.slider_2.setMinimumWidth(self.baseSliderWidth)
-        self.slider_2.setMinimum(-101)
-        self.slider_2.setMaximum(101)
+        # self.slider_2.setFixedWidth(300*dpiScale())
         self.slider_2.setValue(0)
         self.slider_2.setTickInterval(1)
 
@@ -3532,7 +3907,7 @@ class SliderWidget(BaseDialog):
         # emit the mode change signal to load the labels
         self.modeChangedSignal.emit(self.currentMode)
         self.overlayLabel.move(20, self.height() - 20)
-        self.setFixedSize(270, self.sizeHint().height())
+        self.setFixedSize(self.baseWidth, self.sizeHint().height())
 
     def show(self):
         super(SliderWidget, self).show()
@@ -3544,7 +3919,7 @@ class SliderWidget(BaseDialog):
     def moveToCursor(self):
         pos = QCursor.pos()
         xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - (16*dpiScale()))
+        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - (16 * dpiScale()))
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -3698,14 +4073,13 @@ class SliderWidget(BaseDialog):
         self.modeChangedSignal.emit(self.currentMode)
 
     def toggleOvershoot(self, overshootState):
-        self.slider_2.toggleOvershoot(overshootState)
+        self.slider_2.toggleOvershoot(overshootState, self.baseSliderWidth)
         currentPos = self.pos()
         if overshootState:
-            self.slider_2.setFixedWidth(self.baseSliderWidth * 2)
-            self.setFixedWidth((self.baseWidth - self.baseSliderWidth) + (self.baseSliderWidth * 2))
+            self.setFixedWidth(self.baseWidth * 2)
             currentPos.setX(currentPos.x() - (self.baseSliderWidth * 0.5))
         else:
-            self.slider_2.setFixedWidth(self.baseSliderWidth)
+
             self.setFixedWidth(self.baseWidth)
 
             currentPos.setX(currentPos.x() + (self.baseSliderWidth * 0.5))
@@ -3792,7 +4166,7 @@ class KeySliderWidget(SliderWidget):
                                               showInfo=showInfo
                                               )
         self.recentlyOpened = False
-        self.setFixedSize(270, 46)
+        self.setFixedSize(self.baseSliderWidth, 46)
 
 
 class GraphEdKeySliderWidget_OLD(QWidget):
@@ -4049,6 +4423,7 @@ class GraphEdKeySliderWidget(QWidget):
         self.recentlyOpened = False
         self.invokedKey = None
         self.modeList = modeList
+
         #
         # labels
         '''
@@ -4071,7 +4446,8 @@ class GraphEdKeySliderWidget(QWidget):
         self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
 
         self.slider = PopupSlider(closeOnRelease=False, mode=modeList[0], icon='',
-                                  width=200* dpiScale(), minValue=-100, maxValue=100, overshootMin=-200, overshootMax=200)
+                                  width=200 * dpiScale(), minValue=-100, maxValue=100, overshootMin=-200,
+                                  overshootMax=200)
         self.slider.sliderUpdateSignal.connect(self.sliderUpdate)
         self.slider.sliderEndedSignal.connect(self.sliderEnd)
         # self.slider.sliderMoved.connect(self.sliderValueChanged)
@@ -4115,8 +4491,9 @@ class GraphEdKeySliderWidget(QWidget):
         self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.labelYPos = 6
         self.overlayLabel.setAlignment(Qt.AlignLeft)
-        self.overlayLabel.move(10* dpiScale(), self.labelYPos)
+        self.overlayLabel.move(10 * dpiScale(), self.labelYPos)
         self.setFocusPolicy(Qt.NoFocus)
+        self.setStyleSheet("")
 
     def show(self):
         super(GraphEdKeySliderWidget, self).show()
@@ -4184,3 +4561,33 @@ class SliderButtonPopup(ButtonPopup):
             self.layout.addRow(widget)
         # layout.addRow("Size:", self.size_sb)
         # layout.addRow("Opacity:", self.opacity_sb)
+
+
+class TweenButtonPopup(ButtonPopup):
+    def __init__(self, name, parent=None, hideLabel=False):
+        super(ButtonPopup, self).__init__(parent)
+        self.hideLabel = hideLabel
+        self.setWindowTitle("{0} Options".format(name))
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setWindowFlags(Qt.Popup)
+
+        self.layout = QFormLayout(self)
+
+        self.create_widgets()
+        self.create_layout()
+
+    def create_widgets(self):
+        pass
+
+    def create_layout(self):
+        tbAdjustmentBlendLabel = QLabel('tbAdjustmentBlend')
+        extractOptionLabel = QLabel('Extract Controls')
+        rootOptionLabel = QLabel('Global control stripping')
+        channelOptionLabel = QLabel('Channel options')
+        if not self.hideLabel:
+            self.layout.addRow(tbAdjustmentBlendLabel)
+        self.layout.addRow(rootOptionLabel)
+        button = QPushButton('Extract Selection')
+
+        self.layout.addRow(button)
+        self.layout.addRow(extractOptionLabel)
