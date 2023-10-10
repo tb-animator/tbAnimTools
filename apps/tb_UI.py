@@ -276,7 +276,11 @@ class markingMenuKeypressHandler(QObject):
             self.UI.keyReleaseEvent(event)
             return False
         elif event.type() == event.KeyPress:
-            self.UI.keyPressEvent(event)
+            if self.UI:
+                try:
+                    self.UI.keyPressEvent(event)
+                except:
+                    self.UI = None
             return False
         return False
 
@@ -632,6 +636,7 @@ class ViewportDialog(QDialog):
 
         if not self.invokedKey or self.invokedKey == event.key():
             return
+
         super(ViewportDialog, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):

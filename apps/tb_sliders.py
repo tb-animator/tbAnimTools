@@ -1069,9 +1069,13 @@ class SlideTools(toolAbstractFactory):
                 self.keyTweenMethods[key].instance = value()
         '''
         print('modifyGraphEditorToolbar')
-        if int(cmds.about(version=True)) >= 2024:
+        if int(cmds.about(majorVersion=True)) >= 2024:
             self.modifyGraphEditorToolbar_2024(graphEditor)
             return
+        if int(cmds.about(majorVersion=True)) >= 2023:
+            if int(cmds.about(minorVersion=True)) >= 3:
+                self.modifyGraphEditorToolbar_2024(graphEditor)
+                return
         # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()

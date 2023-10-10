@@ -4313,11 +4313,6 @@ class pickwalkMainWindow(QMainWindow):
     def __init__(self):
         super(pickwalkMainWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
-        self.defaultDir = pm.optionVar.get('pickwalkDir',
-                                           os.path.join(os.path.normpath(os.path.dirname(__file__)),
-                                                        'pickwalkData'))
-        if not os.path.isdir(self.defaultDir):
-            os.mkdir(self.defaultDir)
 
         self.pickwalkCreator = PickwalkCreator()
         self.resize(948, self.height())
@@ -4962,7 +4957,7 @@ class pickwalkMainWindow(QMainWindow):
         pm.optionVar[saveOnUpdateOption] = self.editOnSaveCB.isChecked.isChecked()
 
     def openDataFolder(self):
-        os.startfile(self.defaultDir)
+        os.startfile(Pickwalk().defaultPickwalkDir)
 
     def setSimpleMode(self):
         self.mainPickWidget.setVisible(True)

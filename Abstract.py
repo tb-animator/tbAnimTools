@@ -145,7 +145,7 @@ class toolAbstractFactory(ABC):
     def __init__(self, **kwargs):
         self.hotkeyClass = hotKeyAbstractFactory()
         self.funcs = functions()
-
+        self.dataPath = None
     """
     Declare an interface for operations that create abstract product
     objects.
