@@ -34,7 +34,7 @@ import pymel.core as pm
 from functools import partial
 import subprocess
 import apps.tb_fileTools as ft
-
+import re
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -81,8 +81,13 @@ def darken_color(colour, factor=0.1):
     return adjust_color_lightness(colour[0], colour[1], colour[2], 1 - factor)
 
 
-def hex_to_rgb(hex):
-    return [float((hex[x:x + 2])) for x in [1, 3, 5]]
+def hex_to_rgb(value):
+    """
+    Return (red, green, blue) for the color given as #rrggbb.
+    """
+    value = value.lstrip('#')
+    lv = len(value)
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 
 def rgb_to_hex(colour=[0.5, 0.5, 0.5]):
@@ -4200,15 +4205,17 @@ class OfflineActivateInputWidget(QWidget):
 class CollapsibleBox(QWidget):
     collapsedIcon = QIcon(":openBar.png")
     expandedIcon = QIcon(":closeBar.png")
+    collapseSignal = Signal(bool)
 
     def __init__(self, title="", parent=None, isCollapsed=False, optionVar=str()):
         super(CollapsibleBox, self).__init__(parent)
         self.optionVar = optionVar
+        isCollapsed = pm.optionVar.get(self.optionVar, True)
         self.toggleButton = QToolButton(
             text=title, checkable=True, checked=isCollapsed
         )
         self.toggleButton.setStyleSheet("QToolButton { border: none; }")
-        self.toggleButton.setFixedSize(12, 22)
+        self.toggleButton.setFixedSize(12*dpiScale(), 20*dpiScale())
         self.toggleButton.setToolButtonStyle(
             Qt.ToolButtonTextBesideIcon
         )
@@ -4250,8 +4257,9 @@ class CollapsibleBox(QWidget):
             anim
         )
 
+
     def playAnimationByState(self):
-        checked = self.toggleButton.isChecked()
+        checked = pm.optionVar.get(self.optionVar, False)
         self.toggleAnimation.setDirection(
             QAbstractAnimation.Forward
             if not checked
@@ -4264,13 +4272,14 @@ class CollapsibleBox(QWidget):
         self.setIconByState()
         self.playAnimationByState()
         self.setOptionVarByState()
+        self.collapseSignal.emit(self.toggleButton.isChecked())
 
     def setOptionVarByState(self):
         checked = self.toggleButton.isChecked()
         pm.optionVar[self.optionVar] = checked
 
     def setIconByState(self):
-        checked = self.toggleButton.isChecked()
+        checked = pm.optionVar.get(self.optionVar, False)
         self.toggleButton.setIcon(
             self.collapsedIcon if not checked else self.expandedIcon
         )
@@ -4523,3 +4532,59 @@ class DropShadowLabel(QLabel):
         qp.strokePath(path, pen2)
         qp.fillPath(path, brush)
         qp.end()
+
+
+def modifyStyleSheet(initialStyle, pattern, linePatterm, edit):
+    # pattern = r"QSlider::groove:horizontal:hover\s*{[^}]*}"
+    # linePatterm = r"height:\s*\d+px;"
+    # edit = "height: 10px;"
+    # Find the QSlider::groove:horizontal:hover block
+    match = re.search(pattern, initialStyle)
+
+    if match:
+        # Extract the matched block
+        groove_block = match.group()
+
+        # Modify the height property using regular expression substitution
+        modified_groove_block = re.sub(
+            linePatterm, edit, groove_block
+        )
+
+        # Replace the modified block within the existing stylesheet
+        modified_stylesheet = initialStyle.replace(groove_block, modified_groove_block)
+
+        # Set the updated stylesheet
+        return modified_stylesheet
+    return initialStyle
+
+
+def darken_hex_color(hex_color, percentage):
+    # Convert the hex color to an RGB tuple
+    rgb_color = tuple(int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+
+    # Darken each channel by the specified percentage
+    darkened_rgb = [int(channel * (1 - percentage / 100)) for channel in rgb_color]
+
+    # Convert the darkened RGB back to a hex color
+    darkened_hex_color = "#{:02X}{:02X}{:02X}".format(*darkened_rgb)
+
+    return darkened_hex_color
+
+def generate_linear_gradient(start_color, end_color, num_steps):
+    # Convert the start and end colors to RGB tuples
+    start_color = tuple(int(start_color[i:i+2], 16) for i in (1, 3, 5))
+    end_color = tuple(int(end_color[i:i+2], 16) for i in (1, 3, 5))
+
+    # Calculate the step size for each color channel
+    step_size = [(end_color[i] - start_color[i]) / (num_steps - 1) for i in range(3)]
+
+    # Generate the gradient colors
+    gradient_colors = []
+    for step in range(num_steps):
+        color = [
+            int(start_color[i] + step * step_size[i]) for i in range(3)
+        ]
+        hex_color = "#{:02X}{:02X}{:02X}".format(*color)
+        gradient_colors.append(hex_color)
+
+    return gradient_colors

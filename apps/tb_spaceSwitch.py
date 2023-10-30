@@ -196,6 +196,7 @@ class SpaceSwitch(toolAbstractFactory):
     namespaceToCharDict = dict()
     spaceDataDict = dict()
     popupSwitchMode = False
+    win = None
 
     def __new__(cls):
         if SpaceSwitch.__instance is None:
@@ -517,11 +518,11 @@ class SpaceSwitch(toolAbstractFactory):
                 namespace = ''
                 control = s
             rigName = self.namespaceToCharDict[namespace]
-            controlValues = self.loadedSpaceData[rigName].spaceControl.values()
+            controlValues = list(self.loadedSpaceData[rigName].spaceControl.values())
             if control not in controlValues:
                 continue
             controlIndex = controlValues.index(control)
-            attribute = self.loadedSpaceData[rigName].spaceControl.keys()[controlIndex]
+            attribute = list(self.loadedSpaceData[rigName].spaceControl.keys())[controlIndex]
             attributeType = cmds.getAttr(namespace + ':' + attribute, type=True)
             node, attr = str(namespace + ':' + attribute).split('.', 1)
             if attributeType == 'enum':
@@ -582,11 +583,11 @@ class SpaceSwitch(toolAbstractFactory):
         for s in selection:
             namespace, control = s.split(':', 1)
             rigName = self.namespaceToCharDict[namespace]
-            controlValues = self.loadedSpaceData[rigName].spaceControl.values()
+            controlValues = list(self.loadedSpaceData[rigName].spaceControl.values())
             if control not in controlValues:
                 continue
             controlIndex = controlValues.index(control)
-            attribute = self.loadedSpaceData[rigName].spaceControl.keys()[controlIndex]
+            attribute = list(self.loadedSpaceData[rigName].spaceControl.keys())[controlIndex]
             attributeType = cmds.getAttr(namespace + ':' + attribute, type=True)
             if attributeType == 'enum':
                 node, attr = str(namespace + ':' + attribute).split('.', 1)
@@ -629,7 +630,7 @@ class SpaceSwitch(toolAbstractFactory):
             resultLayer = self.createLayer()
             # collect all attributes and bake explicitly
             bakeAttributes = self.getAllAnimatedChannels(selection)
-            bakeAttributes.extend(attributes.values())
+            bakeAttributes.extend(list(attributes.values()))
 
         self.bakeSpaceSwitch(selection=selection,
                              resultLayer=str(resultLayer),
@@ -996,8 +997,9 @@ class SpaceSwitch(toolAbstractFactory):
         self.loadDataForCharacters(characters)
 
     def openEditorWindow(self):
-        win = SpaceSwitchSetupUI()
-        win.show()
+        if not self.win:
+            self.win = SpaceSwitchSetupUI()
+        self.win.show()
 
 
 class ToolboxWidget(ViewportDialog):
@@ -1231,7 +1233,10 @@ class SpaceSwitchSetupUI(QMainWindow):
 
         if refState:
             namespace = cmds.referenceQuery(sel[0], namespace=True).rsplit(':')[-1]
-            pendingControls = [str(x).split(namespace)[-1].split(':', 1)[-1] for x in pendingControls]
+            if namespace:
+                pendingControls = [str(x).split(namespace)[-1].split(':', 1)[-1] for x in pendingControls]
+            else:
+                pendingControls = [str(x) for x in pendingControls]
         return pendingControls
 
     def addNewControlsWithAttribute(self, attribute):
@@ -1280,6 +1285,9 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.currentRigNameLabel.setText(self.rigName)
 
         self.spaceData = SpaceSwitch().loadRigData(SpaceData(), self.rigName)
+        print ('self.namespace', self.namespace)
+
+    def enableAndRefreshUI(self):
         if self.rigName:
             self.enableUI()
             self.refreshUI()
@@ -1299,7 +1307,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         if sel:
             self.getCurrentRig()
         if self.rigName:
-            self.enableUI()
+            self.enableAndRefreshUI()
         else:
             self.disableUI()
 

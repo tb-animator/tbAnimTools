@@ -75,4 +75,4 @@ class initialise(object):
         mutils.executeDeferred('import maya.mel as mel')
 
         # mutils.executeDeferred('import maya.mel as mel; mel.eval("createToolbar")')
-        # mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')
+        mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')

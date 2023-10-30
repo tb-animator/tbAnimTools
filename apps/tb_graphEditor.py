@@ -80,6 +80,8 @@ class GraphEditor(toolAbstractFactory):
     hotkeyClass = hotkeys()
     funcs = functions()
 
+    customUiLocationOption = 'tbCustomGEUILocation'
+    customUiLocation = ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
     graphEditorToolbarOption = 'tbGraphEditorToolbarOption'
 
     def __new__(cls):
@@ -102,6 +104,12 @@ class GraphEditor(toolAbstractFactory):
         super(GraphEditor, self).optionUI()
         useTumbleOptionWidget = optionVarBoolWidget('Use modified graph editor toolbar ', self.graphEditorToolbarOption)
         self.layout.addWidget(useTumbleOptionWidget)
+        self.uiLocationWidget = comboBoxWidget(optionVar=self.customUiLocationOption,
+                                                  values=self.customUiLocation,
+                                                  defaultValue=pm.optionVar.get(self.customUiLocationOption,
+                                                                                self.customUiLocation[0]),
+                                                  label='Custom UI location')
+        self.layout.addWidget(self.uiLocationWidget)
         # connect the checkbox changed event to the function that handles removing/adding the camera scriptJobs
         self.layout.addStretch()
         return self.optionWidget

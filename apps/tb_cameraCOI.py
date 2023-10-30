@@ -32,13 +32,13 @@ qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
@@ -149,6 +149,7 @@ def getRotateManipPosition(*args):
 def getScaleManipPosition(*args):
     return cmds.manipScaleContext('Scale', query=True, position=True)
 
+
 def getSelectManipPosition(*args):
     # hack to set manipulator pivot when in component selection mode
     mel.eval("setToolTo $gMove;")
@@ -156,11 +157,12 @@ def getSelectManipPosition(*args):
     mel.eval("setToolTo $gSelect")
     return pos
 
+
 class CameraPivot(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'CameraPivot'
     hotkeyClass = hotkeys()
@@ -173,10 +175,10 @@ class CameraPivot(toolAbstractFactory):
                     'manipScale': getScaleManipPosition,
                     'selectTool': getSelectManipPosition}
 
-    SomethingSelectedScriptJob = -1
-    DragReleaseScriptJob = -1
-    ModelPanelSetFocusScriptJob = -1
-    playbackModeChangedScriptJob = -1
+    SomethingSelectedScriptJob = int(-1)
+    DragReleaseScriptJob = int(-1)
+    ModelPanelSetFocusScriptJob = int(-1)
+    playbackModeChangedScriptJob = int(-1)
 
     if not pm.optionVar(exists='tumbler_enabled'):
         # TODO - make the option window so this is editable
@@ -193,6 +195,7 @@ class CameraPivot(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
         self.time = cmds.timerX()
+
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -241,7 +244,7 @@ class CameraPivot(toolAbstractFactory):
                 Warning("Setting camera tumble pivot on " + cam + "failed!")
 
     def elapsedTime(self):
-        # print 'anti spam: Time - ', self.time, ' frequency - ', self.frequency
+        # print('anti spam: Time - ', self.time, ' frequency - ', self.frequency)
         return self.time + self.frequency < cmds.timerX()
 
     def doIt(self, *args):
@@ -312,9 +315,8 @@ class CameraPivot(toolAbstractFactory):
 
                 if pivots:
                     self.update_tumble_pivots(midPoint(pivots))
-        except:
+        finally:
             cmds.undoInfo(stateWithoutFlush=True)
-        cmds.undoInfo(stateWithoutFlush=True)
 
     def updateScriptJobStatus(self, status):
         if status:
@@ -346,13 +348,11 @@ class CameraPivot(toolAbstractFactory):
 
     def createCameraPivotScriptJob(self):
         self.removePivotScriptJobs()
-        '''
-        if self.SomethingSelectedScriptJob != -1:
-            self.SomethingSelectedScriptJob = (cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt)))
-        if self.DragReleaseScriptJob != -1:
-            self.DragReleaseScriptJob = (cmds.scriptJob(event=("DragRelease", CameraPivot().doIt)))
-        if self.ModelPanelSetFocusScriptJob != -1:
-            self.ModelPanelSetFocusScriptJob = (cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt)))
-        if self.playbackModeChangedScriptJob != -1:
-            self.playbackModeChangedScriptJob = (cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt)))
-        '''
+        if self.SomethingSelectedScriptJob == -1:
+            self.SomethingSelectedScriptJob = cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt))
+        if self.DragReleaseScriptJob == -1:
+            self.DragReleaseScriptJob = cmds.scriptJob(event=("DragRelease", CameraPivot().doIt))
+        if self.ModelPanelSetFocusScriptJob == -1:
+            self.ModelPanelSetFocusScriptJob = cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt))
+        if self.playbackModeChangedScriptJob == -1:
+            self.playbackModeChangedScriptJob = cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt))

@@ -4,9 +4,16 @@
       "sliderData": {
         "mode": "Tween",
         "label": "Tween",
+        "iconLabel": "Tw",
         "icon": "tweenKey.png",
         "vertical": false,
-        "closeOnRelease": true
+        "closeOnRelease": true,
+        "menuLabel": "Tween Keys",
+        "colour": "#264653",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "tintColour": "black",
+        "tintStrength": 0.2
       },
       "altSliderData": {
         "mode": "TweenGrp",
@@ -15,121 +22,51 @@
         "vertical": false,
         "closeOnRelease": true
       },
+      "toolTip": {
+        "text": "Move selected key values towards their neighbours",
+        "title": "Inbetween keys",
+        "gif": ""
+      },
       "toolTipSmall": "<b>LMB</b> Inbetween<br><b>Shift + LMB</b> Inbetween Group"
     },
     {
       "sliderData": {
-        "mode": "Smooth",
-        "label": "Smooth",
-        "icon": "tweenSmooth.png",
+        "mode": "TweenGrp",
+        "label": "TweenGrp",
+        "iconLabel": "Tw",
+        "icon": "tweenGroup.png",
         "vertical": false,
-        "closeOnRelease": true
-      },
-      "altSliderData": {
-        "mode": "Smooth",
-        "label": "Smooth",
-        "icon": "tweenSmooth.png",
-        "vertical": false,
-        "closeOnRelease": true
-      },
-      "toolTipSmall": "Smooth nearest neighbours"
-    },
-    {
-      "sliderData": {
-        "mode": "SmoothGaussian",
-        "label": "SmoothGaussian",
-        "icon": "tweenSmooth.png",
-        "vertical": false,
-        "closeOnRelease": true
-      },
-      "altSliderData": {
-        "mode": "SmoothGaussian",
-        "label": "SmoothGaussian",
-        "icon": "tweenSmoothGauss.png",
-        "vertical": false,
-        "closeOnRelease": true
-      },
-      "toolTipSmall": "Smooth Gaussian"
-    },
-    {
-      "sliderData": {
-        "mode": "SmoothButterworth",
-        "label": "Smooth Moving Average",
-        "icon": "tweenSmoothAverage.png",
-        "vertical": false,
-        "closeOnRelease": true
-      },
-      "altSliderData": {
-        "mode": "SmoothButterworth",
-        "label": "Smooth Moving Average",
-        "icon": "tweenSmoothAverage.png",
-        "vertical": true,
-        "closeOnRelease": true
-      },
-      "toolTipSmall": "Smooth Moving Average"
-    },
-    {
-      "sliderData": {
-        "mode": "Split",
-        "label": "Split",
-        "icon": "split.png",
         "closeOnRelease": true,
-        "vertical": false
+        "menuLabel": "Tween Keys",
+        "colour": "#264653",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "tintColour": "black",
+        "tintStrength": 0.2
       },
       "altSliderData": {
-        "mode": "Split",
-        "label": "Split",
-        "icon": "split.png",
-        "closeOnRelease": true,
-        "vertical": false
-      },
-      "toolTipSmall": "<b>LMB</b> Split values <br><b> </b> "
-    },
-    {
-      "sliderData": {
-        "mode": "Noise",
-        "label": "Noise",
-        "axisLabelX": "Freq",
-        "axisLabelY": "Amp",
-        "icon": "tweenNoise.png",
-        "vertical": true,
-        "closeOnRelease": true,
-        "width": 250
-      },
-      "altSliderData": {
-        "mode": "NoiseLoop",
-        "label": "NoiseLoop",
-        "axisLabelX": "Freq",
-        "axisLabelY": "Amp",
-        "icon": "tweenNoiseLoop.png",
-        "vertical": true,
-        "closeOnRelease": true,
-        "width": 250
-      },
-      "toolTipSmall": "<b>LMB</b> Add noise<br><b>Shift + LMB</b> add noise looped"
-    },
-    {
-      "sliderData": {
-        "mode": "Amplify",
-        "label": "Amplify",
-        "icon": "tweenAmp.png",
+        "mode": "TweenGrp",
+        "label": "TweenGrp",
+        "icon": "tweenGroup.png",
         "vertical": false,
         "closeOnRelease": true
       },
-      "altSliderData": {
-        "mode": "Amplify",
-        "label": "Amplify",
-        "icon": "tweenAmp.png",
-        "vertical": false,
-        "closeOnRelease": true
+      "toolTip": {
+        "text": "Move selected key values towards their neighbours as a group",
+        "title": "Inbetween keys as group",
+        "gif": ""
       },
-      "toolTipSmall": "Amplify animation from linear start>end"
+      "toolTipSmall": "<b>LMB</b> Inbetween<br><b>Shift + LMB</b> Inbetween Group"
     },
     {
       "sliderData": {
         "mode": "ScaleFromFirst",
         "label": "ScaleFirst",
+        "iconLabel": "Sf",
         "icon": "tweenScaleFirst.png",
+        "colour": "#2A9D8F",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
         "vertical": false,
         "closeOnRelease": true
       },
@@ -139,6 +76,11 @@
         "icon": "tweenScaleFirst.png",
         "vertical": false,
         "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Scale the selected keys using the first selected key as a pivot point",
+        "title": "Scale keys from first value",
+        "gif": ""
       },
       "toolTipSmall": "Scale keys from first value"
     },
@@ -146,9 +88,13 @@
       "sliderData": {
         "mode": "ScaleFromLast",
         "label": "ScaleLast",
+        "iconLabel": "Sl",
         "icon": "tweenScaleLast.png",
         "vertical": false,
-        "closeOnRelease": true
+        "closeOnRelease": true,
+        "colour": "#2A9D8F",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
       },
       "altSliderData": {
         "mode": "ScaleFromLast",
@@ -156,6 +102,11 @@
         "icon": "tweenScaleLast.png",
         "vertical": false,
         "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Scale the selected keys using the last selected key as a pivot point",
+        "title": "Scale keys from last value",
+        "gif": ""
       },
       "toolTipSmall": "Scale keys from last value"
     },
@@ -165,7 +116,10 @@
         "label": "Fill Gap",
         "icon": "tweenFill.png",
         "vertical": false,
-        "closeOnRelease": true
+        "closeOnRelease": true,
+        "colour": "#2A9D8F",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
       },
       "altSliderData": {
         "mode": "Fill Gap",
@@ -174,7 +128,230 @@
         "vertical": false,
         "closeOnRelease": true
       },
+      "toolTip": {
+        "text": "Scale the selected keys to close the gap to the previous/next value",
+        "title": "Scale keys first/last value",
+        "gif": ""
+      },
       "toolTipSmall": "Close gap between first+previous or last+next keys"
+    },
+    {
+      "sliderData": {
+        "mode": "Smooth",
+        "label": "Smooth",
+        "iconLabel": "Sm",
+        "icon": "tweenSmooth.png",
+        "vertical": false,
+        "closeOnRelease": true,
+        "colour": "#E9C46A",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "Smooth",
+        "label": "Smooth",
+        "icon": "tweenSmooth.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Smooths the values of the selected keys to their nearest neighbours",
+        "title": "Smooth nearest neighbours",
+        "gif": ""
+      },
+      "toolTipSmall": "Smooth nearest neighbours"
+    },
+    {
+      "sliderData": {
+        "mode": "SmoothGaussian",
+        "label": "SmoothGaussian",
+        "iconLabel": "Sg",
+        "icon": "tweenSmoothGauss.png",
+        "vertical": false,
+        "closeOnRelease": true,
+        "colour": "#E9C46A",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "SmoothGaussian",
+        "label": "SmoothGaussian",
+        "icon": "tweenSmoothGauss.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Smooths the values of the selected keys using a gaussian function",
+        "title": "Smooth Gaussian",
+        "gif": ""
+      },
+      "toolTipSmall": "Smooth Gaussian"
+    },
+    {
+      "sliderData": {
+        "mode": "SmoothButterworth",
+        "label": "Smooth Moving Average",
+        "iconLabel": "Sa",
+        "icon": "tweenSmoothAverage.png",
+        "vertical": false,
+        "closeOnRelease": true,
+        "colour": "#E9C46A",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "SmoothButterworth",
+        "label": "Smooth Moving Average",
+        "icon": "tweenSmoothAverage.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Smooths the values of the selected keys using a moving average function",
+        "title": "Smooth Moving Average",
+        "gif": ""
+      },
+      "toolTipSmall": "Smooth Moving Average"
+    },
+    {
+      "sliderData": {
+        "mode": "Zip",
+        "label": "Zip",
+        "iconLabel": "Sp",
+        "icon": "tweenZip.png",
+        "closeOnRelease": true,
+        "vertical": false,
+        "colour": "#F4A261",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "Split",
+        "label": "Split",
+        "icon": "tweenSplit.png",
+        "closeOnRelease": true,
+        "vertical": false
+      },
+      "toolTip": {
+        "text": "Zippy",
+        "title": "Zip",
+        "gif": ""
+      },
+      "toolTipSmall": "<b>LMB</b> Split values <br><b> </b> "
+    },
+    {
+      "sliderData": {
+        "mode": "Split",
+        "label": "Split",
+        "iconLabel": "Sp",
+        "icon": "tweenSplit.png",
+        "closeOnRelease": true,
+        "vertical": false,
+        "colour": "#F4A261",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "Split",
+        "label": "Split",
+        "icon": "tweenSplit.png",
+        "closeOnRelease": true,
+        "vertical": false
+      },
+      "toolTip": {
+        "text": "Offsets the values of the selected keys, alternating between positive and negative",
+        "title": "Split key values",
+        "gif": ""
+      },
+      "toolTipSmall": "<b>LMB</b> Split values <br><b> </b> "
+    },
+    {
+      "sliderData": {
+        "mode": "NoiseLoop",
+        "label": "Noise",
+        "iconLabel": "Nz",
+        "axisLabelX": "Freq",
+        "axisLabelY": "Amp",
+        "icon": "tweenNoise.png",
+        "vertical": true,
+        "closeOnRelease": true,
+        "width": 250,
+        "colour": "#F4A261",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "NoiseLoop",
+        "label": "NoiseLoop",
+        "axisLabelX": "Freq",
+        "axisLabelY": "Amp",
+        "icon": "tweenNoiseLoop.png",
+        "vertical": true,
+        "closeOnRelease": true,
+        "width": 250,
+        "colour": "#48a56a"
+      },
+      "toolTip": {
+        "text": "Adds noise to the selected keys",
+        "title": "Noise",
+        "gif": ""
+      },
+      "toolTipSmall": "<b>LMB</b> Add noise<br><b>Shift + LMB</b> add noise looped"
+    },
+    {
+      "sliderData": {
+        "mode": "Amplify",
+        "label": "Amplify",
+        "iconLabel": "Amp",
+        "icon": "tweenAmp.png",
+        "vertical": false,
+        "closeOnRelease": true,
+        "colour": "#F4A261",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "altSliderData": {
+        "mode": "Amplify",
+        "label": "Amplify",
+        "icon": "tweenAmp.png",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Amplify the value of the selected keys based on the first and last selected value. \nSlide to the left to blend to linear",
+        "title": "Amplify/linear",
+        "gif": ""
+      },
+      "toolTipSmall": "Amplify animation from linear start>end"
+    },
+        {
+      "sliderData": {
+        "mode": "EaseOffset",
+        "label": "EaseOffset",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseOffset.png",
+        "colour": "#4a6fa9",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease2D",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseCubic.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Blend to ease offset",
+        "title": "Ease Offset",
+        "gif": ""
+      },
+      "toolTipSmall": "WIP"
     },
     {
       "sliderData": {
@@ -183,6 +360,9 @@
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
         "icon": "tweenEase.png",
+        "colour": "#4a6fa5",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
         "vertical": false,
         "closeOnRelease": true
       },
@@ -195,15 +375,136 @@
         "vertical": true,
         "closeOnRelease": true
       },
+      "toolTip": {
+        "text": "Blend to ease - overshoot increases the ease curve",
+        "title": "Ease",
+        "gif": ""
+      },
       "toolTipSmall": "WIP"
     },
-        {
+    {
+      "sliderData": {
+        "mode": "EaseSquared",
+        "label": "EaseSquared",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseSquared.png",
+        "colour": "#4a6fa5",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease2D",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseCubic.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Blend to ease cubic",
+        "title": "Ease Cubic",
+        "gif": ""
+      },
+      "toolTipSmall": "WIP"
+    },
+    {
+      "sliderData": {
+        "mode": "EaseCubic",
+        "label": "EaseCubic",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseCubic.png",
+        "colour": "#4a6fa5",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease2D",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseCubic.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Blend to ease cubic",
+        "title": "Ease Cubic",
+        "gif": ""
+      },
+      "toolTipSmall": "WIP"
+    },
+    {
+      "sliderData": {
+        "mode": "EaseQuad",
+        "label": "EaseQuad",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseQuad.png",
+        "colour": "#4a6fa5",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease2D",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseQuad.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Blend to ease quad",
+        "title": "Ease Quad",
+        "gif": ""
+      },
+      "toolTipSmall": "WIP"
+    },
+    {
+      "sliderData": {
+        "mode": "EaseQuint",
+        "label": "EaseQuint",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseQuint.png",
+        "colour": "#4a6fa5",
+        "textColour": "#000000",
+        "textColourHover": "#000000",
+        "vertical": false,
+        "closeOnRelease": true
+      },
+      "altSliderData": {
+        "mode": "Ease2D",
+        "label": "Ease",
+        "axisLabelY": "Alpha",
+        "axisLabelX": "Prev/Next",
+        "icon": "tweenEaseCubic.png",
+        "vertical": true,
+        "closeOnRelease": true
+      },
+      "toolTip": {
+        "text": "Blend to ease quint",
+        "title": "Ease Cubic",
+        "gif": ""
+      },
+      "toolTipSmall": "WIP"
+    },
+    {
       "sliderData": {
         "mode": "Resample",
         "label": "Resample",
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
-        "icon": "resample.png",
+        "icon": "tweenResample.png",
         "vertical": false,
         "closeOnRelease": true
       },
@@ -212,9 +513,17 @@
         "label": "Resample",
         "axisLabelY": "Alpha",
         "axisLabelX": "Prev/Next",
-        "icon": "resample.png",
+        "icon": "tweenResample.png",
         "vertical": false,
-        "closeOnRelease": true
+        "closeOnRelease": true,
+        "colour": "#E76F51",
+        "textColour": "#000000",
+        "textColourHover": "#000000"
+      },
+      "toolTip": {
+        "text": "Resample selected keys, sliding to the right will add more keys between selected key pairs",
+        "title": "Resample keys",
+        "gif": ""
       },
       "toolTipSmall": "WIP"
     }
