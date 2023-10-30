@@ -1759,6 +1759,8 @@ class SlideTools(toolAbstractFactory):
         if not self.keyframeData.items():
             return
         steps = int(self.normalizeAlpha(alpha, 0, 100, range=[0, 10]))
+        if alpha < 0:
+            return
         for curve, keyframeData in self.keyframeData.items():
             for i in range(len(keyframeData.keyIndexes) - 1):
                 divisions = recursive_subdivide([self.keyframeRefData[curve].keyTimes[i],
