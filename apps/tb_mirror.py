@@ -517,11 +517,13 @@ class MirrorTools(toolAbstractFactory):
                     }
         mp = mirrorPlane[plane]
         # TODO - replace this with the api version
+        # get the current object up/forwrd/right axis
         srcAxisVec = MirrorTools.getWorldSpaceVectorAxis(srcObj, axisDict[axis])
-        # print (axis)
+        # round the vector to a sensible decimal
         srcAxisVec = MirrorTools.roundVector(srcAxisVec)
-
+        # get the mirror object up/forwrd/right axis
         dstAxisVec = MirrorTools.getWorldSpaceVectorAxis(dstObj, axisDict[axis])
+        # round the vector to a sensible decimal
         dstAxisVec = MirrorTools.roundVector(dstAxisVec)
         '''
         srcNode = cmds.createNode('transform', name='src_%s' % plane)
@@ -529,6 +531,7 @@ class MirrorTools(toolAbstractFactory):
         dstNode = cmds.createNode('transform', name='dst_%s' % plane)
         cmds.xform(dstNode, translation=dstAxisVec)
         '''
+        # scale the current object axis vector around the mirror plane
         srcAxisVec = MirrorTools.scaleVector(srcAxisVec, mp)
 
         # print ('plane', plane, 'mp', mp)
@@ -592,6 +595,7 @@ class MirrorTools(toolAbstractFactory):
         """
         result = [1, 1, 1]
 
+        # source is destination, or destination doesn't exist (mirror on self for better or worse)
         if destinationObj == srcObj or not cmds.objExists(destinationObj):
             result = MirrorTools._calculateMirrorAxis(srcObj, plane)
         else:
@@ -632,6 +636,13 @@ class MirrorTools(toolAbstractFactory):
 
         mirrorData.mirrorPlane = mirrorAxisRaw
         self.saveRigData(dataFile, mirrorData.toJson())
+
+    def saveCurrentMirrorData(self, character):
+        dataFile = os.path.join(self.mirrorDataDir, character)
+        self.saveRigData(dataFile, self.loadedMirrorTables[character].toJson())
+        print ('Saving current mirror', character)
+        print ('dataFile', dataFile)
+        print (self.loadedMirrorTables[character].toJson())
 
     @staticmethod
     def matchSideName(control, sideName):
@@ -703,6 +714,30 @@ class MirrorTools(toolAbstractFactory):
             for src, dst, char in splitControls:
                 self.mirrorControl(src, dst, char, option=option)
 
+    def setIsMirror(self, fromControl, character, attr, value):
+        strippedFrom = pm.PyNode(fromControl).stripNamespace()
+
+        if not self.isMirror(strippedFrom, character, 'swap'):
+            return
+        attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
+        if not attrEntry:
+            return
+        scalar = {True:-1, False:1}[value]
+        print (strippedFrom)
+        print (self.loadedMirrorTables[character].controls[strippedFrom][attr])
+        self.loadedMirrorTables[character].controls[strippedFrom][attr] = scalar
+        print (self.loadedMirrorTables[character].controls[strippedFrom][attr])
+
+
+    def getIsMirror(self, fromControl, character, attr):
+        strippedFrom = pm.PyNode(fromControl).stripNamespace()
+
+        if not self.isMirror(strippedFrom, character, 'swap'):
+            return
+        attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
+        if attr in attrEntry:
+            return attrEntry.get(attr, 1)
+        return False
     def mirrorControl(self, fromControl, toControl, character, option='swap', timeOffset=0):
         """
         Mirror a single control, specify the pair of controls

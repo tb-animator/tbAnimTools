@@ -111,8 +111,14 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation=maya.stringTable['tbCommand.clampKeysAbove'],
                                      category=self.category, command=['KeyModifiers.clampCurve(low=False)']))
         self.addCommand(self.tb_hkey(name='cycleMirror',
-                                     annotation=maya.stringTable['tbCommand.clampKeysAbove'],
+                                     annotation='Blank',
                                      category=self.category, command=['KeyModifiers.cycleMirror()']))
+        self.addCommand(self.tb_hkey(name='autoTangent',
+                                     annotation='Blank',
+                                     category=self.category, command=['KeyModifiers.autoTangentKey()']))
+        self.addCommand(self.tb_hkey(name='guessKeyValue',
+                                     annotation='Blank',
+                                     category=self.category, command=['KeyModifiers.plot_guess()']))
 
         return self.commandList
 
@@ -149,6 +155,39 @@ class KeyModifiers(toolAbstractFactory):
     def optionUI(self):
         super(KeyModifiers, self).optionUI()
         return self.optionWidget
+
+    def graphEditorWidget(self, parentWidget):
+        widget = QWidget()
+        layout = QHBoxLayout()
+        widget.setLayout(layout)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        autoTangentWidget = AutoTangentWidget()
+        matchTangentStartButton = GraphToolbarButton(icon='matchTangentStart.png', toolTip='Match Tangents Start',
+                                                     width=18)
+        matchTangentEndButton = GraphToolbarButton(icon='matchTangentEnd.png', toolTip='Match Tangents End',
+                                                   width=18)
+        plotButton = GraphToolbarButton(icon='plotKey.png', toolTip='Look at me a tooltip')
+        plotButton.clicked.connect(pm.Callback(self.plot_guess))
+
+        flipFirstButton = GraphToolbarButton(icon='flipKeysStart.png', toolTip='Flip First')
+        flipZeroButton = GraphToolbarButton(icon='flipKeys.png', toolTip='Flip')
+        flipLastButton = GraphToolbarButton(icon='flipKeysEnd.png', toolTip='Flip Last')
+
+        flipFirstButton.clicked.connect(pm.Callback(self.flipKeyValues, first=True))
+        flipZeroButton.clicked.connect(pm.Callback(self.flipKeyValues))
+        flipLastButton.clicked.connect(pm.Callback(self.flipKeyValues, last=True))
+        matchTangentStartButton.clicked.connect(self.matchStartTangentsToEndTangents)
+        matchTangentEndButton.clicked.connect(self.matchEndTangentsToStartTangents)
+        layout.addWidget(autoTangentWidget)
+        layout.addWidget(matchTangentStartButton)
+        layout.addWidget(matchTangentEndButton)
+        layout.addWidget(plotButton)
+        layout.addWidget(flipFirstButton)
+        layout.addWidget(flipZeroButton)
+        layout.addWidget(flipLastButton)
+        return widget
 
     def showUI(self):
         return None
@@ -430,7 +469,7 @@ class KeyModifiers(toolAbstractFactory):
 
         if not selectedCurves:
             selectedCurves = graphEditorCurves
-        print ('graphEditorCurves', graphEditorCurves)
+        print('graphEditorCurves', graphEditorCurves)
         if not selectedCurves:
             return cmds.warning('No curves selected')
 
@@ -579,3 +618,212 @@ class KeyModifiers(toolAbstractFactory):
                     cmds.pasteKey(time=(secondHalfPasteStart, secondHalfPasteEnd), option='replace')
                 else:
                     cmds.pasteKey(time=(secondHalfPasteStart, secondHalfPasteEnd))
+
+    def autoTangentKey(self):
+        self.autoTangent(self.defaultSoftness(), False)
+
+    def defaultSoftness(self):
+        return pm.optionVar.get('tbAutoTangent', 0.7)
+
+    def setDefaultSoftness(self, value):
+        pm.optionVar['tbAutoTangent'] = value
+
+    def autoTangent(self, softness, bFlatten):
+        curves = cmds.keyframe(q=True, name=True, sl=True)  # get all selected animCurve Nodes
+        if not curves:
+            return
+        for crv in curves:
+            allKeyIndexes = cmds.keyframe(crv, q=True, indexValue=True, sl=True)
+            keyCount = cmds.keyframe(crv, q=True, keyframeCount=True)
+            for keyIndex in allKeyIndexes:
+                currentValue = cmds.keyframe(crv, index=(keyIndex,), q=True, valueChange=True)[0]
+                currentTime = cmds.keyframe(crv, index=(keyIndex,), q=True, timeChange=True)[0]
+
+                previousTime = currentTime
+                previousValue = currentValue
+                nextTime = currentTime
+                nextValue = currentValue
+
+                if keyIndex > 0:
+                    previousValue = cmds.keyframe(crv, index=((keyIndex - 1),), q=True, valueChange=True)[0]
+                    previousTime = cmds.keyframe(crv, index=((keyIndex - 1),), q=True, timeChange=True)[0]
+
+                if keyIndex < keyCount - 1:
+                    nextValue = cmds.keyframe(crv, index=((keyIndex + 1),), q=True, valueChange=True)[0]
+                    nextTime = cmds.keyframe(crv, index=((keyIndex + 1),), q=True, timeChange=True)[0]
+
+                if keyIndex == 0 and not bFlatten:
+                    previousTime = currentTime - (nextTime - currentTime)
+                    previousValue = currentValue - (nextValue - currentValue)
+                elif keyIndex == (keyCount - 1) and not bFlatten:
+                    nextTime = currentTime + (currentTime - previousTime)
+                    nextValue = currentValue + (currentValue - previousValue)
+
+                # value change
+                valueDeltaIn = currentValue - previousValue
+                valueDeltaOut = nextValue - currentValue
+                # time change
+                timeDeltaIn = currentTime - previousTime
+                timeDeltaOut = nextTime - currentTime
+
+                slopeIn = 0
+                slopeOut = 0
+
+                if timeDeltaIn != 0:
+                    slopeIn = valueDeltaIn / timeDeltaIn
+
+                if timeDeltaOut != 0:
+                    slopeOut = valueDeltaOut / timeDeltaOut
+
+                powIn = 0.5
+
+                if slopeIn + slopeOut != 0:
+                    powIn = 1.0 - (abs(slopeIn) / (abs(slopeIn) + abs(slopeOut)))
+
+                powOut = 1.0 - powIn
+
+                powIn = ((1.0 - softness) * powIn) + (softness * 0.5)
+                powOut = ((1.0 - softness) * powOut) + (softness * 0.5)
+
+                newSlope = (powIn * slopeIn) + (powOut * slopeOut)
+                ang = math.atan(newSlope) * 180.0 / 3.14159
+
+                cmds.keyTangent(crv, itt='spline', ott='spline', time=(currentTime,))
+                cmds.keyTangent(crv, ia=ang, oa=ang, time=(currentTime,))
+
+                if cmds.keyTangent(crv, q=True, wt=True)[0]:
+                    inWeight = abs(timeDeltaIn) / 3.0
+                    outWeight = abs(timeDeltaOut) / 3.0
+                    cmds.keyTangent(crv, iw=inWeight, ow=outWeight, time=currentTime)
+
+    def predict_bezier_point(self, startTime, endTime, startValue, endValue, inAngle, outAngle, alpha):
+        # Convert tangent angles to radians
+        inAngle = inAngle * (3.141592653589793 / 180.0)
+        outAngle = outAngle * (3.141592653589793 / 180.0)
+
+        # Calculate control points based on the tangent angles and distance
+        in_tangent_length = ((startTime - endTime) ** 2 + (startValue - endValue) ** 2) ** 0.5
+        out_tangent_length = ((startTime - endTime) ** 2 + (startValue - endValue) ** 2) ** 0.5
+
+        in_tangent = [startTime + in_tangent_length * math.cos(inAngle),
+                      startValue + in_tangent_length * math.sin(inAngle)]
+        out_tangent = [endTime - out_tangent_length * math.cos(outAngle),
+                       endValue - out_tangent_length * math.sin(outAngle)]
+        time = self.bezierPlot(alpha, endTime, in_tangent, out_tangent, startTime)
+        value = self.bezierPlot(alpha, endValue, in_tangent, out_tangent, startValue)
+        return time, value
+
+    def bezierPlot(self, alpha, endTime, in_tangent, out_tangent, startTime):
+        return (1 - alpha) ** 3 * startTime + 3 * (1 - alpha) ** 2 * alpha * in_tangent[0] + 3 * (
+                1 - alpha) * alpha ** 2 * \
+            out_tangent[0] + alpha ** 3 * endTime
+
+    def cubic_bezier(self, start, end, in_tangent_angle, out_tangent_angle, num_steps):
+        # Convert tangent angles to radians
+        in_tangent_angle = in_tangent_angle * (3.141592653589793 / 180.0)
+        out_tangent_angle = out_tangent_angle * (3.141592653589793 / 180.0)
+
+        # Calculate control points based on the tangent angles and distance
+        in_tangent_length = ((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2) ** 0.5
+        out_tangent_length = ((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2) ** 0.5
+
+        in_tangent = [start[0] + in_tangent_length * math.cos(in_tangent_angle),
+                      start[1] + in_tangent_length * math.sin(in_tangent_angle)]
+        out_tangent = [end[0] - out_tangent_length * math.cos(out_tangent_angle),
+                       end[1] - out_tangent_length * math.sin(out_tangent_angle)]
+        # Calculate Bézier curve points
+        points = []
+        for t in range(num_steps + 1):
+            t /= num_steps
+
+            x = (1 - t) ** 3 * start[0] + 3 * (1 - t) ** 2 * t * in_tangent[0] + 3 * (1 - t) * t ** 2 * out_tangent[
+                0] + t ** 3 * end[0]
+            y = (1 - t) ** 3 * start[1] + 3 * (1 - t) ** 2 * t * in_tangent[1] + 3 * (1 - t) * t ** 2 * out_tangent[
+                1] + t ** 3 * end[1]
+            print('t', t, y)
+            points.append([x, y])
+
+        return points
+
+    def cubic_bezier2(self, start, end, in_tangent_angle, out_tangent_angle, t):
+        # Convert tangent angles to radians
+        in_tangent_angle = in_tangent_angle * (3.141592653589793 / 180.0)
+        out_tangent_angle = out_tangent_angle * (3.141592653589793 / 180.0)
+
+        # Calculate control points based on the tangent angles and distance
+        in_tangent_length = ((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2) ** 0.5
+        out_tangent_length = ((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2) ** 0.5
+
+        in_tangent = [start[0] + in_tangent_length * math.cos(in_tangent_angle),
+                      start[1] + in_tangent_length * math.sin(in_tangent_angle)]
+        out_tangent = [end[0] - out_tangent_length * math.cos(out_tangent_angle),
+                       end[1] - out_tangent_length * math.sin(out_tangent_angle)]
+        # Calculate Bézier curve points
+
+        x = (1 - t) ** 3 * start[0] + 3 * (1 - t) ** 2 * t * in_tangent[0] + 3 * (1 - t) * t ** 2 * out_tangent[
+            0] + t ** 3 * end[0]
+        y = (1 - t) ** 3 * start[1] + 3 * (1 - t) ** 2 * t * in_tangent[1] + 3 * (1 - t) * t ** 2 * out_tangent[
+            1] + t ** 3 * end[1]
+        return x, y
+
+    def plot_guess(self):
+        curves = cmds.keyframe(q=True, name=True, sl=True)  # get all selected animCurve Nodes
+        if not curves:
+            return
+        for crv in curves:
+            allKeyIndexes = cmds.keyframe(crv, q=True, indexValue=True, sl=True)
+            keyCount = cmds.keyframe(crv, q=True, keyframeCount=True)
+            for keyIndex in allKeyIndexes:
+                currentValue = cmds.keyframe(crv, index=(keyIndex,), q=True, valueChange=True)[0]
+                currentTime = cmds.keyframe(crv, index=(keyIndex,), q=True, timeChange=True)[0]
+
+                previousTime = currentTime
+                previousValue = currentValue
+                nextTime = currentTime
+                nextValue = currentValue
+
+                inAngle = 0
+                outAngle = 0
+
+                if keyIndex > 0:
+                    previousValue = cmds.keyframe(crv, index=((keyIndex - 1),), q=True, valueChange=True)[0]
+                    previousTime = cmds.keyframe(crv, index=((keyIndex - 1),), q=True, timeChange=True)[0]
+                    inAngle = cmds.keyTangent(crv, query=True, outAngle=True, index=((keyIndex - 1),))[0]
+                if keyIndex < keyCount - 1:
+                    nextValue = cmds.keyframe(crv, index=((keyIndex + 1),), q=True, valueChange=True)[0]
+                    nextTime = cmds.keyframe(crv, index=((keyIndex + 1),), q=True, timeChange=True)[0]
+                    outAngle = cmds.keyTangent(crv, query=True, inAngle=True, index=((keyIndex + 1),))[0]
+
+                alpha = (currentTime - previousTime) / (nextTime - previousTime)
+
+                time, value = self.cubic_bezier2([previousTime, previousValue], [nextTime, nextValue], inAngle,
+                                                 outAngle, alpha)
+                # values = cubic_bezier([previousTime,previousValue], [nextTime, nextValue], inAngle, outAngle, int(nextTime-previousTime + 1))
+                cmds.keyframe(crv, index=((keyIndex),), edit=True, valueChange=value)
+        self.autoTangentKey()
+
+class AutoTangentWidget(QFrame):
+    def __init__(self):
+        super(AutoTangentWidget, self).__init__()
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        layout = QHBoxLayout()
+        self.setLayout(layout)
+        layout.setSpacing(0)
+        layout.setContentsMargins(1, 0, 1, 0)
+
+        self.autoTangentButton = GraphToolbarButton(icon='autoTangent.png', toolTip='AutoTangent')
+        self.softnessLabel = QLabel('Softness')
+        self.spinBox = QDoubleSpinBox()
+        self.spinBox.setFixedWidth(80)
+        self.spinBox.setValue(KeyModifiers().defaultSoftness())
+        self.spinBox.setMinimum(0.01)
+
+        layout.addWidget(self.autoTangentButton)
+        layout.addWidget(self.softnessLabel)
+        layout.addWidget(self.spinBox)
+
+        self.autoTangentButton.clicked.connect(pm.Callback(KeyModifiers().autoTangentKey))
+        self.spinBox.valueChanged.connect(self.softnessChanged)
+
+    def softnessChanged(self):
+        KeyModifiers().setDefaultSoftness(self.spinBox.value())

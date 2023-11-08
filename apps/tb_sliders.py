@@ -38,7 +38,7 @@ from copy import deepcopy
 # from importlib import reload
 import tb_UI as tbui
 
-_modifiedGraphEditor = 'ModifiedGraphEditor'
+
 # reload(tbui)
 import tb_UI as tbUI_pyslider
 # reload(tbUI_pyslider)
@@ -885,7 +885,7 @@ class SlideTools(toolAbstractFactory):
     app = None
     dependentPlugins = ["tbKeyTween.py"]
     slideUI = None
-
+    isDragging = False
     keyPressHandler = None
     selectionChangedCallback = -1
 
@@ -1014,6 +1014,44 @@ class SlideTools(toolAbstractFactory):
     def showUI(self):
         return
 
+    def graphEditorWidget(self, parentWidget):
+        self.loadData()
+        widget = QWidget()
+        layout = QHBoxLayout()
+        widget.setLayout(layout)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0,0,0,0)
+
+        for valueDict in self.rawJsonBaseData['toolbarSliders']:
+            xformWidget = SliderToolbarWidget(**valueDict)
+            xformWidget.parentWidget = parentWidget
+            xformWidget.resizedSignal.connect(parentWidget.updateSize)
+            xformWidget.resizedSignal.connect(self.allTools.tools['GraphEditor'].resizeCornerWidget)
+            # xformWidget.button.setPopupMenu(SliderButtonContextMenu)
+            # xformWidget.permanentSlider.setPopupMenu(SliderButtonContextMenu)
+            '''
+            xformWidget = ButtonWidget(closeOnRelease=True, mode=mode, altMode=alt,
+                                       icon=self.keyTweenIcons[mode], altIcon=self.keyTweenIcons[alt],
+                                       altSliderIsDual=True)
+            '''
+            # xformWidget.setToolTip(self.keyTweenToolTips[mode])
+            # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
+            # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
+            # xformWidget.setPopupMenu(SliderButtonPopupMenu)
+            # xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
+
+            xformWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
+            xformWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+            xformWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
+            #
+            # xformWidget.altPopup.slider.sliderBeginSignal.connect(self.keySliderBeginSignal)
+            # xformWidget.altPopup.slider.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
+            # xformWidget.altPopup.slider.sliderEndedSignal.connect(self.keySliderEndSignal)
+
+            # self.keyPressHandler.addUI(xformWidget)
+            layout.addWidget(xformWidget)  # .setParent(phLayout)
+            # sliderLayout.addWidget(QPushButton('hello'))  # .setParent(phLayout)
+        return widget
     def drawMenuBar(self, parentMenu):
         return None
 
@@ -1072,408 +1110,7 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
     # graphed key tween
-    def modifyGraphEditorToolbar(self, graphEditor):
-        # check tween classes
-        '''
 
-        :return:
-        '''
-        '''
-        for key, value in self.keyTweenDict.items():
-            if not self.keyTweenMethods[key]:
-                self.keyTweenMethods[key] = value()
-            if not self.keyTweenMethods[key].instance:
-                self.keyTweenMethods[key].instance = value()
-        '''
-
-        # print('modifyGraphEditorToolbar')
-        if int(cmds.about(majorVersion=True)) >= 2024:
-            self.modifyGraphEditorToolbar_2024(graphEditor)
-            return
-        if int(cmds.about(majorVersion=True)) >= 2023:
-            if int(cmds.about(minorVersion=True)) >= 3:
-                self.modifyGraphEditorToolbar_2024(graphEditor)
-                return
-        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
-        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
-
-        if any([isinstance(x, CollapsibleBox) for x in widgets]):
-            return
-
-        sliderLayout = self.createSliderToolBar()
-        sliderWidget = QWidget()
-        sliderWidget.setLayout(sliderLayout)
-        layout = widgets[0]
-        buttons = widgets[1:]
-
-        index = 0
-        buttonList = [[]]
-        for x in widgets:
-            if (type(x) == QFrame):
-                index += 1
-                buttonList.append(list())
-            buttonList[-1].append(x)
-
-        collapsedWidgets = list()
-        for index, grp in enumerate(buttonList):
-            optionVarName = grp[0].objectName() + '_collapseState'
-            state = pm.optionVar.get(optionVarName, False)
-            cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
-            collapsedWidgets.append(cBox)
-            cBox.setFixedHeight(24 * dpiScale())
-            cBoxLayout = QHBoxLayout()
-            cBoxLayout.setAlignment(Qt.AlignLeft)
-            cBoxLayout.setContentsMargins(0, 0, 0, 0)
-            cBoxLayout.setSpacing(0)
-
-            for button in grp:
-                if type(button) == QLayout:
-                    continue
-                if type(button) == QFrame:
-                    button.deleteLater()
-                    continue
-                if type(button) == QButtonGroup:
-                    continue
-                if index == 0:
-                    button.setFixedSize(24 * dpiScale(), 24 * dpiScale())
-                cBoxLayout.addWidget(button)
-
-            cBox.setContentLayout(cBoxLayout)
-
-            layout.addWidget(cBox)
-
-            layout.addWidget(sliderWidget)
-            # layout.resize(layout.sizeHint())
-        for widget in collapsedWidgets:
-            widget.show()
-        # print ('added a slider')
-
-    def modifyGraphEditorToolbar_2024_weird(self, graphEditor):
-        # check tween classes
-        '''
-
-        :return:
-        '''
-        '''
-        for key, value in self.keyTweenDict.items():
-            if not self.keyTweenMethods[key]:
-                self.keyTweenMethods[key] = value()
-            if not self.keyTweenMethods[key].instance:
-                self.keyTweenMethods[key].instance = value()
-        '''
-        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
-        # I wish autodesk would name their UI layouts
-        print('this', graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1])
-        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
-        graphEditorLayout = widgets[0]
-        print('widgets', widgets)
-
-        print('hex(id(widget))', hex(id(graphEditorLayout)))
-        print('graphEditorLayout', graphEditorLayout)
-        print('graphEditorLayout children', graphEditorLayout.children())
-        print('sliderParentWidget', self.sliderParentWidget)
-        print('object name', graphEditorLayout.objectName())
-
-        # try:
-        if not graphEditorLayout.objectName() == _modifiedGraphEditor:
-
-            graphEditorLayout.setObjectName(_modifiedGraphEditor)
-            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1]
-            print('parentWidget', parentWidget)
-            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1]
-            print('parentWidget', parentWidget)
-            parentWidget = graphEditor1.children()[-1].children()[1]
-            # verticalLayout = QVBoxLayout()
-            # verticalLayout.addWidget(parentWidget)
-            parentLayout = parentWidget.parent()
-            # graphEditor1.children()[-1].addLayout(verticalLayout)
-
-            self.sliderParentWidget = GraphEdToolbarWidget()
-            sliderLayout = QHBoxLayout()
-            sliderLayout.addStretch()
-            self.sliderParentWidget.setLayout(sliderLayout)
-            sliderLayout.setAlignment(Qt.AlignHCenter)
-            sliderLayout.setContentsMargins(0, 0, 0, 0)
-            sliderLayout.setSpacing(2 * dpiScale())
-            # sliderLayout.addWidget(graphEditKeyWidget)  # .setParent(phLayout)
-            '''
-            slider = PopupSlider(closeOnRelease=False, mode=fn_BREAKDOWN, icon=self.keyTweenIcons[fn_BREAKDOWN],
-                                 width=200, minValue=-50, maxValue=50, overshootMin=-100, overshootMax=100)
-
-            widgets[0].addWidget(slider)  # .setParent(phLayout)
-            '''
-            self.loadData()
-
-            for valueDict in self.rawJsonBaseData['toolbarSliders']:
-                xformWidget = SliderToolbarWidget(**valueDict)
-                xformWidget.parentWidget = self.sliderParentWidget
-                xformWidget.resizedSignal.connect(self.sliderParentWidget.updateSize)
-                xformWidget.resizedSignal.connect(self.resizeCornerWidget)
-                # xformWidget.button.setPopupMenu(SliderButtonContextMenu)
-                # xformWidget.permanentSlider.setPopupMenu(SliderButtonContextMenu)
-                '''
-                xformWidget = ButtonWidget(closeOnRelease=True, mode=mode, altMode=alt,
-                                           icon=self.keyTweenIcons[mode], altIcon=self.keyTweenIcons[alt],
-                                           altSliderIsDual=True)
-                '''
-                # xformWidget.setToolTip(self.keyTweenToolTips[mode])
-                # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
-                # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
-                # xformWidget.setPopupMenu(SliderButtonPopupMenu)
-                # xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
-
-                xformWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
-                xformWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
-                xformWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
-                #
-                # xformWidget.altPopup.slider.sliderBeginSignal.connect(self.keySliderBeginSignal)
-                # xformWidget.altPopup.slider.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
-                # xformWidget.altPopup.slider.sliderEndedSignal.connect(self.keySliderEndSignal)
-
-                # self.keyPressHandler.addUI(xformWidget)
-                sliderLayout.addWidget(xformWidget)  # .setParent(phLayout)
-                # sliderLayout.addWidget(QPushButton('hello'))  # .setParent(phLayout)
-            sliderLayout.addStretch()
-            '''
-            # parentWidget.setFixedHeight(24)
-            tempWidget = GraphEditorWidget()
-            tempLayout = QVBoxLayout()
-            tempWidget.setLayout(tempLayout)
-            graphEditorLayout.addWidget(tempWidget)
-            # btn = QPushButton('TEMP')
-            # btn2 = QPushButton('TEMP2')
-            # tempLayout.addWidget(btn)
-            # tempLayout.addWidget(btn2)
-            dupeLayout = QHBoxLayout()
-            dupeLayout.setSpacing(0)
-            dupeLayout.setContentsMargins(0, 0, 0, 0)
-            customLayout = QHBoxLayout()
-            customLayout.setSpacing(0)
-            customLayout.setContentsMargins(0, 0, 0, 0)
-            customLayout.setAlignment(Qt.AlignCenter)
-            tempLayout.addLayout(dupeLayout)
-            tempLayout.addLayout(customLayout)
-            buttons = widgets[1:]
-            for b in buttons:
-                dupeLayout.addWidget(b)
-            '''
-            # dupeLayout.addStretch()
-            # state = pm.optionVar.get('geSliderToolbar', False)
-            # cBox = CollapsibleBox(isCollapsed=state, optionVar='geSliderToolbar')
-            # cBox.setFixedHeight(30 * dpiScale())
-            #
-            # cBox.setContentLayout(sliderLayout)
-            # w = QWidget()
-            # w.setLayout(sliderLayout)
-            # customLayout.addWidget(w)
-            # layout.resize(layout.sizeHint())
-
-            # cBox.show()
-            # menuBar()->adjustSize()
-            widgets = graphEditor1.children()
-            self.graphEdiMenuBar = None
-            for w in widgets:
-                print(str(w.__class__))
-                if 'QMenuBar' in str(w.__class__):
-                    self.graphEdiMenuBar = w
-            if self.graphEdiMenuBar:
-                self.graphEdiMenuBar.setCornerWidget(self.sliderParentWidget)
-            graphEditor1.__dict__['modified'] = True
-            print('graphEditor1', graphEditor1.__dict__['modified'])
-        # except:
-        #     return
-
-    def createSliderToolBar(self):
-        self.sliderParentWidget = GraphEdToolbarWidget()
-        sliderLayout = QHBoxLayout()
-        sliderLayout.setAlignment(Qt.AlignLeft)
-        # sliderLayout.addStretch()
-        self.sliderParentWidget.setLayout(sliderLayout)
-        sliderLayout.setAlignment(Qt.AlignHCenter)
-        sliderLayout.setContentsMargins(0, 0, 0, 0)
-        sliderLayout.setSpacing(2 * dpiScale())
-        # sliderLayout.addWidget(graphEditKeyWidget)  # .setParent(phLayout)
-        '''
-        slider = PopupSlider(closeOnRelease=False, mode=fn_BREAKDOWN, icon=self.keyTweenIcons[fn_BREAKDOWN],
-                             width=200, minValue=-50, maxValue=50, overshootMin=-100, overshootMax=100)
-
-        widgets[0].addWidget(slider)  # .setParent(phLayout)
-        '''
-        self.loadData()
-
-        for valueDict in self.rawJsonBaseData['toolbarSliders']:
-            xformWidget = SliderToolbarWidget(**valueDict)
-            xformWidget.parentWidget = self.sliderParentWidget
-            xformWidget.resizedSignal.connect(self.sliderParentWidget.updateSize)
-            xformWidget.resizedSignal.connect(self.resizeCornerWidget)
-            # xformWidget.button.setPopupMenu(SliderButtonContextMenu)
-            # xformWidget.permanentSlider.setPopupMenu(SliderButtonContextMenu)
-            '''
-            xformWidget = ButtonWidget(closeOnRelease=True, mode=mode, altMode=alt,
-                                       icon=self.keyTweenIcons[mode], altIcon=self.keyTweenIcons[alt],
-                                       altSliderIsDual=True)
-            '''
-            # xformWidget.setToolTip(self.keyTweenToolTips[mode])
-            # xformWidget.setToolTip('<b>%s</b><br><img src="%s">' % (
-            # self.keyTweenToolTips[mode], os.path.join(IconPath, self.keyTweenIcons[mode])))
-            # xformWidget.setPopupMenu(SliderButtonPopupMenu)
-            # xformWidget.setPopupMenu(self.allTools.tools['Noise'].toolBoxUI())
-
-            xformWidget.sliderBeginSignal.connect(self.keySliderBeginSignal)
-            xformWidget.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
-            xformWidget.sliderEndedSignal.connect(self.keySliderEndSignal)
-            #
-            # xformWidget.altPopup.slider.sliderBeginSignal.connect(self.keySliderBeginSignal)
-            # xformWidget.altPopup.slider.sliderUpdateSignal.connect(self.keySliderUpdateSignal)
-            # xformWidget.altPopup.slider.sliderEndedSignal.connect(self.keySliderEndSignal)
-
-            # self.keyPressHandler.addUI(xformWidget)
-            sliderLayout.addWidget(xformWidget)  # .setParent(phLayout)
-            # sliderLayout.addWidget(QPushButton('hello'))  # .setParent(phLayout)
-        sliderLayout.addStretch()
-        return sliderLayout
-
-    def modifyGraphEditorToolbar_2024(self, graphEditor):
-        # check tween classes
-        '''
-
-        :return:
-        '''
-        '''
-        for key, value in self.keyTweenDict.items():
-            if not self.keyTweenMethods[key]:
-                self.keyTweenMethods[key] = value()
-            if not self.keyTweenMethods[key].instance:
-                self.keyTweenMethods[key].instance = value()
-        '''
-        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
-        # I wish autodesk would name their UI layouts
-        # print('this', graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1])
-        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
-        graphEditorLayout = widgets[0]
-        # print('widgets', widgets)
-
-        # print('hex(id(widget))', hex(id(graphEditorLayout)))
-        # print('graphEditorLayout', graphEditorLayout)
-        # print('graphEditorLayout children', graphEditorLayout.children())
-        # print('sliderParentWidget', self.sliderParentWidget)
-        # print('object name', graphEditorLayout.objectName())
-
-        # try:
-        if not graphEditorLayout.objectName() == _modifiedGraphEditor:
-            graphEditorLayout.setObjectName(_modifiedGraphEditor)
-            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1]
-            # print('parentWidget', parentWidget)
-            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1]
-            # print('parentWidget', parentWidget)
-            parentWidget = graphEditor1.children()[-1].children()[1]
-            # verticalLayout = QVBoxLayout()
-            # verticalLayout.addWidget(parentWidget)
-            parentLayout = parentWidget.parent()
-            # graphEditor1.children()[-1].addLayout(verticalLayout)
-
-            defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
-            currentLocation = pm.optionVar.get(self.allTools.tools['GraphEditor'].customUiLocationOption,
-                                               defaultLocation)
-
-            sliderLayout = self.createSliderToolBar()
-
-            tempWidget = GraphEditorWidget()
-
-            graphEditorLayout.addWidget(tempWidget)
-
-            if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[-1]:
-                widgets = graphEditor1.children()
-                self.graphEdiMenuBar = None
-                for w in widgets:
-                    # print(str(w.__class__))
-                    if 'QMenuBar' in str(w.__class__):
-                        self.graphEdiMenuBar = w
-                if self.graphEdiMenuBar:
-                    self.sliderParentWidget = GraphEdToolbarWidget()
-                    self.sliderParentWidget.setLayout(sliderLayout)
-                    self.graphEdiMenuBar.setCornerWidget(self.sliderParentWidget)
-                return
-
-            # extra layout to hold the original maya buttons
-            dupeLayout = QHBoxLayout()
-            dupeLayout.setAlignment(Qt.AlignLeft)
-            dupeLayout.setSpacing(0)
-            dupeLayout.setContentsMargins(0, 0, 0, 0)
-            buttons = widgets[1:]
-            for b in buttons:
-                dupeLayout.addWidget(b)
-            blankLabel = QLabel('')
-            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-            dupeLayout.addWidget(blankLabel)
-            dupeLayout.addStretch(100)
-            customLayout = QHBoxLayout()
-            customLayout.setSpacing(0)
-            customLayout.setContentsMargins(0, 0, 0, 0)
-            customLayout.setAlignment(Qt.AlignCenter)
-
-            # ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
-            if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
-                tempLayout = QVBoxLayout()
-                tempLayout.addLayout(dupeLayout)
-                tempLayout.insertLayout(0, customLayout)
-            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
-                tempLayout = QVBoxLayout()
-                tempLayout.addLayout(dupeLayout)
-                tempLayout.addLayout(customLayout)
-            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[2]:
-                tempLayout = QHBoxLayout()
-                tempLayout.addLayout(dupeLayout)
-                tempLayout.insertLayout(0, customLayout)
-            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[3]:
-                tempLayout = QHBoxLayout()
-                tempLayout.addLayout(dupeLayout)
-                tempLayout.addLayout(customLayout)
-
-            # if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
-            #     tempLayout = QVBoxLayout()
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
-            #     tempLayout = QVBoxLayout()
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[2]:
-            #     tempLayout = QHBoxLayout()
-            # else:
-            #     tempLayout = QHBoxLayout()
-            #
-            # if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.addLayout(customLayout)
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[3]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.insertLayout(0, customLayout)
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.addLayout(customLayout)
-            # else:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.insertLayout(0, customLayout)
-
-            tempWidget.setLayout(tempLayout)
-            w = QWidget()
-            w.setLayout(sliderLayout)
-            customLayout.addWidget(w)
-
-            graphEditor1.__dict__['modified'] = True
-            # print('graphEditor1', graphEditor1.__dict__['modified'])
-        # except:
-        #     return
-
-    def resizeCornerWidget(self):
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
-        widgets = graphEditor1.children()
-        for w in widgets:
-            # print(str(w.__class__))
-            if 'QMenuBar' in str(w.__class__):
-                self.graphEdiMenuBar = w
-        if self.graphEdiMenuBar:
-            self.graphEdiMenuBar.adjustSize()
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -1516,16 +1153,23 @@ class SlideTools(toolAbstractFactory):
         self.app.installEventFilter(self.keyKeyPressHandler)
 
     def keySliderBeginSignal(self, key, value, value2):
+        if self.isDragging:
+            return
+        self.cacheKeyData()
         cmds.undoInfo(openChunk=True, chunkName="tbInbetween")
         cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=True)
+        self.isDragging = True
         # self.keyTweenClasses[key].startDrag(value)
 
     def keySliderUpdateSignal(self, key, value, value2):
+        if not self.isDragging:
+            self.keySliderBeginSignal(key, value, value2)
         try:
             cmds.undoInfo(stateWithoutFlush=False)
             cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=False)
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
+
 
     def keySliderEndSignal(self, key, value, value2):
         try:
@@ -1533,6 +1177,7 @@ class SlideTools(toolAbstractFactory):
             cmds.tbKeyTween(alpha=0, alphaB=0, blendMode=tt_BREAKDOWN, clearCache=True)
         finally:
             cmds.undoInfo(closeChunk=True)
+            self.isDragging = False
 
     def keySliderCancelSignal(self):
         print('keySliderCancelSignal')
@@ -1582,6 +1227,7 @@ class SlideTools(toolAbstractFactory):
 
     def cacheKeyData(self):
         self.selectedCurveDict = dict()
+        self.keyframeData = None
         isHighlighted = self.funcs.isTimelineHighlighted()
         if isHighlighted:
             minTime, maxTime = self.funcs.getTimelineHighlightedRange()
@@ -1590,7 +1236,6 @@ class SlideTools(toolAbstractFactory):
             maxTime = cmds.playbackOptions(query=True, max=True)
 
         selectedCurves = self.funcs.graphEdKeysSelected()
-
         if selectedCurves:
             self.selectedCurveDict = self.getAnimCurveSelectionAPI()
         else:
@@ -1604,7 +1249,7 @@ class SlideTools(toolAbstractFactory):
 
         if not self.selectedCurveDict.values():
             self.keyframeData = None
-            self.selectedCurveDict = None
+            self.selectedCurveDict = dict()
             return
         self.keyframeData, self.keyframeRefData = self.getAnimCurveData(self.selectedCurveDict, minTime, maxTime)
 
@@ -1732,11 +1377,11 @@ class SlideTools(toolAbstractFactory):
             return
         if not self.keyframeData.items():
             return
-        print ('alpha', alpha)
+        print('alpha', alpha)
         for curve, keyframeData in self.keyframeData.items():
             outValues = list()
             for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.tweenNoiseKey(ampAlpha=alpha*100.0,
+                outValue = self.tweenNoiseKey(ampAlpha=alpha * 100.0,
                                               freqAlpha=300.0,
                                               seed=keyframeData.seed,
                                               currentValue=keyframeData.keyValues[i],
@@ -2289,7 +1934,7 @@ class SlideTools(toolAbstractFactory):
         tempRevKeyList = list()
 
         for curve, keyframeData in self.keyframeData.items():
-            #keyframeData.keyValues = self.highpass_smoothing(self.keyframeRefData[curve].keyValues, 0.9)
+            # keyframeData.keyValues = self.highpass_smoothing(self.keyframeRefData[curve].keyValues, 0.9)
             for x in range(abs(int(alphaB))):
                 if not tempKeyList:
                     tempKeyList = [self.keyframeRefData[curve].previousValues[keyframeData.keyIndexes[0]]]
@@ -2964,9 +2609,6 @@ def lerpMVector(vecA, vecB, alpha):
 def lerpFloat(a, b, alpha):
     return a * alpha + b * (1.0 - alpha)
 
-
-class GraphEditorWidget(QWidget):
-    pass
 
 
 class DragButton(QLabel):
@@ -4145,7 +3787,7 @@ class SliderWidget(BaseDialog):
         self.container = QFrame()
         self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
         slider_height = 28
-        self.slider_2 = pys.Slider(
+        self.slider = pys.Slider(
             margin=0,
             bg_height=slider_height,
             bg_radius=6,
@@ -4161,21 +3803,21 @@ class SliderWidget(BaseDialog):
         # self.slider_2 = PySlider()
         # self.slider_2.setStyleSheet(sliderStyleSheet.format())
 
-        self.slider_2.setOrientation(Qt.Horizontal)
-        self.slider_2.setMinimumWidth(self.baseSliderWidth)
+        self.slider.setOrientation(Qt.Horizontal)
+        self.slider.setMinimumWidth(self.baseSliderWidth)
         # self.slider_2.setFixedWidth(300*dpiScale())
-        self.slider_2.setValue(0)
-        self.slider_2.setTickInterval(1)
+        self.slider.setValue(0)
+        self.slider.setTickInterval(1)
 
-        self.slider_2.sliderPressed.connect(self.sliderPressed)
-        self.slider_2.sliderMoved.connect(self.sliderValueChanged)
-        self.slider_2.sliderMoved.connect(self.slider_2.sliderMovedEvent)
-        self.slider_2.wheelSignal.connect(self.sliderWheelUpdate)
-        self.slider_2.sliderReleased.connect(self.sliderReleased)
-        self.slider_2.sliderReleased.connect(self.slider_2.sliderReleasedEvent)
+        self.slider.sliderPressed.connect(self.sliderPressed)
+        self.slider.sliderMoved.connect(self.sliderValueChanged)
+        self.slider.sliderMoved.connect(self.slider.sliderMovedEvent)
+        self.slider.wheelSignal.connect(self.sliderWheelUpdate)
+        # self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.sliderReleased.connect(self.slider.sliderReleasedEvent)
 
         self.setLayout(self.layout)
-        self.layout.addWidget(self.slider_2)
+        self.layout.addWidget(self.slider)
         self.layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
 
         self.overlayLabel = QLabel('', self)
@@ -4313,23 +3955,23 @@ class SliderWidget(BaseDialog):
         super(SliderWidget, self).mousePressEvent(event)
 
     def sliderValueChanged(self):
-        if self.slider_2.value() > self.slider_2.maximum() * 0.6:
+        if self.slider.value() > self.slider.maximum() * 0.6:
             self.overlayLabel.move(10, self.height() - 20)
             self.overlayLabel.setAlignment(Qt.AlignLeft)
-        elif self.slider_2.value() < self.slider_2.minimum() * 0.6:
+        elif self.slider.value() < self.slider.minimum() * 0.6:
             self.overlayLabel.move(self.width() - self.overlayLabel.width() - 10, self.height() - 20)
             self.overlayLabel.setAlignment(Qt.AlignRight)
-        self.overlayLabel.setText(str(self.slider_2.value() * 0.01))
-        self.sliderUpdateSignal.emit(self.currentMode, self.slider_2.value(), 0.0)
+        self.overlayLabel.setText(str(self.slider.value() * 0.01))
+        self.sliderUpdateSignal.emit(self.currentMode, self.slider.value(), 0.0)
         # print (self.currentMode, self.slider_2.value())
         # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
 
     def sliderPressed(self):
-        self.sliderBeginSignal.emit(self.currentMode, self.slider_2.value(), 0.0)
+        self.sliderBeginSignal.emit(self.currentMode, self.slider.value(), 0.0)
         self.isDragging = True
 
     def restoreSlider(self):
-        self.slider_2.setEnabled(True)
+        self.slider.setEnabled(True)
         self.isCancelled = False
 
     def sliderReleased(self, cancel=False):
@@ -4343,28 +3985,28 @@ class SliderWidget(BaseDialog):
                                 Qt.MouseButton.LeftButton,
                                 Qt.NoModifier)
             QApplication.instance().sendEvent(self, event)
-            self.slider_2.setEnabled(False)
+            self.slider.setEnabled(False)
             # self.slider_2.clearFocus()
             # self.setFocus()
             # self.update()
-            self.slider_2.setSliderDown(False)
+            self.slider.setSliderDown(False)
             # self.slider_2.setEnabled(True)
         else:
-            self.sliderEndedSignal.emit(self.currentMode, self.slider_2.value(), 0.0)
+            self.sliderEndedSignal.emit(self.currentMode, self.slider.value(), 0.0)
         self.isDragging = False
-        self.slider_2.resetStyle()
+        self.slider.resetStyle()
         self.resetValues()
 
     def resetValues(self):
         # self.overlayLabel.setText('')
-        self.slider_2.blockSignals(True)
-        self.slider_2.setValue(0)
-        self.slider_2.blockSignals(False)
+        self.slider.blockSignals(True)
+        self.slider.setValue(0)
+        self.slider.blockSignals(False)
         self.overlayLabel.hide()
 
     def sliderWheelUpdate(self):
         if not self.isDragging:
-            self.sliderUpdateSignal.emit(self.currentMode, self.slider_2.value())
+            self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
             self.sliderValueChanged()
 
     def modeChanged(self, *args):
@@ -4372,7 +4014,7 @@ class SliderWidget(BaseDialog):
         self.modeChangedSignal.emit(self.currentMode)
 
     def toggleOvershoot(self, overshootState):
-        self.slider_2.toggleOvershoot(overshootState, self.baseSliderWidth)
+        self.slider.toggleOvershoot(overshootState, self.baseSliderWidth)
         currentPos = self.pos()
         if overshootState:
             self.setFixedWidth(self.baseWidth * 2)
@@ -4465,7 +4107,7 @@ class KeySliderWidget(SliderWidget):
                                               showInfo=showInfo
                                               )
         self.recentlyOpened = False
-        self.setFixedSize(self.baseSliderWidth, 46)
+        # self.setFixedSize(self.baseSliderWidth, 46)
 
 
 class GraphEdKeySliderWidget_OLD(QWidget):
@@ -4892,17 +4534,4 @@ class SliderButtonContextMenu(ButtonPopup):
         self.layout.addRow(self.toggleStateButton)
 
 
-class GraphEdToolbarWidget(QWidget):
-    def __init__(self):
-        super(GraphEdToolbarWidget, self).__init__()
 
-    def resizeEvent(self, event):
-        # print('GraphEdToolbarWidget resizeEvent')
-        # Call the update method to repaint the QLabel when the parent UI is resized
-        for wd in self.children():
-            # print('resizeEvent', wd)
-            wd.update()
-        self.resize(self.sizeHint())
-
-    def updateSize(self):
-        self.resize(self.sizeHint())

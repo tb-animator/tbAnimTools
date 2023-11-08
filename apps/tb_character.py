@@ -22,6 +22,29 @@
 
 *******************************************************************************
 '''
+_flipButtonStyleSheet = """
+                            QPushButton {   
+                                color:gray;
+                                border-width: 1px;
+                                 border-radius: 4;
+                                 border-style: solid;
+                                 border-color: #222222;
+                                 font-weight: bold; font-size: 16px;
+                            }   
+                            QPushButton:checked{
+                                color:darkGray;
+                                background-color:green;
+                                border-width: 1px;
+                                 border-radius: 4;
+                                 border-style: solid;
+                                 border-color: #222222;
+                                 font-weight: bold; font-size: 16px;
+                            }
+                            QPushButton:hover{  
+                            border-width: 1px;
+                                 border-color: #ffaa00;
+                            }  
+                            """
 characterAttribute = 'tbCharacter'
 defaultSides = {'left': '_l_', 'right': '_r_'}
 """
@@ -31,6 +54,7 @@ import pymel.core as pm
 import maya.cmds as cmds
 
 from Abstract import *
+from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -66,7 +90,7 @@ class hotkeys(hotKeyAbstractFactory):
 mirrorAxis = ["YZ", "XY", "XZ"]
 defaultLeft = '_L_'
 defaultRight = '_R_'
-
+labelDict = {True:'Flip', False:'Keep'}
 
 class CharacterDefinition(object):
     def __init__(self, jsonFile, char):
@@ -458,6 +482,8 @@ class CharacterTool(toolAbstractFactory):
 
             mirrorIndex = self.mirrorPlaneLabelOption.findText(self.currentCharData.getMirrorAxis())
             self.mirrorPlaneLabelOption.setCurrentIndex(mirrorIndex)
+        sel = cmds.ls(sl=True)
+        self.updateMirrorChannels(sel)
 
     def loadCharacter(self, refname, node=None):
         # print ('loadCharacter', refname, node)
@@ -651,6 +677,8 @@ class CharacterTool(toolAbstractFactory):
         if allControls:
             self.tagTopNodeAsCharacter(self.currentChar, allControls[0])
         self.getAllCharacters()
+        MirrorTools = self.allTools.tools['MirrorTools']
+        MirrorTools.saveCurrentMirrorData(self.currentChar)
 
     def setGlobalControl(self):
         controls, strippedControls = self.getStrippedSelection()
@@ -678,9 +706,92 @@ class CharacterTool(toolAbstractFactory):
     def temp(self, data, data2):
         print(data, data2)
 
+    def updateMirrorChannels(self, sel):
+        if sel:
+            for x in self.mirrorChannelWidgets.values():
+                x.setEnabled(True)
+            self.currentControls = sel
+            if len(sel) == 1:
+                self.currentControlLabel.setText('Control :: ' + sel[0])
+            else:
+                self.currentControlLabel.setText('Controls :: ' + sel[0] + ' ...')
+
+            MirrorTools = self.allTools.tools['MirrorTools']
+            characters = self.funcs.splitSelectionToCharacters(sel)
+            MirrorTools.loadDataForCharacters(characters)
+
+            for x in ['translateX', 'translateY', 'translateZ']:
+                isMirrored = MirrorTools.getIsMirror(sel[0], self.currentChar, x)
+                button = self.mirrorChannelWidgets[x]
+                button.setChecked(isMirrored == -1)
+                button.setText(labelDict[isMirrored == -1])
+                print('isMirrored', x, isMirrored, button.attribute)
+            for x in ['rotateX', 'rotateY', 'rotateZ']:
+                isMirrored = MirrorTools.getIsMirror(sel[0], self.currentChar, x)
+                button = self.mirrorChannelWidgets[x]
+                button.setChecked(isMirrored == -1)
+                button.setText(labelDict[isMirrored == -1])
+                print('isMirrored', x, isMirrored, button.attribute)
+            for x in self.mirrorChannelWidgets.values():
+                x.setEnabled(True)
+                x.setStyleSheet(_flipButtonStyleSheet)
+        else:
+            self.currentControlLabel.setText('No control')
+            for x in self.mirrorChannelWidgets.values():
+                x.setEnabled(False)
+                x.setStyleSheet(getqss.getStyleSheet())
+
+    def mirrorChannelWidget(self):
+        mirrorChannelLayout = QVBoxLayout()
+        mirrorChannelMainLayout = QHBoxLayout()
+
+        self.mirrorTranslateFormLayout = QFormLayout()
+        self.mirrorRotateFormLayout = QFormLayout()
+        self.mirrorChannelWidgets = dict()
+
+        for x in ['translateX', 'translateY', 'translateZ']:
+            label = QLabel(x)
+            button = QPushButton()
+            button.setFixedHeight(18 * dpiScale())
+            button.setCheckable(True)
+            button.attribute = str(x)
+            self.mirrorTranslateFormLayout.addRow(label, button)
+            self.mirrorChannelWidgets[x] = button
+            button.clicked.connect(pm.Callback(self.updateMirroChannelForControl, button))
+        for x in ['rotateX', 'rotateY', 'rotateZ']:
+            label = QLabel(x)
+            button = QPushButton()
+
+            button.setCheckable(True)
+            button.attribute = str(x)
+            self.mirrorRotateFormLayout.addRow(label, button)
+            self.mirrorChannelWidgets[x] = button
+            button.clicked.connect(pm.Callback(self.updateMirroChannelForControl, button))
+
+        mirrorChannelMainLayout.addLayout(self.mirrorTranslateFormLayout)
+        mirrorChannelMainLayout.addLayout(self.mirrorRotateFormLayout)
+        self.currentControlLabel = QLabel('No control')
+        mirrorChannelLayout.addWidget(self.currentControlLabel)
+        mirrorChannelLayout.addLayout(mirrorChannelMainLayout)
+
+        for x in self.mirrorChannelWidgets.values():
+            x.setStyleSheet(_flipButtonStyleSheet)
+            x.setFixedHeight(18 * dpiScale())
+            x.setFixedWidth(48 * dpiScale())
+        return mirrorChannelLayout
+
+    def updateMirroChannelForControl(self, button):
+        MirrorTools = self.allTools.tools['MirrorTools']
+        characters = self.funcs.splitSelectionToCharacters(self.currentControls)
+        MirrorTools.loadDataForCharacters(characters)
+        print('updateMirroChannelForControl', self.currentControls, button.attribute, button.isChecked())
+        for s in self.currentControls:
+            MirrorTools.setIsMirror(s, self.currentChar, button.attribute, button.isChecked())
+        button.setText(labelDict[button.isChecked()])
+
     def getToolboxWidget(self, widget, message=''):
         buttonWidth = 124
-        buttonHeight = 28
+        buttonHeight = 18
         '''
         cmds.setParent()
         if cmds.menu(TOOLBOX_MENU, exists=True):
@@ -817,10 +928,12 @@ class CharacterTool(toolAbstractFactory):
         mirrorAxisLayout.addWidget(self.mirrorPlaneLabelOption)
 
         mirrorMainLayout.addWidget(calculateAllMirror)
+        mirrorMainLayout.addWidget(calculateSelectedMirror)
         mirrorMainLayout.addLayout(mirrorTestLayout)
         mirrorTestLayout.addWidget(testMirrorSwap)
         mirrorTestLayout.addWidget(testMirrorLtoR)
         mirrorTestLayout.addWidget(testMirrorRtoL)
+        mirrorMainLayout.addLayout(self.mirrorChannelWidget())
 
         meshGroupbox = myGroupBox('Meshes')
         meshLayout = QHBoxLayout()
@@ -880,7 +993,7 @@ class CharacterTool(toolAbstractFactory):
         # TODO - add this back
         # toolBoxLayout.addWidget(spaceSwitchroupbox)
         toolBoxLayout.addLayout(saveLayout)
-
+        toolBoxWidget.setStyleSheet(getqss.getStyleSheet())
         return toolBoxWidget
 
     def _calculateMirrorAxis(self):
@@ -912,11 +1025,10 @@ class CharacterTool(toolAbstractFactory):
 
     def toolBoxUI(self, message=''):
         # if not self.toolbox:
-        self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                                  title='tb Character Definition', text=str(),
-                                  lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
+        self.toolbox = CharacterWindow()
         self.toolboxWidget = self.getToolboxWidget(self.toolbox, message=message)
-        self.toolbox.mainLayout.addWidget(self.toolboxWidget)
+        self.toolbox.setCentralWidget(self.toolboxWidget)
+        # self.toolbox.mainLayout.addWidget(self.toolboxWidget)
 
         self.toolbox.show()
         self.toolbox.widgetClosed.connect(self.removeScriptJob)
@@ -925,6 +1037,19 @@ class CharacterTool(toolAbstractFactory):
         self.toolboxWidget.setEnabled(False)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
+
+
+class CharacterWindow(MayaQWidgetDockableMixin, QMainWindow):
+    widgetClosed = Signal()
+
+    def __init__(self, *args, **kwargs):
+        super(CharacterWindow, self).__init__(*args, **kwargs)
+        self.setWindowTitle('tb Character Definition')
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
+
+    def closeEvent(self, event):
+        super(CharacterWindow, self).closeEvent(event)
+        self.widgetClosed.emit()
 
 
 class myGroupBox(QGroupBox):

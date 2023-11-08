@@ -3649,7 +3649,38 @@ class AnimLayerTabButton(QPushButton):
 
             self.pop_up_window.show()
 
+class GraphToolbarButton(QPushButton):
+    """
+    UI menu item for anim layer tab,
+    subclass this and add to the _showMenu function, or just add menu items
+    """
 
+    def __init__(self, icon='', toolTip='', width=24, height=24):
+        super(GraphToolbarButton, self).__init__()
+        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(24 * dpiScale(), 24 * dpiScale())
+
+        self.setIcon(pixmap)
+        self.setFixedSize(width * dpiScale(), height * dpiScale())
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px")
+        self.setStyleSheet(getqss.getStyleSheet())
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
+        self.pop_up_window = None
+
+    def setPopupMenu(self, menuClass):
+        self.pop_up_window = menuClass('name', self)
+
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._showMenu)
+
+    def _showMenu(self, pos):
+        pop_up_pos = self.mapToGlobal(QPoint(8, self.height() + 8))
+        if self.pop_up_window:
+            self.pop_up_window.move(pop_up_pos)
+
+            self.pop_up_window.show()
 sliderStylesheet = """
 
 

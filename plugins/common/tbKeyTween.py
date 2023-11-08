@@ -63,10 +63,11 @@ class KeyTweenCommand(om.MPxCommand):
 
         if self.clearCache:
             self.displayInfo('clearCache')
+            cmds.refresh()
             cmds.undoInfo(stateWithoutFlush=False)
+            slideTool.cacheKeyData()
             self.animCurveChange = oma.MAnimCurveChange()
             slideTool.animCurveChange = self.animCurveChange
-            slideTool.cacheKeyData()
             cmds.undoInfo(stateWithoutFlush=True)
         else:
             self.animCurveChange = slideTool.animCurveChange
