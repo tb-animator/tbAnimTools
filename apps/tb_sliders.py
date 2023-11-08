@@ -355,15 +355,20 @@ class WorldSpaceTween(tweenBase):
 
     def startDrag(self, value):
         self.keyState = pm.autoKeyframe(query=True, state=True)
+        print ('self.keyState', self.keyState)
         pm.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             self.affectedObjects = list()
+            pm.autoKeyframe(state=self.keyState)
             return
-        self.affectedObjects = sel
-        self.cacheValues()
-        self.filterAffectedChannels()
-        self.updateDrag(value)
+        try:
+            self.affectedObjects = sel
+            self.cacheValues()
+            self.filterAffectedChannels()
+            self.updateDrag(value)
+        except:
+            pm.autoKeyframe(state=self.keyState)
 
     def updateDrag(self, value):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
@@ -642,21 +647,26 @@ class LocalSpaceTween(tweenBase):
 
     def startDrag(self, value):
         self.keyState = pm.autoKeyframe(query=True, state=True)
+        print('self.keyState', self.keyState)
         pm.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             self.affectedObjects = list()
+            pm.autoKeyframe(state=self.keyState)
             return
-        self.affectedObjects = sel
-        self.filterAffectedChannels()
-        self.cacheValues()
-        self.updateDrag(value)
+        try:
+            self.affectedObjects = sel
+            self.cacheValues()
+            self.filterAffectedChannels()
+            self.updateDrag(value)
+        except:
+            pm.autoKeyframe(state=self.keyState)
 
     def updateDrag(self, value):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
 
     def endDrag(self, value):
-        # print ('WorldSpaceTween class end drag', value)
+        print ('local space class end drag', value, self.keyState)
         pm.autoKeyframe(state=self.keyState)
         if not self.affectedObjects:
             return
@@ -1094,6 +1104,7 @@ class SlideTools(toolAbstractFactory):
         # self.keyPressHandler.addUI(self.xformWidget)
 
     def xformSliderBeginSignal(self, key, value):
+
         self.xformTweenClasses[key].startDrag(value)
 
     def xformSliderUpdateSignal(self, key, value):
@@ -3813,7 +3824,7 @@ class SliderWidget(BaseDialog):
         self.slider.sliderMoved.connect(self.sliderValueChanged)
         self.slider.sliderMoved.connect(self.slider.sliderMovedEvent)
         self.slider.wheelSignal.connect(self.sliderWheelUpdate)
-        # self.slider.sliderReleased.connect(self.sliderReleased)
+        self.slider.sliderReleased.connect(self.sliderReleased)
         self.slider.sliderReleased.connect(self.slider.sliderReleasedEvent)
 
         self.setLayout(self.layout)
@@ -3975,6 +3986,7 @@ class SliderWidget(BaseDialog):
         self.isCancelled = False
 
     def sliderReleased(self, cancel=False):
+        print ('sliderReleased', cancel)
         if cancel:
             self.isCancelled = True
             self.sliderCancelSignal.emit()
@@ -3991,8 +4003,8 @@ class SliderWidget(BaseDialog):
             # self.update()
             self.slider.setSliderDown(False)
             # self.slider_2.setEnabled(True)
-        else:
-            self.sliderEndedSignal.emit(self.currentMode, self.slider.value(), 0.0)
+        # else:
+        #     self.sliderEndedSignal.emit(self.currentMode, self.slider.value(), 0.0)
         self.isDragging = False
         self.slider.resetStyle()
         self.resetValues()
@@ -4110,361 +4122,7 @@ class KeySliderWidget(SliderWidget):
         # self.setFixedSize(self.baseSliderWidth, 46)
 
 
-class GraphEdKeySliderWidget_OLD(QWidget):
-    __instance = None
-    # call the tween classes by name, send value
-    sliderUpdateSignal = Signal(str, float, float)
-    sliderEndedSignal = Signal(str, float, float)
-    sliderBeginSignal = Signal(str, float, float)
-    modeChangedSignal = Signal(str)
-    sliderCancelSignal = Signal()
 
-    minValue = -101
-    minOvershootValue = -201
-    maxValue = 101
-    maxOvershootValue = 201
-    baseSliderWidth = 160
-    baseWidth = 240
-
-    baseLabel = 'baseLabel'
-    shiftLabel = 'shiftLabel'
-    controlLabel = 'controlLabel'
-    controlShiftLabel = 'controlShiftLabel'
-    altLabel = 'altLabel'
-    labelYOffset = 16
-
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 title='Key Inbetween',
-                 text='test',
-                 showLockButton=True, showCloseButton=False,
-                 modeList=SlideTools().keyTweenKeys,
-                 showInfo=False,
-
-                 ):
-        super(GraphEdKeySliderWidget_OLD, self).__init__()
-        self.isCancelled = False
-        self.recentlyOpened = False
-        self.invokedKey = None
-        self.modeList = modeList
-        #
-        # labels
-        '''
-        self.baseLabel = baseLabel
-        self.shiftLabel = shiftLabel
-        self.controlLabel = controlLabel
-        self.controlShiftLabel = controlShiftLabel
-        self.altLabel = altLabel
-        '''
-        # self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
-        # self.setAttribute(Qt.WA_StyledBackground, True)
-        # self.autoFillBackground = True
-        # self.windowFlags()
-        # self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedHeight(24 * dpiScale())
-
-        self.isDragging = False
-
-        self.container = QFrame()
-        self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
-
-        self.slider = PySlider()
-        self.slider.setOrientation(Qt.Horizontal)
-        self.slider.setFixedWidth(self.baseSliderWidth)
-        self.slider.setMinimum(-101)
-        self.slider.setMaximum(101)
-        self.slider.setValue(0)
-        self.slider.setTickInterval(1)
-
-        self.slider.sliderPressed.connect(self.sliderPressed)
-        self.slider.sliderMoved.connect(self.sliderValueChanged)
-        self.slider.sliderMoved.connect(self.slider.sliderMovedEvent)
-        self.slider.wheelSignal.connect(self.sliderWheelUpdate)
-        self.slider.sliderReleased.connect(self.sliderReleased)
-        self.slider.sliderReleased.connect(self.slider.sliderReleasedEvent)
-
-        self.mainLayout = QHBoxLayout()
-        self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.mainLayout)
-        self.mainLayout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-
-        self.comboBox = QComboBox()
-        self.comboBox.setStyleSheet(getqss.getStyleSheet())
-        self.overshootButton = LockButton('', self, icon='overshootOn.png',
-                                          unlockIcon='overshoot.png', )
-        self.overshootButton.lockSignal.connect(self.toggleOvershoot)
-
-        for c in self.modeList:
-            self.comboBox.addItem(c)
-        self.currentMode = self.comboBox.currentText()
-        self.comboBox.currentIndexChanged.connect(self.modeChanged)
-        width = self.comboBox.minimumSizeHint().width()
-        self.comboBox.view().setMinimumWidth(width)
-        self.comboBox.setMinimumWidth(width + self.labelYOffset)
-        self.comboBox.setMaximumWidth(width + self.labelYOffset)
-        # self.resize(self.sizeHint())
-
-        # emit the mode change signal to load the labels
-        self.modeChangedSignal.emit(self.currentMode)
-
-        self.mainLayout.addWidget(self.slider)
-        self.mainLayout.setAlignment(Qt.AlignLeft)
-        self.mainLayout.addWidget(self.overshootButton)
-        self.mainLayout.addWidget(self.comboBox)
-        self.overlayLabel = QLabel('', self)
-        self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
-        self.overlayLabel.setEnabled(False)
-        self.overlayLabel.setFixedWidth(60 * dpiScale())
-        self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.labelYPos = 6
-        self.overlayLabel.setAlignment(Qt.AlignLeft)
-        self.overlayLabel.move(10, self.labelYPos)
-        self.setFocusPolicy(Qt.NoFocus)
-
-    def show(self):
-        super(GraphEdKeySliderWidget_OLD, self).show()
-        self.resetValues()
-        self.setEnabled(True)
-        self.setFocus()
-        self.recentlyOpened = True
-
-    def moveToCursor(self):
-        pos = QCursor.pos()
-        xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - 12)
-
-    def modifierReleased(self):
-        return
-        self.infoText.setText(self.baseLabel)
-
-    def controlReleased(self):
-        return
-        self.infoText.setText(self.baseLabel)
-
-    def controlPressed(self):
-        return
-        self.infoText.setText(self.controlLabel)
-
-    def controlShiftPressed(self):
-        return
-        self.infoText.setText(self.controlShiftLabel)
-
-    def shiftPressed(self):
-        return
-        self.infoText.setText(self.shiftLabel)
-
-    def altPressed(self):
-        return
-        self.infoText.setText(self.altLabel)
-
-    def mousePressEvent(self, event):
-        # print ("Mouse Clicked", event.buttons(), event.button() == Qt.RightButton)
-        if event.button() == Qt.RightButton:
-            self.sliderReleased(cancel=True)
-        if event.button() == Qt.LeftButton:
-            self.restoreSlider()
-
-    def sliderValueChanged(self):
-        if self.slider.value() > self.slider.maximum() * 0.6:
-            self.overlayLabel.move(10, self.labelYPos)
-            self.overlayLabel.setAlignment(Qt.AlignLeft)
-        elif self.slider.value() < self.slider.minimum() * 0.6:
-            self.overlayLabel.move(self.slider.width() - self.overlayLabel.width() - 10, self.labelYPos)
-            self.overlayLabel.setAlignment(Qt.AlignRight)
-
-        self.overlayLabel.setText(str(self.slider.value() * 0.01))
-        self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
-        # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
-
-    def sliderPressed(self):
-        self.sliderBeginSignal.emit(self.currentMode, self.slider.value())
-        self.isDragging = True
-        self.overlayLabel.show()
-
-    def restoreSlider(self):
-        self.slider.setEnabled(True)
-        self.isCancelled = False
-
-    def sliderReleased(self, cancel=False):
-        if cancel:
-            self.isCancelled = True
-            self.sliderCancelSignal.emit()
-            click_pos = QPoint(0, 0)
-            event = QMouseEvent(QEvent.MouseButtonPress,
-                                click_pos,
-                                Qt.MouseButton.LeftButton,
-                                Qt.MouseButton.LeftButton,
-                                Qt.Modifier)
-            QApplication.instance().sendEvent(self, event)
-            self.slider.setEnabled(False)
-            # self.slider_2.clearFocus()
-            # self.setFocus()
-            # self.update()
-            self.slider.setSliderDown(False)
-            # self.slider_2.setEnabled(True)
-        else:
-            self.sliderEndedSignal.emit(self.currentMode, self.slider.value())
-        self.isDragging = False
-        self.slider.resetStyle()
-        self.resetValues()
-
-    def resetValues(self):
-        # self.overlayLabel.setText('')
-        self.slider.blockSignals(True)
-        self.slider.setValue(0)
-        self.slider.blockSignals(False)
-        self.overlayLabel.hide()
-
-    def sliderWheelUpdate(self):
-        if not self.isDragging:
-            self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
-            self.sliderValueChanged()
-
-    def modeChanged(self, *args):
-        self.currentMode = self.comboBox.currentText()
-        self.modeChangedSignal.emit(self.currentMode)
-
-    def toggleOvershoot(self, overshootState):
-        self.slider.toggleOvershoot(overshootState)
-        currentPos = self.pos()
-
-
-class GraphEdKeySliderWidget(QWidget):
-    __instance = None
-    # call the tween classes by name, send value
-    modeChangedSignal = Signal(str)
-    sliderBeginSignal = Signal(str, float, float)
-    sliderUpdateSignal = Signal(str, float, float)
-    sliderEndedSignal = Signal(str, float, float)
-
-    minValue = -101
-    minOvershootValue = -201
-    maxValue = 101
-    maxOvershootValue = 201
-    baseSliderWidth = 160
-    baseWidth = 240
-
-    baseLabel = 'baseLabel'
-    shiftLabel = 'shiftLabel'
-    controlLabel = 'controlLabel'
-    controlShiftLabel = 'controlShiftLabel'
-    altLabel = 'altLabel'
-    labelYOffset = 16
-
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 title='Key Inbetween',
-                 text='test',
-                 showLockButton=True, showCloseButton=False,
-                 modeList=SlideTools().keyTweenKeys,
-                 showInfo=False,
-
-                 ):
-        super(GraphEdKeySliderWidget, self).__init__()
-        self.isCancelled = False
-        self.recentlyOpened = False
-        self.invokedKey = None
-        self.modeList = modeList
-
-        #
-        # labels
-        '''
-        self.baseLabel = baseLabel
-        self.shiftLabel = shiftLabel
-        self.controlLabel = controlLabel
-        self.controlShiftLabel = controlShiftLabel
-        self.altLabel = altLabel
-        '''
-        # self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
-        # self.setAttribute(Qt.WA_StyledBackground, True)
-        # self.autoFillBackground = True
-        # self.windowFlags()
-        # self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedHeight(24 * dpiScale())
-
-        self.isDragging = False
-
-        self.container = QFrame()
-        self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
-
-        self.slider = PopupSlider(closeOnRelease=False, mode=modeList[0], icon='',
-                                  width=200 * dpiScale(), minValue=-100, maxValue=100, overshootMin=-200,
-                                  overshootMax=200)
-
-        self.slider.sliderUpdateSignal.connect(self.sliderUpdate)
-        self.slider.sliderEndedSignal.connect(self.sliderEnd)
-        # self.slider.sliderMoved.connect(self.sliderValueChanged)
-        # self.slider.sliderMoved.connect(self.slider.sliderMovedEvent)
-        # self.slider.wheelSignal.connect(self.sliderWheelUpdate)
-        # self.slider.sliderReleased.connect(self.sliderReleased)
-        # self.slider.sliderReleased.connect(self.slider.sliderReleasedEvent)
-
-        self.mainLayout = QHBoxLayout()
-        self.mainLayout.setSpacing(0)
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.mainLayout)
-        self.mainLayout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-
-        self.comboBox = QComboBox()
-        self.comboBox.setFixedHeight(24 * dpiScale())
-        self.comboBox.setStyleSheet(getqss.getStyleSheet())
-
-        # self.overshootButton.lockSignal.connect(self.toggleOvershoot)
-
-        for c in self.modeList:
-            self.comboBox.addItem(c)
-        self.currentMode = self.comboBox.currentText()
-        self.comboBox.currentIndexChanged.connect(self.modeChanged)
-        width = self.comboBox.minimumSizeHint().width()
-        self.comboBox.view().setMinimumWidth(width)
-        self.comboBox.setMinimumWidth(width + self.labelYOffset)
-        self.comboBox.setMaximumWidth(width + self.labelYOffset)
-        # self.resize(self.sizeHint())
-
-        # emit the mode change signal to load the labels
-        self.modeChangedSignal.emit(self.currentMode)
-
-        self.mainLayout.addWidget(self.slider)
-        self.mainLayout.setAlignment(Qt.AlignLeft)
-        self.mainLayout.addWidget(self.comboBox)
-        self.overlayLabel = QLabel('', self)
-        self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
-        self.overlayLabel.setEnabled(False)
-        self.overlayLabel.setFixedWidth(60 * dpiScale())
-        self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.labelYPos = 6
-        self.overlayLabel.setAlignment(Qt.AlignLeft)
-        self.overlayLabel.move(10 * dpiScale(), self.labelYPos)
-        self.setFocusPolicy(Qt.NoFocus)
-        self.setStyleSheet("")
-
-    def show(self):
-        super(GraphEdKeySliderWidget, self).show()
-        self.resetValues()
-        self.setEnabled(True)
-        self.setFocus()
-        self.recentlyOpened = True
-
-    def sliderUpdate(self, mode, alpha, alphaY):
-        if not self.isDragging:
-            self.isDragging = True
-            self.sliderBeginSignal.emit(mode, alpha, alphaY)
-            return
-        self.sliderUpdateSignal.emit(mode, alpha, alphaY)
-
-    def sliderEnd(self, mode, alpha, alphaY):
-        self.isDragging = False
-        self.sliderEndedSignal.emit(mode, alpha, alphaY)
-
-    def sliderWheelUpdate(self):
-        if not self.isDragging:
-            self.sliderUpdateSignal.emit(self.currentMode, self.slider.value())
-            self.sliderValueChanged()
-
-    def modeChanged(self, *args):
-        self.currentMode = self.comboBox.currentText()
-        self.slider.mode = self.comboBox.currentText()
-        self.slider.setIcon(SlideTools().keyTweenIcons[self.currentMode])
-        self.modeChangedSignal.emit(self.currentMode)
 
 
 class SliderButtonPopup(ButtonPopup):
