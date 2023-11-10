@@ -3974,12 +3974,12 @@ class SliderWidget(BaseDialog):
             self.overlayLabel.move(self.width() - self.overlayLabel.width() - 10, self.height() - 20)
             self.overlayLabel.setAlignment(Qt.AlignRight)
         self.overlayLabel.setText(str(self.slider.value() * 0.01))
-        self.sliderUpdateSignal.emit(self.currentMode, self.slider.value(), 0.0)
+        self.sliderUpdateSignal.emit(self.currentMode, self.slider.getOutputValue(), 0.0)
         # print (self.currentMode, self.slider_2.value())
         # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
 
     def sliderPressed(self):
-        self.sliderBeginSignal.emit(self.currentMode, self.slider.value(), 0.0)
+        self.sliderBeginSignal.emit(self.currentMode, self.slider.getOutputValue(), 0.0)
         self.isDragging = True
 
     def restoreSlider(self):
