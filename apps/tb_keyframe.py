@@ -649,7 +649,7 @@ class KeyModifiers(toolAbstractFactory):
                       start[1] + in_tangent_length * math.sin(in_tangent_angle)]
         out_tangent = [end[0] - out_tangent_length * math.cos(out_tangent_angle),
                        end[1] - out_tangent_length * math.sin(out_tangent_angle)]
-        # Calculate Bézier curve points
+        # Calculate Bezier curve points
         points = []
         for t in range(num_steps + 1):
             t /= num_steps
@@ -676,7 +676,7 @@ class KeyModifiers(toolAbstractFactory):
                       start[1] + in_tangent_length * math.sin(in_tangent_angle)]
         out_tangent = [end[0] - out_tangent_length * math.cos(out_tangent_angle),
                        end[1] - out_tangent_length * math.sin(out_tangent_angle)]
-        # Calculate Bézier curve points
+        # Calculate Bezier curve points
 
         x = (1 - t) ** 3 * start[0] + 3 * (1 - t) ** 2 * t * in_tangent[0] + 3 * (1 - t) * t ** 2 * out_tangent[
             0] + t ** 3 * end[0]
