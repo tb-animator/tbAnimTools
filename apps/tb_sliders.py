@@ -4005,7 +4005,7 @@ class SliderWidget(BaseDialog):
             self.slider.setSliderDown(False)
             # self.slider_2.setEnabled(True)
         else:
-            self.sliderEndedSignal.emit(self.currentMode, self.slider.getOutputValue(), 0.0)
+            self.sliderEndedSignal.emit(self.currentMode, self.slider.lastValue, 0.0)
         self.isDragging = False
         self.slider.resetStyle()
         self.resetValues()

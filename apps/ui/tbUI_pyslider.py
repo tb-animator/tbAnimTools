@@ -268,6 +268,7 @@ class Slider(QSlider):
                  ):
         super(Slider, self).__init__()
         self.helpWidget = toolTipClass
+        self.lastValue = 0.0
         if self.helpWidget:
             self.installEventFilter(self)
         self.style = QApplication.style()
@@ -572,8 +573,10 @@ class Slider(QSlider):
         else:
             multiplier = 1
         if self.overshootState:
-            return self.value() * multiplier
-        return self.value() * multiplier
+            self.lastValue = self.value() * multiplier
+            return self.lastValue
+        self.lastValue = self.value() * multiplier
+        return self.lastValue
 
     def resizeEvent(self, event):
         self.arrangeButtons()
