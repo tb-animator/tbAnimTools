@@ -48,12 +48,14 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os, stat
 import pickle
+
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
 from Abstract import *
 
 mirrorPlane = {'YZ': [-1, 1, 1],
                'XZ': [1, -1, 1],
                'XY': [1, 1, -1]}
+
 
 def repeatable(function):
     '''A decorator that will make commands repeatable in maya'''
@@ -80,6 +82,7 @@ def repeatable(function):
         return functionReturn
 
     return decoratorCode
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -118,10 +121,14 @@ class hotkeys(hotKeyAbstractFactory):
                                      help='Blank',
                                      command=[
                                          'MirrorTools.mirrorSelection(option="fromOpposite")']))
+        self.addCommand(self.tb_hkey(name='mirrorSelectedCycled',
+                                     annotation='Blank',
+                                     category=self.category, command=['MirrorTools.cycleMirror()']))
         self.setCategory(self.helpStrings.category.get('markingMenus'))
         self.addCommand(self.tb_hkey(name='mirrorMarkingMenu',
                                      annotation='useful comment',
                                      category=self.category, command=['MirrorTools.openMM()']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -296,6 +303,7 @@ class MirrorTools(toolAbstractFactory):
                                                 cls=self.markingMenuWidget,
                                                 command=lambda: MirrorTools().mirrorSelection(option="fromOpposite"),
                                                 closeOnPress=True))
+
     @staticmethod
     def _replace(name, old, new, count=1):
         """
@@ -640,9 +648,9 @@ class MirrorTools(toolAbstractFactory):
     def saveCurrentMirrorData(self, character):
         dataFile = os.path.join(self.mirrorDataDir, character)
         self.saveRigData(dataFile, self.loadedMirrorTables[character].toJson())
-        print ('Saving current mirror', character)
-        print ('dataFile', dataFile)
-        print (self.loadedMirrorTables[character].toJson())
+        print('Saving current mirror', character)
+        print('dataFile', dataFile)
+        print(self.loadedMirrorTables[character].toJson())
 
     @staticmethod
     def matchSideName(control, sideName):
@@ -702,6 +710,7 @@ class MirrorTools(toolAbstractFactory):
             matched.append(opposite)
             controlPairs.append([c, opposite, rigName])
         return controlPairs
+
     @repeatable
     def mirrorSelection(self, controls=list(), option='swap'):
         with self.funcs.undoChunk():
@@ -722,12 +731,11 @@ class MirrorTools(toolAbstractFactory):
         attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
         if not attrEntry:
             return
-        scalar = {True:-1, False:1}[value]
-        print (strippedFrom)
-        print (self.loadedMirrorTables[character].controls[strippedFrom][attr])
+        scalar = {True: -1, False: 1}[value]
+        print(strippedFrom)
+        print(self.loadedMirrorTables[character].controls[strippedFrom][attr])
         self.loadedMirrorTables[character].controls[strippedFrom][attr] = scalar
-        print (self.loadedMirrorTables[character].controls[strippedFrom][attr])
-
+        print(self.loadedMirrorTables[character].controls[strippedFrom][attr])
 
     def getIsMirror(self, fromControl, character, attr):
         strippedFrom = pm.PyNode(fromControl).stripNamespace()
@@ -738,6 +746,7 @@ class MirrorTools(toolAbstractFactory):
         if attr in attrEntry:
             return attrEntry.get(attr, 1)
         return False
+
     def mirrorControl(self, fromControl, toControl, character, option='swap', timeOffset=0):
         """
         Mirror a single control, specify the pair of controls
@@ -857,6 +866,58 @@ class MirrorTools(toolAbstractFactory):
                 # print ('attr', attr, 'scalar', scalar, valuesDict[namespace][control][attr])
                 cmds.setAttr(namespace + ':' + opposite + '.' + attr,
                              valuesDict[namespace][control][attr] * scalar)
+
+
+    def cycleMirror(self):
+        """
+        Used for flipping the control to the other side at the other phase of a walk cycle
+        :return:
+        """
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No selection')
+        refname, character = self.allTools.tools['CharacterTool'].getCharacterFromSelection()
+        print('refname', refname)
+        print('character', character)
+
+        mirrorSel = dict()
+        for s in sel:
+            mirrorSel[s] = self.getMirrorForControlFromCharacter(character, s)
+        selectedStart, selectedEnd = self.funcs.getTimelineHighlightedRange()
+        selectedEnd = selectedEnd + 1
+
+        # assume playback range is cycle range, objects in local space
+        minTime = cmds.playbackOptions(query=True, min=True)
+        maxTime = cmds.playbackOptions(query=True, max=True)
+
+        selectedStart = int(selectedStart)
+        selectedEnd = int(selectedEnd)
+        originalTime = cmds.currentTime(query=True)
+        times = range(selectedStart, selectedEnd)
+        cmds.currentTime(times[0])
+        # print('times', times)
+        with self.funcs.suspendUpdate():
+            cmds.undoInfo(openChunk=True)
+            allMirrorTimes = dict()
+            for t in times:
+                mirrorTimes = self.getMirrorTime(t, minTime, maxTime)
+                allMirrorTimes[t] = mirrorTimes
+
+                for m in mirrorTimes:
+                    print ('mirrorTimes', m)
+                    cmds.currentTime(t)
+                    cmds.currentTime(m, update=False)
+                    self.mirrorSelection(controls=sel, option='toOpposite')
+            cmds.currentTime(originalTime)
+            cmds.undoInfo(closeChunk=True)
+    def getMirrorTime(self, t, start, end):
+        timeOffset = (end - start) * 0.5
+        timeRange = end-start
+        mirrorTime = (t-start+timeOffset) % timeRange
+        outTime = [mirrorTime]
+        if int(mirrorTime)==int(start):
+            outTime.append(end)
+        return outTime
 
 
 def getMObject(node):

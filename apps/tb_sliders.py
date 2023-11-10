@@ -355,7 +355,7 @@ class WorldSpaceTween(tweenBase):
 
     def startDrag(self, value):
         self.keyState = pm.autoKeyframe(query=True, state=True)
-        print ('self.keyState', self.keyState)
+        # print ('self.keyState', self.keyState)
         pm.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
@@ -400,7 +400,7 @@ class WorldSpaceTween(tweenBase):
 
     def cacheValues(self):
         super(WorldSpaceTween, self).cacheValues()
-        cmds.warning('cacheValues', self.keyboardModifier)
+        # cmds.warning('cacheValues', self.keyboardModifier)
         # print 'affectedObjects', self.affectedObjects
         # just get one objects next and previous transforms
         thisTime = cmds.currentTime(query=True)
@@ -647,7 +647,7 @@ class LocalSpaceTween(tweenBase):
 
     def startDrag(self, value):
         self.keyState = pm.autoKeyframe(query=True, state=True)
-        print('self.keyState', self.keyState)
+        # print('self.keyState', self.keyState)
         pm.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
@@ -666,7 +666,7 @@ class LocalSpaceTween(tweenBase):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
 
     def endDrag(self, value):
-        print ('local space class end drag', value, self.keyState)
+        # print ('local space class end drag', value, self.keyState)
         pm.autoKeyframe(state=self.keyState)
         if not self.affectedObjects:
             return
@@ -1108,6 +1108,7 @@ class SlideTools(toolAbstractFactory):
         self.xformTweenClasses[key].startDrag(value)
 
     def xformSliderUpdateSignal(self, key, value):
+        # print ('xformSliderUpdateSignal', key, value)
         self.xformTweenClasses[key].updateDrag(value)
 
     def xformSliderEndSignal(self, key, value):
@@ -1191,7 +1192,7 @@ class SlideTools(toolAbstractFactory):
             self.isDragging = False
 
     def keySliderCancelSignal(self):
-        print('keySliderCancelSignal')
+        # print('keySliderCancelSignal')
         # cmds.tbKeyTween(alpha=value, blendMode=str(key), clearCache=False)
         cmds.undoInfo(closeChunk=True)
         cmds.undo()
@@ -1388,7 +1389,7 @@ class SlideTools(toolAbstractFactory):
             return
         if not self.keyframeData.items():
             return
-        print('alpha', alpha)
+        # print('alpha', alpha)
         for curve, keyframeData in self.keyframeData.items():
             outValues = list()
             for i in range(len(keyframeData.keyIndexes)):
@@ -3986,7 +3987,7 @@ class SliderWidget(BaseDialog):
         self.isCancelled = False
 
     def sliderReleased(self, cancel=False):
-        print ('sliderReleased', cancel)
+        # print ('sliderReleased', cancel)
         if cancel:
             self.isCancelled = True
             self.sliderCancelSignal.emit()
@@ -4003,8 +4004,8 @@ class SliderWidget(BaseDialog):
             # self.update()
             self.slider.setSliderDown(False)
             # self.slider_2.setEnabled(True)
-        # else:
-        #     self.sliderEndedSignal.emit(self.currentMode, self.slider.value(), 0.0)
+        else:
+            self.sliderEndedSignal.emit(self.currentMode, self.slider.getOutputValue(), 0.0)
         self.isDragging = False
         self.slider.resetStyle()
         self.resetValues()

@@ -2739,6 +2739,9 @@ class ObjectSelectLineEditEnforced(ObjectSelectLineEdit):
         else:
             self.errorHighlightRemove()
 
+class ComboBox(QComboBox):
+    def wheelEvent(self, e):
+        return
 
 class comboBoxWidget(QWidget):
     mainLayout = None
@@ -2764,17 +2767,20 @@ class comboBoxWidget(QWidget):
 
         label = QLabel(label)
 
-        self.comboBox = QComboBox()
+        self.comboBox = ComboBox()
+
         if self.values:
             for c in self.values:
                 self.comboBox.addItem(c)
             self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
-
+        view = self.comboBox.view()
+        view.setFixedWidth(self.comboBox.sizeHint().width()+32)
         self.mainLayout.addWidget(label)
         self.mainLayout.addWidget(self.comboBox)
         self.comboBox.currentIndexChanged.connect(self.interactivechange)
         self.mainLayout.addStretch()
+
 
     def interactivechange(self, b):
         if self.optionVar is not None:

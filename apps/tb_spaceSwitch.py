@@ -31,6 +31,7 @@ from difflib import SequenceMatcher
 
 str_spacePresets = 'spacePresets'
 str_spaceDefaultValues = 'spaceDefaultValues'
+str_spaceMirrorValues = 'spaceMirrorValues'
 str_spaceLocalValues = 'spaceLocalValues'
 str_spaceGlobalValues = 'spaceGlobalValues'
 str_spaceControlKey = 'spaceControl'
@@ -55,7 +56,6 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('spaceSwitch'))
         self.commandList = list()
-
 
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedGlobal',
                                      annotation='useful comment',
@@ -115,6 +115,7 @@ class SpaceData(object):
         self.spaceGlobalValues = {}  #
         self.spaceLocalValues = {}  #
         self.spaceDefaultValues = {}  #
+        self.spaceMirrorValues = {}  #
         self.spacePresets = dict()  # key is preset name, value is a dict of control:spaces
 
     def setControlSpaceAttribute(self, control, attribute):
@@ -153,6 +154,7 @@ class SpaceData(object):
         returnDict[str_spaceGlobalValues] = self.spaceGlobalValues
         returnDict[str_spaceLocalValues] = self.spaceLocalValues
         returnDict[str_spaceDefaultValues] = self.spaceDefaultValues
+        returnDict[str_spaceMirrorValues] = self.spaceMirrorValues
         returnDict[str_spacePresets] = self.spacePresets
         return returnDict
 
@@ -163,6 +165,7 @@ class SpaceData(object):
         self.spaceGlobalValues = rawJsonData.get(str_spaceGlobalValues, dict())
         self.spaceLocalValues = rawJsonData.get(str_spaceLocalValues, dict())
         self.spaceDefaultValues = rawJsonData.get(str_spaceDefaultValues, dict())
+        self.spaceMirrorValues = rawJsonData.get(str_spaceMirrorValues, dict())
         self.spacePresets = rawJsonData.get(str_spacePresets, dict())
 
     def removeItem(self, key):
@@ -171,6 +174,7 @@ class SpaceData(object):
         self.spaceGlobalValues.pop(key)
         self.spaceLocalValues.pop(key)
         self.spaceDefaultValues.pop(key)
+        self.spaceMirrorValues.pop(key)
 
         # TODO - remove from presets as well
 
@@ -728,7 +732,7 @@ class SpaceSwitch(toolAbstractFactory):
                 unknownControls.append(s)
             else:
                 allSpaceAttrs = list(set([x.split('.')[-1] for x in self.loadedSpaceData[rigName].spaceControl.keys()]))
-                #print ('allSpaceAttrs', allSpaceAttrs)
+                # print ('allSpaceAttrs', allSpaceAttrs)
                 if rigName not in self.loadedSpaceData.keys():
                     unknownControls.append(s)
                     continue
@@ -771,9 +775,9 @@ class SpaceSwitch(toolAbstractFactory):
                         index = cmds.getAttr(namespace + ':' + control + '.' + attrName)
                         value = spaceValues[index]
                         self.loadedSpaceData[rigName].__dict__[str_spaceGlobalValues][control + '.' + attrName] = \
-                        spaceValues.keys()[0]
+                            spaceValues.keys()[0]
                         self.loadedSpaceData[rigName].__dict__[str_spaceLocalValues][control + '.' + attrName] = \
-                        spaceValues.keys()[-1]
+                            spaceValues.keys()[-1]
                         self.loadedSpaceData[rigName].__dict__[str_spaceDefaultValues][control + '.' + attrName] = value
                         SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
         # print ('unknownControls', unknownControls)
@@ -845,7 +849,7 @@ class SpaceSwitch(toolAbstractFactory):
                 for control in selection:
                     cmds.filterCurve(control + '.rotateX', control + '.rotateY', control + '.rotateZ')
         else:
-            print ('selection', selection)
+            print('selection', selection)
             for index, s in enumerate(selection):
                 attributeKey = attributeKeyList[index]
                 # print ('attributeKey', attributeKey)
@@ -914,7 +918,7 @@ class SpaceSwitch(toolAbstractFactory):
 
         rotation = cmds.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
         translation = cmds.xform(node, query=True, absolute=True, worldSpace=True, translation=True)
-        print ('spaceAttribute', spaceAttribute)
+        print('spaceAttribute', spaceAttribute)
         cmds.setAttr(spaceAttribute, spaceValue)
         cmds.xform(node, absolute=True, worldSpace=True, translation=translation)
         cmds.xform(node, absolute=True, worldSpace=True, rotation=rotation)
@@ -1093,9 +1097,11 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.globalHeader = HeaderWidget('Global Value')
         self.localHeader = HeaderWidget('Local Value')
         self.defaultHeader = HeaderWidget('Default Value')
+        self.mirrorHeader = HeaderWidget('Mirror Value')
         self.globalHeader.pressedSignal.connect(lambda: self.captureState(key=str_spaceGlobalValues))
         self.localHeader.pressedSignal.connect(lambda: self.captureState(key=str_spaceLocalValues))
         self.defaultHeader.pressedSignal.connect(lambda: self.captureState(key=str_spaceDefaultValues))
+        self.mirrorHeader.pressedSignal.connect(lambda: self.captureState(key=str_spaceMirrorValues))
 
         self.controlsLayout = QVBoxLayout()
         self.controlsSubLayout = QGridLayout()
@@ -1105,13 +1111,15 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.controlsSubLayout.addWidget(self.globalHeader, 0, 2)
         self.controlsSubLayout.addWidget(self.localHeader, 0, 3)
         self.controlsSubLayout.addWidget(self.defaultHeader, 0, 4)
+        self.controlsSubLayout.addWidget(self.mirrorHeader, 0, 5)
         self.controlsSubLayout.setColumnStretch(0, 0)
         self.controlsSubLayout.setColumnStretch(1, 0)
         self.controlsSubLayout.setColumnStretch(2, 0)
         self.controlsSubLayout.setColumnStretch(3, 0)
         self.controlsSubLayout.setColumnStretch(4, 0)
         self.controlsSubLayout.setColumnStretch(5, 0)
-        self.controlsSubLayout.setColumnStretch(6, 100)
+        self.controlsSubLayout.setColumnStretch(7, 0)
+        self.controlsSubLayout.setColumnStretch(7, 100)
 
         self.controlsSpacerLayout = QVBoxLayout()
         self.controlsSpacerLayout.addStretch()
@@ -1285,7 +1293,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.currentRigNameLabel.setText(self.rigName)
 
         self.spaceData = SpaceSwitch().loadRigData(SpaceData(), self.rigName)
-        print ('self.namespace', self.namespace)
+        print('self.namespace', self.namespace)
 
     def enableAndRefreshUI(self):
         if self.rigName:
@@ -1322,7 +1330,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         # print ('spaceControl', self.spaceData.spaceControl.keys())
         self.attrRows = dict()
         for spaceAttribute in self.spaceData.spaceControl.keys():
-            print ('refreshUI spaceAttribute', spaceAttribute)
+            print('refreshUI spaceAttribute', spaceAttribute)
             count = self.controlsSubLayout.rowCount()
 
             if spaceAttribute not in self.controlWidgets.keys():
@@ -1330,7 +1338,7 @@ class SpaceSwitchSetupUI(QMainWindow):
                 self.controlWidgets[spaceAttribute].objectDeletedSignal.connect(self.deleteEntry)
                 self.attrRows[spaceAttribute] = count + 1
 
-                #self.controlWidgets[spaceAttribute].updateAttributeType(None, spaceAttribute)
+                # self.controlWidgets[spaceAttribute].updateAttributeType(None, spaceAttribute)
 
             # TODO = fix this, not showing rows
             self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].spaceAttributeWidget, count + 1, 0)
@@ -1341,7 +1349,9 @@ class SpaceSwitchSetupUI(QMainWindow):
                                              count + 1, 3)
             self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].defaultValuesWidgets.stackWidget,
                                              count + 1, 4)
-            self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].deleteButton, count + 1, 5)
+            self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].mirrorValuesWidgets.stackWidget,
+                                             count + 1, 5)
+            self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].deleteButton, count + 1, 6)
             # width = max(self.controlsSubLayout.columnMinimumWidth(0), self.controlWidgets[spaceAttribute].spaceAttributeWidget.lineEdit.sizeHint().width())
             # font_metrics = QFontMetrics(self.controlWidgets[spaceAttribute].spaceAttributeWidget.lineEdit.font())
             # text_width = font_metrics.width(self.controlWidgets[spaceAttribute].spaceAttributeWidget.lineEdit.text())
@@ -1361,6 +1371,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.controlWidgets[key].globalValuesWidgets.stackWidget.deleteLater()
         self.controlWidgets[key].localValuesWidgets.stackWidget.deleteLater()
         self.controlWidgets[key].defaultValuesWidgets.stackWidget.deleteLater()
+        self.controlWidgets[key].mirrorValuesWidgets.stackWidget.deleteLater()
         self.controlWidgets[key].deleteButton.deleteLater()
         self.controlsLayout.removeWidget(widget)
         self.controlWidgets.pop(key)
@@ -1368,7 +1379,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         widget.deleteLater()
 
     def closeEvent(self, event):
-        print ('selectionChangedCallback closing', self.selectionChangedCallback)
+        print('selectionChangedCallback closing', self.selectionChangedCallback)
         cmds.scriptJob(kill=self.selectionChangedCallback)
 
         event.accept()
@@ -1471,10 +1482,15 @@ class SwitchValuesIntWidget(QWidget):
                                                     optionVar=None, defaultValue=0, label='Default value', maximum=9999,
                                                     minimum=-9999,
                                                     step=1)
+        self.mirrorIntValueWidget = intFieldWidget(key=str_spaceMirrorValues,
+                                                   optionVar=None, defaultValue=0, label='Mirror value', maximum=9999,
+                                                   minimum=-9999,
+                                                   step=1)
         self.setLayout(self.mainLayout)
         self.mainLayout.addWidget(self.globalIntValueWidget)
         self.mainLayout.addWidget(self.localIntValueWidget)
         self.mainLayout.addWidget(self.defaultIntValueWidget)
+        self.mainLayout.addWidget(self.mirrorIntValueWidget)
 
         self.localIntValueWidget.editedSignalKey.connect(self.edited)
         self.globalIntValueWidget.editedSignalKey.connect(self.edited)
@@ -1501,19 +1517,25 @@ class SwitchValuesEnumWidget(QWidget):
         self.defaultValueWidget = comboBoxWidget(key=str_spaceDefaultValues,
                                                  optionVar=None, values=list(), defaultValue=str(),
                                                  label='Default value')
+        self.mirrorValueWidget = comboBoxWidget(key=str_spaceMirrorValues,
+                                                optionVar=None, values=list(), defaultValue=str(),
+                                                label='Mirror value')
         self.setLayout(self.mainLayout)
         self.mainLayout.addWidget(self.globalValueWidget)
         self.mainLayout.addWidget(self.localValueWidget)
         self.mainLayout.addWidget(self.defaultValueWidget)
+        self.mainLayout.addWidget(self.mirrorValueWidget)
 
         self.globalValueWidget.editedSignalKey.connect(self.edited)
         self.localValueWidget.editedSignalKey.connect(self.edited)
         self.defaultValueWidget.editedSignalKey.connect(self.edited)
+        self.mirrorValueWidget.editedSignalKey.connect(self.edited)
 
     def updateEnums(self, enumList, globalVal, localVal, defaultVal):
         self.globalValueWidget.updateValues(enumList, globalVal)
         self.localValueWidget.updateValues(enumList, localVal)
         self.defaultValueWidget.updateValues(enumList, defaultVal)
+        self.mirrorValueWidget.updateValues(enumList, defaultVal)
 
     def edited(self, key, value):
         self.editedSignal.emit(key, value)
@@ -1539,10 +1561,15 @@ class SwitchValuesDoubleWidget(QWidget):
                                                     optionVar=None, defaultValue=0, label='Default value', maximum=9999,
                                                     minimum=-9999,
                                                     step=0.1)
+        self.mirrorIntValueWidget = intFieldWidget(key=str_spaceMirrorValues,
+                                                   optionVar=None, defaultValue=0, label='Mirror value', maximum=9999,
+                                                   minimum=-9999,
+                                                   step=0.1)
         self.setLayout(self.mainLayout)
         self.mainLayout.addWidget(self.globalIntValueWidget)
         self.mainLayout.addWidget(self.localIntValueWidget)
         self.mainLayout.addWidget(self.defaultIntValueWidget)
+        self.mainLayout.addWidget(self.mirrorIntValueWidget)
 
         self.localIntValueWidget.editedSignalKey.connect(self.edited)
         self.globalIntValueWidget.editedSignalKey.connect(self.edited)
@@ -1573,6 +1600,7 @@ class SwitchValuesComboWidget(QWidget):
                                           optionVar=None, defaultValue=0, label=str(), maximum=9999,
                                           minimum=-9999,
                                           step=1)
+
         self.setLayout(self.mainLayout)
         self.stackWidget.addWidget(self.enumWidget)
         self.stackWidget.addWidget(self.intWidget)
@@ -1604,7 +1632,7 @@ class SwitchValuesComboWidget(QWidget):
         self.enumEditedSignal.emit(key, value)
 
     def doubleEdited(self, key, value):
-        print ('doubleEdited', key, value)
+        print('doubleEdited', key, value)
         self.doubleEditedSignal.emit(key, value)
 
     def showEnum(self):
@@ -1657,13 +1685,15 @@ class SwitchableObjectWidget(QWidget):
         self.globalValuesWidgets = SwitchValuesComboWidget(key=str_spaceGlobalValues)
         self.localValuesWidgets = SwitchValuesComboWidget(key=str_spaceLocalValues)
         self.defaultValuesWidgets = SwitchValuesComboWidget(key=str_spaceDefaultValues)
+        self.mirrorValuesWidgets = SwitchValuesComboWidget(key=str_spaceMirrorValues)
         self.globalValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
         self.globalValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
         self.localValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
         self.localValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
         self.defaultValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
         self.defaultValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
-
+        self.mirrorValuesWidgets.enumEditedSignal.connect(self.valuesEdited)
+        self.mirrorValuesWidgets.doubleEditedSignal.connect(self.valuesEdited)
 
         objSelectWidgets = [self.controlWidget,
                             ]
@@ -1691,6 +1721,7 @@ class SwitchableObjectWidget(QWidget):
         self.controlLayout.addWidget(self.globalValuesWidgets)
         self.controlLayout.addWidget(self.localValuesWidgets)
         self.controlLayout.addWidget(self.defaultValuesWidgets)
+        self.controlLayout.addWidget(self.mirrorValuesWidgets)
         spacer = QSpacerItem(20, 20, QSizePolicy.Maximum, QSizePolicy.Expanding)
         self.controlLayout.addItem(spacer)
         self.controlLayout.addStretch()
@@ -1703,6 +1734,7 @@ class SwitchableObjectWidget(QWidget):
             self.globalValuesWidgets,
             self.localValuesWidgets,
             self.defaultValuesWidgets,
+            self.mirrorValuesWidgets,
         ]
         self.hideAllValueWidgets()
         widgets = [x for x in self.mainLayout.children() if x.__class__.__name__ == 'ObjectSelectLineEdit']
@@ -1724,6 +1756,7 @@ class SwitchableObjectWidget(QWidget):
         self.globalValuesWidgets.showEnum()
         self.localValuesWidgets.showEnum()
         self.defaultValuesWidgets.showEnum()
+        self.mirrorValuesWidgets.showEnum()
 
         # self.defaultValuesWidgets.setVisible(True)
         self.update()
@@ -1733,6 +1766,7 @@ class SwitchableObjectWidget(QWidget):
         self.globalValuesWidgets.showDouble()
         self.localValuesWidgets.showDouble()
         self.defaultValuesWidgets.showDouble()
+        self.mirrorValuesWidgets.showDouble()
         # self.localValuesWidgets.setVisible(True)
         self.update()
 
@@ -1741,6 +1775,7 @@ class SwitchableObjectWidget(QWidget):
         self.globalValuesWidgets.showInt()
         self.localValuesWidgets.showInt()
         self.defaultValuesWidgets.showInt()
+        self.mirrorValuesWidgets.showInt()
         # self.globalValuesWidgets.setVisible(True)
         self.update()
 
@@ -1760,6 +1795,12 @@ class SwitchableObjectWidget(QWidget):
         self.cls.spaceData.__dict__[key][self.key] = value
 
     def updateAttributeType(self, key, value):
+        """
+        Update the widgets containing the space values
+        :param key:
+        :param value:
+        :return:
+        """
         # swap out existing entry
         if self.key in self.cls.spaceData.spaceGlobalValues.keys():
             self.cls.spaceData.spaceGlobalValues[value] = self.cls.spaceData.spaceGlobalValues.pop(self.key)
@@ -1797,27 +1838,33 @@ class SwitchableObjectWidget(QWidget):
             globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, enumList[0])
             localVal = self.cls.spaceData.spaceLocalValues.get(self.key, enumList[-1])
             defaultVal = self.cls.spaceData.spaceDefaultValues.get(self.key, enumList[0])
+            mirrorVal = self.cls.spaceData.spaceDefaultValues.get(self.key, enumList[0])
             self.globalValuesWidgets.updateEnums(enumList,
                                                  globalVal)
             self.localValuesWidgets.updateEnums(enumList,
                                                 localVal)
             self.defaultValuesWidgets.updateEnums(enumList,
                                                   defaultVal)
-
+            self.mirrorValuesWidgets.updateEnums(enumList,
+                                                  mirrorVal)
         if attributeType == 'int':
             globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, 0)
             localVal = self.cls.spaceData.spaceLocalValues.get(self.key, 0)
             defaultVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
+            mirrorVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
             self.globalValuesWidgets.updateInts(globalVal)
             self.localValuesWidgets.updateInts(localVal)
             self.defaultValuesWidgets.updateInts(defaultVal)
+            self.mirrorValuesWidgets.updateInts(mirrorVal)
         if attributeType == 'double':
             globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, 0)
             localVal = self.cls.spaceData.spaceLocalValues.get(self.key, 0)
             defaultVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
+            mirrorVal = self.cls.spaceData.spaceDefaultValues.get(self.key, 0)
             self.globalValuesWidgets.updateDoubles(globalVal)
             self.localValuesWidgets.updateDoubles(localVal)
             self.defaultValuesWidgets.updateDoubles(defaultVal)
+            self.mirrorValuesWidgets.updateDoubles(mirrorVal)
         # print (key, value)
         # self.updateData(key, value)
         return True

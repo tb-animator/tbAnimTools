@@ -110,9 +110,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='clampKeysAbove',
                                      annotation=maya.stringTable['tbCommand.clampKeysAbove'],
                                      category=self.category, command=['KeyModifiers.clampCurve(low=False)']))
-        self.addCommand(self.tb_hkey(name='cycleMirror',
-                                     annotation='Blank',
-                                     category=self.category, command=['KeyModifiers.cycleMirror()']))
+
         self.addCommand(self.tb_hkey(name='autoTangent',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.autoTangentKey()']))
@@ -538,86 +536,6 @@ class KeyModifiers(toolAbstractFactory):
                                 outTangentType='flat',
                                 time=(t,))
 
-    def getMirroredSelection(self, sel, character):
-        mirrorSel = dict()
-
-        for s in sel:
-            if character['sides']['left'] in s:
-                parts = s.split(character['sides']['left'])
-                mirrorSel[s] = character['sides']['right'].join(parts)
-            elif character['sides']['right'] in s:
-                parts = s.split(character['sides']['right'])
-                mirrorSel[s] = character['sides']['left'].join(parts)
-            else:
-                mirrorSel[s] = str(s)
-        return sel, mirrorSel
-
-    def cycleMirror(self):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return cmds.warning('No selection')
-        refname, character = self.allTools.tools['CharacterTool'].getCharacterFromSelection()
-        sel, mirrorSel = self.getMirroredSelection(sel, character)
-
-        # add logic to copy the selected time range,
-        if self.funcs.isTimelineHighlighted():
-            selectedStart, selectedEnd = self.funcs.getTimelineHighlightedRange()
-        else:
-            selectedStart = cmds.playbackOptions(query=True, min=True)
-            selectedEnd = cmds.playbackOptions(query=True, max=True)
-        # assume playback range is cycle range, objects in local space
-        minTime = cmds.playbackOptions(query=True, min=True)
-        maxTime = cmds.playbackOptions(query=True, max=True)
-        midTime = minTime + ((maxTime - minTime) * 0.5)
-
-        timeOffset = (maxTime - minTime) * 0.5
-
-        doFirst = False
-        doLast = False
-        if selectedStart <= midTime:
-            doFirst = True
-        elif selectedEnd >= midTime:
-            doLast = True
-
-        firstHalfStart = min(selectedStart, midTime)
-        firstHalfEnd = min(selectedEnd, midTime)
-        secondHalfStart = max(selectedStart, midTime)
-        secondHalfEnd = max(selectedEnd, midTime)
-        firstHalfPasteStart = firstHalfStart + timeOffset
-        firstHalfPasteEnd = firstHalfEnd + timeOffset
-        secondHalfPasteStart = secondHalfStart - timeOffset
-        secondHalfPasteEnd = secondHalfEnd - timeOffset
-
-        for s in sel:
-
-            if mirrorSel[s] == s:
-                # skip central controls until I figure out a way to handle the mirror axis
-                continue
-
-            cmds.select(s, replace=True)
-            # first half
-            if secondHalfStart <= midTime or midTime <= firstHalfEnd:
-                if midTime not in list(set(cmds.keyframe(s, query=True, timeChange=True))):
-                    cmds.setKeyframe(s, insert=True, time=midTime)
-
-            if doFirst:
-                cmds.cutKey(mirrorSel[s], clear=True, time=(firstHalfPasteStart, firstHalfPasteEnd))
-                cmds.copyKey(s, time=(firstHalfStart, firstHalfEnd))
-                cmds.select(mirrorSel[s], replace=True)
-                if firstHalfPasteEnd - firstHalfPasteStart > 0:
-                    cmds.pasteKey(time=(firstHalfPasteStart, firstHalfPasteEnd), option='replace')
-                else:
-                    cmds.pasteKey(time=(firstHalfPasteStart, firstHalfPasteEnd))
-
-            # second half
-            if doLast:
-                cmds.cutKey(mirrorSel[s], clear=True, time=(secondHalfPasteStart, secondHalfPasteEnd))
-                cmds.copyKey(s, time=(secondHalfStart, secondHalfEnd))
-                cmds.select(mirrorSel[s], replace=True)
-                if secondHalfPasteEnd - secondHalfPasteStart > 0:
-                    cmds.pasteKey(time=(secondHalfPasteStart, secondHalfPasteEnd), option='replace')
-                else:
-                    cmds.pasteKey(time=(secondHalfPasteStart, secondHalfPasteEnd))
 
     def autoTangentKey(self):
         self.autoTangent(self.defaultSoftness(), False)
