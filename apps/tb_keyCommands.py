@@ -119,7 +119,7 @@ class tbToolLoader(object):
             pm.runTimeCommand(command.name,
                               # edit=True,
                               annotation=command.annotation,
-                              category=command.category,
+                              category=command.category.replace('_', '.'),
                               hotkeyCtx=command.ctx,
                               commandLanguage=command.language,
                               command=command.command)
@@ -371,7 +371,7 @@ class mainHotkeyWindow(QMainWindow):
         for index, cat in enumerate(sorted(self.commandCategories.keys())):
             if 'Ignore' in cat:
                 continue
-            categoryItem = QStandardItem(cat.split('tbAnimTools_')[-1])
+            categoryItem = QStandardItem(cat.split('tbAnimTools.')[-1])
             categoryItem.setEditable(False)
             categoryItem.comnmandName = None
 
