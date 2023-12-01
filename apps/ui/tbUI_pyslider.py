@@ -17,7 +17,7 @@ else:
     from shiboken2 import wrapInstance
 
 from apps.tb_UI import intFieldWidget, dpiScale, ToolbarButton, IconPath, ButtonPopup, radioGroupVertical, \
-    InfoPromptWidget, getqss, CollapsibleBox, modifyStyleSheet, generate_linear_gradient, darken_hex_color, hex_to_rgb
+    InfoPromptWidget, getqss, CollapsibleBox, modifyStyleSheet, generate_linear_gradient, darken_hex_color, hex_to_rgb, defaultFont
 
 sliderButtonStyleSheet = """QPushButton
 {{
@@ -505,7 +505,7 @@ class Slider(QSlider):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 11, 11, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(self.text)
@@ -1165,7 +1165,7 @@ class SliderPopup(QSlider):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 11, 11, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(self.text)
@@ -1592,7 +1592,7 @@ class SliderToolbarWidget(QWidget):
         # self.button.setStyleSheet(modifyStyleSheet(self.button.styleSheet(), pattern, linePatterm, edit))
         # self.button.setStyleSheet("background-color: rgba(255, 0, 128, 0);")
         state = pm.optionVar.get('geSliderToolbar', False)
-        self.toggleButton = CollapsibleBox(isCollapsed=state, optionVar=sliderData.get('mode', "Tween"))
+        self.toggleButton = CollapsibleBox(optionVar=sliderData.get('mode', "Tween"))
 
         # self.toggleButton.setFixedHeight(4 * dpiScale())
         # self.toggleButton.setFlat(True)
@@ -1966,7 +1966,7 @@ class PopupSlider(QWidget):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 11, 11, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(self.text)
@@ -2070,7 +2070,7 @@ class PopupSlider(QWidget):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 11, 11, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(self.text)
