@@ -639,7 +639,7 @@ class TempPivot(toolAbstractFactory):
             ps = pm.PyNode(targets[-1])
             ns = ps.namespace()
             if not cmds.objExists(ns + self.assetName):
-                self.createAsset(ns + self.assetName, imageName=None)
+                self.createAsset(ns + self.assetName, imageName='addWrapInfluence.png')
             asset = ns + self.assetName
 
             targetDict = dict()

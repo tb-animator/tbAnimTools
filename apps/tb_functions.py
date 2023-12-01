@@ -386,7 +386,7 @@ class functions(object):
         return loc
 
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
-                    unlockScale=False):
+                    unlockScale=False, rotateOrder=3):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
@@ -394,7 +394,7 @@ class functions(object):
         blendControl.rename(name + '_' + suffix + '_bs')
 
         # change this for z up
-        control.rotateOrder.set(3)
+        control.rotateOrder.set(rotateOrder)
         # control.scaleX.set(channelBox=True)
         # control.scaleY.set(channelBox=True)
         # control.scaleZ.set(channelBox=True)

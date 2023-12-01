@@ -104,9 +104,26 @@ class Utility(toolAbstractFactory):
         resetButton = QPushButton('Reset appData location to default')
         resetButton.clicked.connect(self.revertAppData)
 
+        useCustomScaleOption = optionVarBoolWidget('Use custom window scale',
+                                                   'tbUseWindowsScale')
+        uiScaleOption = intFieldWidget(optionVar='tbCustomDpiScale',
+                                       defaultValue=1.0,
+                                       label='Custom UI scale factor',
+                                       minimum=0.1, maximum=2.0, step=0.01)
+        useCustomFontScaleOption = optionVarBoolWidget('Use custom font scale',
+                                                   'tbUseFontScale')
+        uiScaleFontOption = intFieldWidget(optionVar='tbCustomFontScale',
+                                       defaultValue=1.0,
+                                       label='Custom Font scale factor',
+                                       minimum=0.1, maximum=2.0, step=0.01)
+
         self.layout.addWidget(copyButton)
         self.layout.addWidget(resetButton)
         self.layout.addWidget(self.dirWidget)
+        self.layout.addWidget(useCustomScaleOption)
+        self.layout.addWidget(uiScaleOption)
+        self.layout.addWidget(useCustomFontScaleOption)
+        self.layout.addWidget(uiScaleFontOption)
         self.layout.addStretch()
         return self.optionWidget
 

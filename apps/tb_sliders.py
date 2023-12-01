@@ -2956,10 +2956,10 @@ class sliderBar(QLabel):
         qp.setPen(QPen(QBrush(lineColor), 4))
         qp.setBrush(QBrush(fillColorClear))
 
-        font = QFont()
+        font = boldFont()
         # font.setStrikeOut(True)
-        font.setStyleHint(QFont.Helvetica, QFont.PreferAntialias)
-        font.setPointSize(12)
+        # font.setStyleHint(QFont.Helvetica, QFont.PreferAntialias)
+        # font.setPointSize(12)
         qp.setBrush(Qt.black)
         qp.setFont(font)
 
@@ -3220,9 +3220,9 @@ class sliderWidget(QWidget):
         qp.setBrush(QBrush(grad))
         # qp.setCompositionMode(qp.CompositionMode_Source)
 
-        font = QFont()
-        font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
-        font.setPointSize(10)
+        font = defaultFont()
+        # font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
+        # font.setPointSize(10)
         qp.setBrush(Qt.black)
         qp.setFont(font)
 

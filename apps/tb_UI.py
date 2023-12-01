@@ -63,8 +63,24 @@ def getMainWindow():
     return None
 
 def dpiScale():
-    dpi_scale_factor = QApplication.primaryScreen().logicalDotsPerInch() / 96.0
-    return dpi_scale_factor
+    if not pm.optionVar.get('tbUseWindowsScale', True):
+        return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
+    return pm.optionVar.get('tbCustomDpiScale', 1)
+
+def dpiFontScale():
+    if not pm.optionVar.get('tbUseFontScale', True):
+        return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
+    return pm.optionVar.get('tbCustomFontScale', 1)
+
+
+def defaultFont():
+    font = QFont("Console", 10 / dpiFontScale(), 10 / dpiFontScale(), False)
+    # font.setStrikeOut(True)
+    font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
+    return font
+
+def boldFont():
+    return QFont("Segoe UI", 10 / dpiFontScale(), QFont.DemiBold)
 
 
 margin = 4 * dpiScale()
@@ -932,7 +948,7 @@ class ToolboxButton(QPushButton):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 10, 10, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(lineColor)
@@ -1023,7 +1039,7 @@ class ToolboxDoubleButton(QWidget):
 
         self.label = DropShadowLabel(label)
         self.label.setStyleSheet("background-color:transparent")
-        font = QFont("Console", 10, 10, False)
+        font = defaultFont()
         self.label.setFixedWidth(QFontMetrics(font).width(self.label.text()) + 8)
         self.buttons = buttons
 
@@ -1034,6 +1050,8 @@ class ToolboxDoubleButton(QWidget):
 
         if not buttonsOnRight:
             if not hideLabel: self.mainLayout.addWidget(self.label)
+
+
 
     def buttonClicked(self):
         self.executeCommand()
@@ -2710,6 +2728,77 @@ class ObjectSelectLineEdit(QWidget):
     def errorHighlightRemove(self):
         self.itemLabel.setStyleSheet(getqss.getStyleSheet())
 
+class ObjectSelectLineEditNoLabel(QLineEdit):
+    pickedSignal = Signal(str)
+    editedSignalKey = Signal(str, str)
+    editedSignalKeyList = Signal(str, list)
+
+    def __init__(self, key=str(), hint=str(), lineEditWidth=200, placeholderTest=str(),
+                 stripNamespace=False,
+                 lineEditStretches=True,
+                 isMultiple=False,
+                 tooltip=str()):
+        QLineEdit.__init__(self)
+        self.isMultiple = isMultiple
+        self.key = key
+        self.stripNamespace = stripNamespace
+        self.lineEditStretches = lineEditStretches
+        self.mainLayout = QHBoxLayout()
+        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setAlignment(Qt.AlignLeft)
+        self.setLayout(self.mainLayout)
+
+        # self.label.setFixedWidth(labelWidth)
+
+        self.setPlaceholderText(placeholderTest)
+        if not self.lineEditStretches:
+            self.setFixedWidth(lineEditWidth)
+        self.cle_action_pick = self.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(hint)
+        self.cle_action_pick.triggered.connect(self.pickObject)
+        self.textChanged.connect(self.textEdited)
+
+
+    def pickObject(self):
+        # print ('pickObject')
+        sel = pm.ls(sl=True)
+        objectList = list()
+        if not sel:
+            return
+        if self.isMultiple:
+            if self.stripNamespace:
+                objectList = [str(x).split(':', 1)[-1] for x in sel]
+                s = ' '.join(objectList)
+            else:
+                objectList = [str(x) for x in sel]
+                s = ' '.join(objectList)
+        else:
+            if self.stripNamespace:
+                s = str(sel[0]).split(':', 1)[-1]
+            else:
+                s = str(sel[0])
+        self.setText(s)
+        self.pickedSignal.emit(s)
+        self.editedSignalKeyList.emit(self.key, objectList)
+        # self.editedSignalKey.emit(self.key, str(sel[0]))
+
+    def setTextNoUpdate(self, text):
+        self.blockSignals(True)
+        self.itemLabel.setText(text)
+        self.blockSignals(False)
+
+    @Slot()
+    def textEdited(self):
+        self.editedSignalKey.emit(self.key, self.text())
+
+    def errorHighlight(self):
+        borderHighlightQSS = "QLineEdit {border: 1px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
+
+        self.setStyleSheet(borderHighlightQSS)
+
+    def errorHighlightRemove(self):
+        self.itemLabel.setStyleSheet(getqss.getStyleSheet())
+
 
 class ObjectSelectLineEditEnforced(ObjectSelectLineEdit):
     def __init__(self, key=str(), label=str(), hint=str(), labelWidth=65, lineEditWidth=200, placeholderTest=str(),
@@ -4244,12 +4333,12 @@ class CollapsibleBox(QWidget):
     expandedIcon = QIcon(":closeBar.png")
     collapseSignal = Signal(bool)
 
-    def __init__(self, title="", parent=None, isCollapsed=False, optionVar=str()):
+    def __init__(self, title="", parent=None, optionVar=str()):
         super(CollapsibleBox, self).__init__(parent)
         self.optionVar = optionVar
-        isCollapsed = pm.optionVar.get(self.optionVar, True)
+
         self.toggleButton = QToolButton(
-            text=title, checkable=True, checked=isCollapsed
+            text=title, checkable=True, checked=self.getState()
         )
         self.toggleButton.setStyleSheet("QToolButton { border: none; }")
         self.toggleButton.setFixedSize(12*dpiScale(), 20*dpiScale())
@@ -4257,7 +4346,7 @@ class CollapsibleBox(QWidget):
             Qt.ToolButtonTextBesideIcon
         )
         self.toggleButton.setIcon(
-            self.collapsedIcon if not isCollapsed else self.expandedIcon
+            self.collapsedIcon if not self.getState() else self.expandedIcon
         )
         self.toggleButton.clicked.connect(self.on_pressed)
 
@@ -4265,7 +4354,6 @@ class CollapsibleBox(QWidget):
 
         self.contentArea = QScrollArea(
             maximumWidth=0, minimumWidth=0,
-
         )
         self.contentArea.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Fixed
@@ -4295,14 +4383,24 @@ class CollapsibleBox(QWidget):
         )
 
 
-    def playAnimationByState(self):
-        checked = pm.optionVar.get(self.optionVar, False)
-        self.toggleAnimation.setDirection(
-            QAbstractAnimation.Forward
-            if not checked
-            else QAbstractAnimation.Backward
-        )
+    def playAnimationByState(self, force=False, state=False):
+        checked = self.getState()
+        if force:
+            self.toggleAnimation.setDirection(
+                QAbstractAnimation.Forward
+                if state
+                else QAbstractAnimation.Backward
+            )
+        else:
+            self.toggleAnimation.setDirection(
+                QAbstractAnimation.Forward
+                if not checked
+                else QAbstractAnimation.Backward
+            )
         self.toggleAnimation.start()
+
+    def getState(self):
+        return pm.optionVar.get(self.optionVar, False)
 
     @Slot()
     def on_pressed(self):
@@ -4316,7 +4414,7 @@ class CollapsibleBox(QWidget):
         pm.optionVar[self.optionVar] = checked
 
     def setIconByState(self):
-        checked = pm.optionVar.get(self.optionVar, False)
+        checked = self.getState()
         self.toggleButton.setIcon(
             self.collapsedIcon if not checked else self.expandedIcon
         )
@@ -4547,7 +4645,7 @@ class DropShadowLabel(QLabel):
         path = QPainterPath()
         pen = QPen()
         brush = QBrush()
-        font = QFont("Console", 10, 10, False)
+        font = defaultFont()
 
         pen.setWidth(3.5)
         pen.setColor(lineColor)

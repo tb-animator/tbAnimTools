@@ -207,8 +207,8 @@ class GraphEditor(toolAbstractFactory):
         collapsedWidgets = list()
         for index, grp in enumerate(buttonList):
             optionVarName = grp[0].objectName() + '_collapseState'
-            state = pm.optionVar.get(optionVarName, False)
-            cBox = CollapsibleBox(isCollapsed=state, optionVar=optionVarName)
+
+            cBox = CollapsibleBox(optionVar=optionVarName)
             collapsedWidgets.append(cBox)
             cBox.setFixedHeight(24 * dpiScale())
             cBoxLayout = QHBoxLayout()
@@ -236,6 +236,7 @@ class GraphEditor(toolAbstractFactory):
             # layout.resize(layout.sizeHint())
         for widget in collapsedWidgets:
             widget.show()
+            widget.playAnimationByState(force=True, state=widget.getState())
         # print ('added a slider')
 
     def createSliderToolBar(self):

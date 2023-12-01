@@ -1089,6 +1089,7 @@ class Pickwalk(toolAbstractFactory):
         return controlList
 
     def findSequenceRecursive(self, control, substringList):
+        print ('findSequenceRecursive', control)
         length = len(control)
         if length == 0:
             return substringList

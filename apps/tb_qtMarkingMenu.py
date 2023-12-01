@@ -243,7 +243,7 @@ class ViewportRadialMenu(ViewportDialog):
                 path = QPainterPath()
                 pen = QPen()
                 brush = QBrush()
-                font = QFont("Console", 11, 11, False)
+                font = defaultFont()
 
                 pen.setWidth(3.5)
                 pen.setColor(lineColor)
@@ -843,7 +843,7 @@ class MarkingMenuItem(object):
                  textColour=None,
                  variable_data={},
                  radial=False,
-                 font=QFont("Segoe UI", 9, QFont.DemiBold),
+                 font=boldFont(),
                  radial_position=None,
                  bold=False):
         # self.available_commands = right_click_methods.get_methods()
