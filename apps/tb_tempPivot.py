@@ -407,7 +407,7 @@ class TempPivot(toolAbstractFactory):
             tempNull = self.funcs.tempNull(name=mainTarget, suffix='piv')
             tempNull.displayHandle.set(True)
 
-            self.funcs.getSetColour(tempNull, mainTarget, brightnessOffset=0.05)
+            self.funcs.getSetColour(mainTarget, tempNull, brightnessOffset=0.05)
             # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
 
             control = self.funcs.tempControl(name=mainTarget, suffix='Pivot', drawType='orb',
