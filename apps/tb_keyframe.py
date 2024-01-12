@@ -92,6 +92,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='setTangentsFlat',
                                      annotation='Sets your current key selection or timeline key to flat',
                                      category=self.category, command=['KeyModifiers.setTangentsFlat()']))
+        self.addCommand(self.tb_hkey(name='setTangentsEase',
+                                     annotation='Sets your current key selection or timeline key to Ease',
+                                     category=self.category, command=['KeyModifiers.setTangentsEase()']))
         self.addCommand(self.tb_hkey(name='flattenControl',
                                      annotation='Flatten a controls rotation so the y axis points straight up',
                                      category=self.category, command=['KeyModifiers.level()']))
@@ -255,6 +258,8 @@ class KeyModifiers(toolAbstractFactory):
     def setTangentsFlat(self):
         self.setTangentType('flat')
 
+    def setTangentsEase(self):
+        self.setTangentType('autoease')
     def setTangentType(self, input):
         graphEditorState = self.funcs.getGraphEditorState()
         timeSlider = self.funcs.getPlayBackSlider()

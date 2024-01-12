@@ -66,7 +66,7 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category,
                                      command=[
-                                         'SpaceSwitch.switchSelection(mode"{key}")'.format(key=str_spaceLocalValues)]))
+                                         'SpaceSwitch.switchSelection(mode="{key}")'.format(key=str_spaceLocalValues)]))
         self.addCommand(self.tb_hkey(name='tbSpaceSwitchSelectedDefault',
                                      annotation='useful comment',
                                      category=self.category,
@@ -190,7 +190,7 @@ class SpaceSwitch(toolAbstractFactory):
     funcs = functions()
 
     culledUserAttributes = ['blendParent', 'blendOrient', 'blendPoint']
-
+    quickBakeSimOption = 'tbSpaceSwitchBakeUseSim'
     bakeTimelineModes = ['Full timeline', 'Visible Timeline', 'All Keys']
     bakeTimelineModeOption = 'tbSpaceBakeTimelineMode'
     bakeLayerModes = ['To Override', 'To Override - Extract anim', 'To Base']
@@ -232,7 +232,7 @@ class SpaceSwitch(toolAbstractFactory):
                                                   defaultValue=pm.optionVar.get(self.bakeTimelineModeOption,
                                                                                 self.bakeTimelineModes[0]),
                                                   label='Bake mode range')
-
+        simOptionWidget = optionVarBoolWidget('Space switch bake uses Simulation ', self.quickBakeSimOption)
         infoText4 = QLabel('<b>Bake to layer</b> - A space bake will bake to a new override layer')
         self.bakeLayerModeWidget = comboBoxWidget(optionVar=self.bakeToLayerModeOption,
                                                   values=self.bakeLayerModes,
@@ -244,6 +244,7 @@ class SpaceSwitch(toolAbstractFactory):
         self.layout.addWidget(infoText2)
         self.layout.addWidget(infoText3)
         self.layout.addWidget(self.bakeRangeModeWidget)
+        self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(infoText4)
         self.layout.addWidget(self.bakeLayerModeWidget)
 
@@ -482,6 +483,7 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.select(self.getAllControlsInSpace(), replace=True)
 
     def switchSelection(self, mode=str_spaceGlobalValues):
+        print ('switchSelection', str_spaceGlobalValues)
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
@@ -666,7 +668,7 @@ class SpaceSwitch(toolAbstractFactory):
         with self.funcs.suspendUpdate():
             cmds.bakeResults(list(locators.values()),
                              time=(startTime, endTime),
-                             simulation=False,
+                             simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                              sampleBy=1)
 
         for s in selection:
@@ -691,7 +693,7 @@ class SpaceSwitch(toolAbstractFactory):
             cmds.bakeResults(bakeAttributes,
                              time=(startTime, endTime),
                              destinationLayer=resultLayer,
-                             simulation=False,
+                             simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                              sampleBy=1)
 
         cmds.delete(list(tempConstraints.values()))

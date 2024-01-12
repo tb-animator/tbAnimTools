@@ -71,3 +71,5 @@ maya.stringTable['tbCommand.simpleConstraintNoOffsetPostBakeReverse'] = u'Constr
                                                                           u'After baking, the parent control is constrained with __' \
                                                                           u'offset to the newly baked out child control.' \
                                                                           u'Select parent>child control.'
+maya.stringTable['tbCommand.bakeToLocatorPinned'] = u'Bake the selected controls to temporary controls. \n' \
+                                                    u'The last selected control will be the the new parent for the temporary controls'

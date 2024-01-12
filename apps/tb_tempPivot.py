@@ -42,6 +42,7 @@ else:
 
 import pymel.core.datatypes as dt
 import maya.OpenMaya as om
+
 maya.utils.loadStringResourcesForModule(__name__)
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
@@ -68,22 +69,41 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='',
                                      category=self.category,
                                      command=['TempPivot.createTempPivotFromSelection()']))
+        self.addCommand(self.tb_hkey(name='createTempPivotInteractive',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.createTempPivotFromSelection()']))
+
         self.addCommand(self.tb_hkey(name='createTempPivotAtSelection',
                                      annotation='',
                                      category=self.category,
                                      command=['TempPivot.createTempPivotAtSelection()']))
 
-        self.addCommand(self.tb_hkey(name='createPersistentTempPivot',
+        self.addCommand(self.tb_hkey(name='createPersistentTempPivotInteractive',
                                      annotation='',
                                      category=self.category,
-                                     command=['TempPivot.createPersistentTempPivotFromSelection()']))
+                                     command=['TempPivot.createPersistentTempPivotInteractive()']))
+
+        self.addCommand(self.tb_hkey(name='createPersistentTempPivotNodeAtSelection',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.createTempPivotNode()']))
+        # createPersistentTempPivotFromAtSelection
+        self.addCommand(self.tb_hkey(name='restorePersistentPivots',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.loadPivotsForControl()']))
+        self.addCommand(self.tb_hkey(name='bakePersistentPivotFromSel',
+                                     annotation='',
+                                     category=self.category,
+                                     command=['TempPivot.bakeTempPivotFromSel()']))
 
         self.addCommand(self.tb_hkey(name='createTempPivotHierarchy',
                                      annotation='',
                                      category=self.category,
                                      command=['TempPivot.createTempPivotHierarchy()']))
 
-        self.addCommand(self.tb_hkey(name='createTempParent', annotation='',
+        self.addCommand(self.tb_hkey(name='createTempParentInteractive', annotation='',
                                      category=self.category, command=['TempPivot.tempParent()']))
         self.addCommand(self.tb_hkey(name='createTempParentLastSelected', annotation='',
                                      category=self.category, command=['TempPivot.tempParentLastSelected()']))
@@ -99,6 +119,90 @@ class hotkeys(hotKeyAbstractFactory):
 
     def assignHotkeys(self):
         return
+
+
+class PivotOffsetData(object):
+    def __init__(self, jsonInfo):
+        self.offsetTranslate = [0, 0, 0]
+        self.offsetRotate = [0, 0, 0]
+        self.fromJson(jsonInfo)
+
+    def fromJson(self, jsonInfo):
+        for k, v in jsonInfo.items():
+            self.__dict__[k] = v
+
+    def json_serialize(self):
+        returnDict = {}
+
+        returnDict['offsetTranslate'] = self.offsetTranslate
+        returnDict['offsetRotate'] = self.offsetRotate
+        return returnDict
+
+    def toJson(self):
+        jsonData = '''{}'''
+        classData = json.loads(jsonData)
+        for k, v in self.__dict__.items():
+            if k.startswith('__'):
+                continue
+            classData[k] = v
+        return classData
+
+    def getOffset(self, control):
+        parentConstraint = cmds.listRelatives(control, type='parentConstraint')
+        if not parentConstraint:
+            return cmds.warning('No valid constraint found for pivot')
+        self.offsetTranslate = cmds.getAttr(parentConstraint[0] + '.target[0].targetOffsetTranslate')[0]
+        self.offsetRotate = cmds.getAttr(parentConstraint[0] + '.target[0].targetOffsetRotate')[0]
+        pass
+
+        # controlMMatrix = om2.MMatrix(cmds.xform(control, matrix=True, ws=1, q=True))
+        # jointMMatrix = om2.MMatrix(cmds.xform(joint, matrix=True, ws=1, q=True))
+        # resultMatrix = controlMMatrix * jointMMatrix.inverse()
+        # self.fkControlOffsets[c] = [x for x in resultMatrix]
+
+
+class PivotData(object):
+    def __init__(self):
+        self.persistentPivots = dict()  # key is control, value is translation / rotate offsets
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.json_serialize(), sort_keys=True, indent=4, separators=(',', ': '))
+
+    def json_serialize(self):
+        returnDict = {}
+
+        returnDict['persistentPivots'] = self.persistentPivots
+        return returnDict
+
+    def fromJson(self, data):
+        rawJsonData = json.load(open(data))
+        self.persistentPivots = dict()
+        # TODO - fix this to use actual pivot info
+        persistentPivots = rawJsonData.get('persistentPivots', list())
+        for key, items in persistentPivots.items():
+            self.persistentPivots[key] = dict()
+            for itemKey, offset in items.items():
+                self.persistentPivots[key][itemKey] = PivotOffsetData(offset)
+
+    def addPersistentPivotInfo(self, animControl, pivotControl):
+        print ('addPersistentPivotInfo', animControl, pivotControl)
+        if not cmds.attributeQuery(TempPivot.pivotControlAttr, node=str(pivotControl), exists=True):
+            return
+        controls = cmds.listConnections(str(pivotControl) + '.' + TempPivot.pivotControlAttr)
+        if not controls:
+            return
+        data = PivotOffsetData({})
+        data.getOffset(pivotControl)
+        key = pivotControl.rsplit(':', 1)[-1]
+        shortName = animControl.rsplit(':', 1)[-1]
+        print ('key', key)
+        print ('shortName', shortName)
+        if shortName not in self.persistentPivots.keys():
+            self.persistentPivots[shortName] = dict()
+        print ('heyeeeee')
+        print (self.persistentPivots[shortName] )
+        self.persistentPivots[shortName][key] = data
+        print()
 
 
 class TempPivot(toolAbstractFactory):
@@ -121,6 +225,9 @@ class TempPivot(toolAbstractFactory):
     assetCommandName = assetCommandName
     tempControlSizeOption = 'tbTempParentSizeOption'
 
+    loadedPivotData = dict()
+    namespaceToCharDict = dict()
+
     def __new__(cls):
         if TempPivot.__instance is None:
             TempPivot.__instance = object.__new__(cls)
@@ -131,6 +238,13 @@ class TempPivot(toolAbstractFactory):
     def __init__(self):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
+        self.initData()
+
+    def initData(self):
+        super(TempPivot, self).initData()
+        self.pivotDataDir = os.path.normpath(os.path.join(self.dataPath, self.toolName))
+        if not os.path.isdir(self.pivotDataDir):
+            os.mkdir(self.pivotDataDir)
 
     """
     Declare an interface for operations that create abstract product
@@ -156,6 +270,54 @@ class TempPivot(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
+
+    def loadRigData(self, dataCLS, rigName):
+        subPath = os.path.join(self.dataPath, self.toolName)
+        dataCLS.fromJson(os.path.join(subPath, rigName + '.json'))
+        return dataCLS
+
+    def loadDataForCharacters(self, characters):
+        namespaceToCharDict = dict()
+        for key, value in characters.items():
+            '''
+            if not key:
+                continue  # skip non referenced chars
+            '''
+            refname, namespace = self.funcs.getCurrentRig([value[0]])
+            if namespace.startswith(':'):
+                namespace = namespace.split(':', 1)[-1]
+            namespaceToCharDict[namespace] = refname
+
+            if refname not in self.loadedPivotData.keys():
+                print(
+                    'refname', refname
+                )
+                self.saveRigFileIfNew(refname, PivotData().toJson())
+            pivotData = self.loadPivotData(refname)
+
+            self.loadedPivotData[refname] = pivotData
+        self.namespaceToCharDict = namespaceToCharDict
+
+    def loadPivotData(self, refname):
+        return self.loadRigData(PivotData(), refname)
+
+    def saveRigData(self, refname, jsonData):
+        """
+        Pass in a json object
+        :param dataCLS:
+        :param rigName:
+        :return:
+        """
+        dataFile = os.path.join(self.subFolder, refname + '.json')
+        self.saveJsonFile(dataFile, json.loads(jsonData))
+
+    def saveRigFileIfNew(self, refname, jsonData):
+        self.subFolder = os.path.join(self.dataPath, self.toolName)
+        if not os.path.isdir(self.subFolder):
+            os.mkdir(self.subFolder)
+        dataFile = os.path.join(self.subFolder, refname + '.json')
+        if not os.path.isfile(os.path.join(dataFile)):
+            self.saveJsonFile(dataFile, json.loads(jsonData))
 
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)
@@ -184,8 +346,10 @@ class TempPivot(toolAbstractFactory):
         cmds.menuItem(divider=True)
         cmds.menuItem(label=maya.stringTable['TempPivot.updatePivot'],
                       command=pm.Callback(self.updateTempPivotPositions, asset, sel))
-        cmds.menuItem(label=maya.stringTable['TempPivot.bakePointToControl'], command=pm.Callback(self.createTempPivotFromPoint, asset, sel))
-        cmds.menuItem(label=maya.stringTable['TempPivot.saveTempPivots'], command=pm.Callback(self.savePivotsForControl, asset, sel))
+        cmds.menuItem(label=maya.stringTable['TempPivot.bakePointToControl'],
+                      command=pm.Callback(self.createTempPivotControlFromPoint, asset, sel))
+        cmds.menuItem(label=maya.stringTable['TempPivot.saveTempPivots'],
+                      command=pm.Callback(self.savePivotsForControl, asset, sel))
 
     def updateTempPivotPositions(self, asset, sel):
         if not sel:
@@ -200,24 +364,110 @@ class TempPivot(toolAbstractFactory):
     def savePivotsForControl(self, asset, sel):
         if not sel:
             return
-        print ('savePivotsForControl', sel)
+        sel = [str(s) for s in sel]
+        """
+        Only look at the connections to the temp pivot
+        """
+        baseControls = dict()
+        for s in sel:
+            if not cmds.attributeQuery(self.pivotControlAttr, node=str(s), exists=True):
+                continue
+            controls = cmds.listConnections(str(s) + '.' + self.pivotControlAttr)
+            print ('linked controls', controls)
+            if not controls:
+                continue
+            if controls[0] not in baseControls.keys():
+                baseControls[controls[0]] = list()
+            baseControls[controls[0]].append(s)
+        if not baseControls:
+            return cmds.warning('No controls found')
+        characters = self.funcs.splitSelectionToCharacters(list(baseControls.keys()))
+        print('characters', characters)
+        print('baseControls', baseControls)
+        self.loadDataForCharacters(characters)
+        print('savePivotsForControl', sel)
 
-    def createTempPivotFromPoint(self, asset, sel):
+        # actual saving here
+        # loop over the dict and store the offsets
+        for key, values in baseControls.items():
+            print('key', key)
+            print('values', values)
+            refname, namespace = self.funcs.getCurrentRig([key])
+            print('refname', refname)
+            for v in values:
+                self.loadedPivotData[refname].addPersistentPivotInfo(key, v)
+
+            print(self.loadedPivotData[refname].toJson())
+            self.saveRigData(refname, self.loadedPivotData[refname].toJson())
+
+
+    def loadPivotsForControl(self, sel=None):
+        if not sel:
+            sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        print('characters', characters)
+        print('')
+        self.loadDataForCharacters(characters)
+        newNodes = list()
+        for s in sel:
+            refname, namespace = self.funcs.getCurrentRig(s)
+            pivotData = self.loadedPivotData[refname]
+            print(s, refname)
+            shortName = s.rsplit(':', 1)[-1]
+            print('shortName', shortName)
+            print(pivotData.persistentPivots)
+            if shortName not in pivotData.persistentPivots.keys():
+                continue
+            for p in pivotData.persistentPivots[shortName]:
+                tempNode = self.createTempPivotNode(control=s, tempPivotNodeName=namespace + ':' + p)
+                print (tempNode)
+
+                parentConstraint = cmds.listRelatives(str(tempNode), type='parentConstraint')
+                print ('parentConstraint', parentConstraint)
+                if not parentConstraint:
+                    return cmds.warning('No valid constraint found for pivot')
+                offset = pivotData.persistentPivots[shortName][p]
+
+                cmds.setAttr(parentConstraint[0] + '.target[0].targetOffsetTranslate', *offset.offsetTranslate,
+                             type='double3')
+                cmds.setAttr(parentConstraint[0] + '.target[0].targetOffsetRotate',
+                             *offset.offsetRotate,
+                             type='double3')
+                newNodes.append(tempNode)
+        return newNodes
+
+    def bakeTempPivotFromSel(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+
+        self.createTempPivotControlFromPoint(None, sel)
+
+    def createTempPivotControlFromPoint(self, asset, sel):
         if not sel:
             return
+        newNodes = list()
+        pivots = list()
         for s in sel:
+            currentControl = str(s)
             frame = cmds.currentTime(query=True)
-            if not cmds.attributeQuery(self.pivotControlAttr, node=str(s), exists=True):
-                return cmds.warning('Attribute not found')
-            control = cmds.listConnections(str(s) + '.' + self.pivotControlAttr)
+            if not cmds.attributeQuery(self.pivotControlAttr, node=currentControl, exists=True):
+                pivots = self.loadPivotsForControl(sel=[currentControl])
+                if not pivots:
+                    continue
+                currentControl = pivots[-1]
+            control = cmds.listConnections(currentControl + '.' + self.pivotControlAttr)
             if not control:
                 return cmds.warning('Control connection not found')
-            self.completedScriptJob(control[0], str(s), frame)
-            self.bake(control, str(s), frame, deletePoint=False)
-            return
+            self.completedScriptJob(control[0], currentControl, frame)
+            self.bake(control, currentControl, frame, deletePoint=False)
+
 
     def bakeSelectedCommand(self, asset, sel):
-        print ('sel', sel)
+        print('sel', sel)
         targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = self.funcs.flattenList(
             [pm.listConnections(x + '.' + self.constraintTargetAttr) for x in targets])
@@ -226,9 +476,8 @@ class TempPivot(toolAbstractFactory):
         # print ('filteredTargets', filteredTargets)
         #
 
-
         keyRange = self.funcs.getBestTimelineRangeForBake(sel)
-        print ('bakeAllCommand', 'keyRange', keyRange)
+        print('bakeAllCommand', 'keyRange', keyRange)
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(targets)
         pm.select(filteredTargets, replace=True)
@@ -289,7 +538,7 @@ class TempPivot(toolAbstractFactory):
                 pm.parentConstraint(constrainTargets[0], controlParent)  # TODO = make this support blended constraints?
             else:
                 if cmds.listConnections(mainTarget + '.offsetParentMatrix'):
-                    print ('offsetParentMatrix')
+                    print('offsetParentMatrix')
                     pass
                 else:
                     parentNode = cmds.listRelatives(mainTarget, parent=True)
@@ -310,7 +559,6 @@ class TempPivot(toolAbstractFactory):
 
             # connect all the constrained controls to the new temp control
             self.funcs.connect_message_attrs_to_multi_attr(targets, str(control), self.constraintTargetAttr)
-
 
             pm.container(asset, edit=True,
                          includeHierarchyBelow=True,
@@ -350,7 +598,6 @@ class TempPivot(toolAbstractFactory):
 
             if deletePoint: pm.delete(loc)
 
-
     def createTempPivot(self, sel):
         mainControl = sel[-1]
 
@@ -362,12 +609,17 @@ class TempPivot(toolAbstractFactory):
         cmds.ctxEditMode()
         self.completedScriptJob(sel, loc, frame)
 
-    def createPersistentTempPivotFromSelection(self):
+    def createPersistentTempPivotInteractive(self):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('no valid selection')
         with self.funcs.undoChunk():
             self.createPersistentTempPivot(sel)
+
+    def createPersistentTempPivotFromAtSelection(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
 
     def createPersistentTempPivot(self, sel):
         """
@@ -396,6 +648,100 @@ class TempPivot(toolAbstractFactory):
             pm.scriptJob(runOnce=True,
                          event=['ToolChanged', partial(self.bakePersistentTempPivot, targets, loc, frame, keyRange)]))
         # self.scriptJobs.append(pm.scriptJob(runOnce=True, timeChange=partial(self.bake, targets, loc, frame)))
+
+    def quickBakeTempPivotSelected(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('no valid selection')
+        # is the selection a temp node or a control?
+
+        pivotNodes = list()
+        animationControls = list()
+        for s in sel:
+            control = None
+            messageConnections = cmds.listConnections(s + '.message')
+
+            # is this a pivot node?
+            if cmds.attributeQuery(TempPivot.pivotControlAttr, node=s, exists=True):
+                connectedNodes = cmds.listConnections(s + '.' + self.pivotControlAttr)
+
+                if not connectedNodes:
+                    return cmds.error('No connected controls')
+                for n in connectedNodes:
+                    if n not in animationControls:
+                        control = s
+                    animationControls.append(n)
+
+            elif messageConnections:
+                for m in messageConnections:
+                    if control:
+                        continue
+                    if cmds.attributeQuery(TempPivot.pivotControlAttr, node=m, exists=True):
+                        control = m
+                        animationControls.append(s)
+
+            if control:
+                pivotNodes.append(control)
+        print('pivot nodes', pivotNodes)
+        if not pivotNodes:
+            return
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+        frame = cmds.currentTime(query=True)
+        # TODO - fix this so one bake
+        self.createTempPivotControlFromPoint(None, pivotNodes)
+
+    def createTempPivotNode(self, control=None, transformControl=None, tempPivotNodeName=None):
+        """
+        Create the temp pivot node at the location of the transformControl
+        :param control:
+        :return:
+        """
+        if control is None:
+            sel = cmds.ls(sl=True, type='transform')
+            if not sel:
+                return cmds.error('No selection or control specified')
+            control = sel[0]
+            if transformControl is None:
+                if not sel:
+                    return cmds.error('No selection or control specified')
+                transformControl = sel[-1]
+        else:
+            transformControl = control
+
+        if tempPivotNodeName is None:
+            if control is not transformControl:
+                tempPivotNodeName = control + '__' + transformControl.split(':')[-1]
+            else:
+                tempPivotNodeName = control
+
+        print('transformControl', transformControl)
+
+        tempNull = self.funcs.tempNull(name=tempPivotNodeName, suffix='')
+        tempNull.displayHandle.set(True)
+
+        self.funcs.getSetColour(control, tempNull, brightnessOffset=0.05)
+        # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
+
+        pm.delete(pm.parentConstraint(transformControl, tempNull))
+        pm.parentConstraint(control, tempNull, maintainOffset=True)
+
+        ps = pm.PyNode(control)
+        ns = ps.namespace()
+
+        # make the temp node assets
+        if not cmds.objExists(ns + self.assetTempName):
+            self.createAsset(ns + self.assetTempName, imageName=None, assetCommandName=assetPointCommandName)
+        tempAsset = ns + self.assetTempName
+
+        # tag the temp node back to the control
+        pm.addAttr(tempNull, ln=self.pivotControlAttr, at='message')
+        pm.connectAttr(control + '.message', tempNull + '.' + self.pivotControlAttr)
+
+        pm.container(tempAsset, edit=True,
+                     includeHierarchyBelow=True,
+                     force=True,
+                     addNode=[tempNull])
+        return tempNull
 
     def bakePersistentTempPivot(self, targets, loc, frame, keyRange):
         self.clearScriptJobs()
@@ -442,7 +788,6 @@ class TempPivot(toolAbstractFactory):
 
             # connect all the constrained controls to the new temp control
             self.funcs.connect_message_attrs_to_multi_attr(targets, str(control), self.constraintTargetAttr)
-
 
             pm.container(asset, edit=True,
                          includeHierarchyBelow=True,

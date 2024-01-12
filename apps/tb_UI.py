@@ -80,7 +80,7 @@ def defaultFont():
     return font
 
 def boldFont():
-    return QFont("Segoe UI", 10 / dpiFontScale(), QFont.DemiBold)
+    return QFont("Segoe UI", 10 / dpiFontScale(), QFont.Bold)
 
 
 margin = 4 * dpiScale()

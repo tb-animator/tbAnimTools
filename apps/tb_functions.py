@@ -371,7 +371,9 @@ class functions(object):
         return self.get_modelEditors(pm.lsUI(editors=True))
 
     def tempNull(self, name='loc', suffix='baked'):
-        node = pm.createNode('transform', name=name + '_' + suffix)
+        if suffix:
+            suffix = '_' + suffix
+        node = pm.createNode('transform', name=name + suffix)
         node.rotateOrder.set(3)
         return node
 

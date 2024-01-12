@@ -567,7 +567,7 @@ class AimTools(toolAbstractFactory):
         cmds.menuItem(label='Aim Tool', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Re bake to fixed distance', command=pm.Callback(self.rebakeCommand, asset))
-        cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, sel, asset))
         cmds.menuItem(label='Delete all controls', command=pm.Callback(self.deletControlsCommand, asset))
         cmds.menuItem(divider=True)
 
@@ -594,14 +594,22 @@ class AimTools(toolAbstractFactory):
         cmds.delete(temp)
         cmds.select(sel, replace=True)
 
-    def bakeOutCommand(self, asset):
-        control = cmds.listConnections(asset + '.' + self.constraintTargetAttr)[0]
+    def bakeOutCommand(self, sel, asset):
+        filteredTargets = list()
+        for s in sel:
+            if not cmds.attributeQuery(self.constraintTargetAttr, node=str(s), exists=True):
+                continue
+            controls = cmds.listConnections(str(s) + '.' + self.constraintTargetAttr)
+            if not controls:
+                continue
+            filteredTargets.append(controls[0])
+
         locators = cmds.listConnections(asset + '.message')
-        filteredTargets = locators
-        filteredTargets.append(control)
+        filteredTargets.extend(locators)
+        filteredTargets=list(set(filteredTargets))
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(asset)
-        cmds.select(control)
+        cmds.select(sel)
 
     def deletControlsCommand(self, asset):
         pm.delete(asset)

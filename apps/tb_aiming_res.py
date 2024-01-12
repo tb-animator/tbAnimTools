@@ -1,6 +1,12 @@
 import maya
 
 maya.stringTable['tbCommand.kSettingOptVar'] = u'Setting optionVar: %s=%s'
+maya.stringTable['tbCommand.aimAtTempControl'] = u'Creates a temporary animation control with the current selection being aim constrained to it. Move the pivot to the desired location and deselect it to trigger the baking.\n' \
+                                                 u'\n' \
+                                                 u'Use the right click menu on the temporary control for extra functions'
+maya.stringTable['tbCommand.bakeAim'] = u''
+
+maya.stringTable['tbCommand.aimToolsMMPressed'] = u''
 
 # maya.stringTable['tbCommand.kbakeOutSelected'] = u'Bake out the selected temp controls'
 # maya.stringTable['tbCommand.kbakeOutAll'] = u'Bake out all the temp controls in the asset'

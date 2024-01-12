@@ -264,9 +264,11 @@ class Slider(QSlider):
                  maxOvershootValue=200,
                  icon=str(),
                  noButtons=False,
-                 toolTipClass=None
+                 toolTipClass=None,
+                 resetOnRelease=True
                  ):
         super(Slider, self).__init__()
+        self.resetOnRelease = resetOnRelease
         self.helpWidget = toolTipClass
         self.lastValue = 0.0
         if self.helpWidget:
@@ -670,9 +672,12 @@ class Slider(QSlider):
         self.buttonState = False
         # print("button released")
         # self.setStyleSheet(self.initialStyle)
+
         self.resetHandle()
 
     def resetHandle(self):
+        if not self.resetOnRelease:
+            return
         self.blockSignals(True)
         self.setValue(0)
         self.setTickInterval(1)
@@ -793,6 +798,8 @@ class Slider(QSlider):
 
     def sliderReleasedEvent(self):
         # print("Slider Released")
+        if not self.resetOnRelease:
+            return
         self.sliderEndedSignal.emit(self.getOutputValue())
         self.blockSignals(True)
         self.setValue(0)
@@ -1454,7 +1461,7 @@ class SliderFloatField(QWidget):
                  label='label'):
         super(SliderFloatField, self).__init__()
 
-        self.slider = Slider()
+        self.slider = Slider(resetOnRelease=False, noButtons=True)
         self.floatField = intFieldWidget(defaultValue=0,
                                          label=label, minimum=-9999, maximum=9999, step=0.1)
 
@@ -1469,9 +1476,9 @@ class SliderFloatField(QWidget):
         self.layout().addWidget(self.floatField)
 
     def makeConnections(self):
-        self.slider.sliderMoved.connect(self.sliderValueChanged)
+        self.slider.sliderUpdateSignal.connect(self.sliderValueChanged)
         self.floatField.editedSignalKey.connect(self.spinBoxValueChanged)
-        self.slider.sliderPressed.connect(self.sliderValueChanged)
+        self.slider.sliderBeginSignal.connect(self.sliderValueChanged)
         self.slider.wheelSignal.connect(self.sliderValueChanged)
 
     def sliderValueChanged(self, value):
