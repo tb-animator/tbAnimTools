@@ -1318,8 +1318,9 @@ class functions(object):
         om.MGlobal.setActiveSelectionList(sel)
 
     @contextmanager
-    def suspendUpdate(self):
-        self.suspendSkinning()
+    def suspendUpdate(self, slow=False):
+        if not slow:
+            self.suspendSkinning()
 
         yield
 

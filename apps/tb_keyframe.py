@@ -750,3 +750,4 @@ class AutoTangentWidget(QFrame):
 
     def softnessChanged(self):
         KeyModifiers().setDefaultSoftness(self.spinBox.value())
+

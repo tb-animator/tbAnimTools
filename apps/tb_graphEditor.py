@@ -28,7 +28,7 @@ import maya.mel as mel
 from Abstract import *
 from functools import partial
 from apps.ui.tbUI_pyslider import *
-maya.utils.loadStringResourcesForModule(__name__)
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -186,13 +186,18 @@ class GraphEditor(toolAbstractFactory):
         # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
-
+        graphEditorLayout = widgets[0]
         if any([isinstance(x, CollapsibleBox) for x in widgets]):
+            return
+        if graphEditorLayout.objectName() == _modifiedGraphEditor:
             return
 
         sliderLayout = self.createSliderToolBar()
-        sliderWidget = QWidget()
-        sliderWidget.setLayout(sliderLayout)
+
+        tempWidget = GraphEditorWidget()
+
+        graphEditorLayout.addWidget(tempWidget)
+
         layout = widgets[0]
         buttons = widgets[1:]
 
@@ -230,15 +235,72 @@ class GraphEditor(toolAbstractFactory):
 
             cBox.setContentLayout(cBoxLayout)
 
-            layout.addWidget(cBox)
-
-            layout.addWidget(sliderWidget)
             # layout.resize(layout.sizeHint())
+
+
+        defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
+        currentLocation = pm.optionVar.get(self.allTools.tools['GraphEditor'].customUiLocationOption,
+                                           defaultLocation)
+
+        if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[-1]:
+            widgets = graphEditor1.children()
+            self.graphEdiMenuBar = None
+            for w in widgets:
+                # print(str(w.__class__))
+                if 'QMenuBar' in str(w.__class__):
+                    self.graphEdiMenuBar = w
+            if self.graphEdiMenuBar:
+                self.sliderParentWidget = GraphEdToolbarWidget()
+                self.sliderParentWidget.setLayout(sliderLayout)
+                self.graphEdiMenuBar.setCornerWidget(self.sliderParentWidget)
+            return
+
+        # extra layout to hold the original maya buttons
+        dupeLayout = QHBoxLayout()
+        dupeLayout.setAlignment(Qt.AlignLeft)
+        dupeLayout.setSpacing(0)
+        dupeLayout.setContentsMargins(0, 0, 0, 0)
+        # buttons = widgets[1:]
+        for c in collapsedWidgets:
+            dupeLayout.addWidget(c)
+        # dupeLayout.addLayout(layout)
+        blankLabel = QLabel('')
+        blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        dupeLayout.addWidget(blankLabel)
+        dupeLayout.addStretch(100)
+
+        customLayout = QHBoxLayout()
+        customLayout.setSpacing(0)
+        customLayout.setContentsMargins(0, 0, 0, 0)
+        customLayout.setAlignment(Qt.AlignCenter)
+
+        print ('currentLocation', currentLocation)
+        # ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
+        if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
+            tempLayout = QVBoxLayout()
+            tempLayout.addLayout(dupeLayout)
+            tempLayout.insertLayout(0, customLayout)
+        elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
+            tempLayout = QVBoxLayout()
+            tempLayout.addLayout(dupeLayout)
+            tempLayout.addLayout(customLayout)
+        elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[2]:
+            tempLayout = QHBoxLayout()
+            tempLayout.addLayout(dupeLayout)
+            tempLayout.insertLayout(0, customLayout)
+        elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[3]:
+            tempLayout = QHBoxLayout()
+            tempLayout.addLayout(dupeLayout)
+            tempLayout.addLayout(customLayout)
+        # print ('added a slider')
+        tempWidget.setLayout(tempLayout)
+        w = QWidget()
+        w.setLayout(sliderLayout)
+        customLayout.addWidget(w)
+
         for widget in collapsedWidgets:
             widget.show()
             widget.playAnimationByState(force=True, state=widget.getState())
-        # print ('added a slider')
-
     def createSliderToolBar(self):
         self.sliderParentWidget = GraphEdToolbarWidget()
         sliderLayout = QHBoxLayout()
@@ -367,28 +429,6 @@ class GraphEditor(toolAbstractFactory):
                 tempLayout = QHBoxLayout()
                 tempLayout.addLayout(dupeLayout)
                 tempLayout.addLayout(customLayout)
-
-            # if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
-            #     tempLayout = QVBoxLayout()
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
-            #     tempLayout = QVBoxLayout()
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[2]:
-            #     tempLayout = QHBoxLayout()
-            # else:
-            #     tempLayout = QHBoxLayout()
-            #
-            # if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.addLayout(customLayout)
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[3]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.insertLayout(0, customLayout)
-            # elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.addLayout(customLayout)
-            # else:
-            #     tempLayout.addLayout(dupeLayout)
-            #     tempLayout.insertLayout(0, customLayout)
 
             tempWidget.setLayout(tempLayout)
             w = QWidget()

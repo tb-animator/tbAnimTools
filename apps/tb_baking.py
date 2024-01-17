@@ -837,16 +837,16 @@ class BakeTools(toolAbstractFactory):
             if 'blendParent' in str(attr):
                 cmds.deleteAttr(node, at=attr)
 
-    def quickBake(self, node, startTime=None, endTime=None, deleteConstraints=True):
+    def quickBake(self, node, startTime=None, endTime=None, deleteConstraints=True, simulation=False, slow=False):
         if not startTime:
             startTime = pm.playbackOptions(query=True, minTime=True)
         if not endTime:
             endTime = pm.playbackOptions(query=True, maxTime=True)
-        with self.funcs.suspendUpdate():
+        with self.funcs.suspendUpdate(slow):
             try:
                 keyRange = self.getBestTimelineRangeForBake()
                 pm.bakeResults(node,
-                               simulation=False,
+                               simulation=simulation,
                                disableImplicitControl=False,
                                time=[keyRange[0],
                                      keyRange[1]],

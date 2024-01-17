@@ -813,7 +813,7 @@ class GravityTools(toolAbstractFactory):
             self.pasteCapsule([newCapsule], mirror=True)
         self.updateMainComConstraint(sel[0])
 
-    def bakeNode(self, sel=None, target='COM'):
+    def bakeNode(self, sel=None, target='CoM'):
         if not sel:
             sel = cmds.ls(sl=True)
         if not sel:
@@ -832,8 +832,11 @@ class GravityTools(toolAbstractFactory):
             bakeRange = self.funcs.getTimelineRange()
 
         pm.pointConstraint(targetObject, tempControl)
+        t = cmds.currentTime(query=True)
+        cmds.currentTime(cmds.playbackOptions(query=True, min=True))
         self.allTools.tools['BakeTools'].quickBake(tempControl, startTime=bakeRange[0], endTime=bakeRange[-1],
-                                                   deleteConstraints=True)
+                                                   deleteConstraints=True, slow=True)
+        cmds.currentTime(t)
         return tempControl
 
     def toggleCapsuleVis(self, sel=None):
@@ -859,16 +862,16 @@ class GravityTools(toolAbstractFactory):
         cmds.setAttr(floorCom + '.visibility', not visState)
 
     def bakeComToNode(self):
-        self.bakeNode(target='COM')
+        self.bakeNode(target='CoM')
 
     def bakeFloorComToNode(self):
-        self.bakeNode(target='COM_Floor')
+        self.bakeNode(target='CoM_Floor')
 
     def bakeSelToCOM(self):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('No selection')
-        tempControl = self.bakeNode(target='COM')
+        tempControl = self.bakeNode(target='CoM')
         sel.append(tempControl)
         self.allTools.tools['BakeTools'].bake_to_locator_pinned(sel=sel, constrain=True)
 
