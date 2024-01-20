@@ -187,13 +187,10 @@ class GraphEditor(toolAbstractFactory):
         graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
         graphEditorLayout = widgets[0]
-        if any([isinstance(x, CollapsibleBox) for x in widgets]):
-            return
         if graphEditorLayout.objectName() == _modifiedGraphEditor:
             return
-
+        graphEditorLayout.setObjectName(_modifiedGraphEditor)
         sliderLayout = self.createSliderToolBar()
-
         tempWidget = GraphEditorWidget()
 
         graphEditorLayout.addWidget(tempWidget)
@@ -274,7 +271,6 @@ class GraphEditor(toolAbstractFactory):
         customLayout.setContentsMargins(0, 0, 0, 0)
         customLayout.setAlignment(Qt.AlignCenter)
 
-        print ('currentLocation', currentLocation)
         # ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
         if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
             tempLayout = QVBoxLayout()
