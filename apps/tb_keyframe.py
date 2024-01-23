@@ -260,6 +260,7 @@ class KeyModifiers(toolAbstractFactory):
 
     def setTangentsEase(self):
         self.setTangentType('autoease')
+
     def setTangentType(self, input):
         graphEditorState = self.funcs.getGraphEditorState()
         timeSlider = self.funcs.getPlayBackSlider()
@@ -400,7 +401,10 @@ class KeyModifiers(toolAbstractFactory):
         if sel:
             for se in sel:
                 _node = pm.PyNode(se)
-                self.do_level(se)
+                upAxis = cmds.upAxis(query=True, axis=True)
+                worldAxis = {'y': [1, 0, 1],
+                             'z': [1, 1, 0]}
+                self.do_level(se, upAxis=upAxis, worldAxis=worldAxis[upAxis])
 
     def do_level(self, node, upAxis='y', worldAxis=[1.0, 0.0, 1.0]):
         def multiply(input1, input2):
@@ -540,7 +544,6 @@ class KeyModifiers(toolAbstractFactory):
                                 edit=True,
                                 outTangentType='flat',
                                 time=(t,))
-
 
     def autoTangentKey(self):
         self.autoTangent(self.defaultSoftness(), False)
@@ -725,6 +728,7 @@ class KeyModifiers(toolAbstractFactory):
                 cmds.keyframe(crv, index=((keyIndex),), edit=True, valueChange=value)
         self.autoTangentKey()
 
+
 class AutoTangentWidget(QFrame):
     def __init__(self):
         super(AutoTangentWidget, self).__init__()
@@ -750,4 +754,3 @@ class AutoTangentWidget(QFrame):
 
     def softnessChanged(self):
         KeyModifiers().setDefaultSoftness(self.spinBox.value())
-

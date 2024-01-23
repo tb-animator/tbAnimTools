@@ -433,21 +433,10 @@ class AimTools(toolAbstractFactory):
         if keyRange[0] is None:
             keyRange = self.funcs.getTimelineRange()
         '''
-        bakeLayer = cmds.animLayer('AimBakeLocators', override=True)
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        cmds.bakeResults(self.locators, time=(keyRange[0], keyRange[1]),
-                         simulation=False,
-                         attribute='translate',
-                         destinationLayer=bakeLayer,
-                         removeBakedAttributeFromLayer=False,
-                         bakeOnOverrideLayer=True,
-                         sampleBy=1,
-                         preserveOutsideKeys=True)
-        for layer in cmds.ls(type='animLayer'):
-            cmds.animLayer(layer, edit=True, selected=False, preferred=False)
-        cmds.animLayer(bakeLayer, edit=True, selected=True, preferred=True)
-
-        pm.delete(self.constraints)
+        bakeTools = self.allTools.tools['BakeTools']
+        bakeTools.quickBake(self.locators, startTime=keyRange[0], endTime=keyRange[1],
+                            deleteConstraints=True)
 
     def constraintControls(self, key):
         cmds.aimConstraint(self.controlInfo[key][0], key,
