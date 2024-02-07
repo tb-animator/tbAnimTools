@@ -87,6 +87,27 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='useful comment',
                                      category=self.category, command=['AimTools.quickAim()']))
 
+        self.addCommand(self.tb_hkey(name='bakeAim_X_Yup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimXY()']))
+        self.addCommand(self.tb_hkey(name='bakeAim_X_Zup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimXZ()']))
+
+        self.addCommand(self.tb_hkey(name='bakeAim_Y_Xup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimYX()']))
+        self.addCommand(self.tb_hkey(name='bakeAim_Y_Zup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimYZ()']))
+
+        self.addCommand(self.tb_hkey(name='bakeAim_Z_Xup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimZX()']))
+        self.addCommand(self.tb_hkey(name='bakeAim_Z_Yup',
+                                     annotation='useful comment',
+                                     category=self.category, command=['AimTools.quickAimZY()']))
+
         self.addCommand(self.tb_hkey(name='aimAtTempControl',
                                      annotation='Creates a new control at your selection, position it then deselect to bake it out',
                                      category=self.category, command=['AimTools.aimAtTempControl()']))

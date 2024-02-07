@@ -332,12 +332,15 @@ class MotionTrails(toolAbstractFactory):
         self.createInfoNode()
         jsonData = self.funcs.getNotesAttr('motionTrailInfo')
         jsonObjectInfo = json.loads(jsonData)
+        popKeys = list()
         for key, value in jsonObjectInfo["target"].items():
             if not cmds.objExists(value):
-                jsonObjectInfo["target"].pop(key)
-                jsonObjectInfo["camera"].pop(key)
-                jsonObjectInfo["motionTrail"].pop(key)
-                jsonObjectInfo["motionTrailShape"].pop(key)
+                popKeys.append(key)
+        for key in popKeys:
+            jsonObjectInfo["target"].pop(key)
+            jsonObjectInfo["camera"].pop(key)
+            jsonObjectInfo["motionTrail"].pop(key)
+            jsonObjectInfo["motionTrailShape"].pop(key)
         return jsonObjectInfo
 
     def createFromSceneInfo(self, key=None):

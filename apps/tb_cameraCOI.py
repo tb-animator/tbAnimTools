@@ -285,7 +285,7 @@ class CameraPivot(toolAbstractFactory):
                 else:
                     # print 'not using skinning'
                     boundingBox = []
-                    selected_objects = cmds.ls(transforms=True, selection=True)
+                    selected_objects = cmds.ls(transforms=True, selection=True, type='transform')
                     selected_shapes = cmds.ls(selection=True, shapes=True)
                     non_component_selection = []
                     non_component_selection.extend(selected_shapes)
@@ -314,7 +314,8 @@ class CameraPivot(toolAbstractFactory):
                             self.update_tumble_pivots(get_bounding_box_mid(self.boundingBox))
 
                 if pivots:
-                    self.update_tumble_pivots(midPoint(pivots))
+                    if pivots[0]:
+                        self.update_tumble_pivots(midPoint(pivots))
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
 

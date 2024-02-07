@@ -5,7 +5,12 @@ maya.stringTable['tbCommand.aimAtTempControl'] = u'Creates a temporary animation
                                                  u'\n' \
                                                  u'Use the right click menu on the temporary control for extra functions'
 maya.stringTable['tbCommand.bakeAim'] = u''
-
+maya.stringTable['tbCommand.bakeAim_X_Yup'] = u''
+maya.stringTable['tbCommand.bakeAim_X_Zup'] = u''
+maya.stringTable['tbCommand.bakeAim_Y_Xup'] = u''
+maya.stringTable['tbCommand.bakeAim_Y_Zup'] = u''
+maya.stringTable['tbCommand.bakeAim_Z_Xup'] = u''
+maya.stringTable['tbCommand.bakeAim_Z_Yup'] = u''
 maya.stringTable['tbCommand.aimToolsMMPressed'] = u''
 
 # maya.stringTable['tbCommand.kbakeOutSelected'] = u'Bake out the selected temp controls'

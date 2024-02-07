@@ -35,8 +35,6 @@ import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
 
-
-
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
 zAx = om.MVector.zAxis
@@ -102,7 +100,6 @@ pointLists = json.load(open(dataPath))
 acceptedConstraintTypes = ['pairBlend', 'constraint']
 
 
-
 def getGlobalTools():
     global tbtoolCLS
     try:
@@ -111,6 +108,7 @@ def getGlobalTools():
         from pluginLookup import ClassFinder
         tbtoolCLS = ClassFinder()
     return tbtoolCLS
+
 
 class functions(object):
     """
@@ -389,6 +387,37 @@ class functions(object):
 
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False, rotateOrder=3):
+        mainControl = self.drawTempControl(name=name, suffix=suffix, scale=scale, color=color, drawType=drawType,
+                                           unlockScale=False, rotateOrder=3, blendshape=True)
+        mainControlShape = mainControl.getShape()
+
+        pm.addAttr(mainControl, longName='LineWidth', attributeType='float', defaultValue=scale, minValue=-1, maxValue=10)
+        pm.setAttr(mainControl + ".LineWidth", edit=True, keyable=False, channelBox=True)
+        pm.setAttr(mainControl + ".LineWidth", pm.optionVar.get('lineWidth', -1))
+        pm.connectAttr(mainControl + '.LineWidth', mainControlShape + '.lineWidth')
+
+        if int(cmds.about(majorVersion=True)) < 2024:
+            return mainControl
+
+        dupeControl = pm.duplicate(mainControl, inputConnections=True)
+        shape = dupeControl[0].getShape()
+        pm.parent(shape, mainControl, r=True, s=True)
+        pm.delete(dupeControl)
+
+        pm.addAttr(mainControl, longName='xRay', attributeType='float', defaultValue=scale, minValue=0.0, maxValue=1)
+        pm.setAttr(mainControl + ".xRay", edit=True, keyable=False, channelBox=True)
+        pm.setAttr(shape + ".alwaysDrawOnTop", 1)
+        pm.connectAttr(mainControlShape + ".overrideColorR", shape + '.overrideColorR')
+        pm.connectAttr(mainControlShape + ".overrideColorG", shape + '.overrideColorG')
+        pm.connectAttr(mainControlShape + ".overrideColorB", shape + '.overrideColorB')
+        pm.connectAttr(mainControl + ".xRay", shape + '.overrideColorA')
+        pm.setAttr(mainControl + ".xRay", pm.optionVar.get('xRayDefault', 0.3))
+        pm.connectAttr(mainControl + '.LineWidth', shape + '.lineWidth')
+
+        return mainControl
+
+    def drawTempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
+                        unlockScale=False, rotateOrder=3, blendshape=True):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
@@ -408,19 +437,22 @@ class functions(object):
         shape.overrideColorRGB.set(color)
 
         try:
-            # add the blendshape stuff as well, for scale
-            blendshape_node = cmds.blendShape(str(blendControl), str(control))
-            # Create a blend weight attribute
-            pm.addAttr(control, longName='drawScale', attributeType='float', defaultValue=scale, minValue=0.001)
-            pm.setAttr(control + ".drawScale", edit=True, keyable=True)
-            reverse = cmds.createNode('reverse')
-            pm.connectAttr(control + '.drawScale', reverse + '.inputX')
+            if blendshape:
+                # add the blendshape stuff as well, for scale
+                blendshape_node = cmds.blendShape(str(blendControl), str(control))
+                # Create a blend weight attribute
+                pm.addAttr(control, longName='drawScale', attributeType='float', defaultValue=scale, minValue=0.001)
+                pm.setAttr(control + ".drawScale", edit=True, keyable=True)
+                reverse = cmds.createNode('reverse')
+                pm.connectAttr(control + '.drawScale', reverse + '.inputX')
 
-            # Connect the blend weight attribute to the blendshape node
-            pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl).rsplit(':', 1)[-1], force=True)
+                # Connect the blend weight attribute to the blendshape node
+                pm.connectAttr(reverse + '.outputX', blendshape_node[0] + '.' + str(blendControl).rsplit(':', 1)[-1],
+                               force=True)
         finally:
             pm.delete(blendControl)
         return control
+
     '''
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False):
@@ -443,6 +475,7 @@ class functions(object):
         
         return control
     '''
+
     def getControlColour(self, ref):
         """
         Get the colour for a control in rgb
@@ -483,7 +516,6 @@ class functions(object):
         else:
             outLineWidth = lineWidth + offset
         control.lineWidth.set(outLineWidth)
-
 
     def getSetColour(self, ref, control, brightnessOffset=0):
         """
@@ -867,7 +899,6 @@ class functions(object):
             cmds.animLayer(str(layer), edit=True, preferred=True)
             cmds.animLayer(str(layer), edit=True, selected=True)
 
-
     def tagControl(self, asset, target, attribute):
         asset = str(asset)
         if not cmds.attributeQuery(attribute, node=asset, exists=True):
@@ -926,7 +957,7 @@ class functions(object):
                     continue
                 if keyTimes[0] is None: keyTimes[0] = times[0]
                 if keyTimes[1] is None: keyTimes[1] = times[-1]
-                keyTimes[0] = min(keyTimes[0],times[0])
+                keyTimes[0] = min(keyTimes[0], times[0])
                 keyTimes[-1] = max(keyTimes[1], times[-1])
                 cmds.animLayer(layer, edit=True, selected=False),
                 cmds.animLayer(layer, edit=True, preferred=False)
@@ -1289,7 +1320,6 @@ class functions(object):
         if GraphEdWindow:
             cmds.workspaceControl(GraphEdWindow, edit=True, collapse=not state)
 
-
     @contextmanager
     def undoNoQueue(self):
         cmds.undoInfo(stateWithoutFlush=False)
@@ -1399,12 +1429,11 @@ class functions(object):
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if namespace.startswith(':'):
             # print ('removing :')
-            namespace=namespace[1:]
+            namespace = namespace[1:]
         return refName, refState, namespace
 
-
     def eulerFilterControl(self, controls, animLayer=None):
-        attrs = ['rotateX', 'rotateY','rotateX']
+        attrs = ['rotateX', 'rotateY', 'rotateX']
         if not isinstance(controls, list):
             controls = [controls]
         curves = list()
@@ -1423,7 +1452,6 @@ class functions(object):
                 cmds.filterCurve(curves, filter='euler')
             else:
                 cmds.filterCurve(str(control), filter='euler')
-
 
     @staticmethod
     def checkKeyableState(input):
@@ -1929,7 +1957,7 @@ class functions(object):
         if not sel:
             return None, None
         if isinstance(sel, list):
-            sel=sel[0]
+            sel = sel[0]
         refName, refState, namespace = self.getRefNameAndState(sel)
         # print (refName, refState, namespace)
         if not refState:
@@ -1941,7 +1969,7 @@ class functions(object):
             return None, None, None
         if namespace.startswith(':'):
             # print ('removing :')
-            namespace=namespace[1:]
+            namespace = namespace[1:]
         return refName, refState, namespace
 
     def constrainAimToTarget(self, control, target, rotationObject=None, maintainOffset=False):
@@ -1969,12 +1997,13 @@ class functions(object):
         aimConstraint = pm.aimConstraint(target, control,
                                          aimVector=aimVector,
                                          worldUpObject=rotationObject,
-                                         #worldUpVector=worldUpVector,
+                                         # worldUpVector=worldUpVector,
                                          worldUpVector=upVector,
                                          upVector=upVector,
                                          worldUpType='objectRotation',
                                          maintainOffset=maintainOffset)
         return aimConstraint
+
     """
     SELECTION
     

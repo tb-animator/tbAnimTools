@@ -149,40 +149,40 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='constrain to objects with offset',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=False)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffset']))
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffset',
                                      annotation='constrain to objects with NO offset',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=False)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffset']))
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBake',
                                      annotation='constrain to objects with offset - post baked',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffsetPostBake']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBake',
                                      annotation='constrain to objects with NO offset - post baked',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffsetPostBake']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintOffsetPostBakeReverse',
                                      annotation='constrain to objects with offset - post baked, constraint reversed',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=True, postBake=True, postReverseConst=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintOffsetPostBakeReverse']))
 
         self.addCommand(self.tb_hkey(name='simpleConstraintNoOffsetPostBakeReverse',
                                      annotation='constrain to objects with NO offset - post baked, constraint reversed',
                                      category=self.category,
                                      command=[
-                'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)'],
+                                         'BakeTools.parentConst(constrainGroup=False, offset=False, postBake=True, postReverseConst=True)'],
                                      help=maya.stringTable['tbCommand.simpleConstraintNoOffsetPostBakeReverse']))
 
         self.addCommand(self.tb_hkey(name='bakeOutSelectedTempControls',
@@ -307,6 +307,14 @@ class BakeTools(toolAbstractFactory):
                                          defaultValue=1.0,
                                          label='Baked locator control size',
                                          minimum=0.1, maximum=100, step=0.1)
+        xrayWidget = intFieldWidget(optionVar='xRayDefault',
+                                    defaultValue=0.3,
+                                    label='Xray Opacity',
+                                    minimum=0.0, maximum=1, step=0.1)
+        linewidthWidget = intFieldWidget(optionVar='lineWidth',
+                                    defaultValue=-1,
+                                    label='Line Width',
+                                    minimum=-1, maximum=10, step=0.1)
         worldOffsetSizeWidget = intFieldWidget(optionVar=self.tbBakeWorldOffsetSizeOption,
                                                defaultValue=0.5,
                                                label='World offset control size',
@@ -341,12 +349,15 @@ class BakeTools(toolAbstractFactory):
         self.layout.addWidget(simOptionWidget)
         self.layout.addWidget(containerOptionWidget)
         self.layout.addWidget(crossSizeWidget)
+        self.layout.addWidget(xrayWidget)
         self.layout.addWidget(worldOffsetSizeWidget)
         topFormLayout.addRow(bookendOptionWidget.labelText, bookendOptionWidget)
         topFormLayout.addRow(bookendHighlightOptionWidget.labelText, bookendHighlightOptionWidget)
         topFormLayout.addRow(simOptionWidget.labelText, simOptionWidget)
         topFormLayout.addRow(containerOptionWidget.labelText, containerOptionWidget)
         topFormLayout.addRow(crossSizeWidget.label, crossSizeWidget)
+        topFormLayout.addRow(xrayWidget.label, xrayWidget)
+        topFormLayout.addRow(linewidthWidget.label, linewidthWidget)
         # self.layout.addWidget(motionControlSizeWidget)
         topFormLayout.addRow(worldOffsetSizeWidget.label, worldOffsetSizeWidget)
 
