@@ -27,7 +27,7 @@ import maya.cmds as cmds
 
 from Abstract import *
 import maya
-
+import time
 maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -75,6 +75,8 @@ class isolator(toolAbstractFactory):
     toolName = 'isolator'
     hotkeyClass = hotkeys()
     funcs = functions()
+    start_time = 0
+    last_time = 0
 
     def __new__(cls):
         if isolator.__instance is None:
@@ -109,6 +111,12 @@ class isolator(toolAbstractFactory):
         '''
         panel = self.funcs.getModelPanel()
 
+        self.start_time = time.time()
+        if self.start_time - self.last_time < 0.2:
+            self.last_time = self.start_time
+            self.doubleTap(panel)
+            return
+
         state = cmds.isolateSelect(panel, query=True, state=True)
         if state:
             cmds.isolateSelect(panel, state=0)
@@ -116,7 +124,35 @@ class isolator(toolAbstractFactory):
         else:
             cmds.isolateSelect(panel, state=1)
             cmds.isolateSelect(panel, addSelected=True)
+            sel = cmds.ls(sl=True, type='transform')
+            polyMeshes = self.getMeshesInSelection(sel)
+            cmds.select(polyMeshes, deselect=True)
 
+        self.last_time = self.start_time
+
+    def doubleTap(self, panel):
+        print ('double tap')
+        cmds.isolateSelect(panel, state=0)
+        self.allTools.tools['QuickSelectionSets'].uber_qs_select()
+        # deselect all mesh objects
+        cmds.isolateSelect(panel, state=1)
+        cmds.isolateSelect(panel, addSelected=True)
+        sel = cmds.ls(sl=True, type='transform')
+        polyMeshes = self.getMeshesInSelection(sel)
+        print ('polyMeshes', polyMeshes)
+        cmds.select(sel, replace=True)
+        cmds.select(polyMeshes, deselect=True)
+
+    def getMeshesInSelection(self, selection):
+        non_polyMeshes = list()
+        for obj in selection:
+            shapes = cmds.listRelatives(obj, shapes=True, fullPath=True) or []
+            for shape in shapes:
+                if cmds.objectType(shape) == "mesh":
+                    # If it's a polyMesh, add its transform node to non_polyMeshes list
+                    non_polyMeshes.append(obj)
+                    break  # Move to the next transform node
+        return non_polyMeshes
     def addToIsolation(self):
         sel = cmds.ls(sl=True)
         if not sel:

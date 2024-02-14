@@ -113,6 +113,22 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='clampKeysAbove',
                                      annotation=maya.stringTable['tbCommand.clampKeysAbove'],
                                      category=self.category, command=['KeyModifiers.clampCurve(low=False)']))
+        self.addCommand(self.tb_hkey(name='shiftUp180',
+                                     annotation='shift keys up 180 units',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.shiftKeys(180)']))
+        self.addCommand(self.tb_hkey(name='shiftUp360',
+                                     annotation='shift keys up 360 units',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.shiftKeys(360)']))
+        self.addCommand(self.tb_hkey(name='shiftDown180',
+                                     annotation='shift keys up 180 units',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.shiftKeys(-180)']))
+        self.addCommand(self.tb_hkey(name='shiftDown360',
+                                     annotation='shift keys up 360 units',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.shiftKeys(-360)']))
 
         self.addCommand(self.tb_hkey(name='autoTangent',
                                      annotation='Blank',
@@ -289,6 +305,9 @@ class KeyModifiers(toolAbstractFactory):
                             outTangentType=input,
                             time=timeRange)
             self.funcs.infoMessage(prefix="Tangent :: ", message=input)
+
+    def shiftKeys(self, offset):
+        cmds.keyframe(animation='keys', relative=True, valueChange=offset)
 
     def quickCopyKeys(self, connect=False):
         cmds.copyKey()

@@ -27,7 +27,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 from Abstract import *
 from tb_UI import *
-
+import time
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -285,39 +285,50 @@ class CameraPivot(toolAbstractFactory):
                 else:
                     # print 'not using skinning'
                     boundingBox = []
-                    selected_objects = cmds.ls(transforms=True, selection=True, type='transform')
-                    selected_shapes = cmds.ls(selection=True, shapes=True)
-                    non_component_selection = []
-                    non_component_selection.extend(selected_shapes)
-                    non_component_selection.extend(selected_objects)
-                    selected_components = [x for x in cmds.ls(selection=True) if x not in non_component_selection]
-                    # if there's a component selection like vertex/face use the manipulator position for the pivot
-                    if selected_components:
-                        pivots.append(self.contextQuery[cmds.contextInfo(cmds.currentCtx(), c=True)]())
-                    # selection
-                    else:
+                    selected_verts = [v for v in cmds.ls(sl=True, fl=True) if '.vtx' in v]
+                    if selected_verts:
+                        for vertex in selected_verts:
+                            # Get the world translation of the vertex
+                            pivots.append(cmds.xform(vertex, query=True, translation=True, worldSpace=True))
+                    if not pivots:
+                        selected_cv = [v for v in cmds.ls(sl=True, fl=True) if '.cv' in v]
+                        if selected_cv:
+                            for cv in selected_cv:
+                                # Get the world translation of the CV
+                                pivots.append(cmds.pointPosition(cv, world=True))
+                    if not pivots:
+                        selected_faces = [v for v in cmds.ls(sl=True, fl=True) if '.f' in v]
+                        if selected_faces:
+                            vertices = cmds.polyListComponentConversion(selected_faces, fromFace=True, toVertex=True)
+                            for vertex in vertices:
+                                # Get the world translation of the vertex
+                                pivots.append(cmds.xform(vertex, query=True, translation=True, worldSpace=True))
+                    if not pivots:
+                        selected_objects = cmds.ls(selection=True, flatten=True, type='transform', objectsOnly=True)
+
                         if selected_objects:
                             self.boundingBox = []
-                            # print 'got selection'
+
                             transforms_with_shapes = [x for x in selected_objects if
                                                       cmds.listRelatives(x, fullPath=True, shapes=True)]
-                            # print 'transforms_with_shapes', transforms_with_shapes
+
                             transforms_without_shapes = [x for x in selected_objects if x not in transforms_with_shapes]
-                            # print 'transforms_without_shapes', transforms_without_shapes
+
                             if transforms_with_shapes:
                                 self.boundingBox = get_bbox(None, transforms_with_shapes)
                             if transforms_without_shapes:
                                 for x in transforms_without_shapes:
                                     self.boundingBox = getPivotAsBbox(self.boundingBox, x)
-                        if self.boundingBox:
-                            # gets the mid point of the min/max bounding box for the selection
-                            self.update_tumble_pivots(get_bounding_box_mid(self.boundingBox))
+                            if self.boundingBox:
+                                # gets the mid point of the min/max bounding box for the selection
+                                self.update_tumble_pivots(get_bounding_box_mid(self.boundingBox))
 
-                if pivots:
-                    if pivots[0]:
-                        self.update_tumble_pivots(midPoint(pivots))
+                    if pivots:
+                        if pivots[0]:
+                            self.update_tumble_pivots(midPoint(pivots))
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
+
 
     def updateScriptJobStatus(self, status):
         if status:
@@ -353,7 +364,7 @@ class CameraPivot(toolAbstractFactory):
             self.SomethingSelectedScriptJob = cmds.scriptJob(conditionTrue=("SomethingSelected", CameraPivot().doIt))
         if self.DragReleaseScriptJob == -1:
             self.DragReleaseScriptJob = cmds.scriptJob(event=("DragRelease", CameraPivot().doIt))
-        if self.ModelPanelSetFocusScriptJob == -1:
-            self.ModelPanelSetFocusScriptJob = cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt))
+        # if self.ModelPanelSetFocusScriptJob == -1:
+        #     self.ModelPanelSetFocusScriptJob = cmds.scriptJob(event=("ModelPanelSetFocus", CameraPivot().doIt))
         if self.playbackModeChangedScriptJob == -1:
             self.playbackModeChangedScriptJob = cmds.scriptJob(event=("playbackModeChanged", CameraPivot().doIt))

@@ -720,6 +720,7 @@ class MirrorTools(toolAbstractFactory):
                 return cmds.warning('No selection')
             splitControls = self.splitControls(controls)
             # print (splitControls)
+            # TODO - not safe if new character
             for src, dst, char in splitControls:
                 self.mirrorControl(src, dst, char, option=option)
 
@@ -743,6 +744,8 @@ class MirrorTools(toolAbstractFactory):
         if not self.isMirror(strippedFrom, character, 'swap'):
             return
         attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
+        if not attrEntry:
+            return cmds.warning('This character has no mirror table yet', title='Mirror')
         if attr in attrEntry:
             return attrEntry.get(attr, 1)
         return False

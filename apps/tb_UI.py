@@ -35,6 +35,7 @@ from functools import partial
 import subprocess
 import apps.tb_fileTools as ft
 import re
+
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -57,15 +58,18 @@ helpPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Help')
 
 baseIconFile = 'checkBox.png'
 
+
 def getMainWindow():
     if not cmds.about(batch=True):
         return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
     return None
 
+
 def dpiScale():
     if not pm.optionVar.get('tbUseWindowsScale', True):
         return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
     return pm.optionVar.get('tbCustomDpiScale', 1)
+
 
 def dpiFontScale():
     if not pm.optionVar.get('tbUseFontScale', True):
@@ -78,6 +82,7 @@ def defaultFont():
     # font.setStrikeOut(True)
     font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
     return font
+
 
 def boldFont():
     return QFont("Segoe UI", 10 / dpiFontScale(), QFont.Bold)
@@ -359,7 +364,11 @@ class ViewportDialog(QDialog):
             delta = self.parentMenu.cursorPos - self.cursorPos
             delta = om2.MVector(delta.x(), delta.y(), 0).normal()
             # print ('returnButton', delta)
-            self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
+            # self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
+            print ('hello')
+            self.returnButton.move(self.parentMenu.cursorPos.x() - self.returnButton.width() * 0.5,
+                                   self.parentMenu.cursorPos.y() - self.returnButton.height() * 0.5)
+
         else:
             self.keyPressHandler = markingMenuKeypressHandler(UI=self)
             self.app.installEventFilter(self.keyPressHandler)
@@ -470,12 +479,22 @@ class ViewportDialog(QDialog):
         self.setFocus()
         self.addAllButtons()
         self.repaint()
+        if self.parentMenu:
+            self.parentMenu.scaleOpacity()
         super(ViewportDialog, self).show()
         # print (cmds.timerX() - t)
 
     def hide(self):
         # print ('being hidden', self)
         super(ViewportDialog, self).hide()
+
+    def resetOpacity(self):
+        self.setWindowOpacity(1.0)
+
+    def scaleOpacity(self, factor=0.8):
+        opacity = self.windowOpacity() * factor
+        opacity = min(max(opacity, 0.2), 1)
+        self.setWindowOpacity(opacity)
 
     def closeMenu(self):
         if self.parentMenu:
@@ -508,7 +527,7 @@ class ViewportDialog(QDialog):
         self.parentMenu.setFocusPolicy(Qt.StrongFocus)
         self.parentMenu.setFocus()
         self.parentMenu.enableLayer()
-
+        self.parentMenu.resetOpacity()
         self.parentMenu.moveAll()
 
     def moveToCursor(self):
@@ -804,7 +823,7 @@ class ToolboxButton(QPushButton):
         fontHeight = self.fontMetrics().boundingRect(self.text()).height() + (8 * dpiScale())
 
         if fixedWidth:
-            fontWidth = fixedWidth + (16 * dpiScale())
+            fontWidth = fixedWidth + (24 * dpiScale())
         if icon:
             fontWidth += (iconWidth * dpiScale())
         self.setText(str())
@@ -1050,8 +1069,6 @@ class ToolboxDoubleButton(QWidget):
 
         if not buttonsOnRight:
             if not hideLabel: self.mainLayout.addWidget(self.label)
-
-
 
     def buttonClicked(self):
         self.executeCommand()
@@ -2728,6 +2745,7 @@ class ObjectSelectLineEdit(QWidget):
     def errorHighlightRemove(self):
         self.itemLabel.setStyleSheet(getqss.getStyleSheet())
 
+
 class ObjectSelectLineEditNoLabel(QLineEdit):
     pickedSignal = Signal(str)
     editedSignalKey = Signal(str, str)
@@ -2744,7 +2762,7 @@ class ObjectSelectLineEditNoLabel(QLineEdit):
         self.stripNamespace = stripNamespace
         self.lineEditStretches = lineEditStretches
         self.mainLayout = QHBoxLayout()
-        self.mainLayout.setContentsMargins(0,0,0,0)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.mainLayout.setAlignment(Qt.AlignLeft)
         self.setLayout(self.mainLayout)
 
@@ -2757,7 +2775,6 @@ class ObjectSelectLineEditNoLabel(QLineEdit):
         self.cle_action_pick.setToolTip(hint)
         self.cle_action_pick.triggered.connect(self.pickObject)
         self.textChanged.connect(self.textEdited)
-
 
     def pickObject(self):
         # print ('pickObject')
@@ -2828,9 +2845,11 @@ class ObjectSelectLineEditEnforced(ObjectSelectLineEdit):
         else:
             self.errorHighlightRemove()
 
+
 class ComboBox(QComboBox):
     def wheelEvent(self, e):
         return
+
 
 class comboBoxWidget(QWidget):
     mainLayout = None
@@ -2864,12 +2883,11 @@ class comboBoxWidget(QWidget):
             self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
         view = self.comboBox.view()
-        view.setFixedWidth(self.comboBox.sizeHint().width()+32)
+        view.setFixedWidth(self.comboBox.sizeHint().width() + 32)
         self.mainLayout.addWidget(label)
         self.mainLayout.addWidget(self.comboBox)
         self.comboBox.currentIndexChanged.connect(self.interactivechange)
         self.mainLayout.addStretch()
-
 
     def interactivechange(self, b):
         if self.optionVar is not None:
@@ -3744,6 +3762,7 @@ class AnimLayerTabButton(QPushButton):
 
             self.pop_up_window.show()
 
+
 class GraphToolbarButton(QPushButton):
     """
     UI menu item for anim layer tab,
@@ -3776,6 +3795,8 @@ class GraphToolbarButton(QPushButton):
             self.pop_up_window.move(pop_up_pos)
 
             self.pop_up_window.show()
+
+
 sliderStylesheet = """
 
 
@@ -4341,7 +4362,7 @@ class CollapsibleBox(QWidget):
             text=title, checkable=True, checked=self.getState()
         )
         self.toggleButton.setStyleSheet("QToolButton { border: none; }")
-        self.toggleButton.setFixedSize(12*dpiScale(), 20*dpiScale())
+        self.toggleButton.setFixedSize(12 * dpiScale(), 20 * dpiScale())
         self.toggleButton.setToolButtonStyle(
             Qt.ToolButtonTextBesideIcon
         )
@@ -4381,7 +4402,6 @@ class CollapsibleBox(QWidget):
         self.toggleAnimation.addAnimation(
             anim
         )
-
 
     def playAnimationByState(self, force=False, state=False):
         checked = self.getState()
@@ -4445,9 +4465,6 @@ class CollapsibleBox(QWidget):
         # self.playAnimationByState()
 
 
-
-
-
 class ToolbarButton(QLabel):
     clicked = Signal()
     middleClicked = Signal()
@@ -4473,7 +4490,7 @@ class ToolbarButton(QLabel):
         self.setPixmap(self.pixmap.scaled(self.iconWidth, self.iconHeight))
         self.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
 
-        #self.setStyleSheet(getqss.getStyleSheet())
+        # self.setStyleSheet(getqss.getStyleSheet())
 
         self.setMouseTracking(True)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -4502,7 +4519,6 @@ class ToolbarButton(QLabel):
         self.effect.setColor(QColor('silver'))
         self.setGraphicsEffect(self.effect)
 
-
     def keyPressEvent(self, event):
         self.tooltipState = self.getTooltipState()
         if event.key() == Qt.Key_Shift:
@@ -4514,7 +4530,7 @@ class ToolbarButton(QLabel):
         if event.key() == Qt.Key_Control:
             self.controlState = True
 
-        #self.raiseToolTip()
+        # self.raiseToolTip()
 
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Shift:
@@ -4618,6 +4634,7 @@ class ToolbarButton(QLabel):
         self.customTooltip.show()
         self.customTooltip.move(self.mapToGlobal(QPoint(8, self.height() + 8)))
 
+
 class CustomToolTip(QWidget):
     def __init__(self, text, parent=None):
         super(CustomToolTip, self).__init__(parent, Qt.Tool)
@@ -4629,8 +4646,6 @@ class CustomToolTip(QWidget):
     def showEvent(self, event):
         self.adjustSize()
         self.move(QCursor.pos() + Qt.QPoint(10, 10))  # Offset the tooltip slightly
-
-
 
 
 class DropShadowLabel(QLabel):
@@ -4705,10 +4720,11 @@ def darken_hex_color(hex_color, percentage):
 
     return darkened_hex_color
 
+
 def generate_linear_gradient(start_color, end_color, num_steps):
     # Convert the start and end colors to RGB tuples
-    start_color = tuple(int(start_color[i:i+2], 16) for i in (1, 3, 5))
-    end_color = tuple(int(end_color[i:i+2], 16) for i in (1, 3, 5))
+    start_color = tuple(int(start_color[i:i + 2], 16) for i in (1, 3, 5))
+    end_color = tuple(int(end_color[i:i + 2], 16) for i in (1, 3, 5))
 
     # Calculate the step size for each color channel
     step_size = [(end_color[i] - start_color[i]) / (num_steps - 1) for i in range(3)]

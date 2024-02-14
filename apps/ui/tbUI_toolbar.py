@@ -39,7 +39,7 @@ def getWorkspaceControlWidget(workspace_control):
     Returns the QWidget of a workspaceControl by its name
     """
     control_widget_ptr = omui.MQtUtil.findControl(workspace_control)
-    control_widget = wrapInstance(long(control_widget_ptr), QWidget)
+    control_widget = wrapInstance(int(control_widget_ptr), QWidget)
     return control_widget
 
 class WorkspaceControl(object):
@@ -80,8 +80,8 @@ class WorkspaceControl(object):
                 workspace_control_ptr = int(omui.MQtUtil.findControl(self.name))
                 widget_ptr = int(getCppPointer(self.widget)[0])
             else:
-                workspace_control_ptr = long(omui.MQtUtil.findControl(self.name))
-                widget_ptr = long(getCppPointer(self.widget)[0])
+                workspace_control_ptr = int(omui.MQtUtil.findControl(self.name))
+                widget_ptr = int(getCppPointer(self.widget)[0])
 
             omui.MQtUtil.addWidgetToMayaLayout(widget_ptr, workspace_control_ptr)
 
@@ -111,7 +111,7 @@ class WorkspaceControl(object):
 
     def getOrientation(self):
         layout_object = omui.MQtUtil.findControl(self.name)
-        layout_widget = wrapInstance(long(layout_object), QWidget)
+        layout_widget = wrapInstance(int(layout_object), QWidget)
         if self.is_floating:
             splitterParent = layout_widget.parent().parent().parent().parent()
             if not isinstance(splitterParent, QSplitter):
@@ -295,6 +295,7 @@ class DockableUI(QDialog):
             for w in self.widgets:
                 print('reparenting widget horizontalLayout', w)
                 #layout.addWidget(w)
+            self.resize(self.sizeHint().width(), 60)
         else:
             self.parent().resize(60, self.sizeHint().height())
             self.resize(60, self.sizeHint().height())
@@ -306,8 +307,6 @@ class DockableUI(QDialog):
             for w in self.widgets:
                 print('reparenting widget verticalLayout', w)
                 #layout.addWidget(w)
-
-
 
     def closeEvent(self, event):
         """

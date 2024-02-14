@@ -485,7 +485,8 @@ class functions(object):
         """
         node = pm.PyNode(ref)
         refObj = pm.PyNode(ref)
-        overrideState = node.overrideEnabled.get()
+        if pm.nodeType(ref) == 'mesh':
+            return [125, 125, 125]
         shape = node.getShape()
         if shape:
             shapeOverrideState = shape.overrideEnabled.get()

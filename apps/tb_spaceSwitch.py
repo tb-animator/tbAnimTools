@@ -345,9 +345,14 @@ class SpaceSwitch(toolAbstractFactory):
                                             icon=IconPath + '\popupWindow.png',
                                             parent=self.markingMenuWidget,
                                             cls=self.markingMenuWidget,
-                                            command=lambda: SpaceSwitch().openEditorWindow(),
+                                            command=pm.Callback(SpaceSwitch().openEditorWindow),
                                             closeOnPress=True))
-
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Save selection as preset...',
+                                            parent=self.markingMenuWidget,
+                                            cls=self.markingMenuWidget,
+                                            command=pm.Callback(SpaceSwitch().saveSelectionAsPreset),
+                                            closeOnPress=True))
         menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
         menuDict['SW'].append(ToolboxButton(label='Save current state as ...',
                                             parent=self.markingMenuWidget,
@@ -483,7 +488,7 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.select(self.getAllControlsInSpace(), replace=True)
 
     def switchSelection(self, mode=str_spaceGlobalValues):
-        print ('switchSelection', str_spaceGlobalValues)
+        print('switchSelection', str_spaceGlobalValues)
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected to switch')
@@ -1002,7 +1007,24 @@ class SpaceSwitch(toolAbstractFactory):
             SpaceSwitch().saveRigData(character, self.loadedSpaceData[character].toJson())
         self.loadDataForCharacters(characters)
 
+    def saveSelectionAsPreset(self):
+        print ('saveSelectionAsPreset')
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return pm.warning('Unable to save preset with no selection')
+
+        attrDict, characters = self.getAllSpaceSwitchAttributes()
+        if not attrDict.keys():
+            return cmds.warning('no characters found')
+        # TODO - make this ui nice
+        dialog = PresetSaveWidget(title='Save Selection Set', label='Enter Name', buttonText="Save",
+                                  default=sel[-1].split(':')[-1],
+                                  qss=False,
+                                  checkBox='Mirror')
+        #dialog.acceptedCBSignal.connect(self.getSaveQssSignal)
+
     def openEditorWindow(self):
+        print ('openEditorWindow')
         if not self.win:
             self.win = SpaceSwitchSetupUI()
         self.win.show()
@@ -1848,7 +1870,7 @@ class SwitchableObjectWidget(QWidget):
             self.defaultValuesWidgets.updateEnums(enumList,
                                                   defaultVal)
             self.mirrorValuesWidgets.updateEnums(enumList,
-                                                  mirrorVal)
+                                                 mirrorVal)
         if attributeType == 'int':
             globalVal = self.cls.spaceData.spaceGlobalValues.get(self.key, 0)
             localVal = self.cls.spaceData.spaceLocalValues.get(self.key, 0)
@@ -1903,3 +1925,167 @@ class HeaderWidget(QWidget):
 
     def sendPressedSignal(self):
         self.pressedSignal.emit()
+
+
+class PresetSaveWidget(QWidget):
+    """
+    Simple prompt with text input
+    """
+    acceptedSignal = Signal(str)
+    acceptedCBSignal = Signal(str, bool, bool)
+    rejectedSignal = Signal()
+    oldPos = None
+
+    def __init__(self, title='Save Selection Set', label='Name', buttonText=str(), default=str(), combo=list(),
+                 checkBox=None, overlay=False, showCloseButton=True, key=str(), subKey=str(),
+                 helpString=None,
+                 parentWidget=None,
+                 qss=False,
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+        super(PresetSaveWidget, self).__init__(parent=parent)
+        self.showCloseButton = showCloseButton
+        self.parentWidget = parentWidget
+        self.key = key
+        self.subKey = subKey
+        self.helpString = helpString
+        self.overlay = overlay
+        self.setStyleSheet(getqss.getStyleSheet())
+
+        self.combo = combo
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.windowFlags()
+        self.setWindowTitle('Custom')
+        self.setFocusPolicy(Qt.StrongFocus)
+        # self.setFixedSize(400, 64)
+        titleLayout = QHBoxLayout()
+        mainLayout = QVBoxLayout()
+        layout = QHBoxLayout()
+
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
+
+        sel = pm.ls(sl=True)
+
+        self.titleText = QLabel(title)
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.text = QLabel(label)
+
+        self.mirrorCheckbox = QCheckBox()
+        self.mirrorCheckbox.setText('Mirror')
+        self.qssCheckbox = QCheckBox()
+        self.qssCheckbox.setChecked(qss)
+        self.qssCheckbox.setText('Quick')
+
+        self.saveButton = QPushButton(buttonText)
+        self.saveButton.setStyleSheet(getqss.getStyleSheet())
+        # layout.addWidget(btnSetFolder)
+
+        titleLayout.addWidget(self.titleText)
+        titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+        mainLayout.addLayout(titleLayout)
+        mainLayout.addLayout(layout)
+
+        self.lineEdit = QLineEdit(default)
+        self.lineEdit.setMinimumWidth(120)
+        self.lineEdit.setFocusPolicy(Qt.StrongFocus)
+        reg_ex = QRegExp("[a-z-A-Z0123456789_:]+")
+        input_validator = QRegExpValidator(reg_ex, self.lineEdit)
+        self.lineEdit.setValidator(input_validator)
+
+        layout.addWidget(self.text)
+        layout.addWidget(self.lineEdit)
+        layout.addWidget(self.qssCheckbox)
+        layout.addWidget(self.mirrorCheckbox)
+        layout.addWidget(self.saveButton)
+
+        if self.helpString:
+            self.helpLabel = QLabel(self.helpString)
+            self.helpLabel.setWordWrap(True)
+            mainLayout.addWidget(self.helpLabel)
+        self.saveButton.clicked.connect(self.acceptedFunction)
+
+        self.setLayout(mainLayout)
+        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+
+        # self.lineEdit.setFocus()
+        self.lineEdit.setFixedWidth(
+            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+        self.setStyleSheet(
+            "PresetSave { "
+            "border-radius: 8;"
+            "}"
+        )
+
+        self.closeButton.setVisible(self.showCloseButton)
+        self.resize(self.sizeHint())
+
+        self.show()
+        # self.setFixedSize(400, 64)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 16, 16)
+        qp.end()
+
+    def acceptedFunction(self, *args):
+        self.acceptedSignal.emit(self.lineEdit.text())
+        self.acceptedCBSignal.emit(self.lineEdit.text(),
+                                   self.qssCheckbox.isChecked(),
+                                   self.mirrorCheckbox.isChecked())
+        self.close()
+
+    def close(self):
+        self.rejectedSignal.emit()
+        if self.overlay:
+            self.parent().close()
+        super(PresetSaveWidget, self).close()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            self.acceptedFunction()
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        try:
+            return super(PresetSaveWidget, self).keyPressEvent(event)
+        except:
+            return
+
+    def mousePressEvent(self, event):
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        if not self.oldPos:
+            return
+        if self.overlay:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+
+    def show(self):
+        position_x = (self.parent().pos().x() + (self.parent().width() - self.frameGeometry().width()) / 2)
+        position_y = (self.parent().pos().y() + (self.parent().height() - self.frameGeometry().height()) / 2)
+
+        self.move(position_x, position_y)
+        super(PresetSaveWidget, self).show()
