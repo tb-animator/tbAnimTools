@@ -131,7 +131,6 @@ class isolator(toolAbstractFactory):
         self.last_time = self.start_time
 
     def doubleTap(self, panel):
-        print ('double tap')
         cmds.isolateSelect(panel, state=0)
         self.allTools.tools['QuickSelectionSets'].uber_qs_select()
         # deselect all mesh objects
@@ -139,7 +138,6 @@ class isolator(toolAbstractFactory):
         cmds.isolateSelect(panel, addSelected=True)
         sel = cmds.ls(sl=True, type='transform')
         polyMeshes = self.getMeshesInSelection(sel)
-        print ('polyMeshes', polyMeshes)
         cmds.select(sel, replace=True)
         cmds.select(polyMeshes, deselect=True)
 
