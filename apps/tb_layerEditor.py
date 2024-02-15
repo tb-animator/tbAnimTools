@@ -121,10 +121,10 @@ class LayerEditor(toolAbstractFactory):
         super(LayerEditor, self).optionUI()
         customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart',
                                                       self.useCustomUIOption)
-        autoFixEnumOnCreateWidget = optionVarBoolWidget('Auto fix additive enums in anim layer creation     ',
-                                                    self.autoFixEnumOnCreateOption)
-        autoFixEnumWidget = optionVarBoolWidget('Auto fix enums in anim existing additive layers     ',
-                                                    self.autoFixEnumOption)
+        autoFixEnumOnCreateWidget = optionVarBoolWidget('Auto fix enum attributes in additive anim layer creation',
+                                                        self.autoFixEnumOnCreateOption)
+        autoFixEnumWidget = optionVarBoolWidget('Auto fix enum attributes in existing additive layers',
+                                                self.autoFixEnumOption)
 
         formLayout = QFormLayout()
         formLayout.addRow(customLayerEditorWidget.labelText, customLayerEditorWidget.checkBox)
