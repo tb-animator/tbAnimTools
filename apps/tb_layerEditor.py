@@ -91,6 +91,7 @@ class LayerEditor(toolAbstractFactory):
     hasAppliedUI = False
 
     useCustomUIOption = 'tUseCustomLayerEditor'
+    autoFixEnumOption = 'tbAutoFixEnumOption'
     buttonSize = 18 * dpiScale()
 
     selectBestLayerTimer = -1
@@ -119,8 +120,11 @@ class LayerEditor(toolAbstractFactory):
         super(LayerEditor, self).optionUI()
         customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart',
                                                       self.useCustomUIOption)
+        autoFixEnumWidget = optionVarBoolWidget('Auto fix enums in anim layers     ',
+                                                    self.autoFixEnumOption)
         customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTabToggled)
         self.layout.addWidget(customLayerEditorWidget)
+        self.layout.addWidget(autoFixEnumWidget)
         self.layout.addStretch()
         return self.optionWidget
 

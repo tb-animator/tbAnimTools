@@ -799,6 +799,7 @@ class Pickwalk(toolAbstractFactory):
         # Pickwalk.__instance.loadWalkLibrary()
         Pickwalk.__instance.getAllPickwalkMaps()
         Pickwalk.__instance.initialiseWalkData()
+        Pickwalk.__instance.initData()
         Pickwalk.__instance.newConditionPopup = None
         Pickwalk.__instance.existingConditionPopup = None
         Pickwalk.__instance.mirrorPopup = None
@@ -809,7 +810,6 @@ class Pickwalk(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         pm.optionVar[self.saveOnUpdateOption] = pm.optionVar.get(self.saveOnUpdateOption, True)
         pm.optionVar[self.autoApplyOption] = pm.optionVar.get(self.autoApplyOption, True)
-        self.initData()
 
     def initData(self):
         super(Pickwalk, self).initData()

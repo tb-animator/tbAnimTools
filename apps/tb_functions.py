@@ -719,6 +719,19 @@ class functions(object):
         else:
             return None
 
+    @staticmethod
+    def get_non_referenced_animation_curves():
+        non_referenced_curves = []
+        # Get all animation curves in the scene
+        all_curves = cmds.ls(type='animCurve')
+        # Iterate through each curve
+        for curve in all_curves:
+            # Check if the curve is not connected to any object
+            if not cmds.referenceQuery(curve, isNodeReferenced=True):
+                # If not connected, add it to the list
+                non_referenced_curves.append(curve)
+        return non_referenced_curves
+
     def get_smart_key_selection(self, node):
         if self.get_selected_keys():
             return self.get_key_indexes_in_selection(node=node)

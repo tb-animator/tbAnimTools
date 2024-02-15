@@ -136,6 +136,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='guessKeyValue',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.plot_guess()']))
+        self.addCommand(self.tb_hkey(name='selectAllAnimCurves',
+                                     annotation='Blank',
+                                     category=self.category, command=['KeyModifiers.select_all_curves()']))
 
         return self.commandList
 
@@ -221,6 +224,8 @@ class KeyModifiers(toolAbstractFactory):
     def matchEndTangentsToStartTangents(self):
         self.matchTangents(False)
 
+    def select_all_curves(self):
+        cmds.select(self.funcs.get_non_referenced_animation_curves())
     def matchTangents(self, data):
         keyTimeIndex = {True: -1, False: 0}[data]
         range = self.funcs.getTimelineRange()

@@ -265,6 +265,7 @@ class BakeTools(toolAbstractFactory):
     tbBakeLocatorSizeOption = 'tbBakeLocatorSize'
     tbBakeWorldOffsetSizeOption = 'tbBakeWorldOffsetSize'
     tbMotionControlSizeOption = 'tbMotionControlSize'
+    autoFixEnumOption = 'tbAutoFixEnumOption'
 
     overrideLayerColour = 19
     additiveLayerColour = 18
@@ -319,6 +320,8 @@ class BakeTools(toolAbstractFactory):
                                                defaultValue=0.5,
                                                label='World offset control size',
                                                minimum=0.1, maximum=100, step=0.1)
+
+
 
         # motionControlSizeWidget.changedSignal.connect(self.updatePreview)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
@@ -379,6 +382,9 @@ class BakeTools(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
+
+    def deferredLoad(self):
+        self.deferredLoadJob = pm.scriptJob(event=('animLayerRefresh', self.fixSelectedLayerEnum))
 
     """
     Functions
@@ -902,12 +908,74 @@ class BakeTools(toolAbstractFactory):
         newAnimLayer.preferred.set(True)
         return newAnimLayer
 
+    def fixSelectedLayerEnum(self):
+        if not pm.optionVar.get(self.autoFixEnumOption, False):
+            return
+        layers = self.funcs.get_selected_layers()
+        if not layers:
+            return
+        self.additiveEnumFix(layers[0])
+
+    def additiveEnumFix(self, layerName=''):
+        if not layerName:
+            return
+        if cmds.animLayer(layerName, query=True, override=True):
+            return
+        conns = cmds.listConnections(layerName + '.blendNodes')
+        if not conns:
+            return
+        for c in conns:
+            if cmds.objectType(c) != 'animBlendNodeEnum':
+                continue
+            self.replaceEnumBlendWithAdditive(blendNode=c)
+            cmds.delete(c)
+
+    def replaceEnumBlendWithAdditive(self, blendNode=None):
+        if not blendNode:
+            return None
+        additiveNode = cmds.createNode('animBlendNodeAdditive', name=blendNode + '_fix', skipSelect=True)
+
+        inWeightA = cmds.listConnections(blendNode + '.weightA', plugs=True)
+        inWeightB = cmds.listConnections(blendNode + '.weightB', plugs=True)
+        inputA = cmds.listConnections(blendNode + '.inputA', plugs=True)
+        inputB = cmds.listConnections(blendNode + '.inputB', plugs=True)
+        message = cmds.listConnections(blendNode + '.message', plugs=True, source=False, destination=True)
+        output = cmds.listConnections(blendNode + '.output', plugs=True, source=False, destination=True)
+        # print('message', message)
+        # print('output', output)
+
+        if inWeightA:
+            # print('inWeightA', inWeightA)
+            cmds.connectAttr(inWeightA[0], additiveNode + '.weightA')
+            cmds.disconnectAttr(inWeightA[0], blendNode + '.weightA')
+        if inWeightB:
+            # print('inWeightB', inWeightB)
+            cmds.connectAttr(inWeightB[0], additiveNode + '.weightB')
+            cmds.disconnectAttr(inWeightB[0], blendNode + '.weightB')
+        if inputA:
+            # print('inputA', inputA)
+            cmds.connectAttr(inputA[0], additiveNode + '.inputA')
+            cmds.disconnectAttr(inputA[0], blendNode + '.inputA')
+        if inputB:
+            # print('inputB', inputB)
+            cmds.connectAttr(inputB[0], additiveNode + '.inputB')
+            cmds.disconnectAttr(inputB[0], blendNode + '.inputB')
+        if message:
+            # print('message', message)
+            cmds.disconnectAttr(blendNode + '.message', message[0])
+            cmds.connectAttr(additiveNode + '.message', message[0])
+        if output:
+            # print('output', output)
+            cmds.disconnectAttr(blendNode + '.output', output[0])
+            cmds.connectAttr(additiveNode + '.output', output[0])
+
     def add_layer(self, override=False, component=True):
         timeRange = None
         if self.funcs.isTimelineHighlighted():
             timeRange = self.funcs.getTimelineHighlightedRange()
         newAnimLayer = self.createLayer(override=override, component=component)
-
+        if not override:
+            self.additiveEnumFix(str(newAnimLayer))
         if timeRange:
             if override:
                 # if adding an override layer with timeline selected, key the layer weight

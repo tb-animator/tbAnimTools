@@ -170,7 +170,7 @@ class ClassFinder(object):
         if not selection:
             return None
         for tool, cls in self.tools.items():
-            #print (tool, cls)
+            # print (tool, cls)
             if not cls:
                 continue
             menuDataDict[tool] = cls.qtMarkingMenu(selection)
@@ -205,12 +205,6 @@ class ClassFinder(object):
         except Exception:
             cmds.warning('Failing to modify animLayerTab ::', cmds.warning(traceback.format_exc()))
 
-    def startupScriptJobs(self):
-        if self.animLayerScriptJob is not -1:
-            self.animLayerScriptJob = pm.scriptJob(event=('aninLayerRebuild', self.colourAnimLayers))
-
-    def colourAnimLayers(self):
-        print ('colourAnimLayers')
 
     def installFromZip(self, filename):
         cmds.warning('installFromZip', filename)
