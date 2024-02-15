@@ -300,6 +300,7 @@ class QuickSelectionTools(toolAbstractFactory):
             all_selection.extend(self.checkUpstreamTempControls(s))
         all_selection = list(set(all_selection))
         all_selection.extend(sel)
+
         if all_sets:
             for a_set in all_sets:
                 qs_result = self.check_set_membership(all_selection, a_set)
@@ -308,7 +309,7 @@ class QuickSelectionTools(toolAbstractFactory):
             for s in all_selection:
                 # skip non object sets
                 if cmds.nodeType(s) == 'objectSet':
-                    returned_objects.extend(self.get_set_contents(a_set))
+                    returned_objects.extend(self.get_set_contents(s))
         else:
             msg = 'no quick selects found for selection'
             self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=5.0,
@@ -763,8 +764,10 @@ class QuickSelectionTools(toolAbstractFactory):
         """
         if found_controls is None:
             found_controls = []
+
         if not cmds.attributeQuery('constraintTarget', node=str(control), exists=True):
             return found_controls
+
         messageConnections = cmds.listConnections(control + '.constraintTarget', source=True, destination=False, plugs=True)
 
         if not messageConnections:
