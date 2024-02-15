@@ -92,6 +92,7 @@ class LayerEditor(toolAbstractFactory):
 
     useCustomUIOption = 'tUseCustomLayerEditor'
     autoFixEnumOption = 'tbAutoFixEnumOption'
+    autoFixEnumOnCreateOption = 'tbAutoFixEnumOnCreateOption'
     buttonSize = 18 * dpiScale()
 
     selectBestLayerTimer = -1
@@ -120,11 +121,21 @@ class LayerEditor(toolAbstractFactory):
         super(LayerEditor, self).optionUI()
         customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart',
                                                       self.useCustomUIOption)
-        autoFixEnumWidget = optionVarBoolWidget('Auto fix enums in anim layers     ',
+        autoFixEnumOnCreateWidget = optionVarBoolWidget('Auto fix additive enums in anim layer creation     ',
+                                                    self.autoFixEnumOnCreateOption)
+        autoFixEnumWidget = optionVarBoolWidget('Auto fix enums in anim existing additive layers     ',
                                                     self.autoFixEnumOption)
+
+        formLayout = QFormLayout()
+        formLayout.addRow(customLayerEditorWidget.labelText, customLayerEditorWidget.checkBox)
+        formLayout.addRow(autoFixEnumOnCreateWidget.labelText, autoFixEnumOnCreateWidget.checkBox)
+        formLayout.addRow(autoFixEnumWidget.labelText, autoFixEnumWidget.checkBox)
+
         customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTabToggled)
+        self.layout.addWidget(autoFixEnumOnCreateWidget)
         self.layout.addWidget(customLayerEditorWidget)
         self.layout.addWidget(autoFixEnumWidget)
+        self.layout.addLayout(formLayout)
         self.layout.addStretch()
         return self.optionWidget
 

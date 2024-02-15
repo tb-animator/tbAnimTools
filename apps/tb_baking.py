@@ -266,6 +266,7 @@ class BakeTools(toolAbstractFactory):
     tbBakeWorldOffsetSizeOption = 'tbBakeWorldOffsetSize'
     tbMotionControlSizeOption = 'tbMotionControlSize'
     autoFixEnumOption = 'tbAutoFixEnumOption'
+    autoFixEnumOnCreateOption = 'tbAutoFixEnumOnCreateOption'
 
     overrideLayerColour = 19
     additiveLayerColour = 18
@@ -975,7 +976,8 @@ class BakeTools(toolAbstractFactory):
             timeRange = self.funcs.getTimelineHighlightedRange()
         newAnimLayer = self.createLayer(override=override, component=component)
         if not override:
-            self.additiveEnumFix(str(newAnimLayer))
+            if pm.optionVar.get(self.autoFixEnumOnCreateOption, False):
+                self.additiveEnumFix(str(newAnimLayer))
         if timeRange:
             if override:
                 # if adding an override layer with timeline selected, key the layer weight
