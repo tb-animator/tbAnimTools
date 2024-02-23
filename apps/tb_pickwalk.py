@@ -1089,7 +1089,7 @@ class Pickwalk(toolAbstractFactory):
         return controlList
 
     def findSequenceRecursive(self, control, substringList):
-        print ('findSequenceRecursive', control)
+        print('findSequenceRecursive', control)
         length = len(control)
         if length == 0:
             return substringList
@@ -1339,8 +1339,21 @@ class Pickwalk(toolAbstractFactory):
             return
         self.queryWalkOnNewRig(refName)
 
+    @staticmethod
+    def pad_integers(input_string):
+        matches = re.findall(r'\d+', input_string)
+        padded_integers = [f'{int(match):0{len(match)}d}' for match in matches]
+        return padded_integers
+
+    @staticmethod
+    def increment_padded_integer(input_string, offset):
+        matches = re.findall(r'\d+', input_string)
+        padded_integers = [f'{int(match):0{len(match)}d}' for match in matches]
+        incremented_integers = [f'{int(padded) + offset:0{len(padded)}d}' for padded in padded_integers]
+        return incremented_integers[0]
+
     def findIncrementalControl(self, cnt, namespace=str(), offset=1):
-        intParts = re.findall(r'\d+', cnt)
+        intParts = self.pad_integers(cnt)
         if not intParts:
             return None
 
@@ -1348,32 +1361,11 @@ class Pickwalk(toolAbstractFactory):
             return None
 
         nameParts = cnt.split(intParts[-1])
-        intParts[-1] = int(intParts[-1]) + offset
-        # print (nameParts)
-        # print (intParts)
-        outStr = nameParts[0] + str(intParts[-1]) + nameParts[-1]
-        # turns out the following is a dumb idea
-        '''
-        
-        listLength = max(len(intParts), len(nameParts))
-        nameList = [str()] * listLength
-        intList = [str()] * listLength
-        for i, v in enumerate(intParts):
-            nameList[i] = v
-        for i, v in enumerate(nameParts):
-            intList[i] = v
 
-        resultList = nameList + intList
-        print ('resultList', resultList)
-        resultList[::2] = intList
-        resultList[1::2] = nameList
-        outStr = ''.join(map(str, resultList))
-        print ('outStr', outStr)
-        #print ('outStr', outStr)
-        '''
-        if cmds.objExists(namespace + ':' + outStr):
-            return outStr
-        return None
+        intParts[-1] = self.increment_padded_integer(intParts[-1], offset)
+        outStr = nameParts[0] + str(intParts[-1]) + nameParts[-1]
+
+        return outStr
 
     def dataDrivenWalk(self, direction, refName, walkObject):
         returnedControls = list()
@@ -1394,11 +1386,12 @@ class Pickwalk(toolAbstractFactory):
                                                      direction=direction)
             vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
             if not vaildObject:
-                # print('query new destination')
+
                 if direction == 'up' or direction == 'down':
                     result = self.findIncrementalControl(walkObjectStripped,
                                                          namespace=walkObjectNS,
                                                          offset=self.walkIncrementMap[direction])
+
                     vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
 
                     if vaildObject:
@@ -1406,15 +1399,14 @@ class Pickwalk(toolAbstractFactory):
                                                                                    walkObject)
                         mirrorEnd = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
                                                                                  walkObjectNS + ':' + str(result))
-                        validMirror = cmds.objExists(mirrorEnd) and cmds.objExists(mirrorStart)
+
+                        validMirror = cmds.objExists(str(mirrorEnd)) and cmds.objExists(str(mirrorStart))
                         if validMirror:
-                            # print ('auto adding mirror')
                             self.createDestination(mirrorStart, mirrorEnd, direction)
                         self.createDestination(walkObject, walkObjectNS + result, direction)
                         return [walkObjectNS + result]
                 else:
                     # check for fingers
-
                     offset = 1
                     if direction == 'left': offset = -1
                     result = self.getMatchingFinger(walkObject, offset)
@@ -4083,8 +4075,8 @@ class mirrorPickwalkWidget(QFrame):
                                      "background-color: #323232;"
                                      "}");
         self.toInput.setStyleSheet("QLineEdit[readOnly=\"true\"] {"
-                                     "background-color: #323232;"
-                                     "}");
+                                   "background-color: #323232;"
+                                   "}");
         # line edit input mask
         # reg_ex = QRegExp("[a-z-A-Z0123456789_,]+")
         # fromInput_validator = QRegExpValidator(reg_ex, self.fromInput)
