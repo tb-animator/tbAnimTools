@@ -1342,14 +1342,14 @@ class Pickwalk(toolAbstractFactory):
     @staticmethod
     def pad_integers(input_string):
         matches = re.findall(r'\d+', input_string)
-        padded_integers = ['int({match}):0{len({match})}d}'.format(match=match) for match in matches]
+        padded_integers = ['{:0{width}d}'.format(int(match), width=len(match)) for match in matches]
         return padded_integers
 
     @staticmethod
     def increment_padded_integer(input_string, offset):
         matches = re.findall(r'\d+', input_string)
-        padded_integers = ['int({match}):0{len({match})}d}'.format(match=match) for match in matches]
-        incremented_integers = ['int({padded}) + offset:0{len({padded})}d'.format(padded=padded) for padded in padded_integers]
+        padded_integers = ['{:0{width}d}'.format(int(match), width=len(match)) for match in matches]
+        incremented_integers = ['{:0{width}d}'.format(int(padded) + 1, width=len(padded)) for padded in padded_integers]
         #incremented_integers = [f'{int(padded) + offset:0{len(padded)}d}' for padded in padded_integers]
         return incremented_integers[0]
 
