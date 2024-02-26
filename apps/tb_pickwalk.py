@@ -1349,8 +1349,7 @@ class Pickwalk(toolAbstractFactory):
     def increment_padded_integer(input_string, offset):
         matches = re.findall(r'\d+', input_string)
         padded_integers = ['{:0{width}d}'.format(int(match), width=len(match)) for match in matches]
-        incremented_integers = ['{:0{width}d}'.format(int(padded) + 1, width=len(padded)) for padded in padded_integers]
-        #incremented_integers = [f'{int(padded) + offset:0{len(padded)}d}' for padded in padded_integers]
+        incremented_integers = ['{:0{width}d}'.format(int(padded) + offset, width=len(padded)) for padded in padded_integers]
         return incremented_integers[0]
 
     def findIncrementalControl(self, cnt, namespace=str(), offset=1):
