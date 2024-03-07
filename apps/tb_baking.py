@@ -314,15 +314,13 @@ class BakeTools(toolAbstractFactory):
                                     label='Xray Opacity',
                                     minimum=0.0, maximum=1, step=0.1)
         linewidthWidget = intFieldWidget(optionVar='lineWidth',
-                                    defaultValue=-1,
-                                    label='Line Width',
-                                    minimum=-1, maximum=10, step=0.1)
+                                         defaultValue=-1,
+                                         label='Line Width',
+                                         minimum=-1, maximum=10, step=0.1)
         worldOffsetSizeWidget = intFieldWidget(optionVar=self.tbBakeWorldOffsetSizeOption,
                                                defaultValue=0.5,
                                                label='World offset control size',
                                                minimum=0.1, maximum=100, step=0.1)
-
-
 
         # motionControlSizeWidget.changedSignal.connect(self.updatePreview)
         crossSizeWidget.changedSignal.connect(self.updatePreview)
@@ -558,9 +556,12 @@ class BakeTools(toolAbstractFactory):
                 if locs:
                     preContainers = set(pm.ls(type='container'))
                     keyRange = self.funcs.getBestTimelineRangeForBake()
-
+                    self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
+                                   simulation=True,
+                                   slow=False)
+                    '''
                     pm.bakeResults(locs,
-                                   simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                                   simulation=True,
                                    sampleBy=1,
                                    oversamplingRate=1,
                                    disableImplicitControl=True,
@@ -575,6 +576,7 @@ class BakeTools(toolAbstractFactory):
                                    time=[keyRange[0],
                                          keyRange[1]],
                                    )
+                    '''
                     self.removeContainersPostBake(preContainers)
                     if constrain:
                         pm.delete(constraints)
@@ -658,6 +660,10 @@ class BakeTools(toolAbstractFactory):
                 if locs:
                     preContainers = set(pm.ls(type='container'))
                     keyRange = self.funcs.getBestTimelineRangeForBake()
+                    self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
+                                   simulation=True,
+                                   slow=False)
+                    '''
                     pm.bakeResults(locs,
                                    simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                                    sampleBy=1,
@@ -674,6 +680,7 @@ class BakeTools(toolAbstractFactory):
                                    time=[keyRange[0],
                                          keyRange[1]],
                                    )
+                    '''
                     self.removeContainersPostBake(preContainers)
                     if constrain:
                         pm.delete(constraints)

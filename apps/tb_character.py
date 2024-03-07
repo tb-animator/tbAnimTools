@@ -670,8 +670,9 @@ class CharacterTool(toolAbstractFactory):
             return
         dataFile = os.path.join(self.charTemplateDir, self.currentChar + '.json')
         # print ('currentChar', self.currentChar)
-        if not self.currentCharData.meshes:
-            raiseOk('No skinned meshes defined for character, Please set the skinned meshes for faster baking', title='Set character skinned meshes')
+
+        # if not self.currentCharData.meshes:
+        #     raiseOk('No skinned meshes defined for character, Please set the skinned meshes for faster baking', title='Set character skinned meshes')
 
         self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
         # print ('UUID', self.currentCharData.UUID)

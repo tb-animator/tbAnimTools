@@ -371,6 +371,8 @@ class functions(object):
     def is_object_visible(self, obj_name):
         # Check visibility attribute of the object itself
         if cmds.objExists(obj_name):
+            if self.is_layer_hidden(obj_name):
+                return False
             visibility = cmds.getAttr(obj_name + ".visibility")
             if not visibility:
                 return False
@@ -379,7 +381,19 @@ class functions(object):
             parent = cmds.listRelatives(obj_name, parent=True, fullPath=True)
             if parent:
                 # If the object has a parent, check its visibility
-                return is_object_visible(parent[0])
+                return self.is_object_visible(parent[0])
+
+        return True
+
+    def is_layer_hidden(self, object_name):
+        # Get the list of layers the object belongs to
+        object_layers = cmds.listConnections(object_name + ".drawOverride", source=True, destination=False)
+        if object_layers:
+            # Check if any of the layers the object belongs to is visible
+            for layer in object_layers:
+                visibility = cmds.getAttr(layer + ".visibility")
+                if not visibility:
+                    return True
 
         return False
 
@@ -1392,32 +1406,46 @@ class functions(object):
     @contextmanager
     def suspendUpdate(self, slow=False):
         validSkinClusters = self.getValidSkinsForSuspension()
-        if not slow:
-            self.suspendSkinning(validSkinClusters)
+        self.suspendSkinning(validSkinClusters)
 
         yield
 
         self.resumeSkinning()
 
+    def getObjectsFromSkinCluster(self, skinCluster):
+        shapes = cmds.listConnections(skinCluster + '.outputGeometry')
+        if not shapes:
+            return list()
+        if not self.is_object_visible(shapes[0]):
+            return list()
+        return skinCluster
     def getValidSkinsForSuspension(self):
         allSkins = cmds.ls(type='skinCluster')
-        CharacterTool = getGlobalTools().tools['CharacterTool']
-        CharacterTool.getAllCharacters()
-        chars = self.splitSelectionToCharacters(allSkins)
         validSkinClusters = list()
-        for key, selection in chars.items():
-            rig = self.getCurrentRig(selection)
-            meshes = CharacterTool.getAllMeshes(sel=selection)
-            for mesh in meshes:
-                shapes = cmds.listRelatives(mesh, shapes=True)
-                for shape in shapes:
-                    skinClusters = cmds.listConnections(shape, type='skinCluster')
-                    if not skinClusters:
-                        continue
-                    for skin in skinClusters:
-                        if skin in validSkinClusters:
-                            continue
-                        validSkinClusters.append(skin)
+        for skin in allSkins:
+            visibleSkins = self.getObjectsFromSkinCluster(skin)
+
+            if not visibleSkins:
+                continue
+            validSkinClusters.append(visibleSkins)
+
+        # CharacterTool = getGlobalTools().tools['CharacterTool']
+        # CharacterTool.getAllCharacters()
+        # chars = self.splitSelectionToCharacters(allSkins)
+        # validSkinClusters = list()
+        # for key, selection in chars.items():
+        #     rig = self.getCurrentRig(selection)
+        #     meshes = CharacterTool.getAllMeshes(sel=selection)
+        #     for mesh in meshes:
+        #         shapes = cmds.listRelatives(mesh, shapes=True)
+        #         for shape in shapes:
+        #             skinClusters = cmds.listConnections(shape, type='skinCluster')
+        #             if not skinClusters:
+        #                 continue
+        #             for skin in skinClusters:
+        #                 if skin in validSkinClusters:
+        #                     continue
+        #                 validSkinClusters.append(skin)
         return validSkinClusters
 
     def suspendSkinning(self, validSkinClusters=list()):
