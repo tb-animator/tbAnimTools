@@ -545,6 +545,7 @@ class BakeTools(toolAbstractFactory):
                         asset = ns + self.assetName
                         loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
                                                      scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1))
+                        pm.setAttr(loc + '.rotateOrder')
                         pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                         pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                         const = pm.parentConstraint(s, loc)
@@ -557,6 +558,7 @@ class BakeTools(toolAbstractFactory):
                 if locs:
                     preContainers = set(pm.ls(type='container'))
                     keyRange = self.funcs.getBestTimelineRangeForBake()
+
                     pm.bakeResults(locs,
                                    simulation=pm.optionVar.get(self.quickBakeSimOption, False),
                                    sampleBy=1,

@@ -745,7 +745,7 @@ class MirrorTools(toolAbstractFactory):
             return
         attrEntry = self.loadedMirrorTables[character].controls.get(strippedFrom, None)
         if not attrEntry:
-            return cmds.warning('This character has no mirror table yet', title='Mirror')
+            return cmds.warning('This character has no mirror table yet')
         if attr in attrEntry:
             return attrEntry.get(attr, 1)
         return False

@@ -368,6 +368,21 @@ class functions(object):
     def getAllModelPanels(self):
         return self.get_modelEditors(pm.lsUI(editors=True))
 
+    def is_object_visible(self, obj_name):
+        # Check visibility attribute of the object itself
+        if cmds.objExists(obj_name):
+            visibility = cmds.getAttr(obj_name + ".visibility")
+            if not visibility:
+                return False
+
+            # Check if the object has a parent
+            parent = cmds.listRelatives(obj_name, parent=True, fullPath=True)
+            if parent:
+                # If the object has a parent, check its visibility
+                return is_object_visible(parent[0])
+
+        return False
+
     def tempNull(self, name='loc', suffix='baked'):
         if suffix:
             suffix = '_' + suffix
@@ -423,9 +438,22 @@ class functions(object):
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control.rename(name + '_' + suffix)
         blendControl.rename(name + '_' + suffix + '_bs')
-
+        upAxis = cmds.upAxis(query=True, axis=True)
+        rotOrder = {0: 1,
+                    1: 2,
+                    2: 0,
+                    3: 4,
+                    4: 5,
+                    5: 3,
+                     }
+        if upAxis == 'y':
+            outRotateOrder = rotateOrder
+        else:
+            outRotateOrder = rotOrder[rotateOrder]
         # change this for z up
         control.rotateOrder.set(rotateOrder)
+        control.rotateOrder.set(channelBox=True)
+        control.rotateOrder.set(keyable=True)
         # control.scaleX.set(channelBox=True)
         # control.scaleY.set(channelBox=True)
         # control.scaleZ.set(channelBox=True)
@@ -1363,16 +1391,38 @@ class functions(object):
 
     @contextmanager
     def suspendUpdate(self, slow=False):
+        validSkinClusters = self.getValidSkinsForSuspension()
         if not slow:
-            self.suspendSkinning()
+            self.suspendSkinning(validSkinClusters)
 
         yield
 
         self.resumeSkinning()
 
-    def suspendSkinning(self):
+    def getValidSkinsForSuspension(self):
         allSkins = cmds.ls(type='skinCluster')
-        for skin in allSkins:
+        CharacterTool = getGlobalTools().tools['CharacterTool']
+        CharacterTool.getAllCharacters()
+        chars = self.splitSelectionToCharacters(allSkins)
+        validSkinClusters = list()
+        for key, selection in chars.items():
+            rig = self.getCurrentRig(selection)
+            meshes = CharacterTool.getAllMeshes(sel=selection)
+            for mesh in meshes:
+                shapes = cmds.listRelatives(mesh, shapes=True)
+                for shape in shapes:
+                    skinClusters = cmds.listConnections(shape, type='skinCluster')
+                    if not skinClusters:
+                        continue
+                    for skin in skinClusters:
+                        if skin in validSkinClusters:
+                            continue
+                        validSkinClusters.append(skin)
+        return validSkinClusters
+
+    def suspendSkinning(self, validSkinClusters=list()):
+        allSkins = cmds.ls(type='skinCluster')
+        for skin in validSkinClusters:
             cmds.setAttr(skin + '.frozen', 1)
             cmds.setAttr(skin + '.nodeState', 1)
 

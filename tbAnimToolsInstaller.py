@@ -127,7 +127,7 @@ class tbAnimToolsInstaller(QDialog):
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
 
-        self.setFixedSize(400, 120)
+
         self.mainLayout = QVBoxLayout()
         self.layout = QVBoxLayout()
 

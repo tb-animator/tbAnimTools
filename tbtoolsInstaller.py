@@ -288,7 +288,7 @@ class ResultWindow(BaseDialog):
         mel.eval("hotkeyEditorWindow")
 
     def openOptionWindow(self, *args):
-        import tb_options as tbo
+        import apps.tb_options as tbo
         tbo.showOptions()
 
 

@@ -100,6 +100,7 @@ class ViewportRadialMenu(ViewportDialog):
         super(ViewportRadialMenu, self).show()
 
     def arrangeButtons(self):
+        print ('arrangeButtons')
         self.maxButtons = len(self.widgets['radial'])
         initialAngle = 0
         if self.parentMenu:

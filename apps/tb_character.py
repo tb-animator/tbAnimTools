@@ -670,10 +670,13 @@ class CharacterTool(toolAbstractFactory):
             return
         dataFile = os.path.join(self.charTemplateDir, self.currentChar + '.json')
         # print ('currentChar', self.currentChar)
+        if not self.currentCharData.meshes:
+            raiseOk('No skinned meshes defined for character, Please set the skinned meshes for faster baking', title='Set character skinned meshes')
+
         self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
         # print ('UUID', self.currentCharData.UUID)
         allControls = self.getAllControls()
-        print('saveCurrentCharacter', allControls)
+
         if allControls:
             self.tagTopNodeAsCharacter(self.currentChar, allControls[0])
         self.getAllCharacters()
@@ -725,13 +728,11 @@ class CharacterTool(toolAbstractFactory):
                 button = self.mirrorChannelWidgets[x]
                 button.setChecked(isMirrored == -1)
                 button.setText(labelDict[isMirrored == -1])
-                print('isMirrored', x, isMirrored, button.attribute)
             for x in ['rotateX', 'rotateY', 'rotateZ']:
                 isMirrored = MirrorTools.getIsMirror(sel[0], self.currentChar, x)
                 button = self.mirrorChannelWidgets[x]
                 button.setChecked(isMirrored == -1)
                 button.setText(labelDict[isMirrored == -1])
-                print('isMirrored', x, isMirrored, button.attribute)
             for x in self.mirrorChannelWidgets.values():
                 x.setEnabled(True)
                 x.setStyleSheet(_flipButtonStyleSheet)
@@ -784,7 +785,6 @@ class CharacterTool(toolAbstractFactory):
         MirrorTools = self.allTools.tools['MirrorTools']
         characters = self.funcs.splitSelectionToCharacters(self.currentControls)
         MirrorTools.loadDataForCharacters(characters)
-        print('updateMirroChannelForControl', self.currentControls, button.attribute, button.isChecked())
         for s in self.currentControls:
             MirrorTools.setIsMirror(s, self.currentChar, button.attribute, button.isChecked())
         button.setText(labelDict[button.isChecked()])

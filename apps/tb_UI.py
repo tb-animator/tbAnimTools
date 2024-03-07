@@ -299,6 +299,8 @@ class markingMenuKeypressHandler(QObject):
         if event.type() == event.KeyRelease:
             if event.isAutoRepeat():
                 return True
+            if not self.UI:
+                return False
             self.UI.keyReleaseEvent(event)
             return False
         elif event.type() == event.KeyPress:
@@ -363,11 +365,9 @@ class ViewportDialog(QDialog):
             distance = self.distance(self.cursorPos, self.parentMenu.cursorPos)
             delta = self.parentMenu.cursorPos - self.cursorPos
             delta = om2.MVector(delta.x(), delta.y(), 0).normal()
-            # print ('returnButton', delta)
-            # self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
-            print ('hello')
-            self.returnButton.move(self.parentMenu.cursorPos.x() - self.returnButton.width() * 0.5,
-                                   self.parentMenu.cursorPos.y() - self.returnButton.height() * 0.5)
+
+            self.returnButton.move(self.parentMenu.cursorPos.x() - (self.returnButton.width() * 0.5),
+                                   self.parentMenu.cursorPos.y() - (self.returnButton.height() * 0.5))
 
         else:
             self.keyPressHandler = markingMenuKeypressHandler(UI=self)
@@ -444,7 +444,9 @@ class ViewportDialog(QDialog):
 
     def moveAll(self):
         if self.returnButton:
+            self.cursorPos = QCursor.pos()
             return
+
         cursorPos = QCursor.pos()  # or event.getCursor()
 
         offset = self.mapToGlobal(self.cursorPos) - cursorPos
