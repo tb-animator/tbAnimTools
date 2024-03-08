@@ -387,6 +387,9 @@ class functions(object):
 
     def is_layer_hidden(self, object_name):
         # Get the list of layers the object belongs to
+        if not cmds.attributeQuery('drawOverride', object_name, exists=True):
+            object_name = cmds.listRelatives(object_name, parent=True, fullPath=True)
+
         object_layers = cmds.listConnections(object_name + ".drawOverride", source=True, destination=False)
         if object_layers:
             # Check if any of the layers the object belongs to is visible
@@ -1415,6 +1418,8 @@ class functions(object):
     def getObjectsFromSkinCluster(self, skinCluster):
         shapes = cmds.listConnections(skinCluster + '.outputGeometry')
         if not shapes:
+            return list()
+        if cmds.objectType(shapes[0]) == 'groupParts':
             return list()
         if not self.is_object_visible(shapes[0]):
             return list()

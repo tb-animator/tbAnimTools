@@ -529,6 +529,18 @@ class BakeTools(toolAbstractFactory):
     def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True, skipMotionTrails=False):
         if not sel:
             sel = pm.ls(sl=True)
+
+        # swap non transform nodes for their parent
+        for index, s in enumerate([str(s) for s in sel]):
+            if cmds.nodeType(str(s)) == 'transform':
+                continue
+            if cmds.listRelatives(str(s), parent=True):
+                p = cmds.listRelatives(str(s), parent=True)
+                sel[index] = p
+            else:
+                sel[index] = None
+        sel = self.funcs.flattenList([s for s in sel if s])
+
         locs = []
         constraints = []
         with self.funcs.suspendUpdate():
@@ -546,9 +558,9 @@ class BakeTools(toolAbstractFactory):
                         pm.setAttr(loc + '.rotateOrder')
                         pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                         pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
-                        const = pm.parentConstraint(s, loc)
+                        const = cmds.parentConstraint(str(s), str(loc))
                         locs.append(loc)
-                        constraints.append(const)
+                        constraints.append(const[0])
                         pm.container(asset, edit=True,
                                      includeHierarchyBelow=True,
                                      force=True,
@@ -579,7 +591,9 @@ class BakeTools(toolAbstractFactory):
                     '''
                     self.removeContainersPostBake(preContainers)
                     if constrain:
-                        pm.delete(constraints)
+                        for c in constraints:
+                            if cmds.objExists(c):
+                                cmds.delete(c)
                         for cnt, loc in zip(sel, locs):
                             skipT = self.funcs.getAvailableTranslates(cnt)
                             skipR = self.funcs.getAvailableRotates(cnt)

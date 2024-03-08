@@ -24,18 +24,19 @@
 '''
 import pymel.core as pm
 import maya
+
 maya.utils.loadStringResourcesForModule(__name__)
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
-    #from pysideuic import *
+    # from pysideuic import *
     from shiboken import wrapInstance
 else:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
-    #from pyside2uic import *
+    # from pyside2uic import *
     from shiboken2 import wrapInstance
 import maya.cmds as cmds
 import pymel.core as pm
@@ -121,7 +122,6 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['ViewModes.toggleMenuBarVisibility()']))
 
-
         return self.commandList
 
     def assignHotkeys(self):
@@ -132,7 +132,7 @@ class ViewModeTool(toolAbstractFactory):
     """
     Use this as a base for toolAbstractFactory classes
     """
-    #__metaclass__ = abc.ABCMeta
+    # __metaclass__ = abc.ABCMeta
     __instance = None
     toolName = 'ViewModes'
     hotkeyClass = None
@@ -241,6 +241,7 @@ class ViewModeTool(toolAbstractFactory):
                 cmds.modelEditor(panel, edit=True, **{flag: flagDict[flag]})
             except:
                 continue
+
     def setCustomControlView(self, *args):
         self.savePreset('controls')
         pm.optionVar(intValue=(self.viewControlsCustomOption, True))
@@ -287,6 +288,7 @@ class ViewModeTool(toolAbstractFactory):
 
     def viewMode(self, key='everything', custom=False, default='everything'):
         self.setFlagsFromDict({False: default, True: self.viewData['viewData'].get(key, default)}[bool(custom)])
+        cmds.modelEditor(self.funcs.getModelPanel(), edit=True, manipulators=True, sel=True)
 
     def viewControls(self):
         self.viewMode(key='controls', custom=pm.optionVar.get(self.viewControlsCustomOption, False), default=controls)
@@ -353,7 +355,6 @@ class ViewModeTool(toolAbstractFactory):
         cmds.xform(cam, translation=pos, absolute=True, worldSpace=True)
         cmds.xform(cam, rotation=rot, absolute=True, worldSpace=True)
         cmds.delete(null)
-
 
     def loadData(self):
         super(ViewModeTool, self).loadData()
