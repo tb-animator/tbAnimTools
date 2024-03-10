@@ -1419,6 +1419,10 @@ class functions(object):
         shapes = cmds.listConnections(skinCluster + '.outputGeometry')
         if not shapes:
             return list()
+
+        shapes = [c for c in shapes if cmds.ls(c, dagObjects=True)]
+        if not shapes:
+            return list()
         if cmds.objectType(shapes[0]) == 'groupParts':
             return list()
         if not self.is_object_visible(shapes[0]):
