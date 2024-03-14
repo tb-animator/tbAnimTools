@@ -121,6 +121,9 @@ def getColourBasedOnRGB(inputColour, lightColour, darkColour):
         return darkColour, False
     return lightColour, True
 
+class QBoldGroupBox(QGroupBox):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 class CustomDialog(QDialog):
     def __init__(self, parent=None):

@@ -599,6 +599,7 @@ class CharacterTool(toolAbstractFactory):
             else:
                 return str(node)
         namespace = cmds.referenceQuery(str(node), namespace=True)
+        print ('namespace', namespace)
         if namespace[0] == ':':
             namespace = namespace[1:]
 

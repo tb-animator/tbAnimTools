@@ -697,7 +697,9 @@ class BakeTools(toolAbstractFactory):
                     '''
                     self.removeContainersPostBake(preContainers)
                     if constrain:
-                        pm.delete(constraints)
+                        for c in constraints:
+                            if cmds.objExists(str(c)):
+                                cmds.delete(str(c))
                         for cnt, loc in zip(sel, locs):
                             constraint = self.funcs.safeParentConstraint(loc, cnt,
                                                                          orientOnly=orientOnly,

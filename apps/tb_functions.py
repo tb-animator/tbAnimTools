@@ -371,8 +371,13 @@ class functions(object):
     def is_object_visible(self, obj_name):
         # Check visibility attribute of the object itself
         if cmds.objExists(obj_name):
+            # check if the layer is hidden
             if self.is_layer_hidden(obj_name):
                 return False
+
+            if not cmds.attributeQuery('visibility', node=obj_name, exists=True):
+                return False
+
             visibility = cmds.getAttr(obj_name + ".visibility")
             if not visibility:
                 return False
@@ -394,6 +399,8 @@ class functions(object):
         if object_layers:
             # Check if any of the layers the object belongs to is visible
             for layer in object_layers:
+                if not cmds.attributeQuery('visibility', node=layer, exists=True):
+                    continue
                 visibility = cmds.getAttr(layer + ".visibility")
                 if not visibility:
                     return True
@@ -1421,6 +1428,7 @@ class functions(object):
             return list()
 
         shapes = [c for c in shapes if cmds.ls(c, dagObjects=True)]
+
         if not shapes:
             return list()
         if cmds.objectType(shapes[0]) == 'groupParts':
@@ -1428,6 +1436,7 @@ class functions(object):
         if not self.is_object_visible(shapes[0]):
             return list()
         return skinCluster
+
     def getValidSkinsForSuspension(self):
         allSkins = cmds.ls(type='skinCluster')
         validSkinClusters = list()
