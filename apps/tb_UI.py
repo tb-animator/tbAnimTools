@@ -87,6 +87,8 @@ def defaultFont():
 def boldFont():
     return QFont("Segoe UI", 10 / dpiFontScale(), QFont.Bold)
 
+def semiBoldFont():
+    return QFont("Segoe UI", 10 / dpiFontScale(), QFont.DemiBold)
 
 margin = 4 * dpiScale()
 
@@ -4744,3 +4746,7 @@ def generate_linear_gradient(start_color, end_color, num_steps):
         gradient_colors.append(hex_color)
 
     return gradient_colors
+
+class QBoldLabel(QLabel):
+    def __init__(self, *args, **kwargs):
+        super(QLabel).__init__(*args, **kwargs)

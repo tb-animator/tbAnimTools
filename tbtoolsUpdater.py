@@ -63,6 +63,7 @@ print data2[0]['tag_name'] - should be latest release
 
 class updater():
     def __init__(self):
+        self.lastUpdateType = -1
         self.updateTypes = ['Latest Stable', 'Latest untested', 'None']
         self.datUrl = 'https://api.github.com/repos/tb-animator/tbAnimTools'
         self.master_url = 'https://raw.githubusercontent.com/tb-animator/tbtools/master/'
@@ -70,26 +71,42 @@ class updater():
         self.realPath = os.path.realpath(__file__)
         self.basename = os.path.basename(__file__)
         self.base_dir = os.path.normpath(os.path.dirname(__file__))
+
+        # make the appData folder if it is not there
         if not os.path.isdir(os.path.join(self.base_dir, 'appData')):
             os.mkdir(os.path.join(self.base_dir, 'appData'))
+
+        # get a reference to where the version file should be located
         self.versionDataFile = os.path.join(self.base_dir, 'appData', 'tbVersion.json')
         self.dateFormat = '%Y-%m-%dT%H:%M'
         self.uiDateFormat = '%Y-%m-%d'
         self.timeFormat = '%H:%M'
+        # query github for the latest version info
         self.data = self.getGithubData()
+        # the most recent github push date
         self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
+        # the most recent of the published/released versions
         self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
+
+        # save the project data if it doesn't exist
         if not os.path.isfile(self.versionDataFile):
             self.save(self.lastPush, self.latestRelease)
+        # get the project data as a json
         self.jsonProjectData = json.load(open(self.versionDataFile))
+        # convert the time format to the version format
         self.currentVersion = self.convertDateFromString(self.jsonProjectData.get('version', self.lastPush))
+        # do the same for the release version
         self.currentRelease = self.convertDateFromString(
             self.jsonProjectData.get('release', self.jsonProjectData.get('version', self.lastPush)))
+        # was the last update an untested or a release version
         self.lastUpdateType = self.jsonProjectData.get('lastUpdateType', 'release')
 
+        # what updates is the user subscribed to
         self.updateType = pm.optionVar.get('tbUpdateType', -1)
+        # set that as an option variable for fun
         pm.optionVar['tbUpdateType'] = self.updateType
 
+        # IF the user has not set an update type, query it with a UI
         if self.updateType == -1:
             # open update type dialog
             prompt = PickListDialog(title='tbAnimTools Update settings', text='Please choose your update type',

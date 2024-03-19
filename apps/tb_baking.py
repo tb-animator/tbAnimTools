@@ -888,6 +888,8 @@ class BakeTools(toolAbstractFactory):
         with self.funcs.suspendUpdate(slow):
             try:
                 keyRange = self.getBestTimelineRangeForBake()
+                if not isinstance(node, list):
+                    node = [node]
                 pm.bakeResults(node,
                                simulation=simulation,
                                disableImplicitControl=False,
@@ -895,14 +897,16 @@ class BakeTools(toolAbstractFactory):
                                      keyRange[1]],
                                sampleBy=1)
                 if deleteConstraints:
-                    if not isinstance(node, list):
-                        node = [node]
+
                     for n in node:
                         n = str(n)
                         constraints = cmds.listRelatives(n, type='constraint')
                         if constraints:
                             cmds.delete(constraints)
                         self.clearBlendAttrs(n)
+                for n in node:
+                    cmds.filterCurve(n + '.rotateX', n + '.rotateY', n + '.rotateZ')
+
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()

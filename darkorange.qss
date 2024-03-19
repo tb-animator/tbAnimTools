@@ -94,20 +94,21 @@ QLineEdit
 QDoubleSpinBox
 {
     background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #4d4d4d, stop: 0 #646464, stop: 1 #5d5d5d);
-    padding: 1px;
-    padding-left: 10px;
-    padding-right: 15px;
+    padding: 1;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-right: 0px;
     border-style: solid;
     border: 1px solid #1e1e1e;
     border-radius: 5;
 }
 QDoubleSpinBox::up-button
 {
-    margin-left: 15px;
+    margin-left: 0px;
 }
 QDoubleSpinBox::down-button
 {
-    margin-left: 15px;
+    margin-left: 0px;
 }
 ToolbarButton
 {
@@ -183,6 +184,17 @@ QGroupBox::title {
     subcontrol-origin:  margin;
     subcontrol-position: top left;
     padding: 0 2px 0 2px;
+    border-radius: 6;
+    border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
+}
+
+QBoldGroupBox {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 6px;
+    margin-left: 6px;
+    font: bold;
+    background-color: transparent;
     border-radius: 6;
     border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
 }
@@ -459,8 +471,9 @@ QCheckBox::indicator{
     color: #b1b1b1;
     background-color: #323232;
     border: 1px solid #b1b1b1;
-    width: 9px;
-    height: 9px;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
 }
 
 QRadioButton::indicator
@@ -528,4 +541,9 @@ QComboBox::drop-down
 QComboBox::down-arrow
 {
      image: url(':down_arrow.png');
+}
+
+QBoldLabel
+{
+"font-weight: bold";
 }
