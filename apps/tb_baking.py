@@ -534,6 +534,8 @@ class BakeTools(toolAbstractFactory):
         for index, s in enumerate([str(s) for s in sel]):
             if cmds.nodeType(str(s)) == 'transform':
                 continue
+            if cmds.nodeType(str(s)) == 'joint':
+                continue
             if cmds.listRelatives(str(s), parent=True):
                 p = cmds.listRelatives(str(s), parent=True)
                 sel[index] = p
@@ -881,6 +883,16 @@ class BakeTools(toolAbstractFactory):
                 cmds.deleteAttr(node, at=attr)
 
     def quickBake(self, node, startTime=None, endTime=None, deleteConstraints=True, simulation=False, slow=False):
+        """
+        The shared quick bake function used for hopefully all temporary controls
+        :param node:
+        :param startTime:
+        :param endTime:
+        :param deleteConstraints:
+        :param simulation:
+        :param slow:
+        :return:
+        """
         if not startTime:
             startTime = pm.playbackOptions(query=True, minTime=True)
         if not endTime:
@@ -905,7 +917,7 @@ class BakeTools(toolAbstractFactory):
                             cmds.delete(constraints)
                         self.clearBlendAttrs(n)
                 for n in node:
-                    cmds.filterCurve(n + '.rotateX', n + '.rotateY', n + '.rotateZ')
+                    cmds.filterCurve(n + '.rotateX', n + '.rotateY', n + '.rotateZ', filter='euler')
 
             except Exception:
                 cmds.warning(traceback.format_exc())
