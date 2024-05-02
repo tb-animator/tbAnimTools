@@ -198,6 +198,9 @@ class SpaceSwitch(toolAbstractFactory):
     allSpaceAttributes = list()
     win = None
 
+    subPath = None
+    allCharacters = dict()
+
     def __new__(cls):
         if SpaceSwitch.__instance is None:
             SpaceSwitch.__instance = object.__new__(cls)
@@ -211,6 +214,11 @@ class SpaceSwitch(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = functions()
 
+    def initData(self):
+        super(SpaceSwitch, self).initData()
+        self.subPath = os.path.join(self.dataPath, self.toolName)
+        if not os.path.exists(self.subPath):
+            os.mkdir(self.subPath)
     """
     Declare an interface for operations that create abstract product
     objects.
