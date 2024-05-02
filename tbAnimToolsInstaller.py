@@ -251,9 +251,7 @@ class tbAnimToolsInstaller(QDialog):
         all_folders = list()
         for root, dirs, files in os.walk(extractedSubFolder):
             p = root[len(extractedSubFolder):]
-            print (self.installPath + os.path.normpath(p))
             newPath = os.path.join(self.installPath + os.path.normpath(p))
-            print ('new path:', newPath)
             if not os.path.isdir(newPath):
                 os.mkdir(newPath)
         copy_tree(extractedSubFolder, destinationPathFinal)
