@@ -41,7 +41,6 @@ else:
     from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
-from apps.ui.tbUI_pyslider import *
 
 
 class hotkeys(hotKeyAbstractFactory):

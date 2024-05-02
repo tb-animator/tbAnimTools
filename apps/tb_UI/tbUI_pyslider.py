@@ -16,8 +16,7 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
-from apps.tb_UI import intFieldWidget, dpiScale, ToolbarButton, IconPath, ButtonPopup, radioGroupVertical, \
-    InfoPromptWidget, getqss, CollapsibleBox, modifyStyleSheet, generate_linear_gradient, darken_hex_color, hex_to_rgb, defaultFont
+from . import *
 
 sliderButtonStyleSheet = """QPushButton
 {{

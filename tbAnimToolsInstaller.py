@@ -272,3 +272,8 @@ class tbAnimToolsInstaller(QDialog):
         sys.path.append(self.installPath)
         import tbtoolsInstaller as tbInstaller
         tbInstaller.install()
+
+
+if __name__ == "__main__":
+    cls = tbAnimToolsInstaller()
+    cls.show()

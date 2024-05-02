@@ -390,35 +390,53 @@ class SnapTools(toolAbstractFactory):
             postMtx = om2.MMatrix(self.funcs.getMatrix(sel[0]))
             parentMtx = om2.MMatrix(self.funcs.getMatrix(sel[0], matrix='parentMatrix'))
 
-            pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
-            if rot:
-                #self.set_world_rotation(sel[0], rot)
-                cmds.xform(sel[0], relative=True, rotation=rot)
-            postMtx = self.funcs.getMatrix(sel[0])
-            parentMtx = self.funcs.getMatrix(sel[0], matrix='parentMatrix')
-            pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+            # if joint orient is being used, just set the values directly for now
+            if cmds.attributeQuery('jointOrient', node=sel[0], exists=True):
+                jointOrient = cmds.getAttr(sel[0] + '.jointOrient')[0]
+            else:
+                jointOrient = [0]
+            if any(jointOrient) != 0:
+                cmds.xform(sel[0], relative=False, rotation=rot)
+                cmds.xform(sel[0], relative=False, translation=pos)
+            else:
+                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                if rot:
+                    #self.set_world_rotation(sel[0], rot)
+                    cmds.xform(sel[0], relative=True, rotation=rot)
+                postMtx = self.funcs.getMatrix(sel[0])
+                parentMtx = self.funcs.getMatrix(sel[0], matrix='parentMatrix')
+                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
 
-            if pos:
-                #self.set_world_translation(sel[0], pos)
-                cmds.xform(sel[0], relative=True, translation=pos)
+                if pos:
+                    #self.set_world_translation(sel[0], pos)
+                    cmds.xform(sel[0], relative=True, translation=pos)
             return
         for s in sel:
-            pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
-            rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
-            storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))
-            if rot:
-                #self.set_world_rotation(s, rot)
-                postMtx = self.funcs.getMatrix(s)
-                parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
-                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
-                cmds.xform(s, relative=True, rotation=rot)
+            if cmds.attributeQuery('jointOrient', node=sel[0], exists=True):
+                jointOrient = cmds.getAttr(sel[0] + '.jointOrient')[0]
+            else:
+                jointOrient = [0]
+            if any(jointOrient) != 0:
+                cmds.xform(sel[0], relative=False, rotation=rot)
+                cmds.xform(sel[0], relative=False, translation=pos)
+                continue
+            else:
+                pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
+                rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
+                storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))
+                if rot:
+                    #self.set_world_rotation(s, rot)
+                    postMtx = self.funcs.getMatrix(s)
+                    parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
+                    pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                    cmds.xform(s, relative=True, rotation=rot)
 
-            if pos:
-                #self.set_world_translation(s, pos)
-                postMtx = self.funcs.getMatrix(s)
-                parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
-                pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
-                cmds.xform(s, relative=True, translation=pos)
+                if pos:
+                    #self.set_world_translation(s, pos)
+                    postMtx = self.funcs.getMatrix(s)
+                    parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
+                    pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                    cmds.xform(s, relative=True, translation=pos)
 
 
     def get_world_pivot(self, node):

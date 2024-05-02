@@ -26,8 +26,7 @@ import pymel.core as pm
 import maya.cmds as cmds
 import maya.mel as mel
 from Abstract import *
-from functools import partial
-from apps.ui.tbUI_pyslider import *
+
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:

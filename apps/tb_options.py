@@ -24,7 +24,7 @@
 '''
 import os
 import maya.cmds as cmds
-import tb_UI as tb_UI
+from tb_UI import *
 import pymel.core as pm
 from pluginLookup import ClassFinder
 import getStyleSheet as getqss

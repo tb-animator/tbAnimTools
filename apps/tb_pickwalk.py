@@ -1328,6 +1328,7 @@ class Pickwalk(toolAbstractFactory):
             finalControls = [str(s) for s in sel] + finalControls
 
         cmds.select(finalControls, replace=True)
+        mel.eval("updateCameraPivot")
 
     def queryNewRig(self, refName, force=False):
         if force:

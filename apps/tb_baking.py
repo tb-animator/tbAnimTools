@@ -961,6 +961,8 @@ class BakeTools(toolAbstractFactory):
     def additiveEnumFix(self, layerName=''):
         if not layerName:
             return
+        if layerName == 'BaseAnimation':
+            return
         if cmds.animLayer(layerName, query=True, override=True):
             return
         conns = cmds.listConnections(layerName + '.blendNodes')
@@ -980,7 +982,9 @@ class BakeTools(toolAbstractFactory):
         inWeightA = cmds.listConnections(blendNode + '.weightA', plugs=True)
         inWeightB = cmds.listConnections(blendNode + '.weightB', plugs=True)
         inputA = cmds.listConnections(blendNode + '.inputA', plugs=True)
+        inputAValue = cmds.getAttr(blendNode + '.inputA')
         inputB = cmds.listConnections(blendNode + '.inputB', plugs=True)
+        inputBValue = cmds.getAttr(blendNode + '.inputB')
         message = cmds.listConnections(blendNode + '.message', plugs=True, source=False, destination=True)
         output = cmds.listConnections(blendNode + '.output', plugs=True, source=False, destination=True)
         # print('message', message)
@@ -996,10 +1000,12 @@ class BakeTools(toolAbstractFactory):
             cmds.disconnectAttr(inWeightB[0], blendNode + '.weightB')
         if inputA:
             # print('inputA', inputA)
+            cmds.setAttr(additiveNode + '.inputA', inputAValue)
             cmds.connectAttr(inputA[0], additiveNode + '.inputA')
             cmds.disconnectAttr(inputA[0], blendNode + '.inputA')
         if inputB:
             # print('inputB', inputB)
+            cmds.setAttr(additiveNode + '.inputB', inputBValue)
             cmds.connectAttr(inputB[0], additiveNode + '.inputB')
             cmds.disconnectAttr(inputB[0], blendNode + '.inputB')
         if message:

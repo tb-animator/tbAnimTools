@@ -34,8 +34,24 @@ import io
 
 from functools import partial
 
+qtVersion = pm.about(qtVersion=True)
+QTVERSION = int(qtVersion.split('.')[0])
+if QTVERSION < 5:
+    from PySide.QtGui import *
+    from PySide.QtCore import *
+    # from pysideuic import *
+    from shiboken import wrapInstance
+else:
+    from PySide2.QtWidgets import *
+    from PySide2.QtGui import *
+    from PySide2.QtCore import *
+    # from pyside2uic import *
+    from shiboken2 import wrapInstance
+
 import maya.OpenMayaUI as omUI
 qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))), 'apps')))
 
 def getStyleSheet():
     stream = QFile(qssFile)
@@ -59,7 +75,7 @@ else:
     #from pyside2uic import *
     from shiboken2 import wrapInstance
 
-from apps.tb_UI import *
+from tb_UI import *
 
 def onMayaDroppedPythonFile(*args):
     module_maker().install()
@@ -218,7 +234,7 @@ class module_maker():
             pm.deleteUI("installWin")
         window = pm.window( title="success!")
         layout = pm.columnLayout(adjustableColumn=True )
-        pm.text(font="boldLabelFont",label="tbtools installed")
+        pm.text(font="boldLabelFont", label="tbtools installed")
         pm.text(label="")
         pm.text(label="please restart maya for everything to load")
 
@@ -239,19 +255,18 @@ class installer():
         pass
 
     def install(self):
-        try:
-            self.clearMultipleSysPaths()
-            if self.filepath not in sys.path:
-                sys.path.append(self.filepath)
-            if self.iconPath not in sys.path:
-                sys.path.append(self.iconPath)
-            if self.appPath not in sys.path:
-                sys.path.append(self.appPath)
 
-            import module_startup
-            module_startup.initialise().load_everything()
-        except Exception as e:
-            pm.warning(e.message)
+        self.clearMultipleSysPaths()
+        if self.filepath not in sys.path:
+            sys.path.append(self.filepath)
+        if self.iconPath not in sys.path:
+            sys.path.append(self.iconPath)
+        if self.appPath not in sys.path:
+            sys.path.append(self.appPath)
+
+        import module_startup
+        module_startup.initialise().load_everything()
+
 
     def clearMultipleSysPaths(self):
         if self.filepath in sys.path:
@@ -288,7 +303,7 @@ class ResultWindow(BaseDialog):
         mel.eval("hotkeyEditorWindow")
 
     def openOptionWindow(self, *args):
-        import apps.tb_options as tbo
+        import tb_options as tbo
         tbo.showOptions()
 
 

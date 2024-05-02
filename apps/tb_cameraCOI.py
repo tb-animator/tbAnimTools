@@ -96,7 +96,7 @@ def getPivotAsBbox(boundingBox, obj):
     :param obj:
     :return:
     '''
-    pivot = cmds.xform(obj, query=True, rotatePivot=True, worldSpace=True)
+    pivot = cmds.xform(obj, query=True, rotatePivot=True, absolute=True, worldSpace=True)
     if not boundingBox:
         return [pivot[0], pivot[1], pivot[2], pivot[0], pivot[1], pivot[2]]
     else:
@@ -305,23 +305,26 @@ class CameraPivot(toolAbstractFactory):
                                 pivots.append(cmds.xform(vertex, query=True, translation=True, worldSpace=True))
                     if not pivots:
                         selected_objects = cmds.ls(selection=True, flatten=True, type='transform', objectsOnly=True)
-
-                        if selected_objects:
-                            self.boundingBox = []
-
-                            transforms_with_shapes = [x for x in selected_objects if
-                                                      cmds.listRelatives(x, fullPath=True, shapes=True)]
-
-                            transforms_without_shapes = [x for x in selected_objects if x not in transforms_with_shapes]
-
-                            if transforms_with_shapes:
-                                self.boundingBox = get_bbox(None, transforms_with_shapes)
-                            if transforms_without_shapes:
-                                for x in transforms_without_shapes:
-                                    self.boundingBox = getPivotAsBbox(self.boundingBox, x)
-                            if self.boundingBox:
-                                # gets the mid point of the min/max bounding box for the selection
-                                self.update_tumble_pivots(get_bounding_box_mid(self.boundingBox))
+                        if not len(selected_objects):
+                            return
+                        pivots = [getPivotAsBbox(boundingBox, selected_objects[-1])]
+                        #
+                        # if selected_objects:
+                        #     self.boundingBox = []
+                        #
+                        #     transforms_with_shapes = [x for x in selected_objects if
+                        #                               cmds.listRelatives(x, fullPath=True, shapes=True)]
+                        #
+                        #     transforms_without_shapes = [x for x in selected_objects if x not in transforms_with_shapes]
+                        #
+                        #     if transforms_with_shapes:
+                        #         self.boundingBox = get_bbox(None, transforms_with_shapes)
+                        #     if transforms_without_shapes:
+                        #         for x in transforms_without_shapes:
+                        #             self.boundingBox = getPivotAsBbox(self.boundingBox, x)
+                        #     if self.boundingBox:
+                        #         # gets the mid point of the min/max bounding box for the selection
+                        #         self.update_tumble_pivots(get_bounding_box_mid(self.boundingBox))
 
                     if pivots:
                         if pivots[0]:

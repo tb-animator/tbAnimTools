@@ -7,7 +7,7 @@ import maya.mel as mel
 import json
 import textwrap
 import shutil
-
+from functools import partial
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
     from PySide.QtGui import *
@@ -24,7 +24,10 @@ else:
 import maya.cmds as cmds
 from apps.tb_functions import functions
 import tb_helpStrings
+
 from apps.tb_UI import *
+from apps.tb_UI import *
+import maya
 import apps.tb_fileTools as ft
 
 # compatible with Python 2 *and* 3:

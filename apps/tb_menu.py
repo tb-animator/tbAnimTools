@@ -40,7 +40,7 @@ class main_menu(object):
     def build_menu(self):
         tbtoolsCLS = ClassFinder()
         pm.setParent(pm.melGlobals['gMainWindow'])
-        if pm.menu(self.main_menu, exists=True):
+        if pm.menu(self.main_menu, query=True, exists=True):
             try:
                 pm.deleteUI(self.main_menu)
             except:

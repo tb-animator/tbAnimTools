@@ -30,7 +30,6 @@ import maya.api.OpenMaya as om2
 import pymel.core.datatypes as dt
 import math
 from Abstract import *
-from tb_UI import *
 
 import maya.api.OpenMaya as OpenMaya
 import maya.OpenMaya as om

@@ -39,13 +39,7 @@ from copy import deepcopy
 import tb_UI as tbui
 
 
-# reload(tbui)
-import tb_UI as tbUI_pyslider
-# reload(tbUI_pyslider)
-
 from apps.tb_UI import *
-import ui.tbUI_pyslider as pys
-from apps.ui.tbUI_pyslider import *
 
 '''
 blend to magnet (relative pose)
@@ -3799,7 +3793,7 @@ class SliderWidget(BaseDialog):
         self.container = QFrame()
         self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
         slider_height = 28
-        self.slider = pys.Slider(
+        self.slider = Slider(
             margin=0,
             bg_height=slider_height,
             bg_radius=6,
