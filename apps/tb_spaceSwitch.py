@@ -366,7 +366,6 @@ class SpaceSwitch(toolAbstractFactory):
         #TODO: make this happen on startup and save
         :return:
         """
-        self.subPath = os.path.join(self.dataPath, self.toolName)
         self.allCharacters = dict()
         self.allSpaceAttributes = list()
         for file_name in [f for f in os.listdir(self.subPath) if f.endswith('.json')]:
