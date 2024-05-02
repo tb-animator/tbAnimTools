@@ -108,7 +108,7 @@ class AnimatedCheckBox(QCheckBox):
             # draw text
             pixelsWide = fontMetrics.width(self.offText)
             pixelsHigh = fontMetrics.height()
-            text_rect = QRect(self._handlePosition + circleSize - self.margin, self.margin, pixelsWide, circleSize)
+            text_rect = QRect(self._handlePosition + circleSize + self.margin, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.offText)
 
@@ -124,7 +124,7 @@ class AnimatedCheckBox(QCheckBox):
             # draw text
             pixelsWide = fontMetrics.width(self.onText)
             pixelsHigh = fontMetrics.height()
-            text_rect = QRect(self._handlePosition + self.margin - pixelsWide, self.margin, pixelsWide, circleSize)
+            text_rect = QRect(self._handlePosition - self.margin - pixelsWide, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.onText)
         # end
