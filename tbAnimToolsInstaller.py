@@ -30,7 +30,7 @@ from __future__ import print_function
 Installer used to install the main tbAnimTools without having to go to github.
 """
 
-
+import webbrowser
 import sys
 import pymel.core as pm
 import glob
@@ -127,7 +127,6 @@ class tbAnimToolsInstaller(QDialog):
         self.windowFlags()
         self.setAttribute(Qt.WA_TranslucentBackground, True)
 
-
         self.mainLayout = QVBoxLayout()
         self.layout = QVBoxLayout()
 
@@ -136,8 +135,11 @@ class tbAnimToolsInstaller(QDialog):
         self.titleText.setAlignment(Qt.AlignCenter)
         self.infoText = QLabel('Welcome to tbAnimTools, click install to choose the installation directory')
         self.installButton = QPushButton('Install')
+        self.discordButton = QPushButton('- Go To Discord -')
         self.installButton.setStyleSheet(styleSheet)
+        self.discordButton.setStyleSheet(styleSheet)
         self.installButton.clicked.connect(self.installTools)
+        self.discordButton.clicked.connect(self.openDiscord)
 
         self.filePathLayout = QHBoxLayout()
         self.pathLabel = QLabel('Install to ::')
@@ -158,8 +160,11 @@ class tbAnimToolsInstaller(QDialog):
         self.layout.addLayout(self.filePathLayout)
         self.layout.addWidget(self.installButton)
 
+        self.mainLayout.addWidget(self.discordButton)
         self.setLayout(self.mainLayout)
 
+    def openDiscord(self):
+        webbrowser.open('https://discord.gg/SyUyyJb8xw')
 
     def paintEvent(self, event):
         qp = QPainter()

@@ -77,7 +77,48 @@ else:
 
 from tb_UI import *
 
+# temp stylesheet here just in case
+styleSheet = '''
+QLabel
+{
+    font-weight: bold; font-size: 24px;
+    font-family: courier;
+}
+QPushButton
+{
+    color: #b1b1b1;
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646);
+    border-width: 1px;
+    border-color: #1e1e1e;
+    border-style: solid;
+    border-radius: 6;
+    padding: 3px;
+    font-size: 18px;
+    font-weight: bold;
+    padding-left: 5px;
+    padding-right: 5px;
+    font-family: courier;
+}
+
+QPushButton:pressed
+{
+    background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2d2d2d, stop: 0.1 #2b2b2b, stop: 0.5 #292929, stop: 0.9 #282828, stop: 1 #252525);
+}
+
+QPushButton:hover
+{
+    border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);
+}
+'''
+labelStyleSheet = '''
+QLabel
+{
+    font-weight: demibold; font-size: 14px;
+    font-family: courier;
+}
+'''
 def onMayaDroppedPythonFile(*args):
+    print ('onMayaDroppedPythonFile')
     module_maker().install()
     installer().install()
 
@@ -279,24 +320,48 @@ class installer():
 class ResultWindow(BaseDialog):
     def __init__(self):
         super(ResultWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
-        self.setStyleSheet(getStyleSheet())
+
         self.titleText.setText('tbAnimTools')
         self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
         self.infoText.setText('Installation Successful')
         self.infoText.setAlignment(Qt.AlignCenter)
 
+        blankLabel = QLabel("")
         openHotkeyWindowBtn = QPushButton("Open Hotkey Window")
+        openHotkeyWindowLabel = QLabel("Check out the maya hotkey window for all the new commands ↴")
         openHotkeyWindowBtn.clicked.connect(self.openHotkeyWindow)
+
+        openOptionsWindowLabel = QLabel("tbAnimTools Options window for all the tool settings ↴")
         openOptionsWindowBtn = QPushButton("Open Options Window")
         openOptionsWindowBtn.clicked.connect(self.openOptionWindow)
+
+        openCustomHotkeyWindowLabel = QLabel("tbAnimTools custom hotkey window - just the custom commands ↴")
+        openCustomHotkeyWindowBtn = QPushButton("Open tbAnimtools Hotkey Window")
+        openCustomHotkeyWindowBtn.clicked.connect(self.openCustomHotkeyWindow)
+
+        openDiscordWindowBtn = QPushButton("- Go To Discord -")
+        openDiscordWindowBtn.clicked.connect(self.openDiscord)
         btnCloseWIndow = QPushButton("Close")
         btnCloseWIndow.clicked.connect(partial(self.close))
 
-        self.layout.addWidget(openHotkeyWindowBtn)
+        self.layout.addWidget(blankLabel)
+
+        self.layout.addWidget(openCustomHotkeyWindowLabel)
+        self.layout.addWidget(openCustomHotkeyWindowBtn)
+
+        self.layout.addWidget(openOptionsWindowLabel)
         self.layout.addWidget(openOptionsWindowBtn)
 
+        self.layout.addWidget(openHotkeyWindowLabel)
+        self.layout.addWidget(openHotkeyWindowBtn)
+
+        self.layout.addWidget(openDiscordWindowBtn)
         self.layout.addWidget(btnCloseWIndow)
-        self.setFixedSize(self.sizeHint())
+        self.setStyleSheet(styleSheet)
+        openHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
+        openOptionsWindowLabel.setStyleSheet(labelStyleSheet)
+        openCustomHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
+        self.setFixedSize(self.sizeHint().width()+36, self.sizeHint().height()+36)
 
 
     def openHotkeyWindow(self, *args):
@@ -305,6 +370,19 @@ class ResultWindow(BaseDialog):
     def openOptionWindow(self, *args):
         import tb_options as tbo
         tbo.showOptions()
+
+    def openCustomHotkeyWindow(self, *args):
+        from pluginLookup import ClassFinder
+        pLookupCLS = ClassFinder()
+        import tb_keyCommands as keyCommands
+
+        win = keyCommands.mainHotkeyWindow(commandData=pLookupCLS.hotkeyClass.hotkeys,
+                                           commandCategories=pLookupCLS.hotkeyClass.categories)
+        win.showUI()
+
+    def openDiscord(self):
+        import webbrowser
+        webbrowser.open('https://discord.gg/SyUyyJb8xw')
 
 
 def install():

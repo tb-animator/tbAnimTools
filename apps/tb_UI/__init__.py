@@ -45,17 +45,17 @@ from .tb_buttons import MiniButton, LockButton, AnimLayerTabButton, GraphToolbar
     ToolButton, HotkeyToolButton, ToolboxButton, ReturnButton
 from .tb_baseDialog import BaseDialog
 from .tb_boldGroupBox import QBoldGroupBox
-from .tb_buttonPopup import ButtonPopup, HotkeyPopup
+from .tb_buttonPopup import ButtonPopup
 from .tb_comboBoxes import ComboBox, comboBoxWidget
 from .tb_SlidingCheckBox import AnimatedCheckBox
 from .tb_customDialog import CustomDialog
 from .tb_fileWidget import filePathWidget
-from .tb_hotkeyWidget import hotKeyWidget
+from .tb_hotkeyWidget import hotKeyWidget, HotkeyPopup, hotkeyLineEdit
 from .tb_inputWidget import TextInputWidget, ChannelInputWidget, IntInputWidget, ObjectInputWidget
 from .tb_intfield import intFieldWidget
 from .tb_labels import subHeader, infoLabel, QBoldLabel, DropShadowLabel
 from .tb_licenseWin import LicenseWin, OfflineActivateInputWidget
-from .tb_lineEdit import hotkeyLineEdit, ObjectSelectLineEdit, ObjectSelectLineEditNoLabel, \
+from .tb_lineEdit import ObjectSelectLineEdit, ObjectSelectLineEditNoLabel, \
     ObjectSelectLineEditEnforced, ChannelSelectLineEdit, ChannelSelectLineEditEnforced
 from .tb_markingMenuHandler import markingMenuKeypressHandler
 from .tb_optionWidgets import optionWidget, optionVarWidget, optionVarBoolWidget, optionVarStringListWidget, \

@@ -1,5 +1,5 @@
 from . import *
-
+import maya
 class hotKeyWidget(QWidget):
     label = None
     lineEdit = None
@@ -115,3 +115,64 @@ class hotKeyWidget(QWidget):
         Show Popup Menu on Category Table
         '''
         self._category_table_Popup.exec_(QCursor.pos())
+
+class HotkeyPopup(ButtonPopup):
+    def __init__(self, name, cls=None, parent=None, command=str(), hideLabel=False):
+        super(ButtonPopup, self).__init__(parent)
+        self.hideLabel = hideLabel
+        self.setWindowTitle("{0} Options".format(name))
+        self.cls = cls
+        self.command = command
+        self.setWindowFlags(Qt.Popup)
+
+        self.layout = QFormLayout(self)
+
+        self.create_widgets()
+        self.create_layout()
+
+    def create_widgets(self):
+        self.hotkeyWidget = hotKeyWidget(cls=self.cls, command=self.command, text='Hotkey')
+        self.hotkeyWidget.assignSignal.connect(self.cls.assignHotkey)
+        self.helpLabelStr = str()
+        try:
+            self.helpLabel = QLabel(maya.stringTable['tbCommand.{0}'.format(self.command)].replace('__', ' '))
+        except:
+            self.helpLabel = QLabel(self.helpLabelStr)
+        self.helpLabel.setWordWrap(True)
+        self.imageGif = os.path.join(helpPath, self.command + '.gif')
+        self.imageJpeg = os.path.join(helpPath, self.command + '.jpeg')
+        self.imageLabel = QLabel(self)
+
+        if os.path.isfile(self.imageGif):
+            self.movie = QMovie(os.path.join(helpPath, self.imageGif))
+            self.imageLabel.setMovie(self.movie)
+            self.movie.start()
+        elif os.path.isfile(self.imageJpeg):
+            self.imagePixmap = QPixmap(os.path.join(helpPath, self.imageGif))
+            self.imageLabel.setPixmap(self.imagePixmap)
+
+    def create_layout(self):
+        self.layout.addRow(self.hotkeyWidget)
+        self.layout.addRow(self.helpLabel)
+        self.layout.addRow(self.imageLabel)
+
+class hotkeyLineEdit(QLineEdit):
+    keyPressed = Signal(str)
+
+    def keyPressEvent(self, event):
+        keyname = ''
+        key = event.key()
+        modifiers = int(event.modifiers())
+        if (modifiers and modifiers & MOD_MASK == modifiers and
+                key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
+                key != Qt.Key_Control and key != Qt.Key_Meta):
+
+            keyname = QKeySequence(modifiers + key).toString()
+
+            # print('event.text(): %r' % event.text())
+            # print('event.key(): %d, %#x, %s' % (key, key, keyname))
+        elif (key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
+              key != Qt.Key_Control and key != Qt.Key_Meta):
+            keyname = QKeySequence(key).toString()
+            # print('event.text(): %r' % event.text())
+        self.keyPressed.emit(keyname)

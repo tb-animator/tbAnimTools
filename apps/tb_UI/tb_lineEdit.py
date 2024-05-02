@@ -1,26 +1,7 @@
 from . import *
 
 
-class hotkeyLineEdit(QLineEdit):
-    keyPressed = Signal(str)
 
-    def keyPressEvent(self, event):
-        keyname = ''
-        key = event.key()
-        modifiers = int(event.modifiers())
-        if (modifiers and modifiers & MOD_MASK == modifiers and
-                key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
-                key != Qt.Key_Control and key != Qt.Key_Meta):
-
-            keyname = QKeySequence(modifiers + key).toString()
-
-            # print('event.text(): %r' % event.text())
-            # print('event.key(): %d, %#x, %s' % (key, key, keyname))
-        elif (key > 0 and key != Qt.Key_Shift and key != Qt.Key_Alt and
-              key != Qt.Key_Control and key != Qt.Key_Meta):
-            keyname = QKeySequence(key).toString()
-            # print('event.text(): %r' % event.text())
-        self.keyPressed.emit(keyname)
 
 
 class ObjectSelectLineEdit(QWidget):
