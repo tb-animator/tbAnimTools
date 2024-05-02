@@ -19,11 +19,11 @@ else:
 from . import *
 
 
-
 class AnimatedCheckBox(QCheckBox):
     def __init__(self,
                  text='on',
                  offText='Off',
+                 checked=False,
                  width=80,
                  height=16,
                  bg_color="#777",
@@ -31,7 +31,7 @@ class AnimatedCheckBox(QCheckBox):
                  active_color="#ffaa00",
                  animation_curve=QEasingCurve.InOutCirc):
         super(AnimatedCheckBox, self).__init__(text)
-
+        self.setChecked(checked)
         self.setFixedWidth(width * dpiScale())
         self.setFixedHeight(height * dpiScale())
         self.setCursor(Qt.PointingHandCursor)
@@ -54,6 +54,8 @@ class AnimatedCheckBox(QCheckBox):
 
         self.onText = text
         self.offText = offText
+
+        self.start_transition(checked)
 
     # create and set property
     @Property(float)
@@ -83,7 +85,7 @@ class AnimatedCheckBox(QCheckBox):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
-        font = defaultFont()
+        font = boldFont()
         # set no pen
         p.setPen(Qt.NoPen)
         p.setFont(font)
@@ -106,7 +108,7 @@ class AnimatedCheckBox(QCheckBox):
             # draw text
             pixelsWide = fontMetrics.width(self.offText)
             pixelsHigh = fontMetrics.height()
-            text_rect = QRect(self._handlePosition + circleSize, self.margin, circleSize * 2, circleSize)
+            text_rect = QRect(self._handlePosition + circleSize - self.margin, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.offText)
 
@@ -122,7 +124,7 @@ class AnimatedCheckBox(QCheckBox):
             # draw text
             pixelsWide = fontMetrics.width(self.onText)
             pixelsHigh = fontMetrics.height()
-            text_rect = QRect(self._handlePosition - circleSize - pixelsWide, self.margin, circleSize * 2, circleSize)
+            text_rect = QRect(self._handlePosition + self.margin - pixelsWide, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.onText)
         # end
