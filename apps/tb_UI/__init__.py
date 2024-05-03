@@ -1,6 +1,7 @@
 import os
 import pymel.core as pm
 import re
+import maya.mel as mel
 import maya.cmds as cmds
 import math
 from functools import partial
@@ -42,7 +43,7 @@ from .tb_UIScale import dpiScale, dpiFontScale, defaultFont, boldFont, semiBoldF
     darken_color, hex_to_rgb, rgb_to_hex, getColourBasedOnRGB, darken_hex_color, generate_linear_gradient
 from .tb_collapsingWidgets import CollapsibleBox
 from .tb_buttons import MiniButton, LockButton, AnimLayerTabButton, GraphToolbarButton, HelpButton, SimpleIconButton, \
-    ToolButton, HotkeyToolButton, ToolboxButton, ReturnButton
+    ToolButton, HotkeyToolButton, ToolboxButton, ReturnButton, ToolbarButton
 from .tb_baseDialog import BaseDialog
 from .tb_boldGroupBox import QBoldGroupBox
 from .tb_buttonPopup import ButtonPopup
