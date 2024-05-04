@@ -7,5 +7,6 @@ maya.stringTable['tbCommand.select_best_layer'] = u'Selects the top most preferr
 maya.stringTable['tbCommand.toggleLayerWeight'] = u'Toggles the weight of the selected layer and sets the keys to flat.__' \
                                                   u'If the current weight is less than 0.5 it will be set to 1.__' \
                                                   u'If it is greater than 0.5 it will be set to 0'
-
+maya.stringTable['tbCommand.makeAdditiveFromOverrideLayer'] = u'Convert the selected override layer into an additive layer. ' \
+                                                              u'Animation is maintained'
 

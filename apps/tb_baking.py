@@ -427,8 +427,6 @@ class BakeTools(toolAbstractFactory):
 
     def bake_to_override(self, sampleRate=1, sel=None, layerPrefix='', keyRange=None, deleteConstraints=True,
                          bookend=True):
-        print('THIS')
-        print('keyRange', keyRange)
         highlighted = self.funcs.isTimelineHighlighted()
         if not sel:
             sel = cmds.ls(sl=True)
@@ -474,18 +472,13 @@ class BakeTools(toolAbstractFactory):
             if sampleRate != 1:
                 self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
             if not highlighted:
-                print('Not highlighted')
                 # timeline isn't highlighted, do we bookend the weight anyway?
                 if pm.optionVar.get(self.bookendBakeOption, False):
-                    print('bookend')
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
             else:
-                print('highlighted')
                 # timeline is highlighted, do we bookend the weight for "convenience"?
                 if pm.optionVar.get(self.bookendBakeHighlightOption, False):
-                    print('bookend')
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
-
             cmds.refresh()
 
     def deleteConstraintsForNode(self, n):

@@ -73,6 +73,12 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      help=maya.stringTable['tbCommand.toggleLayerWeight'],
                                      command=['LayerEditor.setLayerWeightFromTimeline(value=1)']))
+        self.addCommand(self.tb_hkey(name='convertAdditiveLayerToOverride',
+                                     annotation='',
+                                     category=self.category,
+                                     help=maya.stringTable['tbCommand.makeAdditiveFromOverrideLayer'],
+                                     command=['LayerEditor.makeAdditiveFromOverrideLayer()']))
+
         return self.commandList
 
     def assignHotkeys(self):
@@ -523,3 +529,60 @@ class LayerEditor(toolAbstractFactory):
                                               lerpFloat(col[0], 0.5, 0.5),
                                               lerpFloat(col[1], 0.5, 0.5),
                                               lerpFloat(col[2], 0.5, 0.5)])
+
+    def makeAdditiveFromOverrideLayer(self):
+        # get the attributes in the override layer
+        selectedLayers = self.funcs.get_selected_layers()
+        if not selectedLayers:
+            return cmds.warning('No override layer selected')
+
+        overrideLayer = None
+
+        for layer in selectedLayers:
+            if not pm.animLayer(layer, query=True, override=True):
+                continue
+            overrideLayer = layer
+        if not overrideLayer:
+            return cmds.warning('No override layer selected')
+        animCurves = cmds.animLayer(overrideLayer, query=True, animCurves=True)
+        attributes = cmds.animLayer(overrideLayer, query=True, attribute=True)
+
+        additiveLayer = self.allTools.tools['BakeTools'].createLayer(override=False, suffixStr=None, component=True)
+        pm.rename(additiveLayer, overrideLayer + '_toAdditive')
+        pm.animLayer(additiveLayer, edit=True, moveLayerBefore=overrideLayer)
+        pm.animLayer(additiveLayer, edit=True, weight=0)
+        pm.animLayer(additiveLayer, edit=True, attribute=attributes)
+
+        # get the time range from the animation layer
+        startTime = 99999
+        endTime = -99999
+        for curve in animCurves:
+            keyTimes = cmds.keyframe(curve, query=True, tc=True)
+            startTime = min(keyTimes[0], startTime)
+            endTime = max(keyTimes[-1], endTime)
+
+        # deselect all layers
+        for layer in selectedLayers:
+            pm.animLayer(layer, edit=True, selected=False)
+            pm.animLayer(layer, edit=True, preferred=False)
+
+        # select the new layer
+        pm.animLayer(additiveLayer, edit=True, selected=True)
+        pm.animLayer(additiveLayer, edit=True, preferred=True)
+        with self.funcs.suspendUpdate():
+            for x in range(int(startTime), int(endTime)+1):
+                cmds.currentTime(x - startTime)
+                cmds.setKeyframe(attributes, breakdown=False, preserveCurveShape=False, hierarchy=False,
+                                 controlPoints=False, shape=False)
+        pm.animLayer(additiveLayer, edit=True, weight=1)
+        pm.animLayer(overrideLayer, edit=True, mute=True)
+        pm.animLayer(additiveLayer, edit=True, moveLayerAfter=overrideLayer)
+        # create the additive layer
+        # move it below the override layer
+        # add the attributes to the additive layer
+        # set the weight to 0
+        # get the frame range
+        # key the attributes in the additive layer
+        # set the weight to 1
+        # mute the override layer
+        pass
