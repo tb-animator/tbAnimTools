@@ -328,14 +328,14 @@ class ResultWindow(BaseDialog):
 
         blankLabel = QLabel("")
         openHotkeyWindowBtn = QPushButton("Open Hotkey Window")
-        openHotkeyWindowLabel = QLabel("Check out the maya hotkey window for all the new commands ↴")
+        openHotkeyWindowLabel = QLabel("Check out the maya hotkey window for all the new commands")
         openHotkeyWindowBtn.clicked.connect(self.openHotkeyWindow)
 
-        openOptionsWindowLabel = QLabel("tbAnimTools Options window for all the tool settings ↴")
+        openOptionsWindowLabel = QLabel("tbAnimTools Options window for all the tool settings")
         openOptionsWindowBtn = QPushButton("Open Options Window")
         openOptionsWindowBtn.clicked.connect(self.openOptionWindow)
 
-        openCustomHotkeyWindowLabel = QLabel("tbAnimTools custom hotkey window - just the custom commands ↴")
+        openCustomHotkeyWindowLabel = QLabel("tbAnimTools custom hotkey window - just the custom commands")
         openCustomHotkeyWindowBtn = QPushButton("Open tbAnimtools Hotkey Window")
         openCustomHotkeyWindowBtn.clicked.connect(self.openCustomHotkeyWindow)
 

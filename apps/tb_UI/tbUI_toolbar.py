@@ -20,7 +20,7 @@ from shiboken2 import getCppPointer
 
 import maya.OpenMayaUI as omui
 import maya.cmds as cmds
-import apps.tb_UI as tbui
+
 sheet = """
 QTabBar::tab {
     background-color: transparent;
