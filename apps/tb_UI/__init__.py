@@ -5,7 +5,7 @@ import maya.mel as mel
 import maya.cmds as cmds
 import math
 from functools import partial
-
+import maya.api.OpenMaya as om2
 qtVersion = pm.about(qtVersion=True)
 QTVERSION = int(qtVersion.split('.')[0])
 if QTVERSION < 5:
