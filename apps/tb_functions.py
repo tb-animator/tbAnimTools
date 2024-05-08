@@ -34,7 +34,7 @@ import pymel.core.datatypes as dt
 import re
 from difflib import SequenceMatcher, get_close_matches, ndiff
 from colorsys import rgb_to_hls, hls_to_rgb
-
+from maya.api import OpenMaya
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
 zAx = om.MVector.zAxis
@@ -1965,6 +1965,24 @@ class functions(object):
             mTimeArray[x] = om2.MTime(initialFrame + x, om2.MTime.uiUnit())
         return mTimeArray
 
+    def om_plug_worldMatrix_at_time(self, matrix, dep_node, mdg):
+        '''
+        Getting the plug from openMaya.
+        Then create a time mdgContext and evaluate it.
+        This is the fastest with layer compatability... however i suspect there to be issues when doing complex simulations.
+
+        :param dep_node: object string name i.e. "pSphere1"
+        :param attr: the attribute to check i.e. "tx"
+        :return: a list of values per frame.
+        '''
+
+        objMfn = OpenMaya.MFnDependencyNode(dep_node)
+        ## Get the plug of the node. (networkedplug = False, as it no longer profides a speed improvement)
+        plug = objMfn.findPlug(matrix, False).elementByLogicalIndex(0)
+
+        value = om2.MFnMatrixData(plug.asMObject(mdg)).matrix()
+
+        return value
     def createMTimePairArray(self, initialFrame, finalFrame):
         mTimeArray = om2.MTimeArray(2, om2.MTime())
         mTimeArray[0] = initialFrame
