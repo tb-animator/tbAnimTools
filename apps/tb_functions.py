@@ -457,12 +457,15 @@ class functions(object):
 
     def drawTempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                         unlockScale=False, rotateOrder=3, blendshape=True):
+        upAxis = cmds.upAxis(query=True, axis=True)
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
+        # process points for z up space
+        if upAxis == 'z':
+            points = [[p[2], p[0], p[1]] for p in points]
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control.rename(name + '_' + suffix)
         blendControl.rename(name + '_' + suffix + '_bs')
-        upAxis = cmds.upAxis(query=True, axis=True)
         rotOrder = {0: 1,
                     1: 2,
                     2: 0,

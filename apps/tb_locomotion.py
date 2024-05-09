@@ -161,7 +161,7 @@ class LocomotionTools(toolAbstractFactory):
             try:
                 cmds.setAttr(c + '.' + attrName, 0)
             finally:
-                continue
+                pass
     def addCircleToSelected(self, rotateOnly=False):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
