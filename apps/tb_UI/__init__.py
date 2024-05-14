@@ -78,3 +78,4 @@ from .tbUI_pyslider import SliderToolbarWidget, PopupSlider, PopupSliderDialog, 
     SliderButtonPopupMenu
 from .tbUI_toolbar import DockableUI
 from .tb_overlay import OverlayContents, Overlay
+from .tb_pluginDialog import PluginExtractor
