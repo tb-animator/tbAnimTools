@@ -461,7 +461,7 @@ class functions(object):
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         # process points for z up space
         if upAxis == 'z':
-            points = [[p[2], p[0], p[1]] for p in points]
+            points = [[p[0], p[2], p[1]] for p in points]
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control.rename(name + '_' + suffix)
@@ -1659,6 +1659,16 @@ class functions(object):
             return basePlug, layerPlug
         return None, None
 
+    def getAllPlugsFromLayer(self, animLayer):
+        layerAttributes = cmds.animLayer(animLayer, query=True, attribute=True)
+        plugs = list()
+        for attr in layerAttributes:
+            p = self.getPlugsFromLayer(attr, animLayer)
+            if not p:
+                continue
+            plugs.append(p)
+        return plugs
+
     def getPlugsFromLayer(self, nodeAttr, animLayer):
         """ Find the animBlendNode plug corresponding to the given node, attribute,
         and animation layer.
@@ -1821,15 +1831,15 @@ class functions(object):
 
     def drawOrb(self, scale=1.0):
         points = pointLists['pointLists'].get('orb', pointLists['pointLists']['cross'])
-        return self.drawControl(points, list(range(0, len(points))), scale=scale)
+        return self.drawControl(points, scale=scale)
 
     def drawCross(self, scale=1.0):
         points = pointLists['pointLists'].get('cross', pointLists['pointLists']['cross'])
-        return self.drawControl(points, list(range(0, len(points))), scale=scale)
+        return self.drawControl(points, scale=scale)
 
     def drawRedirectRoot(self, scale=1.0):
         points = pointLists['pointLists'].get('redirectRoot', pointLists['pointLists']['cross'])
-        return self.drawControl(points, list(range(0, len(points))), scale=scale)
+        return self.drawControl(points, scale=scale)
 
     def drawControl(self, pointlist, scale=1.0):
         curve = cmds.curve(degree=1,
