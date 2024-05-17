@@ -605,20 +605,24 @@ class AimTools(toolAbstractFactory):
 
     def bakeOutCommand(self, sel, asset):
         filteredTargets = list()
+        allControls = list()
         for s in sel:
-            if not cmds.attributeQuery(self.constraintTargetAttr, node=str(s), exists=True):
+            if not cmds.attributeQuery(self.mainAssetAttr, node=str(s), exists=True):
                 continue
-            controls = cmds.listConnections(str(s) + '.' + self.constraintTargetAttr)
+            mainAsset = cmds.listConnections(str(s) + '.' + self.mainAssetAttr)
+            if mainAsset:
+                controls = cmds.listConnections(str(mainAsset[0]) + '.' + self.constraintTargetAttr)
             if not controls:
                 continue
             filteredTargets.append(controls[0])
+            allControls.append(controls[0])
 
         locators = cmds.listConnections(asset + '.message')
         filteredTargets.extend(locators)
         filteredTargets=list(set(filteredTargets))
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
         pm.delete(asset)
-        cmds.select(sel)
+        pm.select(allControls)
 
     def deletControlsCommand(self, asset):
         pm.delete(asset)
