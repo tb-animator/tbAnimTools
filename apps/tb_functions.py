@@ -478,7 +478,7 @@ class functions(object):
         else:
             outRotateOrder = rotOrder[rotateOrder]
         # change this for z up
-        control.rotateOrder.set(rotateOrder)
+        control.rotateOrder.set(outRotateOrder)
         control.rotateOrder.set(channelBox=True)
         control.rotateOrder.set(keyable=True)
         # control.scaleX.set(channelBox=True)

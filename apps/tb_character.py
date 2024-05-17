@@ -599,11 +599,12 @@ class CharacterTool(toolAbstractFactory):
             else:
                 return str(node)
         namespace = cmds.referenceQuery(str(node), namespace=True)
-        print ('namespace', namespace)
         if namespace[0] == ':':
             namespace = namespace[1:]
 
         name, node = node.rsplit(namespace)
+        if node.startswith(':'):
+            node = node[1:]
 
         return node
 
@@ -666,17 +667,13 @@ class CharacterTool(toolAbstractFactory):
         return self.allCharacters[self.currentChar].getControls(self.currentNamespace)
 
     def saveCurrentCharacter(self):
-        # print ('saveCurrentCharacter')
         if not self.currentChar:
             return
         dataFile = os.path.join(self.charTemplateDir, self.currentChar + '.json')
         # print ('currentChar', self.currentChar)
 
-        # if not self.currentCharData.meshes:
-        #     raiseOk('No skinned meshes defined for character, Please set the skinned meshes for faster baking', title='Set character skinned meshes')
-
         self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
-        # print ('UUID', self.currentCharData.UUID)
+
         allControls = self.getAllControls()
 
         if allControls:
@@ -684,6 +681,7 @@ class CharacterTool(toolAbstractFactory):
         self.getAllCharacters()
         MirrorTools = self.allTools.tools['MirrorTools']
         MirrorTools.saveCurrentMirrorData(self.currentChar)
+        self.loadCharacter(self.currentChar)
 
     def setGlobalControl(self):
         controls, strippedControls = self.getStrippedSelection()
@@ -790,6 +788,7 @@ class CharacterTool(toolAbstractFactory):
         for s in self.currentControls:
             MirrorTools.setIsMirror(s, self.currentChar, button.attribute, button.isChecked())
         button.setText(labelDict[button.isChecked()])
+        MirrorTools.saveCurrentMirrorData(self.currentChar)
 
     def getToolboxWidget(self, widget, message=''):
         buttonWidth = 124

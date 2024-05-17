@@ -122,6 +122,7 @@ class LocomotionTools(toolAbstractFactory):
     def strafeToolBoxUI(self):
         if self.strafeToolbox:
             self.strafeToolbox.show()
+            return
         self.strafeToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                         title='tb Strafe Maker', text=str(),
                                         lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
@@ -172,6 +173,7 @@ class LocomotionTools(toolAbstractFactory):
     def circleToolBoxUI(self):
         if self.circleToolbox:
             self.circleToolbox.show()
+            return
         self.circleToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                         title='tb Circle Walk', text=str(),
                                         lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
@@ -321,9 +323,9 @@ class LocomotionTools(toolAbstractFactory):
     def createGlobalTurnController(self, namespace=str()):
         turnControllerName = '{ns}:{n}'.format(ns=namespace, n=self.turnAssetName)
         if not cmds.objExists(turnControllerName):
-            assetShapeControl = self.funcs.tempControl(name=turnControllerName, 
-                                                       suffix='Shape', 
-                                                       drawType='arrow', 
+            assetShapeControl = self.funcs.tempControl(name=turnControllerName,
+                                                       suffix='Shape',
+                                                       drawType='arrow',
                                                        scale=2.0)
             pm.delete(assetShapeControl, ch=True)
             cicleControlAsset = self.createAsset(turnControllerName,
@@ -603,6 +605,18 @@ def circleExpression(turnControl=str(),
     :param outputNode:
     :return:
     """
+    upAxis = cmds.upAxis(query=True, axis=True)
+
+    if upAxis == 'y':
+        outFwdCalc = "{out}.{t} = (-$rot_offset.x + $circle.x -$offset.x);".format(out=outputNode,
+                                                                                   t=floorForwardAttr)
+        outSideCalc = "{out}.{t} = -(-$rot_offset.z + $circle.z - $offset.z);".format(out=outputNode,
+                                                                                     t=floorSideAttr)
+    else:
+        outFwdCalc = "{out}.{t} = (-$rot_offset.x + $circle.x -$offset.x);".format(out=outputNode,
+                                                                                   t=floorSideAttr)
+        outSideCalc = "{out}.{t} = (-$rot_offset.z + $circle.z - $offset.z);".format(out=outputNode,
+                                                                                     t=floorForwardAttr)
     if 'X' in driverAttr:
         circleLine1 = "float $circleX = $radius * cos($angle) - $radius;"
         circleLine2 = "float $circleZ = $radius * sin($angle);"
@@ -619,6 +633,7 @@ def circleExpression(turnControl=str(),
             offsetAttr=offsetAttr)
         groupOffsetLine = "vector $group_offset = rot($circle, << 0, 1, 0 >>, $angle);"
         outAngleLine = "{out}.{r} = rad_to_deg($angle);".format(out=outputNode, r=rotateAttr)
+
     expString = [
         "float $progress = {driverControl}.{driverAttr};".format(driverControl=driverControl,
                                                                  driverAttr=driverAttr),
@@ -638,10 +653,8 @@ def circleExpression(turnControl=str(),
         "$circle = << $circleX, 0.0, $circleZ >>;",
         progressString,
         groupOffsetLine,
-        "{out}.{t} = (-$rot_offset.x + $circle.x -$offset.x);".format(out=outputNode,
-                                                                      t=floorSideAttr),
-        "{out}.{t} = (-$rot_offset.z + $circle.z - $offset.z);".format(out=outputNode,
-                                                                       t=floorForwardAttr),
+        outFwdCalc,
+        outSideCalc,
         "{out}.{t} = $radius;".format(out=driverControl, t=circleCentreAttr),
         outAngleLine,
         "}",
