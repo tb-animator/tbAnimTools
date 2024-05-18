@@ -301,10 +301,11 @@ class LocomotionTools(toolAbstractFactory):
             cmds.addAttr(tempController, ln=circleCentreAttr, at='float')
             cmds.setAttr(tempController + '.' + circleCentreAttr, edit=True, channelBox=True)
 
-            pm.container(globalControl, edit=True,
-                         includeHierarchyBelow=False,
-                         force=True,
-                         addNode=[tempControllerParent])
+            # pm.container(globalControl, edit=True,
+            #              includeHierarchyBelow=True,
+            #              force=True,
+            #              addNode=[tempControllerParent])
+            cmds.parent(tempControllerParent, globalControl)
 
         allControls = [x['tempController'] for x in controlData.values()]
         self.allTools.tools['BakeTools'].quickBake(allControls,
@@ -480,7 +481,7 @@ class LocomotionTools(toolAbstractFactory):
         assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='arrow', scale=1.0)
         strafeControl = self.createAsset(sel[0].split(':')[0] + ':' + self.strafeAssetName,
                                          transform=True,
-                                         imageName='walk.png',
+                                         imageName='directKeySmall.png',
                                          assetCommandName=assetCommandName)
         pm.delete(assetShapeControl, ch=True)
         pm.parent(assetShapeControl.getShapes(), strafeControl, r=True, s=True)
@@ -500,9 +501,9 @@ class LocomotionTools(toolAbstractFactory):
 
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
             rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset', drawType='sphereZ',
-                                                          scale=1.0)
+                                                          scale=1.0, rotateOrder=2)
             tiltAnimOffsetNode = self.funcs.tempControl(name=s, suffix='TiltDirection', drawType='arrow',
-                                                        scale=1.0)
+                                                        scale=1.0, rotateOrder=3)
             cmds.setAttr(tiltAnimOffsetNode + '.rotateX', lock=True, channelBox=False)
             cmds.setAttr(tiltAnimOffsetNode + '.rotateY', lock=True, channelBox=False)
             cmds.setAttr(tiltAnimOffsetNode + '.rotateZ', lock=True, channelBox=False)
@@ -514,12 +515,36 @@ class LocomotionTools(toolAbstractFactory):
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.15)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.15)
 
-            tiltComposeMatrix = cmds.createNode('composeMatrix')
-            tiltInverseMatrix = cmds.createNode('inverseMatrix')
-            pm.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
-            pm.connectAttr(tiltComposeMatrix + '.outputMatrix', tiltInverseMatrix + '.inputMatrix')
-            pm.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
-            pm.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
+            if pm.attributeQuery('jointOrient', node=s, exists=True):
+                tiltComposeMatrix = cmds.createNode('composeMatrix')
+                tiltInverseMatrix = cmds.createNode('inverseMatrix')
+
+                jointOrientComposeMatrix = cmds.createNode('composeMatrix')
+                jointOrientMultMatrix = cmds.createNode('multMatrix')
+                jointOrientInverseMatrix = cmds.createNode('inverseMatrix')
+                jointOrientOutMultMatrix = cmds.createNode('multMatrix')
+
+                pm.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
+                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
+
+                # connect the joint orient to some mult matrices to compensate
+                pm.connectAttr(s + '.jointOrient', jointOrientComposeMatrix + '.inputRotate')
+                pm.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[0]')
+                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[1]')
+
+                pm.connectAttr(jointOrientMultMatrix + '.matrixSum', jointOrientOutMultMatrix + '.matrixIn[0]')
+                pm.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientInverseMatrix + '.inputMatrix')
+                pm.connectAttr(jointOrientInverseMatrix + '.outputMatrix', jointOrientOutMultMatrix + '.matrixIn[1]')
+                pm.connectAttr(jointOrientOutMultMatrix + '.matrixSum', tiltInverseMatrix + '.inputMatrix')
+                pm.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
+            else:
+                tiltComposeMatrix = cmds.createNode('composeMatrix')
+                tiltInverseMatrix = cmds.createNode('inverseMatrix')
+
+                pm.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
+                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', tiltInverseMatrix + '.inputMatrix')
+                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
+                pm.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
 
             pm.parent(tiltAnimOffsetNode, rotationRoot)
             pm.parent(rotateAnimOffsetNode, rotateAnimNode)
@@ -544,10 +569,11 @@ class LocomotionTools(toolAbstractFactory):
             translateAnimOFfsetNodes[s] = translateAnimOFfsetNode
             rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
 
-        pm.container(strafeControl, edit=True,
-                     includeHierarchyBelow=False,
-                     force=True,
-                     addNode=list(roots.values()))
+        pm.parent(list(roots.values()), strafeControl)
+        # pm.container(strafeControl, edit=True,
+        #              includeHierarchyBelow=False,
+        #              force=True,
+        #              addNode=list(roots.values()))
 
         bakeTargets = list(translateAnimNodes.values()) + list(rotateAnimNodes.values())
         keyRange = self.funcs.getBestTimelineRangeForBake()

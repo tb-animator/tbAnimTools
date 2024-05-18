@@ -106,6 +106,7 @@ class Utility(toolAbstractFactory):
 
         useCustomScaleOption = optionVarBoolWidget('Use custom window scale',
                                                    'tbUseWindowsScale')
+
         uiScaleOption = intFieldWidget(optionVar='tbCustomDpiScale',
                                        defaultValue=1.0,
                                        label='Custom UI scale factor',

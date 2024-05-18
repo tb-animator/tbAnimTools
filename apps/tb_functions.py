@@ -411,14 +411,14 @@ class functions(object):
         if suffix:
             suffix = '_' + suffix
         node = pm.createNode('transform', name=name + suffix)
-        node.rotateOrder.set(3)
+        node.rotateOrder.set(2)
         return node
 
     def tempLocator(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016)):
         loc = pm.spaceLocator(name=name + '_' + suffix)
         size = scale * self.locator_unit_conversion()
         loc.localScale.set(size, size, size)
-        loc.rotateOrder.set(3)
+        loc.rotateOrder.set(2)
         loc.getShape().overrideEnabled.set(True)
         loc.getShape().overrideRGBColors.set(True)
         loc.getShape().overrideColorRGB.set(color)
@@ -427,7 +427,7 @@ class functions(object):
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False, rotateOrder=3):
         mainControl = self.drawTempControl(name=name, suffix=suffix, scale=scale, color=color, drawType=drawType,
-                                           unlockScale=False, rotateOrder=3, blendshape=True)
+                                           unlockScale=False, rotateOrder=rotateOrder, blendshape=True)
         mainControlShape = mainControl.getShape()
 
         pm.addAttr(mainControl, longName='LineWidth', attributeType='float', defaultValue=scale, minValue=-1, maxValue=10)
@@ -456,7 +456,7 @@ class functions(object):
         return mainControl
 
     def drawTempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
-                        unlockScale=False, rotateOrder=3, blendshape=True):
+                        unlockScale=False, rotateOrder=2, blendshape=True):
         upAxis = cmds.upAxis(query=True, axis=True)
         points = pointLists['pointLists'].get(drawType, pointLists['pointLists']['cross'])
         # process points for z up space

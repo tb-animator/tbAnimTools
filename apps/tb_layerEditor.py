@@ -97,6 +97,7 @@ class LayerEditor(toolAbstractFactory):
     hasAppliedUI = False
 
     useCustomUIOption = 'tUseCustomLayerEditor'
+    tbEmbedOutlinerInChannelBoxOption = 'tbEmbedOutlinerInChannelBox'
     autoFixEnumOption = 'tbAutoFixEnumOption'
     autoFixEnumOnCreateOption = 'tbAutoFixEnumOnCreateOption'
     buttonSize = 18 * dpiScale()
@@ -127,6 +128,9 @@ class LayerEditor(toolAbstractFactory):
         super(LayerEditor, self).optionUI()
         customLayerEditorWidget = optionVarBoolWidget('Use custom layer editor - disabling requires restart',
                                                       self.useCustomUIOption)
+        customOutlinerEditorWidget = optionVarBoolWidget('Put outliner in channelbox UI - disabling requires restart',
+                                                      self.tbEmbedOutlinerInChannelBoxOption)
+
         autoFixEnumOnCreateWidget = optionVarBoolWidget('Auto fix enum attributes in additive anim layer creation',
                                                         self.autoFixEnumOnCreateOption)
         autoFixEnumWidget = optionVarBoolWidget('Auto fix enum attributes in existing additive layers',
@@ -136,10 +140,12 @@ class LayerEditor(toolAbstractFactory):
         formLayout.addRow(customLayerEditorWidget.labelText, customLayerEditorWidget.checkBox)
         formLayout.addRow(autoFixEnumOnCreateWidget.labelText, autoFixEnumOnCreateWidget.checkBox)
         formLayout.addRow(autoFixEnumWidget.labelText, autoFixEnumWidget.checkBox)
+        formLayout.addRow(customOutlinerEditorWidget.labelText, customOutlinerEditorWidget.checkBox)
 
         customLayerEditorWidget.changedSignal.connect(self.modifyAnimLayerTabToggled)
         self.layout.addWidget(autoFixEnumOnCreateWidget)
         self.layout.addWidget(customLayerEditorWidget)
+        self.layout.addWidget(customOutlinerEditorWidget)
         self.layout.addWidget(autoFixEnumWidget)
         self.layout.addLayout(formLayout)
         self.layout.addStretch()
