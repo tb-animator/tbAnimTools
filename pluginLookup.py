@@ -201,6 +201,16 @@ class ClassFinder(object):
             widgets = self.collectAnimLayerTabWidgets()
             for widget in widgets:
                 animLayerLayouts[-1].insertWidget(0, widget)
+            if pm.optionVar.get('tbEmbedOutlinerInChannelBox', False):
+                channelBox = pm.melGlobals['gChannelBoxName']
+                animLayerTab = "AnimLayerTab"
+                pane_layout = 'ChannelBoxLayerEditor|MainChannelsLayersLayout|ChannelsLayersPaneLayout'
+                cmds.paneLayout(pane_layout, edit=True, configuration="horizontal3")
+                panel = cmds.outlinerPanel(parent=pane_layout)
+
+                cmds.paneLayout(pane_layout, edit=True, setPane=(channelBox, 1))
+                cmds.paneLayout(pane_layout, edit=True, setPane=(panel, 2))
+                cmds.paneLayout(pane_layout, edit=True, setPane=(animLayerTab, 3))
 
         except Exception:
             cmds.warning('Failing to modify animLayerTab ::', cmds.warning(traceback.format_exc()))

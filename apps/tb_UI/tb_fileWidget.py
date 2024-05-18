@@ -1,4 +1,6 @@
 from . import *
+import apps.tb_fileTools as ft
+
 
 class filePathWidget(QWidget):
     layout = None
@@ -33,5 +35,3 @@ class filePathWidget(QWidget):
             mel.eval('SavePreferences')
             raiseOk('RESTART MAYA NOW',
                     title='RESTART MAYA NOW')
-
-
