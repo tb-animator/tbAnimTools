@@ -1661,6 +1661,16 @@ class BakeTools(toolAbstractFactory):
                        controlPoints=False,
                        shape=False)
         pm.delete(tempConstraints)
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            for o in rotationRoots.values():
+                composeMatrix = cmds.createNode('composeMatrix')
+                for a in ['X','Y','Z']:
+                    conns = cmds.listConnections(o + '.translate'+a, source=True, destination=False,
+                                                 plugs=True)[0]
+                    cmds.disconnectAttr(conns, o + '.translate'+a)
+                    cmds.connectAttr(conns, composeMatrix + '.inputTranslate.inputTranslate' + a)
+                cmds.connectAttr(composeMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+                cmds.setAttr(o + '.translate', 0,0,0)
 
         channels = self.funcs.getChannels()
         for s in sel:

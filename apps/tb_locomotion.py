@@ -89,6 +89,8 @@ class LocomotionTools(toolAbstractFactory):
     turnAssetName = 'Turn_Control'
     strafeAssetName = 'Strafe_Control'
 
+    autoAlignFeetOption = 'tbAutoAlignFeet'
+
     def __new__(cls):
         if LocomotionTools.__instance is None:
             LocomotionTools.__instance = object.__new__(cls)
@@ -148,9 +150,17 @@ class LocomotionTools(toolAbstractFactory):
             walkAngleQuickButtonLayout.addWidget(angleButton)
         walkAngleLayout = QHBoxLayout()
         walkAngleField = intFieldWidget(defaultValue=0, minimum=-180, maximum=180, step=1)
+        strafeAngleLabel = QLabel('Strafe Angle')
+        autoFootPeelLabel = QLabel('Auto Adjust Foot peel')
+        self.autoFootPeelCheckbox = AnimatedCheckBox(text='On', offText='Off', width=36, height=14)
         walkAngleButton = QPushButton('Set strafe angle')
+        walkAngleLayout.addWidget(strafeAngleLabel)
         walkAngleLayout.addWidget(walkAngleField)
-        walkAngleLayout.addWidget(walkAngleButton)
+        walkAngleLayout.addWidget(autoFootPeelLabel)
+        walkAngleLayout.addWidget(self.autoFootPeelCheckbox)
+        # walkAngleLayout.addWidget(walkAngleButton)
+        tagFootButton = QPushButton('Tag as Foot')
+        alignFootButton = QPushButton('Align Foot Peel To Move Direction')
         resetCurveButton = QPushButton('Reset Strafe')
         bakeOutButton = QPushButton('- Bake Out -')
         buttonLayout.addWidget(addSelectedButton)
@@ -158,14 +168,23 @@ class LocomotionTools(toolAbstractFactory):
         buttonLayout.addLayout(walkAngleQuickButtonLayout)
         buttonLayout.addLayout(walkAngleLayout)
         buttonLayout.addWidget(resetCurveButton)
+        buttonLayout.addWidget(tagFootButton)
+        buttonLayout.addWidget(alignFootButton)
         buttonLayout.addWidget(bakeOutButton)
         self.strafeToolbox.mainLayout.addWidget(toolboxWidget)
+
+        self.autoFootPeelCheckbox.setChecked(pm.optionVar.get(self.autoAlignFeetOption, False))
+        pm.optionVar(intValue=(self.autoAlignFeetOption, pm.optionVar.get(self.autoAlignFeetOption, False)))
 
         addSelectedButton.clicked.connect(lambda: self.addStrafeToSelected(rotateOnly=False))
         addSelectedRotationButton.clicked.connect(lambda: self.addStrafeToSelected(rotateOnly=True))
         walkAngleField.changedSignal.connect(lambda x: self.strafeUpdated(value=x))
+        tagFootButton.clicked.connect(self.tagAsFoot)
+        alignFootButton.clicked.connect(self.alignFeet)
         resetCurveButton.clicked.connect(self.resetStrafe)
         bakeOutButton.clicked.connect(self.bakeOut)
+
+        self.autoFootPeelCheckbox.clicked.connect(lambda x: pm.optionVar(intValue=(self.autoAlignFeetOption, x)))
 
         self.strafeToolbox.show()
         self.strafeToolbox.setFixedSize(self.strafeToolbox.sizeHint())
@@ -234,6 +253,52 @@ class LocomotionTools(toolAbstractFactory):
             finally:
                 pass
 
+    def tagAsFoot(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return raiseError('Please select a control to tag as a foot', title='Failed to tag as foot')
+        CharacterTool = self.allTools.tools['CharacterTool']
+        characters = self.funcs.splitSelectionToCharacters(sel)
+
+        for ch, controls in characters.items():
+            refname, namespace = CharacterTool.getSelectedChar(controls[0])
+            strippedControls = [c.rsplit(':')[-1] for c in controls]
+            CharacterTool.allCharacters[refname].setFeetControls(strippedControls)
+            CharacterTool.saveJsonFile(CharacterTool.allCharacters[refname].getJsonFile(),
+                                       CharacterTool.allCharacters[refname].toJson())
+
+    def alignFeet(self):
+        curveMains = cmds.ls('*:Strafe_Control')
+        print('curveMains', curveMains)
+        # get the controls that are tagged as feet
+        animControls = list()
+        for c in curveMains:
+            assetControls = cmds.container(c, query=True, nodeList=True)
+            print('assetControls', assetControls)
+            for control in assetControls:
+                if not cmds.attributeQuery('animControl', node=control, exists=True):
+                    continue
+                animControl = cmds.listConnections(control + '.animControl')
+                if not animControl:
+                    continue
+                animControls.append(animControl[0])
+        print('animControls')
+        print(animControls)
+
+        CharacterTool = self.allTools.tools['CharacterTool']
+        characters = self.funcs.splitSelectionToCharacters(animControls)
+
+        mainCurveRotation = cmds.xform(curveMains[0], query=True, rotation=True, worldSpace=True)
+
+        for ch, controls in characters.items():
+            refname, namespace = CharacterTool.getSelectedChar(controls[0])
+            feetControls = CharacterTool.allCharacters[refname].getFeetControl(namespace)
+            print(refname, feetControls)
+            if not feetControls:
+                continue
+            for f in feetControls:
+                cmds.xform(f + '_TiltDirection', rotation=mainCurveRotation, worldSpace=True)
+
     def resetStrafe(self):
         curveMains = cmds.ls('*:Strafe_Control')
         for c in curveMains:
@@ -243,7 +308,6 @@ class LocomotionTools(toolAbstractFactory):
                 pass
 
     def strafeUpdated(self, value=0):
-        print('strafe', value)
         upAxis = cmds.upAxis(query=True, axis=True)
         curveMains = cmds.ls('*:Strafe_Control')
         for c in curveMains:
@@ -254,6 +318,8 @@ class LocomotionTools(toolAbstractFactory):
                     cmds.setAttr(c + '.rotate', 0, 0, value)
             finally:
                 pass
+        if pm.optionVar.get(self.autoAlignFeetOption, False):
+            self.alignFeet()
 
     def addStrafeToSelected(self, rotateOnly=False):
         sel = cmds.ls(sl=True, type='transform')
@@ -474,34 +540,43 @@ class LocomotionTools(toolAbstractFactory):
         rotationRoots = dict()
         translateAnimNodes = dict()
         rotateAnimNodes = dict()
-        translateAnimOFfsetNodes = dict()
+        translateAnimOffsetNodes = dict()
         rotateAnimOffsetNodes = dict()
         tempConstraints = list()
 
         assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='arrow', scale=1.0)
-        strafeControl = self.createAsset(sel[0].split(':')[0] + ':' + self.strafeAssetName,
-                                         transform=True,
-                                         imageName='directKeySmall.png',
-                                         assetCommandName=assetCommandName)
+        currentAssetName = sel[0].split(':')[0] + ':' + self.strafeAssetName
+        if not cmds.objExists(currentAssetName):
+            strafeControl = self.createAsset(sel[0].split(':')[0] + ':' + self.strafeAssetName,
+                                             transform=True,
+                                             imageName='directKeySmall.png',
+                                             assetCommandName=assetCommandName)
+        else:
+            strafeControl = pm.PyNode(currentAssetName)
         pm.delete(assetShapeControl, ch=True)
         pm.parent(assetShapeControl.getShapes(), strafeControl, r=True, s=True)
         pm.delete(assetShapeControl)
         # cache the strafe value
         rotateCache = cmds.getAttr(strafeControl + '.rotate')[0]
         cmds.setAttr(strafeControl + '.rotate', 0, 0, 0)
+        bakeAttrs = list()
         upAxis = cmds.upAxis(query=True, axis=True)
         for s in sel:
-            root = self.funcs.tempControl(name=s, suffix='Root', drawType='redirectRoot', scale=0.5)
-            rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='flatRotator', scale=1.25)
-            translateAnimNode = self.funcs.tempNull(name=s, suffix='TranslateBaked')
+            # root = self.funcs.tempControl(name=s, suffix='Root', drawType='redirectRoot', scale=0.5)
 
-            translateAnimOFfsetNode = self.funcs.tempControl(name=s, suffix='TranslateOffset', drawType='plus',
-                                                             scale=0.75)
-            self.funcs.getSetColour(s, translateAnimOFfsetNode, brightnessOffset=0.15)
+            rotationRoot = self.funcs.tempControl(name=s, suffix='RotationRoot', drawType='sphereZ', scale=0.7)
+            cmds.addAttr(str(rotationRoot), ln='animControl', at='message')
+            cmds.connectAttr(s + '.message', str(rotationRoot) + '.animControl')
+            # worldOffsetControl = self.funcs.tempControl(name=s, suffix='TranslateOffset', drawType='redirectRoot',
+            #                                             scale=1)
+
+            # translateAnimOFfsetNode = self.funcs.tempControl(name=s, suffix='TranslateOffset', drawType='plus',
+            #                                                  scale=0.75)
+            # self.funcs.getSetColour(s, translateAnimOFfsetNode, brightnessOffset=0.15)
 
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
-            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset', drawType='sphereZ',
-                                                          scale=1.0, rotateOrder=2)
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s, suffix='RotateOffset', drawType='diamond',
+                                                          scale=1, rotateOrder=2)
             tiltAnimOffsetNode = self.funcs.tempControl(name=s, suffix='TiltDirection', drawType='arrow',
                                                         scale=1.0, rotateOrder=3)
             cmds.setAttr(tiltAnimOffsetNode + '.rotateX', lock=True, channelBox=False)
@@ -510,7 +585,6 @@ class LocomotionTools(toolAbstractFactory):
             cmds.setAttr(tiltAnimOffsetNode + '.translate', lock=True, channelBox=False)
             cmds.setAttr(tiltAnimOffsetNode + '.scale', lock=True, channelBox=False)
             cmds.setAttr(tiltAnimOffsetNode + '.rotate' + upAxis.upper(), lock=False, channelBox=True)
-            self.funcs.getSetColour(s, root, brightnessOffset=0)
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.15)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.15)
@@ -549,58 +623,84 @@ class LocomotionTools(toolAbstractFactory):
             pm.parent(tiltAnimOffsetNode, rotationRoot)
             pm.parent(rotateAnimOffsetNode, rotateAnimNode)
             pm.parent(rotateAnimNode, rotationRoot)
-            pm.parent(rotationRoot, root)
-            pm.parent(translateAnimOFfsetNode, translateAnimNode)
-            pm.parent(translateAnimNode, root)
 
-            pm.delete(pm.parentConstraint(s, root))
-            pm.setAttr(root.rotate, (0, 0, 0))
+            # pm.parent(translateAnimOFfsetNode, translateAnimNode)
 
             rotationRoot.inheritsTransform.set(0)
 
-            tempConstraints.append(pm.parentConstraint(s, translateAnimNode))
             tempConstraints.append(pm.parentConstraint(s, rotateAnimNode))
-            pm.pointConstraint(translateAnimNode, rotationRoot)
 
-            roots[s] = root
+            # tempConstraints.append(pm.parentConstraint(s, worldOffsetControl, skipRotate=('x', 'y', 'z')))
+            tempConstraints.append(pm.parentConstraint(s, rotationRoot, skipRotate=('x', 'y', 'z')))
+            # pm.pointConstraint(worldOffsetControl, rotationRoot)
+
+            bakeAttrs.extend([str(rotationRoot) + '.translate' + x for x in ['X','Y','Z']])
+            bakeAttrs.extend([str(rotateAnimNode) + '.rotate' + x for x in ['X','Y','Z']])
+            bakeAttrs.extend([str(rotateAnimNode) + '.translate' + x for x in ['X','Y','Z']])
             rotationRoots[s] = rotationRoot
-            translateAnimNodes[s] = translateAnimNode
             rotateAnimNodes[s] = rotateAnimNode
-            translateAnimOFfsetNodes[s] = translateAnimOFfsetNode
+            # translateAnimOffsetNodes[s] = worldOffsetControl
             rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
 
-        pm.parent(list(roots.values()), strafeControl)
+            # pm.parent(worldOffsetControl, strafeControl)
+            pm.parent(rotationRoot, strafeControl)
         # pm.container(strafeControl, edit=True,
         #              includeHierarchyBelow=False,
         #              force=True,
         #              addNode=list(roots.values()))
 
-        bakeTargets = list(translateAnimNodes.values()) + list(rotateAnimNodes.values())
+        bakeTargets = list(rotationRoots.values()) + list(rotateAnimNodes.values())
+
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        pm.bakeResults(bakeTargets,
-                       time=(keyRange[0], keyRange[1]),
-                       simulation=False,
-                       sampleBy=1,
-                       oversamplingRate=1,
-                       disableImplicitControl=True,
-                       preserveOutsideKeys=False,
-                       sparseAnimCurveBake=True,
-                       removeBakedAttributeFromLayer=False,
-                       removeBakedAnimFromLayer=False,
-                       bakeOnOverrideLayer=False,
-                       minimizeRotation=True,
-                       controlPoints=False,
-                       shape=False)
+        with self.funcs.suspendUpdate():
+            pm.bakeResults(bakeAttrs,
+                           time=(keyRange[0], keyRange[1]),
+                           simulation=True,
+                           sampleBy=1,
+                           oversamplingRate=1,
+                           disableImplicitControl=True,
+                           preserveOutsideKeys=False,
+                           sparseAnimCurveBake=True,
+                           removeBakedAttributeFromLayer=False,
+                           removeBakedAnimFromLayer=False,
+                           bakeOnOverrideLayer=False,
+                           minimizeRotation=True,
+                           controlPoints=False,
+                           shape=False)
         pm.delete(tempConstraints)
 
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            for o in rotationRoots.values():
+                o = str(o)
+                composeMatrix = cmds.createNode('composeMatrix')
+                multMatrix = cmds.createNode('multMatrix')
+                pickMatrix = cmds.createNode('pickMatrix')
+                cmds.setAttr(pickMatrix + '.useScale', False)
+                cmds.setAttr(pickMatrix + '.useRotate', False)
+                cmds.setAttr(pickMatrix + '.useShear', False)
+                cmds.connectAttr(multMatrix + '.matrixSum', pickMatrix + '.inputMatrix')
+                cmds.connectAttr(composeMatrix + '.outputMatrix', multMatrix + '.matrixIn[0]')
+                cmds.connectAttr(strafeControl + '.worldMatrix[0]', multMatrix + '.matrixIn[1]')
+                cmds.connectAttr(pickMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+                for a in ['X', 'Y', 'Z']:
+                    conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
+                                                 plugs=True)
+                    if not conns:
+                        print('no connections', o)
+                        continue
+                    conns = conns[0]
+                    cmds.disconnectAttr(conns, o + '.translate' + a)
+                    cmds.connectAttr(conns, composeMatrix + '.inputTranslate.inputTranslate' + a)
+
+                cmds.setAttr(o + '.translate', 0, 0, 0)
         # TODO - add scalar/blend to animated nodes-rest position
 
         for s in sel:
-            translateTarget = translateAnimOFfsetNodes.get(s, None)
+            translateTarget = rotateAnimOffsetNodes.get(s, None)
             rotateTarget = rotateAnimOffsetNodes.get(s, None)
             if translateTarget:
                 if not rotateOnly:
-                    pm.pointConstraint(translateAnimOFfsetNodes[s], s)
+                    pm.pointConstraint(rotateAnimOffsetNodes[s], s)
             if rotateTarget:
 
                 if self.funcs.getAvailableRotates(s):
@@ -637,7 +737,7 @@ def circleExpression(turnControl=str(),
         outFwdCalc = "{out}.{t} = (-$rot_offset.x + $circle.x -$offset.x);".format(out=outputNode,
                                                                                    t=floorForwardAttr)
         outSideCalc = "{out}.{t} = -(-$rot_offset.z + $circle.z - $offset.z);".format(out=outputNode,
-                                                                                     t=floorSideAttr)
+                                                                                      t=floorSideAttr)
     else:
         outFwdCalc = "{out}.{t} = (-$rot_offset.x + $circle.x -$offset.x);".format(out=outputNode,
                                                                                    t=floorSideAttr)

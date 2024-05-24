@@ -139,6 +139,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='selectAllAnimCurves',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.select_all_curves()']))
+        self.addCommand(self.tb_hkey(name='setZeroKey',
+                                     annotation='Sets the identity pose (zero key) for selected layer',
+                                     category=self.category, command=['KeyModifiers.setZeroKey()']))
 
         return self.commandList
 
@@ -223,6 +226,13 @@ class KeyModifiers(toolAbstractFactory):
 
     def matchEndTangentsToStartTangents(self):
         self.matchTangents(False)
+
+    def setZeroKey(self):
+        """
+        Zero keys the selection
+        :return:
+        """
+        cmds.setKeyframe(id=True)
 
     def select_all_curves(self):
         cmds.select(self.funcs.get_non_referenced_animation_curves())

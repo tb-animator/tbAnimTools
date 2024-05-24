@@ -90,7 +90,8 @@ class hotkeys(hotKeyAbstractFactory):
 mirrorAxis = ["YZ", "XY", "XZ"]
 defaultLeft = '_L_'
 defaultRight = '_R_'
-labelDict = {True:'Flip', False:'Keep'}
+labelDict = {True: 'Flip', False: 'Keep'}
+
 
 class CharacterDefinition(object):
     def __init__(self, jsonFile, char):
@@ -103,6 +104,7 @@ class CharacterDefinition(object):
         self.globalControl = str()
         self.driverControl = str()
         self.exportControl = str()
+        self.feetControls = str()
         self.UUID = str()
         self.topNode = str()
         self.char = char
@@ -130,6 +132,7 @@ class CharacterDefinition(object):
         self.globalControl = rawJsonData.get('globalControl', str())
         self.driverControl = rawJsonData.get('driverControl', str())
         self.exportControl = rawJsonData.get('exportControl', str())
+        self.feetControls = rawJsonData.get('feetControls', str())
         self.UUID = rawJsonData.get('UUID', str())
         self.topNode = rawJsonData.get('topNode', str())
 
@@ -147,6 +150,7 @@ class CharacterDefinition(object):
         returnDict['globalControl'] = self.globalControl
         returnDict['driverControl'] = self.driverControl
         returnDict['exportControl'] = self.exportControl
+        returnDict['feetControls'] = self.feetControls
         returnDict['UUID'] = self.UUID
         returnDict['topNode'] = self.topNode
         # print ('returnDict', returnDict)
@@ -215,6 +219,7 @@ class CharacterDefinition(object):
             return control
         return None
 
+
     def setDriverControl(self, value):
         self.driverControl = value
 
@@ -231,6 +236,16 @@ class CharacterDefinition(object):
         control = namespace + ':' + self.exportControl
         if cmds.objExists(control):
             return control
+        return None
+
+    def setFeetControls(self, value):
+        self.feetControls = value
+
+    def getFeetControl(self, namespace):
+        feet = [namespace + ':' + f for f in self.feetControls]
+        feet = [f for f in feet if cmds.objExists(f)]
+        if feet:
+            return feet
         return None
 
     def getMeshes(self, namespace):
@@ -479,6 +494,15 @@ class CharacterTool(toolAbstractFactory):
 
             self.leftSideLineEdit.setText(leftSide)
             self.rightSideLineEdit.setText(rightSide)
+            print ('getting control labels', self.currentCharData.globalControl)
+            self.globalControlLabel.setText(self.currentCharData.globalControl)
+            self.driverControlLabel.setText(self.currentCharData.driverControl)
+            self.exportControlLabel.setText(self.currentCharData.exportControl)
+            feet = self.currentCharData.feetControls
+            if not feet:
+                feet = list()
+            feetString = '  '.join(feet)
+            self.feetControlLabel.setText(feetString)
 
             mirrorIndex = self.mirrorPlaneLabelOption.findText(self.currentCharData.getMirrorAxis())
             self.mirrorPlaneLabelOption.setCurrentIndex(mirrorIndex)
@@ -688,18 +712,28 @@ class CharacterTool(toolAbstractFactory):
         if not strippedControls:
             return cmds.warning('No selection')
         self.currentCharData.setGlobalControl(strippedControls[0])
+        self.update()
 
     def setDriverControl(self):
         controls, strippedControls = self.getStrippedSelection()
         if not strippedControls:
             return cmds.warning('No selection')
         self.currentCharData.setDriverControl(strippedControls[0])
+        self.update()
 
     def setExportControl(self):
         controls, strippedControls = self.getStrippedSelection()
         if not strippedControls:
             return cmds.warning('No selection')
         self.currentCharData.setExportControl(strippedControls[0])
+        self.update()
+
+    def setFeetControls(self):
+        controls, strippedControls = self.getStrippedSelection()
+        if not strippedControls:
+            return cmds.warning('No selection')
+        self.currentCharData.setExportControl(strippedControls[0])
+        self.update()
 
     @Slot()
     def removeScriptJob(self):
@@ -822,16 +856,19 @@ class CharacterTool(toolAbstractFactory):
         currentLayout.addWidget(lbl)
         currentLayout.addWidget(self.currentRigLabel)
 
-        controlsGroupbox = myGroupBox('Controls')
+        controlsGroupbox = CollapsingContainer('Controls')
         # controlsGroupbox.clicked.connect(self.temp)
-        controlsVLayout = QVBoxLayout()
+        controlsVLayout = QVBoxLayout(controlsGroupbox.contentWidget)
         controlsLayout = QHBoxLayout()
         controlsLayout2 = QHBoxLayout()
-        controlsGroupbox.setSubLayout(controlsVLayout)
+        controlsFormLayout = QFormLayout()
+
+        # controlsGroupbox.setSubLayout(controlsVLayout)
         controlsVLayout.addLayout(controlsLayout)
         controlsVLayout.addLayout(controlsLayout2)
+        controlsVLayout.addLayout(controlsFormLayout)
 
-        defineControlsButton = ToolButton(text='Set Controls',
+        defineControlsButton = ToolButton(text='Set All Controls',
                                           imgLabel='Tips',
                                           width=buttonWidth,
                                           height=buttonHeight,
@@ -856,34 +893,45 @@ class CharacterTool(toolAbstractFactory):
         controlsLayout.addWidget(appendControlsButton)
         controlsLayout.addWidget(selectControlsButton)
 
-        defineGlobalButton = ToolButton(text='Global',
+        defineGlobalButton = ToolButton(text='Set Global Control',
                                         imgLabel='Pick global control',
                                         width=0.33 * (buttonWidth * 2 + 32),
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setGlobalControl)
-        defineDriverButton = ToolButton(text='Driver',
+        defineDriverButton = ToolButton(text='Set Mover Control',
                                         imgLabel='Pick driver control',
                                         width=0.33 * (buttonWidth * 2 + 32),
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setDriverControl)
-        defineExportButton = ToolButton(text='Export',
+        defineExportButton = ToolButton(text='Set Export Control',
                                         imgLabel='Pick export control',
                                         width=0.33 * (buttonWidth * 2 + 32),
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setExportControl)
+        defineFeetButton = ToolButton(text='Set Feet Controls',
+                                      imgLabel='Pick feet controls',
+                                      width=0.33 * (buttonWidth * 2 + 32),
+                                      height=buttonHeight,
+                                      icon=":/pickPivotComp.png",
+                                      sourceType='py',
+                                      command=self.setFeetControls)
+        self.globalControlLabel = QLabel('Global ??')
+        self.driverControlLabel = QLabel('Driver ??')
+        self.exportControlLabel = QLabel('Export ??')
+        self.feetControlLabel = QLabel('Feet ??')
+        controlsFormLayout.addRow(defineGlobalButton, self.globalControlLabel)
+        controlsFormLayout.addRow(defineDriverButton, self.driverControlLabel)
+        controlsFormLayout.addRow(defineExportButton, self.exportControlLabel)
+        controlsFormLayout.addRow(defineFeetButton, self.feetControlLabel)
 
-        controlsLayout2.addWidget(defineGlobalButton)
-        controlsLayout2.addWidget(defineDriverButton)
-        controlsLayout2.addWidget(defineExportButton)
-
-        mirrorGroupbox = myGroupBox('Control Sides / Mirror')
-        mirrorMainLayout = QVBoxLayout()
+        mirrorGroupbox = CollapsingContainer('Control Sides / Mirror')
+        mirrorMainLayout = QVBoxLayout(mirrorGroupbox.contentWidget)
 
         mirrorLayout = QHBoxLayout()
         mirrorLayout.setContentsMargins(0, 0, 0, 0)
@@ -893,7 +941,6 @@ class CharacterTool(toolAbstractFactory):
         mirrorMainLayout.addLayout(mirrorAxisLayout)
         mirrorTestLayout = QHBoxLayout()
         mirrorTestLayout.setContentsMargins(0, 0, 0, 0)
-        mirrorGroupbox.setSubLayout(mirrorMainLayout)
 
         leftLabel = QLabel('Left')
         rightLabel = QLabel('Right')
@@ -936,9 +983,8 @@ class CharacterTool(toolAbstractFactory):
         mirrorTestLayout.addWidget(testMirrorRtoL)
         mirrorMainLayout.addLayout(self.mirrorChannelWidget())
 
-        meshGroupbox = myGroupBox('Meshes')
-        meshLayout = QHBoxLayout()
-        meshGroupbox.setSubLayout(meshLayout)
+        meshGroupbox = CollapsingContainer('Meshes')
+        meshLayout = QHBoxLayout(meshGroupbox.contentWidget)
         defineMeshesButton = ToolButton(text='Set Meshes',
                                         imgLabel='Tips',
                                         width=buttonWidth,
@@ -1033,8 +1079,8 @@ class CharacterTool(toolAbstractFactory):
 
         self.toolbox.show()
         self.toolbox.widgetClosed.connect(self.removeScriptJob)
-        self.toolbox.setFixedSize(self.toolbox.sizeHint())
-        self.toolbox.setFixedWidth(320 * dpiScale())
+        # self.toolbox.setFixedSize(self.toolbox.sizeHint())
+        # self.toolbox.setFixedWidth(320 * dpiScale())
         self.toolboxWidget.setEnabled(False)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
