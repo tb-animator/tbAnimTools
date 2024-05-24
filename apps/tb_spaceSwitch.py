@@ -94,6 +94,9 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchMenu',
                                      annotation='useful comment',
                                      category=self.category, command=['SpaceSwitch.openMM()']))
+        self.addCommand(self.tb_hkey(name='tbOpenSpaceSwitchPresetMenu',
+                                     annotation='useful comment',
+                                     category=self.category, command=['SpaceSwitch.openPresetMM()']))
         self.addCommand(self.tb_hkey(name='tbCloseSpaceSwitchMenu',
                                      annotation='useful comment',
                                      category=self.category, command=['SpaceSwitch.closeMM()']))
@@ -265,6 +268,107 @@ class SpaceSwitch(toolAbstractFactory):
         pm.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
                     command='tbOpenSpaceSwitchDataEditor', sourceType='mel',
                     parent=parentMenu)
+
+    def openPresetMM(self):
+        self.build_preset_MM()
+        self.presetMarkingMenuWidget.show()
+
+    def build_preset_MM(self, parentMenu=None):
+        menuDict = {'NE': list(),
+                    'NW': list(),
+                    'SE': list(),
+                    'SW': list()
+                    }
+
+        # TODO - change this so the event filter doesn't get rebuilt all the time
+        self.presetMarkingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        characters = self.funcs.splitSelectionToCharacters(sel)
+        self.loadDataForCharacters(characters)
+        # make this better...?
+
+        if sel:
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Local', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\local_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceLocalValues),
+                              closeOnPress=True))
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Global', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\world_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceGlobalValues),
+                              closeOnPress=True))
+            menuDict['NW'].append(
+                ToolboxButton(label='switch to Default', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\default_base.png',
+                              command=lambda: self.switchTo(sel, mode=str_spaceDefaultValues),
+                              closeOnPress=True))
+
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Local', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\local_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceLocalValues),
+                              closeOnPress=True))
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Global', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\world_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceGlobalValues),
+                              closeOnPress=True))
+            menuDict['NE'].append(
+                ToolboxButton(label='bake to Default', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                              icon=IconPath + '\default_base.png',
+                              command=lambda: self.bakeTo(sel, mode=str_spaceDefaultValues),
+                              closeOnPress=True))
+
+            menuDict['SW'].append(ToolboxButton(label='Select all Switch Controls',
+                                                parent=self.presetMarkingMenuWidget,
+                                                icon=':selectObject.png',
+                                                cls=self.presetMarkingMenuWidget,
+                                                command=lambda: SpaceSwitch().selectAllSpaceSwitchControls(),
+                                                closeOnPress=True))
+            menuDict['SW'].append(ToolboxButton(label='Select all Global Controls',
+                                                parent=self.presetMarkingMenuWidget,
+                                                icon=':selectObject.png',
+                                                cls=self.presetMarkingMenuWidget,
+                                                command=lambda: SpaceSwitch().selectAllGlobalSpaceControls(),
+                                                closeOnPress=True))
+
+            attrDict, enumNames, rigName, namespace = self.getSpaceDataForSelection()
+            presets = self.loadedSpaceData[rigName].__dict__[str_spacePresets]
+            if presets:
+                menuDict['SE'].append(
+                    ToolboDivider(label='Space Switch Presets', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
+                for preset in presets.keys():
+                    button = ToolboxButton(label='Switch', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                                           command=pm.Callback(self.switchFromPreset, preset, rigName, namespace),
+                                           closeOnPress=True)
+                    altButton = ToolboxButton(label='Bake', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
+                                              command=pm.Callback(self.bakeFromPreset, preset, rigName, namespace),
+                                              closeOnPress=True)
+                    menuDict['SE'].append(ToolboxDoubleButton(preset,
+                                                              self.presetMarkingMenuWidget,
+                                                              cls=self.presetMarkingMenuWidget,
+                                                              buttons=[button, altButton]))
+                menuDict['SE'].append(
+                    ToolboDivider(label='Space Switch', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
+
+
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Open SpaceSwitch Editor',
+                                            icon=IconPath + '\popupWindow.png',
+                                            parent=self.presetMarkingMenuWidget,
+                                            cls=self.presetMarkingMenuWidget,
+                                            command=pm.Callback(SpaceSwitch().openEditorWindow),
+                                            closeOnPress=True))
+        menuDict['SW'].append(ToolboDivider(label='', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
+        menuDict['SW'].append(ToolboxButton(label='Save selection as preset...',
+                                            parent=self.presetMarkingMenuWidget,
+                                            cls=self.presetMarkingMenuWidget,
+                                            command=pm.Callback(SpaceSwitch().saveSelectionAsPreset),
+                                            closeOnPress=True))
 
     def openMM(self):
         self.build_MM()
