@@ -202,9 +202,11 @@ class ToolBoxWidget(QWidget):
 
     def amplitudeChanged(self, value):
         self.amplitude = value
+        print ('amp', self.amplitude)
         self.doTween()
 
     def doTween(self):
+        print (self.getMode(), self.frequency, self.amplitude)
         if self.isCached:
             cmds.tbKeyTween(alpha=self.frequency, alphaB=self.amplitude, blendMode=self.getMode(), clearCache=False)
 

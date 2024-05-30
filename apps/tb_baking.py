@@ -232,6 +232,11 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['BakeTools.worldOffsetSelectionRotation()'],
                                      help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+        self.addCommand(self.tb_hkey(name='resampleSelectedLayer',
+                                     annotation='worldOffsetSelection',
+                                     category=self.category,
+                                     command=['BakeTools.resampleSelectedLayer()'],
+                                     help='Resample the selected layer to 1s'))
 
         self.setCategory(self.helpStrings.category.get('ignore'))
         self.addCommand(self.tb_hkey(name=assetCommandName,
@@ -1679,7 +1684,6 @@ class BakeTools(toolAbstractFactory):
                                             maintainOffset=False,
                                             channels=channels)
         pm.select(rotationRoots.values(), replace=True)
-
 
 
     def resampleSelectedLayer(self, sample=1):

@@ -667,11 +667,14 @@ class AimTools(toolAbstractFactory):
 
     def aimAtTempControl(self, *args):
         sel = pm.ls(selection=True)
-
+        parentControl = None
         if not sel:
             return
-
         control = sel[0]
+
+        if len(sel) == 2:
+            parentControl = sel[1]
+
         cmds.undoInfo(openChunk=True, chunkName='aimAtTempControl', stateWithoutFlush=False)
         tempControl = self.funcs.tempLocator(name=control, suffix='AimTempNode')
         cmds.undoInfo(closeChunk=True, stateWithoutFlush=True)
@@ -687,18 +690,20 @@ class AimTools(toolAbstractFactory):
                                                               compressUndo=True,
                                                               event=("SelectionChanged",
                                                                      pm.Callback(self.bakeTempAim, control,
-                                                                                 tempControl))))
+                                                                                 tempControl, parentControl=parentControl))))
         self.aimAtTempControlScriptJobs.append(cmds.scriptJob(runOnce=True,
                                                               killWithScene=True,
                                                               compressUndo=True,
                                                               event=("ToolChanged",
                                                                      pm.Callback(self.bakeTempAim, control,
-                                                                                 tempControl))))
+                                                                                 tempControl, parentControl=parentControl))))
 
-    def bakeTempAim(self, control, tempControl):
+    def bakeTempAim(self, control, tempControl, parentControl=None):
 
         aimLocator = self.funcs.tempControl(name=control, suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
                                             drawType='orb')
+        if parentControl:
+            cmds.connectAttr(str(parentControl) + '.worldMatrix[0]', str(aimLocator) + '.offsetParentMatrix')
 
         pm.delete(pm.orientConstraint(tempControl, aimLocator))
         pm.delete(pm.pointConstraint(tempControl, aimLocator))

@@ -139,6 +139,13 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='selectAllAnimCurves',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.select_all_curves()']))
+        self.addCommand(self.tb_hkey(name='deleteAllUnconnectedAnimCurves',
+                                     annotation='Blank',
+                                     category=self.category, command=['KeyModifiers.delete_unconnected_curves()']))
+        self.addCommand(self.tb_hkey(name='cleanupTimeEditorNodes',
+                                     annotation='Blank',
+                                     category=self.category, command=['KeyModifiers.cleanupTimeEditorNodes()']))
+
         self.addCommand(self.tb_hkey(name='setZeroKey',
                                      annotation='Sets the identity pose (zero key) for selected layer',
                                      category=self.category, command=['KeyModifiers.setZeroKey()']))
@@ -236,6 +243,13 @@ class KeyModifiers(toolAbstractFactory):
 
     def select_all_curves(self):
         cmds.select(self.funcs.get_non_referenced_animation_curves())
+
+    def delete_unconnected_curves(self):
+        cmds.delete(self.funcs.get_unconnected_animation_curves())
+
+    def cleanupTimeEditorNodes(self):
+        cmds.delete(cmds.ls(type='timeEditorAnimSource'))
+        self.delete_unconnected_curves()
     def matchTangents(self, data):
         keyTimeIndex = {True: -1, False: 0}[data]
         range = self.funcs.getTimelineRange()

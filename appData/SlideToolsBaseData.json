@@ -122,7 +122,7 @@
         "textColourHover": "#000000"
       },
       "altSliderData": {
-        "mode": "Fill Gap",
+        "mode": "Fill Gap Scale",
         "label": "Fill Gap",
         "icon": "tweenFill.png",
         "vertical": false,
@@ -267,7 +267,7 @@
     },
     {
       "sliderData": {
-        "mode": "NoiseLoop",
+        "mode": "NoiseLoop1D",
         "label": "Noise",
         "iconLabel": "Nz",
         "axisLabelX": "Freq",
@@ -281,7 +281,7 @@
         "textColourHover": "#000000"
       },
       "altSliderData": {
-        "mode": "NoiseLoop",
+        "mode": "NoiseLoop1D",
         "label": "NoiseLoop",
         "axisLabelX": "Freq",
         "axisLabelY": "Amp",

@@ -787,6 +787,23 @@ class functions(object):
                 non_referenced_curves.append(curve)
         return non_referenced_curves
 
+    @staticmethod
+    def get_unconnected_animation_curves():
+        non_referenced_curves = []
+        # Get all animation curves in the scene
+        all_curves = cmds.ls(type='animCurve')
+        # Iterate through each curve
+        for curve in all_curves:
+            # Check if the curve is not connected to any object
+            if not cmds.referenceQuery(curve, isNodeReferenced=True):
+                # If not connected, add it to the list
+                if not cmds.listConnections(curve):
+                    non_referenced_curves.append(curve)
+        return non_referenced_curves
+
+    def removeAllAnimSources(self):
+        cmds.delete(cmds.ls(type='timeEditorAnimSource'))
+
     def get_smart_key_selection(self, node):
         if self.get_selected_keys():
             return self.get_key_indexes_in_selection(node=node)
