@@ -719,11 +719,15 @@ class AimTools(toolAbstractFactory):
         min_key = min(keyTimes)
         max_key = max(keyTimes)
         keyRange = self.funcs.getBestTimelineRangeForBake()
+
         pm.bakeResults(aimLocator,
                        attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
                        simulation=False,
-                       minimizeRotation=False,
+                       minimizeRotation=True,
                        time=(keyRange[0], keyRange[1]))
+
+        cmds.filterCurve(str(aimLocator) + '.rotateX', str(aimLocator) + '.rotateY', str(aimLocator) + '.rotateZ',
+                         filter='euler')
         pm.delete(tempConstraint)
 
         constraint = self.constrainAimToTarget(str(control), str(aimLocator))

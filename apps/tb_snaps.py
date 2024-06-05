@@ -395,9 +395,11 @@ class SnapTools(toolAbstractFactory):
                 jointOrient = cmds.getAttr(sel[0] + '.jointOrient')[0]
             else:
                 jointOrient = [0]
+
             if any(jointOrient) != 0:
-                cmds.xform(sel[0], relative=False, rotation=rot)
-                cmds.xform(sel[0], relative=False, translation=pos)
+
+                cmds.xform(sel[0], relative=False, worldSpace=True, translation=pos)
+                cmds.xform(sel[0], relative=False, worldSpace=True, rotation=rot)
             else:
                 pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
                 if rot:

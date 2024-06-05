@@ -1665,6 +1665,9 @@ class BakeTools(toolAbstractFactory):
                        minimizeRotation=True,
                        controlPoints=False,
                        shape=False)
+        for c in bakeTargets:
+            cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
+                             filter='euler')
         pm.delete(tempConstraints)
         if int(cmds.about(majorVersion=True)) >= 2020:
             for o in rotationRoots.values():

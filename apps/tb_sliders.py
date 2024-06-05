@@ -1238,6 +1238,7 @@ class SlideTools(toolAbstractFactory):
         self.app.removeEventFilter(self.keyPressHandler)
 
     def cacheKeyData(self):
+        cmds.undoInfo(closeChunk=True)
         self.selectedCurveDict = dict()
         self.keyframeData = None
         isHighlighted = self.funcs.isTimelineHighlighted()
