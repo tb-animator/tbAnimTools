@@ -120,6 +120,7 @@ rotateAttributes = ['rx', 'ry', 'rz']
 scaleAttributes = ['sx', 'sy', 'sz']
 
 curveTypeScalar = {
+    "animCurveTU": 1.0,
     "animCurveTL": 1.0,
     "animCurveTA": 1.0 / 57.296,
 }
@@ -957,6 +958,8 @@ class SlideTools(toolAbstractFactory):
     selectedCurveDict = None
     sliderParentWidget = None
 
+    undoChunk = None
+
     def __new__(cls):
         if SlideTools.__instance is None:
             SlideTools.__instance = object.__new__(cls)
@@ -1238,7 +1241,6 @@ class SlideTools(toolAbstractFactory):
         self.app.removeEventFilter(self.keyPressHandler)
 
     def cacheKeyData(self):
-        cmds.undoInfo(closeChunk=True)
         self.selectedCurveDict = dict()
         self.keyframeData = None
         isHighlighted = self.funcs.isTimelineHighlighted()
@@ -1282,6 +1284,8 @@ class SlideTools(toolAbstractFactory):
 
     def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(),
                    animCurveChange=None):
+        if not self.keyframeData.keys():
+            return cmds.warning("No key cache")
         try:
             self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
         finally:
