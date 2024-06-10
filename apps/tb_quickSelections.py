@@ -418,6 +418,8 @@ class QuickSelectionTools(toolAbstractFactory):
         if result == 'OK':
             qs_name = cmds.promptDialog(query=True, text=True)
             save = True
+            print ('qs_name', qs_name)
+            print (self.all_sets)
             if qs_name in self.all_sets:
                 if not cmds.confirmDialog(
                         title='Overwrite existing set?',
@@ -462,7 +464,7 @@ class QuickSelectionTools(toolAbstractFactory):
         if any([self.is_set(s) for s in sel]):
             self.saveUberSet(name, sel)
             return
-
+        print ('sel', sel)
         if name:
             self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
 
@@ -487,6 +489,8 @@ class QuickSelectionTools(toolAbstractFactory):
 
         # If the sets are equal, lists contain the same items
         if set1 == set2:
+            return False
+        elif set2.issubset(set1):
             return False
         else:
             return True
