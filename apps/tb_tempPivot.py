@@ -64,11 +64,6 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('tempPivot'))
         self.commandList = list()
-
-        self.addCommand(self.tb_hkey(name='create_temp_pivot',
-                                     annotation='',
-                                     category=self.category,
-                                     command=['TempPivot.createTempPivotFromSelection()']))
         self.addCommand(self.tb_hkey(name='createTempPivotInteractive',
                                      annotation='',
                                      category=self.category,
@@ -529,7 +524,7 @@ class TempPivot(toolAbstractFactory):
 
         with self.funcs.undoChunk():
             cmds.currentTime(frame)
-            mainTarget = targets[-1]
+            mainTarget = targets[0]
             constraints = list()
             control = self.funcs.tempControl(name=mainTarget, suffix='Pivot', drawType='orb',
                                              scale=pm.optionVar.get(self.crossSizeOption, 1))
@@ -553,17 +548,13 @@ class TempPivot(toolAbstractFactory):
                             # using offsetparent matrix for spacing but inherits transform
                             multMatrix = cmds.createNode('multMatrix')
                             mainTargetParent = cmds.listRelatives(mainTarget, parent=True)
-                            print ('offsetParentMatrixConnection[0]', offsetParentMatrixConnection[0])
                             if mainTargetParent:
                                 cmds.connectAttr(offsetParentMatrixConnection[0], multMatrix + '.matrixIn[0]')
                                 cmds.connectAttr(mainTargetParent[0] + '.worldMatrix[0]', multMatrix + '.matrixIn[1]')
                                 cmds.connectAttr(multMatrix + '.matrixSum', control + '.offsetParentMatrix')
-                                print ('here')
-
                         else:
                             # using offset parent matrix but not inheriting transform
                             cmds.connectAttr(offsetParentMatrixConnection[0], control + '.offsetParentMatrix')
-                        print ('also here')
                     else:
                         parentNode = cmds.listRelatives(mainTarget, parent=True)
                         if parentNode:
