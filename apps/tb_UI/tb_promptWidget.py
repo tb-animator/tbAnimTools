@@ -230,7 +230,7 @@ class InfoPromptWidget(QWidget):
         self.acceptedCBSignal.emit(self.lineEdit.text(), self.checkBoxWD.isChecked())
         self.close()
 
-    def showRelative(self, screenPos=QPoint(0, 0), widgetSize=QPoint(0, 0)):
+    def showRelative(self, screenPos=QPoint(0, 0), widgetSize=QSize(0, 0)):
 
         screens = QApplication.screens()
         for s in screens:
