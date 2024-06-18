@@ -189,7 +189,7 @@ class PickwalkLabelledLineEdit(QWidget):
         self.editedSignal.emit(self.lineEdit.text())
 
     def pickChannel(self, *args):
-        print ('picking channel')
+        # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             pm.warning('no channel selected')
@@ -292,7 +292,7 @@ class PickObjectLineEdit(QWidget):
         self.blockSignals(False)
 
     def pickChannel(self, *args):
-        print ('picking channel')
+        # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             pm.warning('no channel selected')
@@ -338,7 +338,7 @@ class PickChannelLineEdit(QWidget):
         self.blockSignals(False)
 
     def pickChannel(self):
-        print ('picking channel')
+        # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             pm.warning('no channel selected')
@@ -452,7 +452,7 @@ class DirectionPickWidget(QFrame):
         self.sendData()
 
     def pickAttribute(self, attr):
-        print ('pickAttribute', attr)
+        # print ('pickAttribute', attr)
         if attr:
             self.setSimple(False)
         else:
@@ -466,7 +466,7 @@ class DirectionPickWidget(QFrame):
         self.pressedSignal.emit(self.lineEdit.text(), self.direction)
 
     def setValues(self, data):
-        print('data', data)
+        # print('data', data)
 
         if data.destination:
             self.destinationsWidget.refreshUI(data.destination)
@@ -493,8 +493,8 @@ class DirectionPickWidget(QFrame):
                    'conditionAttribute': self.conditionAttrWidget.getData(),
                    'conditionValue': self.conditionValueWidget.getData(),
                    }
-        print ("sending data")
-        print (outDict)
+        # print ("sending data")
+        # print (outDict)
         self.walkInfoSignal.emit(self.direction, outDict)
 
 

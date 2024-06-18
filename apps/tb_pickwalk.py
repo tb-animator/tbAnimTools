@@ -150,14 +150,14 @@ class WalkData(object):
             return None
         destinationInfo = self.objectDict[node][direction]
         self.setLastUsedIndex(node)
-        print('node', node)
+        # print('node', node)
 
         # all entries are conditional
-        print('destination', destinationInfo.destination)
-        print('destinationAlt', destinationInfo.destinationAlt)
-        print('conditionAttribute', destinationInfo.conditionAttribute)
-        print('conditionValue', destinationInfo.conditionValue)
-        print('namespace + node', namespace + node)
+        # print('destination', destinationInfo.destination)
+        # print('destinationAlt', destinationInfo.destinationAlt)
+        # print('conditionAttribute', destinationInfo.conditionAttribute)
+        # print('conditionValue', destinationInfo.conditionValue)
+        # print('namespace + node', namespace + node)
         if not destinationInfo.destination:
             return None
         # check for condition attribute
@@ -243,7 +243,7 @@ class PickwalkCreator(object):
                     continue
                 # print ('need to mirror', key)
                 for dir, value in self.walkData.objectDict[key].__dict__.items():
-                    print('dir', dir, 'value', value)
+                    # print('dir', dir, 'value', value)
                     found = False
                     if not value:
                         # print dir, 'is empty'
@@ -252,14 +252,14 @@ class PickwalkCreator(object):
 
                     # add the mirror key to the destination list, mirror it
                     mirrorDir[dir] = self.mirrorWalkDestination(destinationInfo=value, sideList=sideList)
-                    print('mirror', mirrorDir[dir])
+                    # print('mirror', mirrorDir[dir])
                 # print 'mirrorDir', mirrorDir
                 mirrorKey = self.getMirrorName(key, sideList)
                 # print ('mirrorKey', mirrorKey)
                 for dKey, dValue in mirrorDir.items():
-                    print('setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue)
+                    # print('setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue)
                     if isinstance(dValue, str):
-                        print('dValue', dValue)
+                        # print('dValue', dValue)
                         self.setControlDestination(mirrorKey,
                                                    direction=dKey,
                                                    destination=dValue)
@@ -359,7 +359,7 @@ class PickwalkCreator(object):
 
         if not isinstance(controls, list):
             controls = [controls]
-        print('addPickwalkChain', controls)
+        # print('addPickwalkChain', controls)
         controls = [c.split(':')[-1] for c in controls]
 
         firstControl = controls[0]
@@ -1090,7 +1090,7 @@ class Pickwalk(toolAbstractFactory):
         return controlList
 
     def findSequenceRecursive(self, control, substringList):
-        print('findSequenceRecursive', control)
+        # print('findSequenceRecursive', control)
         length = len(control)
         if length == 0:
             return substringList
@@ -1287,7 +1287,7 @@ class Pickwalk(toolAbstractFactory):
                 # print ('ok, refname', refName)
                 # print ('query against pickwalk library')
                 returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
-                print('returnedControls', returnedControls)
+                # print('returnedControls', returnedControls)
                 if returnedControls == False:
                     # means a standard walk has been performed
                     return
@@ -1372,7 +1372,7 @@ class Pickwalk(toolAbstractFactory):
         return outStr
 
     def dataDrivenWalk(self, direction, refName, walkObject):
-        print('dataDrivenWalk', direction, refName, walkObject)
+        # print('dataDrivenWalk', direction, refName, walkObject)
         returnedControls = list()
         walkObjectStripped = walkObject.stripNamespace()
         walkObjectNS = walkObject.namespace()
@@ -1389,9 +1389,9 @@ class Pickwalk(toolAbstractFactory):
             result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
                                                      node=walkObjectStripped,
                                                      direction=direction)
-            print('result', result)
+            # print('result', result)
             vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
-            print('vaildObject', vaildObject)
+            # print('vaildObject', vaildObject)
             if not vaildObject:
                 if direction == 'up' or direction == 'down':
                     result = self.findIncrementalControl(walkObjectStripped,
@@ -1424,7 +1424,7 @@ class Pickwalk(toolAbstractFactory):
                     # no finger, check for mirror
                     result = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
                                                                           walkObject)
-                    print ('result', result)
+                    # print ('result', result)
                     vaildObject = cmds.objExists(str(result))
                     if vaildObject:
                         self.createDestination(walkObject, result, direction)
@@ -1432,14 +1432,14 @@ class Pickwalk(toolAbstractFactory):
 
                 # print ('incrementalNode', result)
             if not vaildObject:
-                print('look for other maps for a destination')
+                # print('look for other maps for a destination')
                 existingEntry = self.findPreExistingEntries(walkObjectStripped, walkObjectNS, direction)
 
                 if existingEntry:
                     if isinstance(existingEntry, WalkDestinationInfo):
                         # found a matching complete entry, use that
-                        print('found a matching complete entry, use that')
-                        print ('HEY',existingEntry.destination)
+                        # print('found a matching complete entry, use that')
+                        # print ('HEY',existingEntry.destination)
                         self.pickwalkCreator.setControlDestination(walkObjectStripped,
                                                                    direction=direction,
                                                                    destination=existingEntry.destination,
@@ -1447,7 +1447,7 @@ class Pickwalk(toolAbstractFactory):
                                                                    conditionAttribute=existingEntry.conditionAttribute,
                                                                    conditionValue=existingEntry.conditionValue)
                     else:
-                        print('create destination', walkObject, existingEntry, direction)
+                        # print('create destination', walkObject, existingEntry, direction)
                         self.createDestination(walkObject, existingEntry, direction)
 
                     return [walkObjectNS + ':' + c for c in existingEntry.destination]
@@ -1985,11 +1985,11 @@ class WalkDestinationInfo(object):
     def matchesScene(self, namespace=str(), walkObject=str()):
         # TODO - make this more lenient
         if not self.destination:
-            print (walkObject, 'no match')
+            # print (walkObject, 'no match')
             return False
 
         for d in self.destination:
-            print ('d', d)
+            # print ('d', d)
             if not cmds.objExists(namespace + d):
                 print(namespace + d)
                 return False
@@ -2266,9 +2266,9 @@ class pickDirectionWidget(QFrame):
         self.toggleAutoApply()
 
     def getWalkUpdate(self, direction, data):
-        print ('getWalkUpdate')
-        print (direction)
-        print (data)
+        # print ('getWalkUpdate')
+        # print (direction)
+        # print (data)
         self.walkUpdateSignal.emit(direction,
                                    data)
 
@@ -2305,8 +2305,8 @@ class pickDirectionWidget(QFrame):
             return
         self.objectWidget.currentObjLabel.setText(activeObject)
         walkData = data.objectDict.get(activeObject, str())
-        print ('walkData')
-        print (walkData.__dict__)
+        # print ('walkData')
+        # print (walkData.__dict__)
         if walkData:
             if walkData.up:
                 self.upBtn.setValues(walkData.up)
@@ -4330,7 +4330,7 @@ class pickwalkMainWindow(QMainWindow):
         fname, mapName = Pickwalk().loadLibraryForCurrent()
         if not fname:
             fname, mapName = Pickwalk().getCurrentRig()
-        print('UI load', fname, mapName)
+
         if not fname:
             self.setTitleLabel('NONE')
             self.currentTemplate = None
@@ -4340,11 +4340,11 @@ class pickwalkMainWindow(QMainWindow):
             self.pickwalkCreator = Pickwalk().pickwalkCreator
             CharacterTool = Pickwalk().allTools.tools['CharacterTool']
             CharacterTool.loadCharacterIfNotLoaded(mapName)
-            print(self.pickwalkCreator.walkData.mirrorNames)
-            print(CharacterTool.allCharacters[mapName])
-            print(CharacterTool.allCharacters[mapName].leftSide)
-            print(CharacterTool.allCharacters[mapName].rightSide)
-            print(Pickwalk().pickwalkCreator.walkData.mirrorNames)
+            # print(self.pickwalkCreator.walkData.mirrorNames)
+            # print(CharacterTool.allCharacters[mapName])
+            # print(CharacterTool.allCharacters[mapName].leftSide)
+            # print(CharacterTool.allCharacters[mapName].rightSide)
+            # print(Pickwalk().pickwalkCreator.walkData.mirrorNames)
             self.pickwalkCreator.walkData.mirrorNames['left'] = CharacterTool.allCharacters[mapName].leftSide
             self.pickwalkCreator.walkData.mirrorNames['right'] = CharacterTool.allCharacters[mapName].rightSide
 
