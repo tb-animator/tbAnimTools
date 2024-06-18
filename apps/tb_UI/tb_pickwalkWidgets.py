@@ -91,6 +91,9 @@ class MiniDestinationWidget(ToolTipWidget):
     def currentItems(self):
         return [self.listwidget.item(x).text() for x in range(self.listwidget.count())]
 
+    def getData(self):
+        return self.currentItems()
+
     def recieveMainDestinationClicked(self, item):
         self.mainListItem = item
 
@@ -186,16 +189,19 @@ class PickwalkLabelledLineEdit(QWidget):
         self.editedSignal.emit(self.lineEdit.text())
 
     def pickChannel(self, *args):
+        print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
             pm.warning('no channel selected')
         self.lineEdit.setText(channels[0].split(':')[-1])
+        self.sendtextChangedSignal()
 
     def pickObject(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
             pm.warning('no object selected')
         self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
+
 
 
 class PickwalkLabelledDoubleSpinBox(QWidget):
@@ -244,6 +250,8 @@ class PickwalkLabelledDoubleSpinBox(QWidget):
         self.spinBox.setValue(value)
         self.blockSignals(False)
 
+    def getData(self):
+        return self.spinBox.value()
 
 class PickObjectLineEdit(QWidget):
     label = None
@@ -283,6 +291,62 @@ class PickObjectLineEdit(QWidget):
         self.lineEdit.setText(value)
         self.blockSignals(False)
 
+    def pickChannel(self, *args):
+        print ('picking channel')
+        channels = mel.eval('selectedChannelBoxPlugs')
+        if not channels:
+            pm.warning('no channel selected')
+        self.lineEdit.setText(channels[0].split(':')[-1])
+
+class PickChannelLineEdit(QWidget):
+    label = None
+    lineEdit = None
+    editedSignal = Signal(str)
+
+    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
+        super(PickChannelLineEdit, self).__init__()
+
+        self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(2, 2, 2, 2)
+        self.setLayout(self.layout)
+        self.label = QLabel(text)
+        self.lineEdit = QLineEdit()
+        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
+        self.cle_action_pick.setToolTip(tooltip)
+        self.cle_action_pick.triggered.connect(self.pickChannel)
+        self.lineEdit.setPlaceholderText(placeholderTest)
+        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.lineEdit)
+        self.label.setFixedWidth(60)
+
+        self.label.setStyleSheet("QFrame {"
+                                 "border-width: 0;"
+                                 "border-radius: 0;"
+                                 "border-style: solid;"
+                                 "border-color: #222222}"
+                                 )
+
+    @Slot()
+    def sendtextChangedSignal(self):
+        self.editedSignal.emit(self.lineEdit.text())
+
+    def setText(self, value):
+        self.blockSignals(True)
+        self.lineEdit.setText(value)
+        self.blockSignals(False)
+
+    def pickChannel(self):
+        print ('picking channel')
+        channels = mel.eval('selectedChannelBoxPlugs')
+        if not channels:
+            pm.warning('no channel selected')
+        self.lineEdit.setText(channels[0].split(':')[-1])
+        self.sendtextChangedSignal()
+
+    def getData(self):
+        return self.lineEdit.text()
 
 class StandardPickButton(QPushButton):
     pressedSignal = Signal(str)
@@ -307,6 +371,7 @@ class DirectionPickWidget(QFrame):
     pressedSignal = Signal(str, str)
     conditionPressedSignal = Signal(str, str)
     direction = str()
+    walkInfoSignal = Signal(str, dict)
 
     def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False,
                  rotation=0,
@@ -337,7 +402,7 @@ class DirectionPickWidget(QFrame):
         # new stuff
         self.destinationsWidget = MiniDestinationWidget(label='Destinations')
         self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations')
-        self.conditionAttrWidget = PickObjectLineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
+        self.conditionAttrWidget = PickChannelLineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
                                                       placeholderTest='enter condition attribute')
         self.conditionValueWidget = PickwalkLabelledDoubleSpinBox(text='Value',
                                                                   tooltip='value > this, use alt destination',
@@ -368,7 +433,11 @@ class DirectionPickWidget(QFrame):
                                  "border-color: #222222}"
                                  )
         self.button.clicked.connect(self.pickControl)
+        self.conditionAttrWidget.editedSignal.connect(self.pickAttribute)
         self.contextButton.clicked.connect(self.pickDestination)
+        self.conditionValueWidget.editedSignal.connect(self.sendData)
+        self.destinationsWidget.updatedSignal.connect(self.sendData)
+        self.altDestinationsWidget.updatedSignal.connect(self.sendData)
 
     def pickControl(self):
         sel = pm.ls(selection=True, type='transform')
@@ -380,7 +449,15 @@ class DirectionPickWidget(QFrame):
         else:
             lbl = sel[0].stripNamespace()
         self.lineEdit.setText(lbl)
-        self.sendPickedSignal()
+        self.sendData()
+
+    def pickAttribute(self, attr):
+        print ('pickAttribute', attr)
+        if attr:
+            self.setSimple(False)
+        else:
+            self.setSimple(True)
+        self.sendData()
 
     def pickDestination(self):
         self.lineEdit.setText(self.mainWindow.currentDestination)
@@ -407,9 +484,19 @@ class DirectionPickWidget(QFrame):
             self.conditionValueWidget.setValue(data.conditionValue)
 
     def setSimple(self, state):
-        print('setSimple', state)
         self.altDestinationsWidget.setHidden(state)
         self.conditionValueWidget.setHidden(state)
+
+    def sendData(self, *args):
+        outDict = {'destination': self.destinationsWidget.getData(),
+                   'destinationAlt': self.altDestinationsWidget.getData(),
+                   'conditionAttribute': self.conditionAttrWidget.getData(),
+                   'conditionValue': self.conditionValueWidget.getData(),
+                   }
+        print ("sending data")
+        print (outDict)
+        self.walkInfoSignal.emit(self.direction, outDict)
+
 
 
 class PickObjectWidget(QWidget):

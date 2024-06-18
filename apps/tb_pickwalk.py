@@ -148,32 +148,31 @@ class WalkData(object):
         # do a check on walk for current object in any destination objects, set the appropriate index
         if node not in self.objectDict.keys():
             return None
-        target = self.objectDict[node][direction]
+        destinationInfo = self.objectDict[node][direction]
         self.setLastUsedIndex(node)
+        print('node', node)
 
-        if target in self.destinations.keys():
-            # destination is a conditional destination
-            # print ('destination is a conditional destination')
-            # print 'namespace', namespace
-            # print self.destinations[target]
-            # print self.destinations[target].__dict__
-            conditionTest = False
-            if self.destinations[target].conditionAttribute:
-                # print self.destinations[target].conditionAttribute
-                conditionTest = cmds.getAttr(namespace + self.destinations[target].conditionAttribute) >= \
-                                self.destinations[target].conditionValue
-                # print 'conditionTest', conditionTest
-            if conditionTest:
-                target = self.destinations[target].destinationAlt[self.destinations[target]._lastIndex]
-            else:
-                target = self.destinations[target].destination[self.destinations[target]._lastIndex]
-            return target
-            # check for condition attr/object?
-            # conditions met, pick alt/destination, use last used index
-            pass
+        # all entries are conditional
+        print('destination', destinationInfo.destination)
+        print('destinationAlt', destinationInfo.destinationAlt)
+        print('conditionAttribute', destinationInfo.conditionAttribute)
+        print('conditionValue', destinationInfo.conditionValue)
+        print('namespace + node', namespace + node)
+        if not destinationInfo.destination:
+            return None
+        # check for condition attribute
+        if not destinationInfo.conditionAttribute:
+            return destinationInfo.destination[destinationInfo._lastIndex]
+        if not cmds.attributeQuery(destinationInfo.conditionAttribute.split('.')[-1],
+                                   node=namespace + destinationInfo.conditionAttribute.split('.')[0],
+                                   exists=True):
+            return destinationInfo.destination[destinationInfo._lastIndex]
+        conditionTest = cmds.getAttr(namespace + destinationInfo.conditionAttribute) >= \
+                        destinationInfo.conditionValue
+        if conditionTest:
+            return destinationInfo.destinationAlt[destinationInfo._lastIndex]
         else:
-            # destination is an object
-            return target
+            return destinationInfo.destination[destinationInfo._lastIndex]
         return None
 
 
@@ -219,10 +218,10 @@ class PickwalkCreator(object):
                        destinationAlt=list(),
                        conditionAttribute=str(),
                        conditionValue=0.5):
-        self.walkData.destinations[name] = WalkDatinationInfo(destination=destination,
-                                                              destinationAlt=destinationAlt,
-                                                              conditionAttribute=conditionAttribute,
-                                                              conditionValue=conditionValue)
+        self.walkData.destinations[name] = WalkDestinationInfo(destination=destination,
+                                                               destinationAlt=destinationAlt,
+                                                               conditionAttribute=conditionAttribute,
+                                                               conditionValue=conditionValue)
 
     def mirror(self, item, sideList=list()):
         """
@@ -234,6 +233,7 @@ class PickwalkCreator(object):
         # print ('item', item)
         # print ('sides', sideList)
         # for key, walkDirection in self.walkData.objectDict.items():
+
         for key in [x for x in self.walkData.objectDict.keys()]:
             mirrorDir = dict()
             # print key, item
@@ -243,83 +243,65 @@ class PickwalkCreator(object):
                     continue
                 # print ('need to mirror', key)
                 for dir, value in self.walkData.objectDict[key].__dict__.items():
+                    print('dir', dir, 'value', value)
                     found = False
                     if not value:
                         # print dir, 'is empty'
                         mirrorDir[dir] = None
                         continue
-                    if value in self.walkData.destinations.keys():
-                        # print dir, 'is condition - not made this bit yet'
-                        # recursively mirror any destination info found here
-                        self.mirrorWalkDestination(destinationKey=value, sideList=sideList)
-                        # add the mirror key to the destination list, mirror it
-                    mirrorDir[dir] = self.getMirrorName(value, sideList)
 
+                    # add the mirror key to the destination list, mirror it
+                    mirrorDir[dir] = self.mirrorWalkDestination(destinationInfo=value, sideList=sideList)
+                    print('mirror', mirrorDir[dir])
                 # print 'mirrorDir', mirrorDir
                 mirrorKey = self.getMirrorName(key, sideList)
                 # print ('mirrorKey', mirrorKey)
                 for dKey, dValue in mirrorDir.items():
-                    # print ('setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue)
-                    self.setControlDestination(mirrorKey,
-                                               direction=dKey,
-                                               destination=dValue)
+                    print('setControlDestination', mirrorKey, 'dKey', dKey, 'dValue', dValue)
+                    if isinstance(dValue, str):
+                        print('dValue', dValue)
+                        self.setControlDestination(mirrorKey,
+                                                   direction=dKey,
+                                                   destination=dValue)
+                    elif isinstance(dValue, dict):
+                        self.setControlDestination(mirrorKey,
+                                                   direction=dKey,
+                                                   destination=dValue['destination'],
+                                                   destinationAlt=dValue['destinationAlt'],
+                                                   conditionAttribute=dValue['conditionAttribute'],
+                                                   conditionValue=dValue['conditionValue'])
                     # print self.walkData.objectDict[mirrorKey].__dict__
                 pass
 
-    def mirrorWalkDestination(self, destinationKey=str(), sideList=list(), processed=list()):
+    def mirrorWalkDestination(self, destinationInfo=str(), sideList=list(), processed=list()):
         """
         Mirror all the entries in the destination, the the entries are also destinations,
         recursively edit them, hopefully don't get into a loop....
-        :param destinationKey:
+        :param destinationInfo:
         :param sideList:
         :param processed:
         :return:
         """
-        # print('mirrorWalkDestination', processed)
-        # print(self.walkData.destinations[destinationKey].__dict__)
-        if destinationKey in processed:
-            return processed
-        mirrorDestination = None
-        mirrorDestinationAlt = None
-        mirrorConditionValue = None
-        mirrorConditionAttribute = None
-        if not self.validForMirror(destinationKey, sideList):
-            return processed
-        else:
-            mirrorDestinationKey = self.getMirrorName(destinationKey, sideList)
-        if mirrorDestinationKey in processed:
-            return processed
-        if self.walkData.destinations[destinationKey].conditionValue:
-            mirrorConditionValue = self.walkData.destinations[destinationKey].conditionValue
-        if self.walkData.destinations[destinationKey].conditionAttribute:
-            mirrorConditionAttribute = self.getMirrorName(
-                self.walkData.destinations[destinationKey].conditionAttribute,
+        outData = dict()
+        outData['destination'] = list()
+        outData['destinationAlt'] = list()
+        outData['conditionAttribute'] = None
+        outData['conditionValue'] = None
+
+        if destinationInfo.conditionValue:
+            outData['conditionValue'] = destinationInfo.conditionValue
+        if destinationInfo.conditionAttribute:
+            outData['conditionAttribute'] = self.getMirrorName(
+                destinationInfo.conditionAttribute,
                 sideList)
-        if self.walkData.destinations[destinationKey].destination:
-            mirrorDestination = [self.getMirrorName(x, sideList) for x in
-                                 self.walkData.destinations[destinationKey].destination]
+        if destinationInfo.destination:
+            outData['destination'] = [self.getMirrorName(x, sideList) for x in
+                                      destinationInfo.destination]
 
-        if self.walkData.destinations[destinationKey].destinationAlt:
-            mirrorDestinationAlt = [self.getMirrorName(x, sideList) for x in
-                                    self.walkData.destinations[destinationKey].destinationAlt]
-
-        self.addDestination(
-            name=mirrorDestinationKey,
-            destination=mirrorDestination,
-            destinationAlt=mirrorDestinationAlt,
-            conditionAttribute=mirrorConditionAttribute,
-            conditionValue=mirrorConditionValue)
-        processed.append(mirrorDestinationKey)
-        processed.append(destinationKey)
-        for destination in self.walkData.destinations[destinationKey].destination:
-            if destination in self.walkData.destinations.keys():
-                processed = self.mirrorWalkDestination(destinationKey=destination, sideList=sideList,
-                                                       processed=processed)
-        for altDestination in self.walkData.destinations[destinationKey].destinationAlt:
-            if altDestination in self.walkData.destinations.keys():
-                processed = self.mirrorWalkDestination(destinationKey=altDestination, sideList=sideList,
-                                                       processed=processed)
-        return processed
+        if destinationInfo.destinationAlt:
+            outData['destinationAlt'] = [self.getMirrorName(x, sideList) for x in
+                                         destinationInfo.destinationAlt]
+        return outData
 
     def replaceDestination(self, original=str, new=str):
         """
@@ -336,7 +318,10 @@ class PickwalkCreator(object):
 
     def setControlDestination(self, control,
                               direction=str(),
-                              destination=str()):
+                              destination=str(),
+                              destinationAlt=str(),
+                              conditionAttribute=str(),
+                              conditionValue=0.5):
         '''
         print ('setControlDestination')
         print ('control,', control)
@@ -345,17 +330,21 @@ class PickwalkCreator(object):
         '''
         # add control entry in case it is not already there
         # TODO add logic here to strip out bad data
+
         control = str(control).split(':')[-1]
         self.addControl(control)
         if destination:
-            destination = destination.split(':')[-1]
+            if not isinstance(destination, list):
+                destination = [destination]
+        if destinationAlt:
+            if not isinstance(destinationAlt, list):
+                destinationAlt = [destinationAlt]
+        destinationInfo = WalkDestinationInfo(destination=destination,
+                                              destinationAlt=destinationAlt,
+                                              conditionAttribute=conditionAttribute,
+                                              conditionValue=conditionValue)
 
-        if destination in self.walkData.destinations.keys():
-            self.walkData.objectDict[control][direction] = destination
-        else:
-            # destination is probably one object, just set it as a string
-            # print 'simple destination, object only', control, direction, destination
-            self.walkData.objectDict[control][direction] = destination
+        self.walkData.objectDict[control][direction] = destinationInfo
 
     def addPickwalkChain(self,
                          controls=list(),
@@ -370,6 +359,7 @@ class PickwalkCreator(object):
 
         if not isinstance(controls, list):
             controls = [controls]
+        print('addPickwalkChain', controls)
         controls = [c.split(':')[-1] for c in controls]
 
         firstControl = controls[0]
@@ -567,11 +557,22 @@ class PickwalkCreator(object):
 
         for key, value in jsonObjectInfo['objectDict'].items():
             self.addControl(key)
+
             # print key, value, type(value)
             for dKey, dValue in value.items():
-                self.setControlDestination(key,
-                                           direction=dKey,
-                                           destination=dValue)
+                # print ('dKey', dKey)
+                # print ('dValue', dValue)
+                if isinstance(dValue, str):
+                    self.setControlDestination(key,
+                                               direction=dKey,
+                                               destination=dValue)
+                else:
+                    self.setControlDestination(key,
+                                               direction=dKey,
+                                               destination=dValue['destination'],
+                                               destinationAlt=dValue['destinationAlt'],
+                                               conditionAttribute=dValue['conditionAttribute'],
+                                               conditionValue=dValue['conditionValue'])
 
         mirrorNames = jsonObjectInfo.get('mirrorNames', dict())
 
@@ -958,10 +959,10 @@ class Pickwalk(toolAbstractFactory):
         cmds.menuItem(label='Add New Condition',
                       command=self.openPickwalkConditionUI,
                       )
-        cmds.menuItem(label='Add Existing Condition',
-                      command=self.openAssignExistingConditionUI,
-                      annotation='test'
-                      )
+        # cmds.menuItem(label='Add Existing Condition',
+        #               command=self.openAssignExistingConditionUI,
+        #               annotation='test'
+        #               )
         cmds.menuItem(label='Mirror selected controls',
                       command=self.openMirrorSelectedUI,
                       annotation='test'
@@ -1286,6 +1287,7 @@ class Pickwalk(toolAbstractFactory):
                 # print ('ok, refname', refName)
                 # print ('query against pickwalk library')
                 returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
+                print('returnedControls', returnedControls)
                 if returnedControls == False:
                     # means a standard walk has been performed
                     return
@@ -1350,7 +1352,8 @@ class Pickwalk(toolAbstractFactory):
     def increment_padded_integer(input_string, offset):
         matches = re.findall(r'\d+', input_string)
         padded_integers = ['{:0{width}d}'.format(int(match), width=len(match)) for match in matches]
-        incremented_integers = ['{:0{width}d}'.format(int(padded) + offset, width=len(padded)) for padded in padded_integers]
+        incremented_integers = ['{:0{width}d}'.format(int(padded) + offset, width=len(padded)) for padded in
+                                padded_integers]
         return incremented_integers[0]
 
     def findIncrementalControl(self, cnt, namespace=str(), offset=1):
@@ -1369,6 +1372,7 @@ class Pickwalk(toolAbstractFactory):
         return outStr
 
     def dataDrivenWalk(self, direction, refName, walkObject):
+        print('dataDrivenWalk', direction, refName, walkObject)
         returnedControls = list()
         walkObjectStripped = walkObject.stripNamespace()
         walkObjectNS = walkObject.namespace()
@@ -1385,9 +1389,10 @@ class Pickwalk(toolAbstractFactory):
             result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
                                                      node=walkObjectStripped,
                                                      direction=direction)
+            print('result', result)
             vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
+            print('vaildObject', vaildObject)
             if not vaildObject:
-
                 if direction == 'up' or direction == 'down':
                     result = self.findIncrementalControl(walkObjectStripped,
                                                          namespace=walkObjectNS,
@@ -1419,23 +1424,36 @@ class Pickwalk(toolAbstractFactory):
                     # no finger, check for mirror
                     result = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
                                                                           walkObject)
-                    vaildObject = cmds.objExists(result)
+                    print ('result', result)
+                    vaildObject = cmds.objExists(str(result))
                     if vaildObject:
                         self.createDestination(walkObject, result, direction)
                         return [result]
 
                 # print ('incrementalNode', result)
             if not vaildObject:
-                # print ('look for other maps for a destination')
+                print('look for other maps for a destination')
                 existingEntry = self.findPreExistingEntries(walkObjectStripped, walkObjectNS, direction)
-                # print ('existingEntry', existingEntry)
+
                 if existingEntry:
-                    self.createDestination(walkObject, existingEntry, direction)
-                    return [existingEntry]
+                    if isinstance(existingEntry, WalkDestinationInfo):
+                        # found a matching complete entry, use that
+                        print('found a matching complete entry, use that')
+                        print ('HEY',existingEntry.destination)
+                        self.pickwalkCreator.setControlDestination(walkObjectStripped,
+                                                                   direction=direction,
+                                                                   destination=existingEntry.destination,
+                                                                   destinationAlt=existingEntry.destinationAlt,
+                                                                   conditionAttribute=existingEntry.conditionAttribute,
+                                                                   conditionValue=existingEntry.conditionValue)
+                    else:
+                        print('create destination', walkObject, existingEntry, direction)
+                        self.createDestination(walkObject, existingEntry, direction)
+
+                    return [walkObjectNS + ':' + c for c in existingEntry.destination]
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
 
-            # print('data walk result', result)
             if cmds.objExists(walkObjectNS + result):
                 # print 'final result', walkObject.namespace() + result
                 returnedControls.append(walkObjectNS + result)
@@ -1466,16 +1484,18 @@ class Pickwalk(toolAbstractFactory):
         customList = [m for m in mapList if m not in refList]
 
         finalList = refList + customList
-        # print (finalList)
         for mapName in finalList:
             if mapName not in self.pickwalkData.keys():
                 continue
             if node in self.pickwalkData[mapName].objectDict.keys():
-                # print ('match', mapName)
                 result = self.pickwalkData[mapName].objectDict[node][direction]
-                if cmds.objExists(namespace + ':' + result):
-                    return namespace + ':' + result
 
+                if isinstance(result, WalkDestinationInfo):
+                    if result.matchesScene(namespace=namespace, walkObject=walkObjectStripped):
+                        return result
+                if isinstance(result, str):
+                    if cmds.objExists(namespace + ':' + result):
+                        return namespace + ':' + result
         return None
 
     def getMatchingFinger(self, walkObject, offset=1):
@@ -1927,13 +1947,15 @@ class WalkDirectionDict(object):
 
     def toJson(self):
         for key, value in self.__dict__.items():
-            # print ('WalkDirectionDict', key, value)
-            if value == u'(None,)':
-                value = None
-        return {key: str(value).split(':')[-1] for key, value in self.__dict__.items()}
+            if isinstance(value, str):
+                value = WalkDestinationInfo(destination=[value])
+            elif value == u'(None,)':
+                value = WalkDestinationInfo()
+            self.__dict__[key] = value
+        return {key: value.toJson() for key, value in self.__dict__.items()}
 
 
-class WalkDatinationInfo(object):
+class WalkDestinationInfo(object):
     """
     Stores a particular set of destinations/condition
     """
@@ -1959,6 +1981,25 @@ class WalkDatinationInfo(object):
         d = dict((key, value) for key, value in self.__dict__.items() if not key.startswith("__"))
         # print d
         return d
+
+    def matchesScene(self, namespace=str(), walkObject=str()):
+        # TODO - make this more lenient
+        if not self.destination:
+            print (walkObject, 'no match')
+            return False
+
+        for d in self.destination:
+            print ('d', d)
+            if not cmds.objExists(namespace + d):
+                print(namespace + d)
+                return False
+        for d in self.destinationAlt:
+            if not cmds.objExists(namespace + d):
+                return False
+        if self.conditionAttribute:
+            if not cmds.attributeQuery(self.conditionAttribute, node=namespace + walkObject, exists=True):
+                return False
+        return True
 
 
 pwShapeWindow = None
@@ -2009,83 +2050,6 @@ def dockControl():
                         label='tbPickWalk')
 
 
-class standardPickButton(QPushButton):
-    pressedSignal = Signal(str)
-    direction = str()
-
-    def __init__(self, label=str, direction=str, icon=str(), fixedWidth=False, width=64, rotation=0, *args, **kwargs):
-        QPushButton.__init__(self, *args, **kwargs)
-        self.setText(label)
-        self.direction = direction
-        if fixedWidth:
-            self.setFixedWidth(width)
-        upRotate = QTransform().rotate(rotation)
-        pixmap = QPixmap(':/{}'.format(icon)).transformed(upRotate)
-        icon = QIcon(pixmap)
-
-        self.setIcon(icon)
-
-        self.clicked.connect(partial(self.pressedSignal.emit, self.direction))
-
-
-class DirectionPickButton(QWidget):
-    pressedSignal = Signal(str, str)
-    conditionPressedSignal = Signal(str, str)
-    direction = str()
-
-    def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False,
-                 rotation=0,
-                 *args, **kwargs):
-        QWidget.__init__(self, *args, **kwargs)
-        self.mainWindow = mainWindow
-        self.direction = direction
-        self.mainLayout = QHBoxLayout()
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.mainLayout)
-        self.label = QLabel(direction)
-        self.label.setFixedWidth(64)
-        self.label.setAlignment(Qt.AlignRight | Qt.AlignTop)
-        self.lineEdit = QLineEdit()
-        self.button = standardPickButton(label='from sel', direction=direction, icon=icon,
-                                         rotation=rotation, width=32, fixedWidth=False)
-        self.contextButton = QPushButton('< from destination list')
-        self.mainLayout.addWidget(self.label)
-        self.mainLayout.addWidget(self.lineEdit)
-        self.mainLayout.addWidget(self.button)
-        self.mainLayout.addWidget(self.contextButton)
-
-        self.contextButton.clicked.connect(partial(self.conditionPressedSignal.emit,
-                                                   self.lineEdit.text(),
-                                                   self.direction,
-                                                   ))
-        self.label.setStyleSheet("QLabel {"
-                                 "border-width: 0;"
-                                 "border-radius: 0;"
-                                 "border-style: solid;"
-                                 "border-color: #222222}"
-                                 )
-        self.button.clicked.connect(self.pickControl)
-        self.contextButton.clicked.connect(self.pickDestination)
-
-    def pickControl(self):
-        sel = pm.ls(selection=True, type='transform')
-        if not sel:
-            lbl = ''
-        if len(sel) > 1:
-            pm.warning('need to make this support auto creation of contexts')
-            lbl = ''
-        else:
-            lbl = sel[0].stripNamespace()
-        self.lineEdit.setText(lbl)
-        self.sendPickedSignal()
-
-    def pickDestination(self):
-        self.lineEdit.setText(self.mainWindow.currentDestination)
-
-    def sendPickedSignal(self):
-        self.pressedSignal.emit(self.lineEdit.text(), self.direction)
-
-
 class ChainPickButton(QWidget):
     pressedSignal = Signal(bool, bool)
     direction = str()
@@ -2102,7 +2066,7 @@ class ChainPickButton(QWidget):
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.mainLayout)
-        self.button = standardPickButton(label=label, direction=direction, icon=icon, fixedWidth=fixedWidth,
+        self.button = StandardPickButton(label=label, direction=direction, icon=icon, fixedWidth=fixedWidth,
                                          width=width,
                                          rotation=rotation)
 
@@ -2141,43 +2105,6 @@ class lockButton(QPushButton):
         self.pressedSignal.emit(self.isChecked())
 
 
-class pickObjectWidget(QWidget):
-    setActiveObjectSignal = Signal()
-    modeChangedSignal = Signal(bool)
-    lockChangedSignal = Signal(bool)
-
-    def __init__(self, *args, **kwargs):
-        super(pickObjectWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
-        self.mainLayout = QHBoxLayout()
-        self.infoLayout = QHBoxLayout()
-
-        self.mainLayout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.mainLayout)
-        self.pickBtn = QPushButton('Pick Current')
-
-        self.ObjLabel = QLabel('Object ::')
-        self.ObjLabel.setFixedWidth(btnWidth)
-        self.currentObjLabel = QLabel('None')
-        self.mainLayout.addLayout(self.infoLayout)
-        self.infoLayout.addWidget(self.ObjLabel)
-        self.infoLayout.addWidget(self.currentObjLabel)
-        # self.mainLayout.addWidget(self.centre)
-        self.mainLayout.addWidget(self.pickBtn)
-        # self.mainLayout.addWidget(self.modeBtn)
-
-        self.pickBtn.clicked.connect(self.pickButtonPress)
-
-    @Slot()
-    def pickButtonPress(self):
-        self.setActiveObjectSignal.emit()
-
-    @Slot()
-    def sendModeChangedSignal(self):
-        # self.modeChangedSignal.emit(self.modeBtn.isChecked())
-        self.modeChangedSignal.emit(True)
-        self.changeState()
-
-
 class pickDirectionWidget(QFrame):
     setActiveObjectSignal = Signal()  # in case the main ui needs to keep track?
     upDownSignal = Signal()  # in case the main ui needs to keep track?
@@ -2187,6 +2114,7 @@ class pickDirectionWidget(QFrame):
     setLockStateSignal = Signal(bool)
     directionPressedObjectSignal = Signal(str)  # in case the main ui needs to keep track?
     applyButtonPressedSignal = Signal(str, str, str, str, str)
+    walkUpdateSignal = Signal(str, dict)
     loopChanged = Signal(bool)
     reciprocateChanged = Signal(bool)
     endOnSelfChanged = Signal(bool)
@@ -2207,7 +2135,7 @@ class pickDirectionWidget(QFrame):
                            )
 
         # self.setTitle("Pickwalk")
-        self.setMaximumWidth(420)
+
         self.mainLayout = QVBoxLayout()
 
         self.mainLayout.setSpacing(4)
@@ -2246,7 +2174,7 @@ class pickDirectionWidget(QFrame):
         self.topLayout.addWidget(self.editOnSaveCB)
         self.mainLayout.addLayout(self.topLayout)
 
-        self.objectWidget = pickObjectWidget(self.mainWindow)
+        self.objectWidget = PickObjectWidget(self.mainWindow)
         self.objectWidget.setStyleSheet(getStylesheet)
         self.objectWidget.setStyleSheet("QFrame {"
                                         "border-width: 0;"
@@ -2289,12 +2217,12 @@ class pickDirectionWidget(QFrame):
                                             width=150,
                                             rotation=180, loop=False)
         self.quickUpMulti.setToolTip(ToolTip_UpMulti)
-        self.upBtn = DirectionPickButton(self.mainWindow, label='Up', direction='up', icon='timeend.png', rotation=90)
-        self.downBtn = DirectionPickButton(self.mainWindow, label='Down', direction='down', icon='timeend.png',
+        self.upBtn = DirectionPickWidget(self.mainWindow, label='UP', direction='up', icon='timeend.png', rotation=90)
+        self.downBtn = DirectionPickWidget(self.mainWindow, label='DOWN', direction='down', icon='timeend.png',
                                            rotation=270)
-        self.leftBtn = DirectionPickButton(self.mainWindow, label='Left', direction='left', icon='timeend.png',
+        self.leftBtn = DirectionPickWidget(self.mainWindow, label='LEFT', direction='left', icon='timeend.png',
                                            rotation=0)
-        self.rightBtn = DirectionPickButton(self.mainWindow, label='Right', direction='right', icon='timeend.png',
+        self.rightBtn = DirectionPickWidget(self.mainWindow, label='RIGHT', direction='right', icon='timeend.png',
                                             rotation=180)
 
         self.applyButton = QPushButton('Apply')
@@ -2331,9 +2259,20 @@ class pickDirectionWidget(QFrame):
         ]
 
         for btn in self.allButtons:
+            btn.setSimple(True)
             btn.pressedSignal.connect(self.autoApplyData)
+            btn.walkInfoSignal.connect(self.getWalkUpdate)
 
         self.toggleAutoApply()
+
+    def getWalkUpdate(self, direction, data):
+        print ('getWalkUpdate')
+        print (direction)
+        print (data)
+        self.walkUpdateSignal.emit(direction,
+                                   data)
+
+
 
     def toggleAutoApply(self):
         if pm.optionVar.get(autoApplyOption, True):
@@ -2366,15 +2305,17 @@ class pickDirectionWidget(QFrame):
             return
         self.objectWidget.currentObjLabel.setText(activeObject)
         walkData = data.objectDict.get(activeObject, str())
+        print ('walkData')
+        print (walkData.__dict__)
         if walkData:
             if walkData.up:
-                self.setWidgetText(self.upBtn.lineEdit, walkData.up)
+                self.upBtn.setValues(walkData.up)
             if walkData.down:
-                self.setWidgetText(self.downBtn.lineEdit, walkData.down)
+                self.downBtn.setValues(walkData.down)
             if walkData.left:
-                self.setWidgetText(self.leftBtn.lineEdit, walkData.left)
+                self.leftBtn.setValues(walkData.left)
             if walkData.right:
-                self.setWidgetText(self.rightBtn.lineEdit, walkData.right)
+                self.rightBtn.setValues(walkData.right)
         else:
             self.clear(obj=False)
 
@@ -2386,7 +2327,7 @@ class pickDirectionWidget(QFrame):
         if str(value).lower() == 'none':
             value = str()
         '''
-        widget.setText(value)
+        widget.setValues(value)
 
     def clear(self, obj=True):
         if obj: self.objectWidget.currentObjLabel.setText('None')
@@ -2467,7 +2408,7 @@ class pickContextDirectionWidget(QFrame):
                            )
 
         # self.setTitle("Pickwalk")
-        self.setMaximumWidth(420)
+
         self.mainLayout = QVBoxLayout()
         self.midLayout = QHBoxLayout()
         self.dirHLayout = QHBoxLayout()
@@ -2490,10 +2431,10 @@ class pickContextDirectionWidget(QFrame):
                                  )
         self.mainLayout.addWidget(self.title)
 
-        self.upBtn = standardPickButton(label='', direction='up', fixedWidth=True, icon='timeend.png', rotation=90)
-        self.downBtn = standardPickButton(label='', direction='down', fixedWidth=True, icon='timeend.png', rotation=270)
-        self.leftBtn = standardPickButton(label='', direction='left', fixedWidth=True, icon='timeend.png', rotation=0)
-        self.rightBtn = standardPickButton(label='', direction='right', fixedWidth=True, icon='timeend.png',
+        self.upBtn = StandardPickButton(label='', direction='up', fixedWidth=True, icon='timeend.png', rotation=90)
+        self.downBtn = StandardPickButton(label='', direction='down', fixedWidth=True, icon='timeend.png', rotation=270)
+        self.leftBtn = StandardPickButton(label='', direction='left', fixedWidth=True, icon='timeend.png', rotation=0)
+        self.rightBtn = StandardPickButton(label='', direction='right', fixedWidth=True, icon='timeend.png',
                                            rotation=180)
 
         self.ObjLabel = QLabel('Object ::')
@@ -2675,131 +2616,9 @@ class pickChainWidget(QFrame):
         self.endOnSelfChanged.emit(self.endOnSelf.isChecked())
 
 
-class labelledLineEdit(QWidget):
-    label = None
-    lineEdit = None
-    editedSignal = Signal(str)
-
-    def __init__(self, text=str, hasButton=False, buttonLabel=str, obj=False):
-        super(labelledLineEdit, self).__init__()
-        self.obj = obj
-
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.layout)
-        self.label = QLabel(text)
-        self.lineEdit = QLineEdit()
-        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
-        self.button = standardPickButton(label=buttonLabel, direction='left', icon='timeend.png', rotation=0)
-        self.button.setFixedWidth(80)
-        if self.obj:
-            self.button.clicked.connect(self.pickObject)
-        else:
-            self.button.clicked.connect(self.pickChannel)
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.lineEdit)
-        if hasButton:
-            self.layout.addWidget(self.button)
-        self.label.setFixedWidth(60)
-        # elf.lineEdit.setFixedWidth(200)
-        self.label.setStyleSheet("QFrame {"
-                                 "border-width: 0;"
-                                 "border-radius: 0;"
-                                 "border-style: solid;"
-                                 "border-color: #222222}"
-                                 )
-
-    @Slot()
-    def sendtextChangedSignal(self):
-        self.editedSignal.emit(self.lineEdit.text())
-
-    def pickChannel(self, *args):
-        channels = mel.eval('selectedChannelBoxPlugs')
-        if not channels:
-            pm.warning('no channel selected')
-        self.lineEdit.setText(channels[0].split(':')[-1])
-
-    def pickObject(self, *args):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            pm.warning('no object selected')
-        self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
 
-class LineEdit(QWidget):
-    label = None
-    lineEdit = None
-    editedSignal = Signal(str)
 
-    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
-        super(LineEdit, self).__init__()
-
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.layout)
-        self.label = QLabel(text)
-        self.lineEdit = QLineEdit()
-        self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
-        self.cle_action_pick.setToolTip(tooltip)
-        self.lineEdit.setPlaceholderText(placeholderTest)
-        self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
-
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.lineEdit)
-        self.label.setFixedWidth(60)
-
-        self.label.setStyleSheet("QFrame {"
-                                 "border-width: 0;"
-                                 "border-radius: 0;"
-                                 "border-style: solid;"
-                                 "border-color: #222222}"
-                                 )
-
-    @Slot()
-    def sendtextChangedSignal(self):
-        self.editedSignal.emit(self.lineEdit.text())
-
-
-class labelledDoubleSpinBox(QWidget):
-    editedSignal = Signal(float)
-
-    def __init__(self, text=str, helpLine=None, labelWidth=60):
-        super(labelledDoubleSpinBox, self).__init__()
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(2, 2, 2, 2)
-        self.setLayout(self.layout)
-        self.label = QLabel(text)
-        self.spinBox = QDoubleSpinBox()
-        # self.label.setFixedWidth(60)
-        # self.spinBox.setFixedWidth(200)
-        self.spinBox.setValue(0.5)
-        self.spinBox.setSingleStep(0.1)
-        self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
-
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.spinBox)
-
-        self.label.setFixedWidth(labelWidth)
-        self.label.setStyleSheet("QFrame {"
-                                 "border-width: 0;"
-                                 "border-radius: 0;"
-                                 "border-style: solid;"
-                                 "border-color: #222222}"
-                                 )
-        if helpLine:
-            self.help = QLabel(helpLine)
-            self.layout.addWidget(self.help)
-            self.help.setStyleSheet("QFrame {"
-                                    "border-width: 0;"
-                                    "border-radius: 0;"
-                                    "border-style: solid;"
-                                    "border-color: #222222}"
-                                    )
-            self.layout.addStretch()
-
-    @Slot()
-    def sendValueChangedSignal(self):
-        self.editedSignal.emit(self.spinBox.value())
 
 
 class ControlListWidget(QWidget):
@@ -3372,112 +3191,7 @@ class DestinationWidget(QWidget):
         self.listwidget.addItems(targets)
 
 
-class MiniDestinationWidget(QWidget):
-    updatedSignal = Signal(list)
 
-    def __init__(self, label='BLANK'):
-        super(MiniDestinationWidget, self).__init__()
-        # self.setFixedWidth(140)
-        self.setMaximumWidth(160)
-        self.setMaximumHeight(150)
-        self.mainListItem = str()
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-        self.label = QLabel(label)
-        self.pickButton = QPushButton('Pick')
-        self.addDestinationBtn = QPushButton('+')
-        self.removeDestinationBtn = QPushButton('-')
-        self.addFromDestinationBtn = QPushButton('From Existing Condition')
-        self.spinBox = QDoubleSpinBox()
-        # self.label.setFixedWidth(60)
-        # self.spinBox.setFixedWidth(200)
-        # self.spinBox.setValue(0.5)
-        # self.spinBox.setSingleStep(0.1)
-
-        # self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
-
-        self.layout.addWidget(self.label)
-        # self.layout.addWidget(self.spinBox)
-        self.layout.addStretch()
-        self.label.setStyleSheet("QFrame {"
-                                 "border-width: 0;"
-                                 "border-radius: 0;"
-                                 "border-style: solid;"
-                                 "border-color: #222222}"
-                                 )
-        self.listwidget = QListWidget()
-        self.layout.addWidget(self.listwidget)
-
-        self.subLayout = QHBoxLayout()
-        self.subLayout.addWidget(self.pickButton)
-        # self.subLayout.addWidget(self.addDestinationBtn)
-        # self.subLayout.addWidget(self.removeDestinationBtn)
-        # self.subLayout.addWidget(self.addFromDestinationBtn)
-
-        self.layout.addLayout(self.subLayout)
-
-        self.pickButton.clicked.connect(self.pickButtonPressed)
-        self.addDestinationBtn.clicked.connect(self.addButtonPressed)
-        self.removeDestinationBtn.clicked.connect(self.removeButtonPressed)
-        self.addFromDestinationBtn.clicked.connect(self.addFromDestinationPressed)
-
-    def currentItems(self):
-        return [self.listwidget.item(x).text() for x in range(self.listwidget.count())]
-
-    def recieveMainDestinationClicked(self, item):
-        self.mainListItem = item
-
-    @Slot()
-    def sendUpdateSignal(self):
-        self.updatedSignal.emit(self.currentItems())
-
-    def pickButtonPressed(self, override=None):
-        if not override:
-            sel = pm.ls(selection=True, type='transform')
-        else:
-            sel = override
-        self.listwidget.clear()
-        if sel:
-            items = [s.stripNamespace() for s in sel]
-            self.listwidget.addItems(items)
-        self.sendUpdateSignal()
-
-    def addButtonPressed(self):
-        sel = pm.ls(selection=True, type='transform')
-        if not sel:
-            return
-        items = [s.stripNamespace() for s in sel]
-        currentItems = self.currentItems()
-        resultItems = self.currentItems()
-        # print 'before', currentItems
-        self.listwidget.clear()
-        for i in items:
-            if i not in currentItems:
-                resultItems.append(i)
-        # print 'after', resultItems
-        self.listwidget.addItems(resultItems)
-        self.sendUpdateSignal()
-
-    def addFromDestinationPressed(self):
-        currentItems = self.currentItems()
-        resultItems = self.currentItems()
-
-        self.listwidget.clear()
-        resultItems.append(self.mainListItem)
-
-        self.listwidget.addItems(resultItems)
-        self.sendUpdateSignal()
-
-    def removeButtonPressed(self):
-        listItems = self.listwidget.selectedItems()
-        if not listItems: return
-        for item in listItems:
-            self.listwidget.takeItem(self.listwidget.row(item))
-        self.sendUpdateSignal()
-
-    def refreshUI(self, targets):
-        self.listwidget.clear()
-        self.listwidget.addItems(targets)
 
 
 class contextPickwalkWidget(QFrame):
@@ -3507,10 +3221,10 @@ class contextPickwalkWidget(QFrame):
                                  "border-color: #222222;"
                                  "font-weight: bold; font-size: 12px;}"
                                  )
-        self.nameWidget = labelledLineEdit(text='Name', hasButton=True, buttonLabel='From Sel', obj=True)
-        self.conditionAttrWidget = labelledLineEdit(text='Attribute', hasButton=True,
-                                                    buttonLabel='From CB')
-        self.conditionWidget = labelledDoubleSpinBox('Condition')
+        self.nameWidget = PickwalkLabelledLineEdit(text='Name', hasButton=True, buttonLabel='From Sel', obj=True)
+        self.conditionAttrWidget = PickwalkLabelledLineEdit(text='Attribute', hasButton=True,
+                                                            buttonLabel='From CB')
+        self.conditionWidget = PickwalkLabelledDoubleSpinBox('Condition')
         self.destinationsWidget = DestinationWidget(label='Destinations')
         self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
         self.altDestinationsWidget = DestinationWidget(label='Alt Destinations')
@@ -3605,25 +3319,25 @@ class PickwalkExistingConditionPopup(BaseDialog):
         self.destinationListWidget.applyButton.setText('Replace current selection')
         self.destinationListWidget.setMaximumWidth(400)
         self.destinationListWidget.applySignal.connect(self.inputSignal_applyDestinationToCurrent)
-        self.upBtn = standardPickButton(label='Up',
+        self.upBtn = StandardPickButton(label='Up',
                                         direction='up',
                                         icon='timeend.png',
                                         rotation=90,
                                         fixedWidth=False,
                                         width=48)
-        self.downBtn = standardPickButton(label='Down',
+        self.downBtn = StandardPickButton(label='Down',
                                           direction='down',
                                           icon='timeend.png',
                                           rotation=270,
                                           fixedWidth=False,
                                           width=48)
-        self.leftBtn = standardPickButton(label='Left',
+        self.leftBtn = StandardPickButton(label='Left',
                                           direction='left',
                                           icon='timeend.png',
                                           rotation=0,
                                           fixedWidth=False,
                                           width=48)
-        self.rightBtn = standardPickButton(label='Right',
+        self.rightBtn = StandardPickButton(label='Right',
                                            direction='right',
                                            icon='timeend.png',
                                            rotation=180,
@@ -3824,8 +3538,8 @@ class PickwalkNewConditionPopup(BaseDialog):
                                      )
 
         'Condition Name'
-        self.controlWidget = LineEdit(text='Control', tooltip='Pick the control to walk from.',
-                                      placeholderTest='pick control')
+        self.controlWidget = PickObjectLineEdit(text='Control', tooltip='Pick the control to walk from.',
+                                                placeholderTest='pick control')
         self.controlWidget.cle_action_pick.triggered.connect(self.pickControl)
 
         '''
@@ -3833,12 +3547,12 @@ class PickwalkNewConditionPopup(BaseDialog):
                                    placeholderTest='enter condition name')
         self.nameWidget.cle_action_pick.triggered.connect(self.pickObject)
         '''
-        self.conditionAttrWidget = LineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
-                                            placeholderTest='enter condition attribute')
+        self.conditionAttrWidget = PickObjectLineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
+                                                      placeholderTest='enter condition attribute')
         self.conditionAttrWidget.cle_action_pick.triggered.connect(self.pickAttribute)
 
-        self.conditionWidget = labelledDoubleSpinBox(text='Value',
-                                                     helpLine='value > this, use alt destination')
+        self.conditionWidget = PickwalkLabelledDoubleSpinBox(text='Value',
+                                                             helpLine='value > this, use alt destination')
         self.destinationsWidget = MiniDestinationWidget(label='Destinations')
         self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
         self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations')
@@ -3854,25 +3568,25 @@ class PickwalkNewConditionPopup(BaseDialog):
         self.splitLayout.addWidget(self.destinationsWidget)
         self.splitLayout.addWidget(self.altDestinationsWidget)
 
-        self.upBtn = standardPickButton(label='Up',
+        self.upBtn = StandardPickButton(label='Up',
                                         direction='up',
                                         icon='timeend.png',
                                         rotation=90,
                                         fixedWidth=False,
                                         width=48)
-        self.downBtn = standardPickButton(label='Down',
+        self.downBtn = StandardPickButton(label='Down',
                                           direction='down',
                                           icon='timeend.png',
                                           rotation=270,
                                           fixedWidth=False,
                                           width=48)
-        self.leftBtn = standardPickButton(label='Left',
+        self.leftBtn = StandardPickButton(label='Left',
                                           direction='left',
                                           icon='timeend.png',
                                           rotation=0,
                                           fixedWidth=False,
                                           width=48)
-        self.rightBtn = standardPickButton(label='Right',
+        self.rightBtn = StandardPickButton(label='Right',
                                            direction='right',
                                            icon='timeend.png',
                                            rotation=180,
@@ -3987,15 +3701,19 @@ class PickwalkNewConditionPopup(BaseDialog):
         outData['name'] = self.controlWidget.lineEdit.text() + '__' + direction
         # print(outData)
 
-        self.creator.addDestination(name=outData['name'],
-                                    destination=outData['destination'],
-                                    destinationAlt=outData['destinationAlt'],
-                                    conditionAttribute=outData['conditionAttribute'],
-                                    conditionValue=outData['conditionValue'])
         for control in self.controls:
+            print('control', control)
             self.creator.setControlDestination(control,
                                                direction=direction,
-                                               destination=outData['name'])
+                                               destination=outData['destination'],
+                                               destinationAlt=outData['destinationAlt'],
+                                               conditionAttribute=outData['conditionAttribute'],
+                                               conditionValue=outData['conditionValue'])
+
+            self.creator.mirror(control,
+                                [self.creator.walkData.mirrorNames.get('left', '_L'),
+                                 self.creator.walkData.mirrorNames.get('right', '_R')])
+
         self.creator.walkData.save(self.creator.walkData._filePath)
         # self.pickwalkWindow.saveLibrary()
         # self.pickwalk.loadWalkLibrary()
@@ -4017,7 +3735,7 @@ class mirrorPickwalkWidget(QFrame):
 
         self.fromInputOption = self.CLS.walkData.mirrorNames.get('left', '_L')
         self.toInputOption = self.CLS.walkData.mirrorNames.get('right', '_R')
-        self.setMaximumWidth(420)
+
         self.mainLayout = QVBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
@@ -4303,13 +4021,14 @@ class pickwalkMainWindow(QMainWindow):
 
     activeObject = None
     title = 'tbPickwwalkSetup'
+    selectionChangedScriptJob = -1
 
     def __init__(self):
         super(pickwalkMainWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
-
+        self.currentTemplate = None
         self.pickwalkCreator = PickwalkCreator()
-        self.resize(948, self.height())
+        #self.resize(948, self.height())
         # Main Widgets
         # setup stylesheet
         self.setStyleSheet(getqss.getStyleSheet())
@@ -4476,10 +4195,11 @@ class pickwalkMainWindow(QMainWindow):
         self.mainPickWidget.setActiveObjectSignal.connect(self.inputSignal_activeObjectSet)
         self.mainPickWidget.applyButtonPressedSignal.connect(self.inputSignal_applyPickwalk)
 
-        self.mainPickWidget.upDownSignal.connect(self.inputSignal_quickUpDown)
-        self.mainPickWidget.leftRightSignal.connect(self.inputSignal_quickLeftRight)
-        self.mainPickWidget.downMultiSignal.connect(self.inputSignal_quickDownToMulti)
-        self.mainPickWidget.upMultiSignal.connect(self.inputSignal_quickUpFromMulti)
+        #self.mainPickWidget.upDownSignal.connect(self.inputSignal_quickUpDown)
+        #self.mainPickWidget.leftRightSignal.connect(self.inputSignal_quickLeftRight)
+        #self.mainPickWidget.downMultiSignal.connect(self.inputSignal_quickDownToMulti)
+        #self.mainPickWidget.upMultiSignal.connect(self.inputSignal_quickUpFromMulti)
+        self.mainPickWidget.walkUpdateSignal.connect(self.getWalkUpdate)
 
         self.mainPickWidget.setLockStateSignal.connect(self.setLockState)
         self.mainPickWidget.directionPressedObjectSignal.connect(self.addPickwalk)
@@ -4496,7 +4216,35 @@ class pickwalkMainWindow(QMainWindow):
 
     def show(self):
         super(pickwalkMainWindow, self).show()
+        self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.selectionChanged], protected=False)
+        self.disableUI()
         self.loadLibraryForCurrent()
+        self.setSimpleMode()
+
+    def getWalkUpdate(self, direction, data):
+        print ('getWalkUpdate')
+        print (self.activeObject, direction, data)
+        self.pickwalkCreator.setControlDestination(self.activeObject,
+                                                   direction=direction,
+                                                   destination=data['destination'],
+                                                   destinationAlt=data['destinationAlt'],
+                                                   conditionAttribute=data['conditionAttribute'],
+                                                   conditionValue=data['conditionValue'])
+        self.saveLibrary()
+
+    def selectionChanged(self):
+        if not self.currentTemplate:
+            self.loadLibraryForCurrent()
+
+    def disableUI(self):
+        self.setEnabled(False)
+
+    def enabableUI(self):
+        self.setEnabled(True)
+
+    @Slot()
+    def removeScriptJob(self):
+        cmds.scriptJob(kill=self.selectionChangedScriptJob)
 
     def closeEvent(self, event):
         msg = QMessageBox()
@@ -4515,6 +4263,7 @@ class pickwalkMainWindow(QMainWindow):
             # Clean up the script job stuff prior to closing the dialog.
             # cmds.scriptJob(kill=self.SCRIPT_JOB_NUMBER, force=True)
             super(pickwalkMainWindow, self).closeEvent(event)
+            self.removeScriptJob()
             event.accept()
         else:
             event.ignore()
@@ -4582,10 +4331,11 @@ class pickwalkMainWindow(QMainWindow):
             fname, mapName = Pickwalk().getCurrentRig()
         print('UI load', fname, mapName)
         if not fname:
-            self.pickwalkCreator.walkData = WalkData()
             self.setTitleLabel('NONE')
+            self.currentTemplate = None
         else:
             # print ('here')
+            self.currentTemplate = mapName
             self.pickwalkCreator = Pickwalk().pickwalkCreator
             CharacterTool = Pickwalk().allTools.tools['CharacterTool']
             CharacterTool.loadCharacterIfNotLoaded(mapName)
@@ -4683,6 +4433,9 @@ class pickwalkMainWindow(QMainWindow):
         return msg
 
     def refreshUI(self):
+        if not self.currentTemplate:
+            self.disableUI()
+            return
         # print (Pickwalk().pickwalkCreator.walkData.mirrorNames)
         # cmds.warning('Just a test')
         # print (Pickwalk().pickwalkCreator.walkData.mirrorNames)
@@ -4695,6 +4448,7 @@ class pickwalkMainWindow(QMainWindow):
         self.updateTreeView()
         # print (Pickwalk().pickwalkCreator.walkData.mirrorNames)
         self.mirrorWidget.updateMirrorLabels()
+        self.enabableUI()
 
     def keyPressEvent(self, event):
         # print("That's a press!")
@@ -5060,3 +4814,222 @@ class PickWalkObjectDialog(BaseDialog):
     def accept(self):
         self.assignSignal.emit(self.direction, self.namespace, self.walkObject, self.result)
         super(PickWalkObjectDialog, self).accept()
+
+
+class PickwalkControlWidget(QWidget):
+    destinationAdded = Signal(dict)
+    changed = Signal(str)
+
+    def __init__(self, control=None, destination=None, *args, **kwargs):
+        super(PickwalkControlWidget, self).__init__()
+        # TODO - move these functions out of the window and into Pickwalk()
+        self.borderHighlightQSS = "QLineEdit {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}" \
+                                  "QListWidget {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
+
+        self.control = control
+        self.destination = destination
+        self.pickwalk = Pickwalk()
+        self.pickwalkWindow = pickwalkMainWindow()
+        self.pickwalk.loadLibraryForCurrent()
+        self.creator = self.pickwalk.pickwalkCreator
+
+        self.setStyleSheet("QFrame {"
+                           "border-width: 2;"
+                           "border-radius: 4;"
+                           "border-style: solid;"
+                           "border-color: #222222}"
+                           )
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        self.setLayout(self.mainLayout)
+
+        self.titleText.setStyleSheet("QLabel {"
+                                     "border-width: 0;"
+                                     "border-radius: 4;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "font-weight: bold; font-size: 12px;}"
+                                     )
+
+        'Condition Name'
+        self.controlWidget = PickObjectLineEdit(text='Control', tooltip='Pick the control to walk from.',
+                                                placeholderTest='pick control')
+        self.controlWidget.cle_action_pick.triggered.connect(self.pickControl)
+
+        '''
+        self.nameWidget = LineEdit(text='Name', tooltip='Pick name from selected object.',
+                                   placeholderTest='enter condition name')
+        self.nameWidget.cle_action_pick.triggered.connect(self.pickObject)
+        '''
+        self.conditionAttrWidget = PickObjectLineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
+                                                      placeholderTest='enter condition attribute')
+        self.conditionAttrWidget.cle_action_pick.triggered.connect(self.pickAttribute)
+
+        self.conditionWidget = PickwalkLabelledDoubleSpinBox(text='Value',
+                                                             helpLine='value > this, use alt destination')
+        self.destinationsWidget = MiniDestinationWidget(label='Destinations')
+        self.destinationsWidget.updatedSignal.connect(self.inputSignal_destinationsUpdated)
+        self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations')
+        self.altDestinationsWidget.updatedSignal.connect(self.inputSignal_altDestinationsUpdated)
+
+        self.mainLayout.addWidget(self.controlWidget)
+        # self.mainLayout.addWidget(self.nameWidget)
+        self.mainLayout.addWidget(self.conditionAttrWidget)
+        self.mainLayout.addWidget(self.conditionWidget)
+
+        self.splitLayout = QHBoxLayout()
+        self.mainLayout.addLayout(self.splitLayout)
+        self.splitLayout.addWidget(self.destinationsWidget)
+        self.splitLayout.addWidget(self.altDestinationsWidget)
+
+        self.upBtn = StandardPickButton(label='Up',
+                                        direction='up',
+                                        icon='timeend.png',
+                                        rotation=90,
+                                        fixedWidth=False,
+                                        width=48)
+        self.downBtn = StandardPickButton(label='Down',
+                                          direction='down',
+                                          icon='timeend.png',
+                                          rotation=270,
+                                          fixedWidth=False,
+                                          width=48)
+        self.leftBtn = StandardPickButton(label='Left',
+                                          direction='left',
+                                          icon='timeend.png',
+                                          rotation=0,
+                                          fixedWidth=False,
+                                          width=48)
+        self.rightBtn = StandardPickButton(label='Right',
+                                           direction='right',
+                                           icon='timeend.png',
+                                           rotation=180,
+                                           fixedWidth=False,
+                                           width=48)
+
+        applyLabel = QLabel('Walk Direction')
+        applyLabel.setAlignment(Qt.AlignCenter)
+        applyLabel.setStyleSheet("QLabel {"
+                                 "border-width: 0;"
+                                 "border-radius: 4;"
+                                 "border-style: solid;"
+                                 "border-color: #222222;"
+                                 "font-weight: bold; font-size: 12px;}"
+                                 )
+        self.mainLayout.addWidget(applyLabel)
+        self.directionLayout = QHBoxLayout()
+        self.directionLayout.addWidget(self.upBtn)
+        self.directionLayout.addWidget(self.downBtn)
+        self.directionLayout.addWidget(self.leftBtn)
+        self.directionLayout.addWidget(self.rightBtn)
+        self.mainLayout.addLayout(self.directionLayout)
+        self.conditionWidget.editedSignal.connect(self.inputSignal_conditionhanged)
+
+        self.upBtn.pressedSignal.connect(self.addWalk)
+        self.downBtn.pressedSignal.connect(self.addWalk)
+        self.leftBtn.pressedSignal.connect(self.addWalk)
+        self.rightBtn.pressedSignal.connect(self.addWalk)
+
+
+        self.pickControl(self.control)
+        if self.destination:
+            if not isinstance(self.destination, list):
+                self.destination = [self.destination]
+            self.destinationsWidget.pickButtonPressed(self.destination)
+        self.setStyleSheet(getqss.getStyleSheet())
+
+    def pickControl(self, control=None, *args):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return pm.warning('no object selected')
+        controlString = sel[0].split(':')[-1]
+        if len(sel) > 1:
+            controlString += '...'
+        self.controlWidget.lineEdit.setText(controlString)
+        self.controls = [s.split(':')[-1] for s in sel]
+
+    def pickObject(self, *args):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            pm.warning('no object selected')
+        self.nameWidget.lineEdit.setText(sel[0].split(':')[-1] + '_in')
+
+    def pickAttribute(self, *args):
+        channels = mel.eval('selectedChannelBoxPlugs')
+        if not channels:
+            return pm.warning('no channel selected')
+        self.conditionAttrWidget.lineEdit.setText(channels[0].split(':')[-1])
+        self.setOKHighlight(self.conditionAttrWidget.lineEdit)
+
+    def outputSignal_newDestinationCreated(self):
+        # print 'outputSignal_newDestinationCreated'
+        pass
+        # self.destinationAdded.emit(outData)
+
+    def populate(self, item, destinationData):
+        # print destinationData
+        self.destinationsWidget.refreshUI(destinationData.destination)
+        self.altDestinationsWidget.refreshUI(destinationData.destinationAlt)
+        self.conditionAttrWidget.lineEdit.setText(destinationData.conditionAttribute)
+        self.conditionWidget.spinBox.setValue(destinationData.conditionValue)
+        self.nameWidget.lineEdit.setText(item)
+
+    def inputSignal_destinationsUpdated(self, items):
+        self.setOKHighlight(self.destinationsWidget.listwidget)
+
+    def inputSignal_altDestinationsUpdated(self, items):
+        self.setOKHighlight(self.altDestinationsWidget.listwidget)
+
+    def inputSignal_nameChanged(self, name):
+        print('inputSignal_nameChanged,', name)
+
+    def inputSignal_attributehanged(self, attribute):
+        print('inputSignal_namgeChanged,', attribute)
+
+    def inputSignal_conditionhanged(self, value):
+        print('inputSignal_conditionhanged,', value)
+
+    def setErrorHighlight(self, widget):
+        widget.setStyleSheet(self.borderHighlightQSS)
+
+    def setOKHighlight(self, widget):
+        widget.setStyleSheet(getqss.getStyleSheet())
+
+    def addWalk(self, direction=str()):
+        self.pickwalkWindow.loadLibraryForCurrent()
+        outData = dict()
+        if not self.conditionAttrWidget.lineEdit.text():
+            self.setErrorHighlight(self.conditionAttrWidget.lineEdit)
+            return pm.warning('No valid attribute')
+        if not self.destinationsWidget.currentItems():
+            self.setErrorHighlight(self.destinationsWidget.listwidget)
+            return pm.warning('No destinations')
+        if not self.altDestinationsWidget.currentItems():
+            self.setErrorHighlight(self.altDestinationsWidget.listwidget)
+            return pm.warning('No alt destinations')
+
+        outData['destination'] = self.destinationsWidget.currentItems()
+        outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
+        outData['conditionAttribute'] = self.conditionAttrWidget.lineEdit.text()
+        outData['conditionValue'] = self.conditionWidget.spinBox.value()
+        outData['name'] = self.controlWidget.lineEdit.text() + '__' + direction
+        # print(outData)
+
+        for control in self.controls:
+            print('control', control)
+            self.creator.setControlDestination(control,
+                                               direction=direction,
+                                               destination=outData['destination'],
+                                               destinationAlt=outData['destinationAlt'],
+                                               conditionAttribute=outData['conditionAttribute'],
+                                               conditionValue=outData['conditionValue'])
+
+            self.creator.mirror(control,
+                                [self.creator.walkData.mirrorNames.get('left', '_L'),
+                                 self.creator.walkData.mirrorNames.get('right', '_R')])
+
+        self.creator.walkData.save(self.creator.walkData._filePath)
+        # self.pickwalkWindow.saveLibrary()
+        # self.pickwalk.loadWalkLibrary()
+        self.pickwalk.getAllPickwalkMaps()
+        self.pickwalk.initialiseWalkData()
+        self.pickwalkWindow.loadLibraryForCurrent()
