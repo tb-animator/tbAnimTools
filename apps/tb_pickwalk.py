@@ -4222,14 +4222,15 @@ class pickwalkMainWindow(QMainWindow):
         self.setSimpleMode()
 
     def getWalkUpdate(self, direction, data):
-        print ('getWalkUpdate')
-        print (self.activeObject, direction, data)
         self.pickwalkCreator.setControlDestination(self.activeObject,
                                                    direction=direction,
                                                    destination=data['destination'],
                                                    destinationAlt=data['destinationAlt'],
                                                    conditionAttribute=data['conditionAttribute'],
                                                    conditionValue=data['conditionValue'])
+        self.pickwalkCreator.mirror(self.activeObject,
+                            [self.pickwalkCreator.walkData.mirrorNames.get('left', '_L'),
+                             self.pickwalkCreator.walkData.mirrorNames.get('right', '_R')])
         self.saveLibrary()
 
     def selectionChanged(self):
@@ -5015,7 +5016,6 @@ class PickwalkControlWidget(QWidget):
         # print(outData)
 
         for control in self.controls:
-            print('control', control)
             self.creator.setControlDestination(control,
                                                direction=direction,
                                                destination=outData['destination'],
