@@ -4,9 +4,20 @@ btnWidth = 80
 
 
 class ToolTipWidget(QWidget):
-    def __init__(self):
+    def __init__(self, tooltipTitle='', tooltip=''):
         super(ToolTipWidget, self).__init__()
         self.helpWidget = None
+        self.helpWidget = InfoPromptWidget(title=tooltipTitle,
+                                           buttonText='Ok',
+                                           imagePath='',
+                                           error=False,
+                                           image='',
+                                           gif='',
+                                           helpString=tooltip,
+                                           showCloseButton=False,
+                                           show=False,
+                                           showButton=False)
+        self.setToolTipClass(self.helpWidget)
 
     def setToolTipClass(self, cls):
         if cls:
@@ -17,7 +28,7 @@ class ToolTipWidget(QWidget):
         if not self.helpWidget:
             return
 
-        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0,0)), widgetSize=self.size())
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0, 0)), widgetSize=self.size())
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.ToolTip:
@@ -35,27 +46,38 @@ class ToolTipWidget(QWidget):
             self.helpWidget.hide()
         return super(ToolTipWidget, self).leaveEvent(event)
 
+
 class MiniDestinationWidget(ToolTipWidget):
     updatedSignal = Signal(list)
 
-    def __init__(self, label='BLANK'):
-        super(MiniDestinationWidget, self).__init__()
+    def __init__(self, label='BLANK', tooltipTitle='title', tooltip='exampleTooltip'):
+        super(MiniDestinationWidget, self).__init__(tooltipTitle=tooltipTitle, tooltip=tooltip)
         # self.setFixedWidth(140)
         self.setMaximumWidth(160)
         self.setMaximumHeight(150)
         self.mainListItem = str()
+
+        self.controlsFrame = QFrame()
+
+        self.controlsFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+
         self.mainLayout = QVBoxLayout()
-        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.mainLayout.setAlignment(Qt.AlignCenter | Qt.AlignTop)
         self.label = QLabel(label)
         self.pickButton = QPushButton('Pick')
 
-        self.topLayout = QHBoxLayout()
-        self.topLayout.setContentsMargins(0, 0, 0, 0)
-        self.topLayout.addWidget(self.label)
-        self.topLayout.addWidget(self.pickButton)
-        self.mainLayout.addLayout(self.topLayout)
+        self.hLayout = QHBoxLayout()
+        self.vLayout = QVBoxLayout()
+        self.mainLayout.addWidget(self.controlsFrame)
+        self.controlsFrame.setLayout(self.vLayout)
+        self.vLayout.addLayout(self.hLayout)
+        self.hLayout.setContentsMargins(0, 0, 0, 0)
+        self.vLayout.setContentsMargins(0, 0, 0, 0)
+        self.hLayout.addWidget(self.label)
+        self.hLayout.addWidget(self.pickButton)
+
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
                                  "border-radius: 0;"
@@ -63,7 +85,9 @@ class MiniDestinationWidget(ToolTipWidget):
                                  "border-color: #222222}"
                                  )
         self.listwidget = QListWidget()
-        self.mainLayout.addWidget(self.listwidget)
+        self.listwidget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.listwidget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.vLayout.addWidget(self.listwidget)
         self.pickButton.clicked.connect(self.pickButtonPressed)
 
         # self.helpWidget = InfoPromptWidget(title=toolTip.get('title', 'toolTipText'),
@@ -76,17 +100,8 @@ class MiniDestinationWidget(ToolTipWidget):
         #                                    showCloseButton=False,
         #                                    show=False,
         #                                    showButton=False)
-        helpWidget = InfoPromptWidget(title='toolTipText',
-                                           buttonText='Ok',
-                                           imagePath='',
-                                           error=False,
-                                           image='',
-                                           gif='',
-                                           helpString='toolTipText2',
-                                           showCloseButton=False,
-                                           show=False,
-                                           showButton=False)
-        self.setToolTipClass(helpWidget)
+
+        self.resizeList()
 
     def currentItems(self):
         return [self.listwidget.item(x).text() for x in range(self.listwidget.count())]
@@ -110,6 +125,7 @@ class MiniDestinationWidget(ToolTipWidget):
         if sel:
             items = [s.stripNamespace() for s in sel]
             self.listwidget.addItems(items)
+
         self.sendUpdateSignal()
 
     def addButtonPressed(self):
@@ -148,6 +164,14 @@ class MiniDestinationWidget(ToolTipWidget):
     def refreshUI(self, targets):
         self.listwidget.clear()
         self.listwidget.addItems(targets)
+        self.resizeList()
+
+    def resizeList(self):
+        if self.listwidget.count():
+            self.listwidget.setFixedHeight(
+                self.listwidget.sizeHintForRow(0) * self.listwidget.count() + 2 * self.listwidget.frameWidth())
+        else:
+            self.listwidget.setFixedHeight(22)
 
 
 class PickwalkLabelledLineEdit(QWidget):
@@ -203,12 +227,11 @@ class PickwalkLabelledLineEdit(QWidget):
         self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
 
-
-class PickwalkLabelledDoubleSpinBox(QWidget):
+class PickwalkLabelledDoubleSpinBox(ToolTipWidget):
     editedSignal = Signal(float)
 
-    def __init__(self, text=str, helpLine=None, labelWidth=60, tooltip=''):
-        super(PickwalkLabelledDoubleSpinBox, self).__init__()
+    def __init__(self, text=str, helpLine=None, labelWidth=60, tooltipTitle='', tooltip=''):
+        super(PickwalkLabelledDoubleSpinBox, self).__init__(tooltipTitle=tooltipTitle, tooltip=tooltip)
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.layout)
@@ -219,7 +242,7 @@ class PickwalkLabelledDoubleSpinBox(QWidget):
         self.spinBox.setValue(0.5)
         self.spinBox.setSingleStep(0.1)
         self.spinBox.valueChanged.connect(self.sendValueChangedSignal)
-        self.spinBox.setToolTip(tooltip)
+
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.spinBox)
 
@@ -252,6 +275,7 @@ class PickwalkLabelledDoubleSpinBox(QWidget):
 
     def getData(self):
         return self.spinBox.value()
+
 
 class PickObjectLineEdit(QWidget):
     label = None
@@ -298,13 +322,14 @@ class PickObjectLineEdit(QWidget):
             pm.warning('no channel selected')
         self.lineEdit.setText(channels[0].split(':')[-1])
 
-class PickChannelLineEdit(QWidget):
+
+class PickChannelLineEdit(ToolTipWidget):
     label = None
     lineEdit = None
     editedSignal = Signal(str)
 
-    def __init__(self, text=str, tooltip=str(), placeholderTest=str()):
-        super(PickChannelLineEdit, self).__init__()
+    def __init__(self, text=str, tooltipTitle='title', tooltip='exampleTooltip', placeholderTest=str()):
+        super(PickChannelLineEdit, self).__init__(tooltipTitle=tooltipTitle, tooltip=tooltip)
 
         self.layout = QHBoxLayout()
         self.layout.setContentsMargins(2, 2, 2, 2)
@@ -312,7 +337,7 @@ class PickChannelLineEdit(QWidget):
         self.label = QLabel(text)
         self.lineEdit = QLineEdit()
         self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
-        self.cle_action_pick.setToolTip(tooltip)
+
         self.cle_action_pick.triggered.connect(self.pickChannel)
         self.lineEdit.setPlaceholderText(placeholderTest)
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
@@ -348,6 +373,7 @@ class PickChannelLineEdit(QWidget):
     def getData(self):
         return self.lineEdit.text()
 
+
 class StandardPickButton(QPushButton):
     pressedSignal = Signal(str)
     direction = str()
@@ -367,7 +393,7 @@ class StandardPickButton(QPushButton):
         self.clicked.connect(partial(self.pressedSignal.emit, self.direction))
 
 
-class DirectionPickWidget(QFrame):
+class PickwalkDestinationWidget(QFrame):
     pressedSignal = Signal(str, str)
     conditionPressedSignal = Signal(str, str)
     direction = str()
@@ -400,12 +426,18 @@ class DirectionPickWidget(QFrame):
         self.attrLayout = QVBoxLayout()
 
         # new stuff
-        self.destinationsWidget = MiniDestinationWidget(label='Destinations')
-        self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations')
-        self.conditionAttrWidget = PickChannelLineEdit(text='Attribute', tooltip='Pick attribute to control pickwalk.',
-                                                      placeholderTest='enter condition attribute')
+        self.destinationsWidget = MiniDestinationWidget(label='Destinations', tooltipTitle='Walk destination',
+                                                        tooltip='Pick your destination control(s) for the current control')
+        self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations',
+                                                           tooltipTitle='Walk destination (conditional)',
+                                                           tooltip='Pick your destination control(s) for the current control, if the selected attribute is greater than the value specified, the walk will choose a control from this list')
+        self.conditionAttrWidget = PickChannelLineEdit(text='Attribute',
+                                                       tooltipTitle='Conditional attribute',
+                                                       tooltip='Pick attribute to control pickwalk. If the selected attribute is greater than the value specified, the alternate destination will be walked to.',
+                                                       placeholderTest='enter condition attribute')
         self.conditionValueWidget = PickwalkLabelledDoubleSpinBox(text='Value',
-                                                                  tooltip='value > this, use alt destination',
+                                                                  tooltipTitle='Conditional attribute threshold',
+                                                                  tooltip='If the selected attribute is greater than the value specified here, the alternate destination will be walked to.',
                                                                   helpLine='')
 
         self.button = StandardPickButton(label='from sel', direction=direction, icon=icon,
@@ -498,7 +530,6 @@ class DirectionPickWidget(QFrame):
         self.walkInfoSignal.emit(self.direction, outDict)
 
 
-
 class PickObjectWidget(QWidget):
     setActiveObjectSignal = Signal()
     modeChangedSignal = Signal(bool)
@@ -511,11 +542,11 @@ class PickObjectWidget(QWidget):
 
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
-        self.pickBtn = QPushButton('Pick Current')
+        self.pickBtn = ToolTipPushButton('Pick Current', tooltipTitle='Set current control', tooltip='Set the currently edited control from your scene selection.')
 
-        self.ObjLabel = QLabel('Object ::')
-        self.ObjLabel.setFixedWidth(btnWidth)
-        self.currentObjLabel = QLabel('None')
+        self.ObjLabel = Header('Current Control ::')
+
+        self.currentObjLabel = Header('None')
         self.mainLayout.addLayout(self.infoLayout)
         self.infoLayout.addWidget(self.ObjLabel)
         self.infoLayout.addWidget(self.currentObjLabel)

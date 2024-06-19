@@ -206,7 +206,7 @@ class AimTools(toolAbstractFactory):
                                        flipAim=self.defaultAimData.get('flipAim'),
                                        flipUp=self.defaultAimData.get('flipUp'),
                                        distance=self.defaultAimData.get('distance'))
-        tempControlHeader = subHeader('Aim at temp control')
+        tempControlHeader = SubHeader('Aim at temp control')
         tempControlInfo = infoLabel(['Creates a temp control at the current selection.',
                                      'Move it into the desired position and once deselected it will baked out relative to the control. The control will then be aimed at the new temp control'])
         crossSizeWidget = intFieldWidget(optionVar=self.tempAimSizeOption,
@@ -214,7 +214,7 @@ class AimTools(toolAbstractFactory):
                                          label='Aim to temp control size',
                                          minimum=0.1, maximum=100, step=0.1)
         crossSizeWidget.changedSignal.connect(self.updateTempControlPreview)
-        motionTrailHeader = subHeader('Motion Trails')
+        motionTrailHeader = SubHeader('Motion Trails')
         motionTrailInfo = infoLabel(['Add motion trails to newly created temp controls.'])
 
         aimFwdMotionTrailWidget = optionVarBoolWidget('Motion Trail On Aim Forward',

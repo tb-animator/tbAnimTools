@@ -1,5 +1,48 @@
 from . import *
 
+class ToolTipPushButton(QPushButton):
+    def __init__(self, text, tooltipTitle='', tooltip='', **kwargs):
+        super(ToolTipPushButton, self).__init__(text, **kwargs)
+        self.helpWidget = None
+        self.helpWidget = InfoPromptWidget(title=tooltipTitle,
+                                           buttonText='Ok',
+                                           imagePath='',
+                                           error=False,
+                                           image='',
+                                           gif='',
+                                           helpString=tooltip,
+                                           showCloseButton=False,
+                                           show=False,
+                                           showButton=False)
+        self.setToolTipClass(self.helpWidget)
+
+    def setToolTipClass(self, cls):
+        if cls:
+            self.helpWidget = cls
+            self.installEventFilter(self)
+
+    def showRelativeToolTip(self):
+        if not self.helpWidget:
+            return
+
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0, 0)), widgetSize=self.size())
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ToolTip:
+            self.showRelativeToolTip()
+            return True
+        return super(ToolTipPushButton, self).eventFilter(obj, event)
+
+    def enterEvent(self, event):
+        if self.helpWidget:
+            self.helpWidget.hide()
+        return super(ToolTipPushButton, self).enterEvent(event)
+
+    def leaveEvent(self, event):
+        if self.helpWidget:
+            self.helpWidget.hide()
+        return super(ToolTipPushButton, self).leaveEvent(event)
+
 
 class MiniButton(QPushButton):
     """

@@ -158,7 +158,7 @@ class InfoPromptWidget(QWidget):
 
         titleLayout.addWidget(self.titleText)
 
-        self.closeButton = MiniButton()
+        self.closeButton = CloseButton()
         self.closeButton.clicked.connect(self.close)
         titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
         mainLayout.addLayout(titleLayout)
@@ -307,3 +307,24 @@ def raiseError(errorMessage, title='Failed'):
                               error=True,
                               helpString=errorMessage)
     return False
+
+class CloseButton(QPushButton):
+    """
+    UI menu item for anim layer tab,
+    subclass this and add to the _showMenu function, or just add menu items
+    """
+
+    def __init__(self, icon=baseIconFile, toolTip='Close'):
+        super(CloseButton, self).__init__()
+        # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
+        self.setFixedSize(18 * dpiScale(), 18 * dpiScale())
+
+        pixmap = QPixmap(os.path.join(IconPath, icon))
+        icon = QIcon(pixmap)
+
+        self.setIcon(icon)
+
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px")
+        self.setStyleSheet(getqss.getStyleSheet())

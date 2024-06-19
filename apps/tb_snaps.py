@@ -175,12 +175,12 @@ class SnapTools(toolAbstractFactory):
     def optionUI(self):
         super(SnapTools, self).optionUI()
 
-        snapOrderHeader = subHeader('Snap Order')
+        snapOrderHeader = SubHeader('Snap Order')
         selectionOrderInfo = infoLabel([maya.stringTable['SnapTools.selectionOrderInfo']])
 
         selectionOrderOptionWidget = optionVarBoolWidget(maya.stringTable['SnapTools.selectionOrderOption'],
                                                          self.selectionOrderOption)
-        relativeSnapOrderHeader = subHeader(maya.stringTable['SnapTools.relativeSnapOrderHeader'])
+        relativeSnapOrderHeader = SubHeader(maya.stringTable['SnapTools.relativeSnapOrderHeader'])
         relativeOrderInfo = infoLabel([maya.stringTable['SnapTools.relativeOrderInfo']])
         relativeOrderOptionWidget = optionVarBoolWidget(maya.stringTable['SnapTools.relativeOrderOptionWidget'],
                                                         self.relativeSelectionOrderOption)

@@ -153,7 +153,7 @@ class TimeDragger(toolAbstractFactory):
     def optionUI(self):
         super(TimeDragger, self).optionUI()
 
-        snapOrderHeader = subHeader('Stepped Drag')
+        snapOrderHeader = SubHeader('Stepped Drag')
         stepDragInfo = infoLabel([maya.stringTable['y_tb_timeDragger.stepDragInfo']])
 
         StepFramesWidget = intFieldWidget(optionVar=self.stepFrameCount_var,
