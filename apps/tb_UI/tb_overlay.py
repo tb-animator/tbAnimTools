@@ -99,7 +99,7 @@ class TranslucentWidget(QWidget):
         oh = int(s.height() / 2 - popup_height / 2)
         if self.close_btn:
             self.close_btn.move(ow + 265, oh + 5)
-        self.label.move(ow + 32, oh)
+        # self.label.move(ow + 32, oh)
 
     def paintEvent(self, event):
         # This method is, in practice, drawing the contents of

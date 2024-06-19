@@ -1756,9 +1756,13 @@ class Pickwalk(toolAbstractFactory):
         refName = None
         mapName = None
         fname = None
+        namespace = ''
         sel = cmds.ls(sl=True)
+
         if not sel:
             return None, None
+        if ':' in sel[0]:
+            namespace = sel[0].split(':')[0]
         refName, refState = self.funcs.getRefName(sel[0])
         if not refName:
             refName = self.funcs.getRefNameFromTopParent(sel[0])
@@ -1771,11 +1775,11 @@ class Pickwalk(toolAbstractFactory):
             fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName + '.json')
             if not os.path.isfile(fname):
                 return None, mapName
-        return fname, mapName
+        return fname, mapName, namespace
 
     def loadLibraryForCurrent(self):
         # print ('loadLibraryForCurrent')
-        fname, mapName = self.getCurrentRig()
+        fname, mapName, namespace = self.getCurrentRig()
         # print ('Look at me!! %s %s' % (mapName, fname))
         if mapName and not fname:
             cmds.warning('Pickwalk library is referencing a missing file')
@@ -1792,7 +1796,7 @@ class Pickwalk(toolAbstractFactory):
 
         self.pickwalkCreator.load(fname)
         self.setMirrorValuesFromCharacter(fname, mapName)
-        return fname, mapName
+        return fname, mapName, namespace
 
     def setMirrorValuesFromCharacter(self, fname, mapName):
         CharacterTool = Pickwalk().allTools.tools['CharacterTool']
@@ -2107,6 +2111,7 @@ class lockButton(QPushButton):
 
 class PickDirectionWidget(QFrame):
     setActiveObjectSignal = Signal()  # in case the main ui needs to keep track?
+    setNewActiveObjectSignal = Signal(str)  # in case the main ui needs to keep track?
     upDownSignal = Signal()  # in case the main ui needs to keep track?
     leftRightSignal = Signal()  # in case the main ui needs to keep track?
     downMultiSignal = Signal()  # in case the main ui needs to keep track?
@@ -2239,7 +2244,7 @@ class PickDirectionWidget(QFrame):
         self.mainLayout.addWidget(self.downDestinationWidget)
         self.mainLayout.addWidget(self.leftDestinationWidget)
         self.mainLayout.addWidget(self.rightDestinationWidget)
-        self.mainLayout.addWidget(self.applyButton)
+        #self.mainLayout.addWidget(self.applyButton)
         self.mainLayout.addWidget(self.subtitle)
 
         self.mainLayout.addWidget(self.quickLeftRight)
@@ -2262,8 +2267,13 @@ class PickDirectionWidget(QFrame):
             btn.setSimple(True)
             btn.pressedSignal.connect(self.autoApplyData)
             btn.walkInfoSignal.connect(self.getWalkUpdate)
+            btn.destinationDoubleClickSignal.connect(self.setNewActiveObject)
 
         self.toggleAutoApply()
+
+    def setNewActiveObject(self, item):
+        print ('setNewActiveObject', item)
+        self.setNewActiveObjectSignal.emit(item)
 
     def getWalkUpdate(self, direction, data):
         # print ('getWalkUpdate')
@@ -4199,6 +4209,7 @@ class pickwalkMainWindow(QMainWindow):
             self.contextWidget.altDestinationsWidget.recieveMainDestinationClicked)
         # self.contextPickWidget.directionPressedObjectSignal.connect(self.inputSignal_setConditionalDestination)
         self.mainPickWidget.setActiveObjectSignal.connect(self.inputSignal_activeObjectSet)
+        self.mainPickWidget.setNewActiveObjectSignal.connect(self.inputSignal_activeObjectSetFromDestination)
         self.mainPickWidget.applyButtonPressedSignal.connect(self.inputSignal_applyPickwalk)
 
         #self.mainPickWidget.upDownSignal.connect(self.inputSignal_quickUpDown)
@@ -4356,9 +4367,9 @@ class pickwalkMainWindow(QMainWindow):
         return refName
 
     def loadLibraryForCurrent(self):
-        fname, mapName = Pickwalk().loadLibraryForCurrent()
+        fname, mapName, namespace = Pickwalk().loadLibraryForCurrent()
         if not fname:
-            fname, mapName = Pickwalk().getCurrentRig()
+            fname, mapName, namespace = Pickwalk().getCurrentRig()
 
         if not fname:
             self.setTitleLabel('NONE')
@@ -4367,6 +4378,7 @@ class pickwalkMainWindow(QMainWindow):
             # print ('here')
             self.currentTemplate = mapName
             self.pickwalkCreator = Pickwalk().pickwalkCreator
+            self.pickwalkCreator.namespace = namespace
             CharacterTool = Pickwalk().allTools.tools['CharacterTool']
             CharacterTool.loadCharacterIfNotLoaded(mapName)
             # print(self.pickwalkCreator.walkData.mirrorNames)
@@ -4623,6 +4635,12 @@ class pickwalkMainWindow(QMainWindow):
     def saveOnUpdate(self):
         if pm.optionVar.get(saveOnUpdateOption, True):
             self.saveLibrary()
+
+    def inputSignal_activeObjectSetFromDestination(self, item):
+        print ('inputSignal_activeObjectSetFromDestination', item)
+        self.activeObject = item
+        cmds.select(self.pickwalkCreator.namespace + ':' + item)
+        self.inputSignal_activeObjectSet()
 
     def inputSignal_activeObjectSet(self):
         sel = cmds.ls(sl=True)

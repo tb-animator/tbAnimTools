@@ -398,6 +398,7 @@ class PickwalkDestinationWidget(QFrame):
     conditionPressedSignal = Signal(str, str)
     direction = str()
     walkInfoSignal = Signal(str, dict)
+    destinationDoubleClickSignal = Signal(str)
 
     def __init__(self, mainWindow, loop=False, endOnSelf=False, label=str, direction=str, icon=str(), fixedWidth=False,
                  rotation=0,
@@ -428,6 +429,7 @@ class PickwalkDestinationWidget(QFrame):
         # new stuff
         self.destinationsWidget = MiniDestinationWidget(label='Destinations', tooltipTitle='Walk destination',
                                                         tooltip='Pick your destination control(s) for the current control')
+
         self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations',
                                                            tooltipTitle='Walk destination (conditional)',
                                                            tooltip='Pick your destination control(s) for the current control, if the selected attribute is greater than the value specified, the walk will choose a control from this list')
@@ -442,6 +444,11 @@ class PickwalkDestinationWidget(QFrame):
 
         self.button = StandardPickButton(label='from sel', direction=direction, icon=icon,
                                          rotation=rotation, width=32, fixedWidth=False)
+
+        self.destinationsWidget.listwidget.itemDoubleClicked.connect(self.setActiveObjectFromDestination)
+        self.altDestinationsWidget.listwidget.itemDoubleClicked.connect(self.setActiveObjectFromDestination)
+
+
         self.contextButton = QPushButton('< from destination list')
         self.mainLayout.addWidget(self.label)
         # self.mainLayout.addWidget(self.lineEdit)
@@ -470,6 +477,9 @@ class PickwalkDestinationWidget(QFrame):
         self.conditionValueWidget.editedSignal.connect(self.sendData)
         self.destinationsWidget.updatedSignal.connect(self.sendData)
         self.altDestinationsWidget.updatedSignal.connect(self.sendData)
+
+    def setActiveObjectFromDestination(self, item):
+        self.destinationDoubleClickSignal.emit(item.text())
 
     def pickControl(self):
         sel = pm.ls(selection=True, type='transform')
@@ -543,6 +553,10 @@ class PickObjectWidget(QWidget):
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.setLayout(self.mainLayout)
         self.pickBtn = ToolTipPushButton('Pick Current', tooltipTitle='Set current control', tooltip='Set the currently edited control from your scene selection.')
+        self.pickBtn.setFixedHeight(dpiScale() * 22)
+        self.pickBtn.setStyleSheet('background-color:green;')
+        self.pickBtn.setStyleSheet(
+            'background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #52bf90, stop: 0.1 #49ab81, stop: 0.5 #419873, stop: 0.9 #398564, stop: 1 #317256);color: 	#3b2f2f;font-weight: bold; font-size: 14px;')
 
         self.ObjLabel = Header('Current Control ::')
 
