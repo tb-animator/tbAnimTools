@@ -30,7 +30,7 @@ class LicenseWin(BaseDialog):
         # self.activateButton = QPushButton('Activate')
         # self.quitButton = QPushButton('Exit')
 
-        self.setFixedSize(400, 180)
+        self.setFixedSize(600, 300)
         self.gridLayout = QGridLayout()
         self.titleText.setText(title)
         self.titleText.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -58,6 +58,7 @@ class LicenseWin(BaseDialog):
 
         # self.activateButton.clicked.connect(self.activate)
         self.startPos = None
+        self.move(0,0)
 
     def mousePressEvent(self, event):
         self.oldPos = event.globalPos()

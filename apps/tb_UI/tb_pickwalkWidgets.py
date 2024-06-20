@@ -66,7 +66,7 @@ class MiniDestinationWidget(ToolTipWidget):
         self.setLayout(self.mainLayout)
         self.mainLayout.setAlignment(Qt.AlignCenter | Qt.AlignTop)
         self.label = QLabel(label)
-        self.pickButton = QPushButton('Pick')
+        self.pickButton = SimpleIconButton(text='', icon=":/targetTransfoPlus.png", toolTip='Set selected controls as destination')
 
         self.hLayout = QHBoxLayout()
         self.vLayout = QVBoxLayout()
@@ -428,7 +428,8 @@ class PickwalkDestinationWidget(QFrame):
 
         # new stuff
         self.destinationsWidget = MiniDestinationWidget(label='Destinations', tooltipTitle='Walk destination',
-                                                        tooltip='Pick your destination control(s) for the current control')
+                                                        tooltip='Pick your destination control(s) for the current control\n'
+                                                                'Use the button above to use your selection')
 
         self.altDestinationsWidget = MiniDestinationWidget(label='Alt Destinations',
                                                            tooltipTitle='Walk destination (conditional)',

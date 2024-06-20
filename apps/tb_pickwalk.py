@@ -4653,7 +4653,6 @@ class pickwalkMainWindow(QMainWindow):
 
         for control in sel:
             self.pickwalkCreator.addControl(control)
-        #TODO unlock the ui
         self.updateTreeView()
 
     def updateTreeView(self):

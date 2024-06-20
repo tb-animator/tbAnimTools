@@ -38,7 +38,8 @@ import datetime
 import zipfile
 from distutils.dir_util import copy_tree
 import ssl
-from apps.tb_UI import *
+import pymel.core as pm
+import maya.cmds as cmds
 
 qtVersion = pm.about(qtVersion=True)
 if int(qtVersion.split('.')[0]) < 5:
@@ -53,13 +54,97 @@ else:
     # from pyside2uic import *
     from shiboken2 import wrapInstance
 
+import getStyleSheet as getqss
+import os
+from functools  import partial
+IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Icons'))
+baseIconFile = 'checkBox.png'
+
 """
 response = urlopen(data['releases_url'].split('{')[0])
 data2 = json.load(response)
 print data2[0]['tag_name'] - should be latest release
 # TODO swap everyone to release update, show ui telling them
 """
+'''
 
+urlList = [
+'https://github.com/tb-animator/tbAnimTools/archive/6552f653e6a0c4a1cedc05f0374c148cdbcf1f0e.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/cbc27c08e880df22756542677acd48a604fde76c.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/31a7f1ac4b9d2d916474f08ad3251f7e37c0f278.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/5bc584377d5cf0903c3b8cff97dde3d732fdc3df.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/48ad70d735ae2a77b5d44413041f471da3fdeaf7.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/c46830bf6acc52179c7fe9556eedafa92a4168a0.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/a4a67baec9b7643985f65d9598b0f49656fcf754.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/a6d54bf49388a359c92be252b525dc368cd9327f.zip',
+'https://github.com/tb-animator/tbAnimTools/archive/57facb18c4c29716088df66151038299502bb978.zip'
+]
+commentList = [
+'Pickwalk ui update, also changing the data method, removing prints',
+'comment Pickwalk ui update, also changing the data method',
+'comment Pickwalk ui update, also changing the data method',
+'comment pickwak wip',
+'comment placeholder folders',
+'comment Reversing selection order on temp pivot tool',
+'comment Fiddling with import order for ui elements',
+'comment Slightly better handling of mirrored quick selection sets',
+'comment Allowing noise to work better on unitless anim curves'
+]
+'''
+
+def dpiScale():
+    if not pm.optionVar.get('tbUseWindowsScale', True):
+        return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
+    return pm.optionVar.get('tbCustomDpiScale', 1)
+
+
+def get_commit_details(repo_owner, repo_name):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
+    with urlopen(url) as response:
+        data = response.read().decode('utf-8')
+        commits = json.loads(data)
+    return commits
+
+
+def get_commit_comments_and_files(repo_owner, repo_name, commit_sha):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{commit_sha}"
+    with urlopen(url) as response:
+        data = response.read().decode('utf-8')
+        commit_details = json.loads(data)
+    comment = commit_details['commit']['message']
+    files_changed = [file['filename'] for file in commit_details['files']]
+    return comment, files_changed
+
+
+def download_commit_zip(repo_owner, repo_name, commit_sha):
+    url = f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
+    zip_filename = f"{repo_name}_{commit_sha}.zip"
+    urlretrieve(url, zip_filename)
+    print(f"Downloaded {zip_filename}")
+
+
+def get_update_urls():
+    repo_owner = "tb-animator"
+    repo_name = "tbAnimTools"
+    commits = get_commit_details(repo_owner, repo_name)
+    maxCommits = 10
+    count = 0
+
+    urls = list()
+    comments = list()
+
+    for commit in commits:
+        commit_sha = commit['sha']
+        count += 1
+        if count > maxCommits:
+            break
+        url = f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
+        comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
+        urls.append(url)
+        comments.append(comment)
+
+        continue
+    return urls, comments
 
 class updater():
     def __init__(self):
@@ -122,7 +207,6 @@ class updater():
     def downloadHelpImages(self):
         try:
             zipUrl = 'https://www.dropbox.com/s/1jwhpe0wsakw6bd/HelpImages.zip?dl=1'
-
             filedata = urlopen(zipUrl)
             datatowrite = filedata.read()
             zipFile = os.path.normpath(os.path.join(self.base_dir, 'HelpImages.zip'))
@@ -168,10 +252,12 @@ class updater():
 
         updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
                               oldVersion=currentVersionDay + ' ' + currentVersionTime,
-                              updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
+                              updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
+                              unstable=False,
+                              defaultUrl=self.latestZip)
         if updateWin.exec_() != 1:
             return
-        self.download_project_files(self.latestZip)
+        self.download_project_files(updateWin.selectedUrl)
         self.downloadHelpImages()
         self.save(self.lastPush, self.latestRelease)
 
@@ -193,10 +279,11 @@ class updater():
                                       oldVersion=currentVersionDay + ' ' + currentVersionTime,
                                       title='tbAnimTools Update - {0}?'.format(self.latestTag),
                                       updateText='Looks like there is a newer release version of tbAnimTools available. Would you like to update to {0}?'.format(
-                                          self.latestTag))
+                                          self.latestTag),
+                                      defaultUrl=self.releaseZip)
                 if updateWin.exec_() != 1:
                     return
-                self.download_project_files(self.releaseZip)
+                self.download_project_files(updateWin.selectedUrl)
                 #self.downloadHelpImages()
                 self.save(self.lastPush,  self.latestRelease)
 
@@ -212,10 +299,12 @@ class updater():
 
                 updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
                                       oldVersion=currentVersionDay + ' ' + currentVersionTime,
-                                      updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?')
+                                      updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
+                                      unstable=True,
+                                      defaultUrl=self.latestZip)
                 if updateWin.exec_() != 1:
                     return
-                self.download_project_files(self.latestZip)
+                self.download_project_files(updateWin.selectedUrl)
                 #self.downloadHelpImages()
                 self.save(self.lastPush, self.latestRelease)
 
@@ -280,3 +369,228 @@ class updater():
                          fadeOutTime=10.0,
                          fade=False)
         pm.optionVar(intValue=("inViewMessageEnable", message_state))
+
+
+class UpdateBaseDialog(QDialog):
+    widgetClosed = Signal()
+    oldPos = None
+
+    def __init__(self, parent=None, title='', text='',
+                 lockState=False,  showCloseButton=True, showInfo=True,
+                 *args, **kwargs):
+        super(UpdateBaseDialog, self).__init__(parent=parent)
+        self.stylesheet = getqss.getStyleSheet()
+        self.setStyleSheet(self.stylesheet)
+        self.lockState = lockState
+        self.showCloseButton = showCloseButton
+        self.setWindowTitle("HELLO!")
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        self.setFixedSize(400 * dpiScale(), 120 * dpiScale())
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(4, 4, 4, 4)
+        self.layout = QVBoxLayout()
+        self.titleLayout = QHBoxLayout()
+        self.titleLayout.setSpacing(0)
+        self.titleLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.closeButton = UpdateButton()
+        self.closeButton.clicked.connect(self.close)
+        self.titleText = QLabel(title)
+        # self.titleText.setFont(QFont('Lucida Console', 12))
+        # self.titleText.setStyleSheet("font-weight: lighter; font-size: 12px;")
+        # self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        # self.titleText.setStyleSheet("QLabel {"
+        #                              "border-width: 0;"
+        #                              "border-radius: 4;"
+        #                              "border-style: solid;"
+        #                              "border-color: #222222;"
+        #                              "font-weight: bold; font-size: 12px;"
+        #                              "}"
+        #                              )
+
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.infoText = QLabel(text)
+        if not showInfo: self.infoText.hide()
+
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+
+        self.mainLayout.addLayout(self.titleLayout)
+        self.infoText.setStyleSheet(self.stylesheet)
+        self.layout.addWidget(self.infoText)
+
+        self.mainLayout.addLayout(self.layout)
+        self.setLayout(self.mainLayout)
+
+        self.closeButton.setVisible(self.showCloseButton)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
+        qp.end()
+
+    def close(self):
+        self.widgetClosed.emit()
+        super(UpdateBaseDialog, self).close()
+
+class UpdateWin(UpdateBaseDialog):
+    ActivateSignal = Signal(str, str)
+    leftClick = False
+    oldPos = None
+
+    def __init__(self, parent=None,
+                 title='tbAnimTools Update Found',
+                 newVersion=str(),
+                 oldVersion=str(),
+                 updateText=str(),
+                 unstable=False,
+                 defaultUrl=None):
+        super(UpdateWin, self).__init__(parent=parent)
+
+        self.defaultWidth = 800
+        self.defaultHeight = 350
+        self.setFixedSize(self.defaultWidth, self.defaultHeight)
+        self.selectedUrl = defaultUrl
+
+        self.setWindowTitle(title)
+
+        # QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        # QBtn.button(QDialogButtonBox.Ok).setText("Activate")
+        # QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
+        # self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox = QDialogButtonBox()
+        self.buttonBox.setFixedWidth(self.defaultWidth-10)
+        self.updateButton = QPushButton("Update To Latest")
+        self.cancelButton = QPushButton("Cancel")
+        self.updateButton.setFixedWidth(self.defaultWidth-90)
+        self.updateButton.setStyleSheet(
+            'background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #52bf90, stop: 0.1 #49ab81, stop: 0.5 #419873, stop: 0.9 #398564, stop: 1 #317256);color: 	#3b2f2f;font-weight: bold; font-size: 14px;')
+        self.cancelButton.setFixedWidth(80)
+        self.buttonBox.addButton(self.updateButton, QDialogButtonBox.AcceptRole)
+        self.buttonBox.addButton(self.cancelButton, QDialogButtonBox.RejectRole)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        # self.buttonBox.accepted.connect(self.activate)
+        # self.buttonBox.rejected.connect(self.reject)
+
+        # self.buttonLayout = QVBoxLayout()
+        # self.activateButton = QPushButton('Activate')
+        # self.quitButton = QPushButton('Exit')
+
+        self.gridLayout = QGridLayout()
+        self.titleText.setText(title)
+        self.titleText.setStyleSheet("font-weight: bold; font-size: 16px;");
+        self.titleText.setAlignment(Qt.AlignCenter | Qt.AlignTop)
+        self.infoText.setText(updateText)
+        self.infoText.setWordWrap(True)
+
+        self.currentVersionLabel = QLabel('Current Version')
+        self.currentVersionInfoText = QLabel(oldVersion)
+        self.latestVersionLabel = QLabel('Latest Version')
+        self.latestVersionInfoText = QLabel(newVersion)
+
+        # self.mainLayout.addWidget(self.titleText)
+        # self.mainLayout.addWidget(self.infoText)
+        self.gridLayout.addWidget(self.currentVersionLabel, 0, 0)
+        self.gridLayout.addWidget(self.currentVersionInfoText, 0, 1)
+        self.gridLayout.addWidget(self.latestVersionLabel, 1, 0)
+        self.gridLayout.addWidget(self.latestVersionInfoText, 1, 1)
+        self.mainLayout.addLayout(self.gridLayout)
+        # self.buttonWidget.activateSignal.connect(self.dragLeaveEvent())
+        self.mainLayout.addWidget(self.buttonBox)
+
+        # part for specific commits
+        self.formLayout = QFormLayout()
+        label1 = QLabel('')
+        label = QLabel('- Previous Commits -')
+        label.setStyleSheet("font-weight: bold; font-size: 14px;");
+        label.setAlignment(Qt.AlignCenter | Qt.AlignTop)
+        self.mainLayout.addWidget(label1)
+        self.mainLayout.addWidget(label)
+        self.mainLayout.addLayout(self.formLayout)
+
+        urlList, commentList = get_update_urls()
+        if unstable:
+            for commit, comment in zip(urlList, commentList):
+                button = QPushButton(' Get ')
+                button.url = commit
+                button.clicked.connect(partial(self.getSpecificZip, commit))
+                self.formLayout.addRow(button, QLabel(comment))
+
+        # self.activateButton.clicked.connect(self.activate)
+        self.startPos = None
+        self.move(0,0)
+
+    def getSpecificZip(self, url):
+        self.selectedUrl = url
+        self.accept()
+
+
+class PickListDialog(UpdateBaseDialog):
+    assignSignal = Signal(str, str)
+
+    def __init__(self, rigName=str, parent=None, title='title!!!?', text='what  what?', itemList=list()):
+        super(PickListDialog, self).__init__(parent=parent, title=title, text=text)
+        self.rigName = rigName
+        buttonLayout = QHBoxLayout()
+        self.assignButton = QPushButton('Assign')
+        self.assignButton.clicked.connect(self.assignPressed)
+        self.cancelButton = QPushButton('Cancel')
+        self.cancelButton.clicked.connect(self.close)
+
+        self.itemComboBox = QComboBox()
+        for item in itemList:
+            self.itemComboBox.addItem(item)
+        self.layout.addWidget(self.itemComboBox)
+        self.layout.addLayout(buttonLayout)
+        buttonLayout.addWidget(self.assignButton)
+        buttonLayout.addWidget(self.cancelButton)
+
+    def assignPressed(self):
+        self.assignSignal.emit(str(self.itemComboBox.currentText()), str(self.rigName))
+        self.close()
+
+
+class UpdateButton(QPushButton):
+    """
+    UI menu item for anim layer tab,
+    subclass this and add to the _showMenu function, or just add menu items
+    """
+
+    def __init__(self, icon=baseIconFile, toolTip='Close'):
+        super(UpdateButton, self).__init__()
+        # self.setIcon(QIcon(":/{0}".format('closeTabButton.png')))
+        self.setFixedSize(18 * dpiScale(), 18 * dpiScale())
+
+        pixmap = QPixmap(os.path.join(IconPath, icon))
+        icon = QIcon(pixmap)
+
+        self.setIcon(icon)
+
+        self.setFlat(True)
+        self.setToolTip(toolTip)
+        self.setStyleSheet("background-color: transparent;border: 0px")
+        self.setStyleSheet(getqss.getStyleSheet())
