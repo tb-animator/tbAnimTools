@@ -11,13 +11,13 @@ class Header(QLabel):
         self.setStyleSheet("font-weight: bold; font-size: 18px;")
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-class SubHeader(QLabel):
+class subHeader(QLabel):
     """
     label with wordwrap
     """
 
     def __init__(self, label=str()):
-        super(SubHeader, self).__init__()
+        super(subHeader, self).__init__()
         self.setText(label)
         self.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)

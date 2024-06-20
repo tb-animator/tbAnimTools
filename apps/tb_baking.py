@@ -331,13 +331,13 @@ class BakeTools(toolAbstractFactory):
         crossSizeWidget.changedSignal.connect(self.updatePreview)
         worldOffsetSizeWidget.changedSignal.connect(self.updatePreview)
 
-        constraintChannelHeader = SubHeader('Constraint Channels')
+        constraintChannelHeader = subHeader('Constraint Channels')
         constraintChannelInfo = infoLabel([
             'Turn this option on to make the bake to temp control functions only constrain up the highlighted channelBox attributes.'])
         constraintChannelWidget = optionVarBoolWidget('Constrain Highlighted Channels',
                                                       self.tbTempControlChannelOption)
 
-        tempControlHeader = SubHeader('Bake Simulation')
+        tempControlHeader = subHeader('Bake Simulation')
         tempControlInfo = infoLabel(['When baking many objects it is often faster to use simulation.',
                                      'Experiment to see where the threshold lies on your machine. Set the value below to automatically toggle bake sim when baking many objects'])
 
@@ -345,7 +345,7 @@ class BakeTools(toolAbstractFactory):
                                                 defaultValue=10,
                                                 label='Bake Simulation when baking more than > objects',
                                                 minimum=1, maximum=100, step=1)
-        motionTrailHeader = SubHeader('Motion Trails')
+        motionTrailHeader = subHeader('Motion Trails')
         motionTrailInfo = infoLabel(['Add motion trails to newly created temp controls.'])
         motionTrailWidget = optionVarBoolWidget('Motion Trail On Temp Controls',
                                                 self.tbTempControlMotionTrailOption)

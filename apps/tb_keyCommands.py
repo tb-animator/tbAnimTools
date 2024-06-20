@@ -433,7 +433,7 @@ class mainHotkeyWindow(QMainWindow):
 class CommandHelpWidget(QWidget):
     def __init__(self, name, parent=None, cls=None):
         super(CommandHelpWidget, self).__init__(parent)
-        self.titleLabel = SubHeader(name)
+        self.titleLabel = subHeader(name)
         self.mainLayout = QVBoxLayout()
         self.setLayout(self.mainLayout)
 

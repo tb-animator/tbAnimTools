@@ -231,7 +231,7 @@ class SpaceSwitch(toolAbstractFactory):
     def optionUI(self):
         super(SpaceSwitch, self).optionUI()
 
-        sub = SubHeader('Baking Timeline Option')
+        sub = subHeader('Baking Timeline Option')
         infoText1 = QLabel('<b>Full Timeline</b> - The uncropped timeline range will be used to bake')
         infoText2 = QLabel('<b>Visible Timeline</b> - The currently visible timeline range will be used')
         infoText3 = QLabel('<b>All Keys</b> - Force the time range to be the the full key range of your controls')

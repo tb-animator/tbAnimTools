@@ -41,7 +41,7 @@ from colorsys import rgb_to_hls, hls_to_rgb
 import getStyleSheet as getqss
 from .tb_UIScale import dpiScale, dpiFontScale, defaultFont, boldFont, semiBoldFont, adjust_color_lightness, \
     darken_color, hex_to_rgb, rgb_to_hex, getColourBasedOnRGB, darken_hex_color, generate_linear_gradient
-from .tb_labels import Header, SubHeader, infoLabel, QBoldLabel, DropShadowLabel
+from .tb_labels import Header, subHeader, infoLabel, QBoldLabel, DropShadowLabel
 from .tb_collapsingWidgets import CollapsibleBox
 from .tb_promptWidget import promptWidget, InfoPromptWidget, raiseOk, raiseError
 from .tb_buttons import ToolTipPushButton, MiniButton, LockButton, AnimLayerTabButton, GraphToolbarButton, HelpButton, SimpleIconButton, \
