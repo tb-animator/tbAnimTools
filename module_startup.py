@@ -57,7 +57,7 @@ class initialise(object):
             try:
                 self.check_for_updates()
             except Exception as e:
-                pm.error(e)
+                pm.warning(e)
             #self.loadRMB()
         import apps.tb_optionVars as tbo
         #import apps.tb_keyCommands as tb_hotKeys
