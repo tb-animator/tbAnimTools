@@ -1760,21 +1760,21 @@ class Pickwalk(toolAbstractFactory):
         sel = cmds.ls(sl=True)
 
         if not sel:
-            return None, None
+            return None, None, None
         if ':' in sel[0]:
             namespace = sel[0].split(':')[0]
         refName, refState = self.funcs.getRefName(sel[0])
         if not refName:
             refName = self.funcs.getRefNameFromTopParent(sel[0])
             if refName == -1:
-                return None, None
+                return None, None, None
         # print ('getCurrentRig', refName)
 
         if refName in Pickwalk().walkDataLibrary._fileToMapDict.keys():
             mapName = Pickwalk().walkDataLibrary._fileToMapDict[refName]
             fname = os.path.join(Pickwalk().defaultPickwalkDir, mapName + '.json')
             if not os.path.isfile(fname):
-                return None, mapName
+                return None, mapName, namespace
         return fname, mapName, namespace
 
     def loadLibraryForCurrent(self):
