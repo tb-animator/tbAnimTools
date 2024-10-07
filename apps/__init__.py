@@ -7,6 +7,7 @@ import maya.mel as mel
 import maya.OpenMayaUI as omUI
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as oma2
+import maya.OpenMaya as om
 from maya.api import OpenMaya
 from copy import deepcopy
 
