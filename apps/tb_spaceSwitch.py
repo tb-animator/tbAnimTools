@@ -375,7 +375,7 @@ class SpaceSwitch(toolAbstractFactory):
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
         # make this better...?
-
+        print ('self.markingMenuWidget', self.markingMenuWidget)
         if sel:
             menuDict['NW'].append(
                 ToolboxButton(label='switch to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
@@ -894,6 +894,7 @@ class SpaceSwitch(toolAbstractFactory):
                             continue
                         p_attr = s + '.' + attrName
                         spaceValues = self.funcs.get_enums(p_attr)
+
                         all_spaces.append(spaceValues)
 
                         allAttrNames.append(attrName)
@@ -901,12 +902,14 @@ class SpaceSwitch(toolAbstractFactory):
                         dataControls[namespace + ':' + control + '.' + attrName] = namespace + ':' + control
                         self.loadedSpaceData[rigName].addControlsWithMatchingAttribute(namespace, [control], attrName)
                         # set the default values based on existing values
+
                         index = cmds.getAttr(namespace + ':' + control + '.' + attrName)
-                        value = spaceValues[index]
+                        value = list(spaceValues.keys())[list(spaceValues.values()).index(index)]
+
                         self.loadedSpaceData[rigName].__dict__[str_spaceGlobalValues][control + '.' + attrName] = \
-                            spaceValues.keys()[0]
+                            list(spaceValues.keys())[0]
                         self.loadedSpaceData[rigName].__dict__[str_spaceLocalValues][control + '.' + attrName] = \
-                            spaceValues.keys()[-1]
+                            list(spaceValues.keys())[-1]
                         self.loadedSpaceData[rigName].__dict__[str_spaceDefaultValues][control + '.' + attrName] = value
                         SpaceSwitch().saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
                         SpaceSwitch().loadAllCharacters()

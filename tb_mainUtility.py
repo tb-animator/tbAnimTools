@@ -125,7 +125,6 @@ def set_default_values():
             set_option_var(translate_optionVar, modes)
 
         default_rotations = ['Local', 'World', 'Gimbal']
-        set_option_var(rotate_optionVar)
         set_option_var(rotate_optionVar, default_rotations)
 
         default_keys = ['spline', 'linear', 'step']
