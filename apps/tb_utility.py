@@ -129,7 +129,7 @@ class Utility(toolAbstractFactory):
     def drawMenuBar(self, parentMenu):
         return None
 
-    def reinstall(self):
+    def reinstall(self, *args):
         base_dir = os.path.join(os.path.normpath(os.path.dirname(__file__)), os.pardir)
         zipLocation = 'https://github.com/tb-animator/tbAnimTools/archive/refs/heads/main.zip'
         filedata = urlopen(zipLocation)
