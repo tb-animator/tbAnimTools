@@ -71,7 +71,7 @@ def getStyleSheet():
     return st
 
 
-from tb_UI import *
+from apps.tb_UI import *
 
 # temp stylesheet here just in case
 styleSheet = '''

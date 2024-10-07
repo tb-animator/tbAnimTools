@@ -22,7 +22,7 @@
 
 *******************************************************************************
 '''
-from tb_UI import *
+from apps.tb_UI import *
 # TODO - make add to shelf button
 # TODO - add images and overlay labels to commands
 # TODO - add copy to clipboard for command/figure out drag drop to marking menu editor

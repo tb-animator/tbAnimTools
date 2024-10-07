@@ -377,7 +377,6 @@ class SnapTools(toolAbstractFactory):
                 jointOrient = [0]
 
             if any(jointOrient) != 0:
-
                 cmds.xform(sel[0], relative=False, worldSpace=True, translation=pos)
                 cmds.xform(sel[0], relative=False, worldSpace=True, rotation=rot)
             else:
@@ -394,6 +393,8 @@ class SnapTools(toolAbstractFactory):
                     cmds.xform(sel[0], relative=True, translation=pos)
             return
         for s in sel:
+            pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
+            rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
             if cmds.attributeQuery('jointOrient', node=sel[0], exists=True):
                 jointOrient = cmds.getAttr(sel[0] + '.jointOrient')[0]
             else:
@@ -403,8 +404,6 @@ class SnapTools(toolAbstractFactory):
                 cmds.xform(sel[0], relative=False, translation=pos)
                 continue
             else:
-                pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
-                rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
                 storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))
                 if rot:
                     #self.set_world_rotation(s, rot)
