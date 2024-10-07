@@ -28,7 +28,14 @@ defaultSides = {'left': '_l_', 'right': '_r_'}
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
 from . import *
+import sys
 
+if sys.version_info >= (2, 8):
+    from urllib.request import *
+else:
+    from urllib2 import *
+import zipfile
+from distutils.dir_util import copy_tree
 __author__ = 'tom.bailey'
 
 class hotkeys(hotKeyAbstractFactory):
@@ -36,6 +43,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.setCategory(self.helpStrings.category.get('view'))
         self.commandList = list()
 
+        self.addCommand(self.tb_hkey(name='tbAnimToolsReinstall',
+                                     annotation='Runs the installer again to force an update',
+                                     category='Installation',
+                                     command=['Utility.reinstall()']))
         return self.commandList
 
     def assignHotkeys(self):
@@ -117,3 +128,29 @@ class Utility(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         return None
+
+    def reinstall(self):
+        base_dir = os.path.join(os.path.normpath(os.path.dirname(__file__)), os.pardir)
+        zipLocation = 'https://github.com/tb-animator/tbAnimTools/archive/refs/heads/main.zip'
+        filedata = urlopen(zipLocation)
+        datatowrite = filedata.read()
+        zipFile = os.path.join(base_dir, 'tbAnimToolsLatest.zip')
+        with open(zipFile, 'wb') as f:
+            f.write(datatowrite)
+
+        destinationPath = os.path.normpath(os.path.join(base_dir, 'extract'))
+        with zipfile.ZipFile(zipFile, 'r') as zip_ref:
+            zip_ref.extractall(destinationPath)
+        destinationPathFinal = os.path.normpath(os.path.join(base_dir))
+
+        copy_tree(os.path.join(destinationPath, 'tbAnimTools-main'), destinationPathFinal)
+
+        message_state = cmds.optionVar(query="inViewMessageEnable")
+        cmds.optionVar(intValue=("inViewMessageEnable", 1))
+        cmds.inViewMessage(amg='tbAnimTools update complete',
+                           pos='botRight',
+                           dragKill=True,
+                           fadeOutTime=10.0,
+                           fade=False)
+        cmds.optionVar(intValue=("inViewMessageEnable", message_state))
+

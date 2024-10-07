@@ -102,7 +102,10 @@ QPushButton:hover
     border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);
 }
 '''
-
+def getMainWindow():
+    if not cmds.about(batch=True):
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    return None
 class tbAnimToolsInstaller(QDialog):
     oldPos = None
 

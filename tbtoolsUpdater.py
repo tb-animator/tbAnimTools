@@ -253,6 +253,7 @@ class updater():
         # get the project data as a json
         self.jsonProjectData = json.load(open(self.versionDataFile))
 
+
         self.data = self.getGithubData()
 
         self.getPreviousCommits()
@@ -262,7 +263,6 @@ class updater():
 
         # the most recent of the published/released versions
         self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
-
 
         # convert the time format to the version format
         self.currentVersion = self.convertDateFromString(self.jsonProjectData.get('version', self.lastPush))
@@ -298,8 +298,9 @@ class updater():
         for sha, url, comment in zip(shaList, urlList, commentList):
             commitData = {'sha': sha,'url': url,'comment': comment}
             newCommits.append(commitData)
-        for commit in newCommits.reversed():
-            self.jsonProjectData['previousCommits'].insert(0, commit)
+        if newCommits:
+            for commit in newCommits.reverse():
+                self.jsonProjectData['previousCommits'].insert(0, commit)
         self.saveNewCommitInfo()
 
     def downloadHelpImages(self):
