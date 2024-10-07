@@ -11,7 +11,7 @@ class filePathWidget(QWidget):
     def __init__(self, optionVar, defaultValue, requiresRestart=False):
         super(filePathWidget, self).__init__()
         self.optionVar = optionVar
-        self.path = pm.optionVar.get(self.optionVar, defaultValue)
+        self.path = get_option_var(self.optionVar, defaultValue)
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
         self.pathLabel = QLabel('Path:')
@@ -28,7 +28,7 @@ class filePathWidget(QWidget):
         selected_directory = ft.selectDirectory(basePath=self.path)
 
         if selected_directory:
-            pm.optionVar[self.optionVar] = selected_directory
+            cmds.optionVar(stringValue=(self.optionVar, selected_directory))
             self.path = selected_directory
             self.pathLineEdit.setText(self.path)
         if self.requiresRestart:

@@ -1,21 +1,29 @@
 from __future__ import absolute_import
 from __future__ import print_function
-import pymel.core as pm
+import maya.cmds as cmds
 import os
 import sys
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
+qtVersion = cmds.about(qtVersion=True)
+QTVERSION = int(qtVersion.split('.')[0])
+if QTVERSION < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     # from pysideuic import *
     from shiboken import wrapInstance
-else:
+
+elif QTVERSION < 6:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
     # from pyside2uic import *
     from shiboken2 import wrapInstance
+else:
+    from PySide6.QtWidgets import *
+    from PySide6.QtGui import *
+    from PySide6.QtCore import *
+    # from pyside2uic import *
+    from shiboken6 import wrapInstance
 
 qssFile = os.path.abspath(os.path.join(os.path.dirname(__file__), 'darkorange.qss'))
 
@@ -40,7 +48,7 @@ qInitResources()
 
 def getStyleSheet():
     if not os.path.isfile(qssFile):
-        return pm.warning('stylesheet file not found')
+        return cmds.warning('stylesheet file not found')
     with open(qssFile, 'r') as f:
         return f.read()
 

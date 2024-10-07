@@ -25,23 +25,8 @@
 """
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
-import pymel.core as pm
-import maya.cmds as cmds
+from . import *
 
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
 
@@ -98,7 +83,7 @@ class CacheTool(toolAbstractFactory):
     __instance = None
     toolName = 'CacheTool'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     gpuCachExportOption = 'tbGpuCacheDir'
     gpuCachImportTypeOption = 'tbGpuCacheType'
@@ -120,7 +105,7 @@ class CacheTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -160,10 +145,10 @@ class CacheTool(toolAbstractFactory):
             return False
 
     def getExportFolder(self):
-        if not pm.optionVar.get(self.gpuCachExportOption, None):
+        if not get_option_var(self.gpuCachExportOption, None):
             self.selectDirectory()
 
-        return pm.optionVar.get(self.gpuCachExportOption, None)
+        return get_option_var(self.gpuCachExportOption, None)
 
     def selectDirectory(self, *args):
         dialog = QFileDialog(None, caption="Pick GPU Cache Folder")
@@ -174,7 +159,7 @@ class CacheTool(toolAbstractFactory):
         selected_directory = dialog.getExistingDirectory()
 
         if selected_directory:
-            pm.optionVar[self.gpuCachExportOption] = selected_directory
+            set_option_var(self.gpuCachExportOption, selected_directory)
 
     def loadDataForCharacters(self, characters):
         namespaceToCharDict = dict()
@@ -203,9 +188,8 @@ class CacheTool(toolAbstractFactory):
         self.loadDataForCharacters(characters)
 
         for s in sel:
-            p = pm.PyNode(s)
-            namespace = p.namespace()
-            obj = p.stripNamespace()
+            namespace = self.funcs.namespace(s)
+            obj = self.funcs.stripNamespace(s)
             refname = self.namespaceToCharDict[namespace]
 
             if obj not in self.loadedMeshData[refname].meshGroups:
@@ -258,7 +242,7 @@ class CacheTool(toolAbstractFactory):
             self.loadReferenceFromCache(s)
 
     def getSkinCLustersForNamespace(self, ns):
-        skinClusters = pm.ls(ns + ':*', type='skinCluster')
+        skinClusters = cmds.ls(ns + ':*', type='skinCluster')
         meshes = [str(a) for b in [n.outputGeometry.connections() for n in skinClusters] for a in b if a]
         visibleMeshes = [m for m in meshes if self.isNodeVisible(m)]
         return visibleMeshes
@@ -270,8 +254,8 @@ class CacheTool(toolAbstractFactory):
         if not outputFolder:
             return cmds.warning('No output folder selected')
         if abc:
-            pm.select(exportObjects)
-            objs = pm.ls(sl=True, long=True)
+            cmds.select(exportObjects)
+            objs = cmds.ls(sl=True, long=True)
             objString = ['-root ' + str(o) for o in objs]
             objString = ' '.join(objString)
             filePath = os.path.join(outputFolder, name + '.abc')
@@ -283,7 +267,7 @@ class CacheTool(toolAbstractFactory):
                 startTime=int(startTime),
                 endTime=int(endTime),
             )
-            print (cmdString)
+
             mel.eval(cmdString)
         else:
             cmds.gpuCache(exportObjects,
@@ -305,25 +289,25 @@ class CacheTool(toolAbstractFactory):
         if alembic:
             mode = self.gpuCacheType_values[1]
         if not mode:
-            mode = pm.optionVar.get(self.gpuCachImportTypeOption, self.gpuCacheType_default)
+            mode = get_option_var(self.gpuCachImportTypeOption, self.gpuCacheType_default)
         if mode == self.gpuCacheType_values[0]:
-            cacheNode = pm.createNode('gpuCache')
-            cacheNodeParent = cacheNode.getParent()
-            cacheNodeParent.rename(str(os.path.basename(filename)).split('.')[0])
-            cacheNode.cacheFileName.set(str(filename))
+            cacheNode = cmds.createNode('gpuCache')
+            cacheNodeParent = cmds.listRelatives(cacheNode, parent=True)[0]
+            cacheNodeParent = cmds.rename(cacheNodeParent, str(os.path.basename(filename)).split('.')[0])
+            cmds.setAttr(cacheNode + ".cacheFileName", str(filename))
         else:
             cacheNodeParent = self.funcs.tempControl(name=str(os.path.basename(filename)).split('.')[0],
                                                      suffix='Root',
                                                      drawType='flatRotator')
             alembicNode = cmds.AbcImport(filename, mode="import")
             cacheNodes = cmds.listConnections(alembicNode + '.outPolyMesh')
-            pm.parent(cacheNodes, cacheNodeParent)
+            cmds.parent(cacheNodes, cacheNodeParent)
             childNode = cmds.listRelatives(str(cacheNodeParent), children=True,
                                            fullPath=True)
             for c in childNode:
                 cmds.rename(c, c.replace('|', '').split(':')[-1] + '_cache')
-            pm.addAttr(cacheNodeParent, ln='alembic', at='message')
-            pm.connectAttr(alembicNode + '.message', cacheNodeParent + '.alembic')
+            cmds.addAttr(cacheNodeParent, ln='alembic', at='message')
+            cmds.connectAttr(alembicNode + '.message', cacheNodeParent + '.alembic')
         return cacheNodeParent
 
     def importCacheDialog(self):

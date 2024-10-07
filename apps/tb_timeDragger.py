@@ -23,26 +23,9 @@
 *******************************************************************************
 '''
 
-import pymel.core as pm
-import maya.mel as mel
-from Abstract import hotKeyAbstractFactory
-import maya
-import maya.OpenMaya as om
-
+from . import *
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-import maya.cmds as cmds
+
 import maya.mel as mel
 from maya import OpenMayaUI as omui
 from Abstract import *
@@ -117,11 +100,11 @@ class TimeDragger(toolAbstractFactory):
     aPlayBackSliderPython = mel.eval('$tmpVar=$gPlayBackSlider')
     failsafe = None
     step_ctx = None
-    start_time = pm.getCurrentTime()
+    start_time = cmds.currentTime(query=True)
     dragPosition = []
     pressPosition = []
-    step = pm.optionVar.get("tb_step_size", 2)
-    even_only = pm.optionVar.get("tb_step_even", True)
+    step = get_option_var("tb_step_size", 2)
+    even_only = get_option_var("tb_step_even", True)
     # for maya 2016 dag evaluation madness
     evaluate_mode = ""
     initialPos = None
@@ -135,11 +118,11 @@ class TimeDragger(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
-        self.even_only = pm.optionVar.get(self.step_optionVar, True)
+        self.funcs = Functions()
+        self.even_only = get_option_var(self.step_optionVar, True)
         self.update_options()
         self.previous_tool = self.get_previous_ctx()
-        self.step_ctx = pm.draggerContext(name='step_ctx',
+        self.step_ctx = cmds.draggerContext(name='step_ctx',
                                           pressCommand=self.step_drag_press,
                                           dragCommand=self.step_drag_dragged,
                                           # releaseCommand=self.step_drag_released,
@@ -182,15 +165,15 @@ class TimeDragger(toolAbstractFactory):
 
     # in case you change the options mid session
     def update_options(self):
-        self.MessagePos = pm.optionVar.get(self.messagePos, 'topLeft')
-        self.showMessage = pm.optionVar.get(self.messageVar, 0)
-        self.toggle_background = pm.optionVar.get(self.optionVar, 0)
+        self.MessagePos = get_option_var(self.messagePos, 'topLeft')
+        self.showMessage = get_option_var(self.messageVar, 0)
+        self.toggle_background = get_option_var(self.optionVar, 0)
 
     def get_previous_ctx(self):
-        if pm.currentCtx() == "TimeDragger" or pm.currentCtx() == "step_ctx":
+        if cmds.currentCtx() == "TimeDragger" or cmds.currentCtx() == "step_ctx":
             previous_tool = 'selectSuperContext'
         else:
-            previous_tool = pm.currentCtx()
+            previous_tool = cmds.currentCtx()
         return previous_tool
 
     def drag(self, state):
@@ -216,7 +199,7 @@ class TimeDragger(toolAbstractFactory):
                                        message=' : %s' % msg,
                                        position=self.MessagePos
                                        )
-            pm.setCurrentTime(int(pm.getCurrentTime()))
+            cmds.currentTime(int(cmds.currentTime(query=True)))
             cmds.displayPref(displayGradient=self.background_state)
             mel.eval('invokeLastAction')
 
@@ -236,8 +219,8 @@ class TimeDragger(toolAbstractFactory):
                 self.evaluate_mode = cmds.evaluationManager(mode='off')
             except:
                 pass
-            self.step = pm.optionVar.get(self.stepFrameCount_var, 1)
-            self.even_only = pm.optionVar.get(self.step_optionVar, True)
+            self.step = get_option_var(self.stepFrameCount_var, 1)
+            self.even_only = get_option_var(self.step_optionVar, True)
             # print ("step even", self.even_only)
             cmds.setToolTo(self.step_ctx)
         else:
@@ -251,26 +234,26 @@ class TimeDragger(toolAbstractFactory):
 
     # Procedure called on press
     def step_drag_press(self):
-        self.pressPosition = pm.draggerContext(self.step_ctx, query=True, anchorPoint=True)
-        self.start_time = pm.getCurrentTime()
+        self.pressPosition = cmds.draggerContext(self.step_ctx, query=True, anchorPoint=True)
+        self.start_time = cmds.currentTime(query=True)
 
     # Procedure called on drag
     def step_drag_dragged(self):
-        self.dragPosition = pm.draggerContext(self.step_ctx, query=True, dragPoint=True)
+        self.dragPosition = cmds.draggerContext(self.step_ctx, query=True, dragPoint=True)
         distance = self.dragPosition[0] - self.pressPosition[0]
         step_destination = self.start_time + int(distance * 0.05) * self.step
         if self.even_only:
             # snap to odd frames only
             step_destination = int(step_destination / 2) * 2 + 1
 
-        pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
+        cmds.currentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
 
     def step_drag_released(self):
         mel.eval('invokeLastAction')
 
     # this should reset the drag state when the tool is changed, in case you press alt or the windows key when dragging
     def failsafe_scriptjob(self):
-        return pm.scriptJob(runOnce=True, event=['ToolChanged', partial(self.drag, False)])
+        return cmds.scriptJob(runOnce=True, event=['ToolChanged', partial(self.drag, False)])
 
     def info(self):
         pass
@@ -295,30 +278,30 @@ class TimeDragger(toolAbstractFactory):
         if self.even_only:
             # snap to odd frames only
             step_destination = int(step_destination / 2) * 2 + 1
-        if pm.optionVar.get(self.step_unconstrained, False):
-            pm.setCurrentTime(step_destination)
+        if get_option_var(self.step_unconstrained, False):
+            cmds.currentTime(step_destination)
         else:
-            pm.setCurrentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
+            cmds.currentTime(max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
 
     def timeDragSmoothMouseMoved(self, startPos, currentPos):
         distance = currentPos - self.initialPos
         step_destination = self.start_time + (distance * 0.05)
-        if pm.optionVar.get(self.step_unconstrained, False):
-            # pm.setCurrentTime(step_destination)
+        if get_option_var(self.step_unconstrained, False):
+            # cmds.currentTime(step_destination)
             om.MAnimControl.setCurrentTime(step_destination)
         else:
             om.MAnimControl.setCurrentTime(
                 max(self.funcs.getTimelineMin(), min(step_destination, self.funcs.getTimelineMax())))
 
     def timeDragMouseWheel(self, value):
-        pm.setCurrentTime(pm.currentTime(query=True) + value)
+        cmds.currentTime(cmds.currentTime(query=True) + value)
         self.initialPos = QCursor.pos().x()
-        self.start_time = pm.getCurrentTime()
+        self.start_time = cmds.currentTime(query=True)
 
     def timeDrag(self):
         self.timeDragWidget = TimeDragDialog()
         self.initialPos = QCursor.pos().x()
-        self.start_time = pm.getCurrentTime()
+        self.start_time = cmds.currentTime(query=True)
         self.timeDragWidget.mouseMovedSignal.connect(self.timeDragMouseMoved)
         self.timeDragWidget.mouseWheelSignal.connect(self.timeDragMouseWheel)
         self.timeDragWidget.updateInitialSignal.connect(self.setInitialPos)
@@ -327,7 +310,7 @@ class TimeDragger(toolAbstractFactory):
     def timeDragSmooth(self):
         self.timeDragWidget = TimeDragDialog()
         self.initialPos = QCursor.pos().x()
-        self.start_time = pm.getCurrentTime()
+        self.start_time = cmds.currentTime(query=True)
         cmds.timeControl(self.aPlayBackSliderPython, edit=True, snap=False)
         self.timeDragWidget.mouseMovedSignal.connect(self.timeDragSmoothMouseMoved)
         self.timeDragWidget.mouseWheelSignal.connect(self.timeDragMouseWheel)
@@ -492,7 +475,7 @@ class TimeDragDialog(QDialog):
     shiftDownTime = None
     isUpdating = False
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
         super(TimeDragDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
@@ -517,7 +500,7 @@ class TimeDragDialog(QDialog):
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -540,13 +523,13 @@ class TimeDragDialog(QDialog):
             # print ('returnButton', delta)
             self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
         else:
-            self.keyPressHandler = markingMenuKeypressHandler(UI=self)
+            self.keyPressHandler = getMarkingMenuFilter(UI=self, name='TimeDragger')
             self.app.installEventFilter(self.keyPressHandler)
 
     def show(self):
         """Sow and initialize"""
         widgetStr = mel.eval('$gPlayBackSlider=$gPlayBackSlider')
-        ptr = omui.MQtUtil.findControl(widgetStr)
+        ptr = omUI.MQtUtil.findControl(widgetStr)
         self.slider = wrapInstance(int(ptr), QWidget)
         min_time = cmds.playbackOptions(query=True, minTime=True)
         max_time = cmds.playbackOptions(query=True, maxTime=True)
@@ -623,9 +606,9 @@ class TimeDragDialog(QDialog):
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(lineColor))
-        qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Clear)
 
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
         qp.setBrush(QBrush(blank))
         qp.drawRoundedRect(0, 0, self.width(), self.height(), 8, 8)
@@ -690,7 +673,7 @@ class TimeDragDialog(QDialog):
 
     def keyPressEvent(self, event):
 
-        if event.type() == event.KeyPress:
+        if event.type() == QEvent.KeyPress:
             if self.recentlyOpened:
                 if event.key() is not None and event.key() != Qt.Key_Shift:
                     self.invokedKey = event.key()

@@ -39,7 +39,7 @@ class ObjectSelectLineEdit(QWidget):
 
     def pickObject(self):
         # print ('pickObject')
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         objectList = list()
         if not sel:
             return
@@ -110,7 +110,7 @@ class ObjectSelectLineEditNoLabel(QLineEdit):
 
     def pickObject(self):
         # print ('pickObject')
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         objectList = list()
         if not sel:
             return
@@ -219,7 +219,7 @@ class ChannelSelectLineEdit(QWidget):
     def pickChannel(self, *args):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            return pm.warning('no channel selected')
+            return cmds.warning('no channel selected')
         refState = cmds.referenceQuery(channels[0].split('.')[0], isNodeReferenced=True)
 
         if refState:

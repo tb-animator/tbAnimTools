@@ -134,5 +134,5 @@ class TranslucentWidget(QWidget):
         qp.end()
 
     def _onclose(self):
-        print("Close")
+        # print("Close")
         self.SIGNALS.CLOSE.emit()

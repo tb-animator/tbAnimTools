@@ -6,7 +6,7 @@ class CustomDialog(QDialog):
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(0.9)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()

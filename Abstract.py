@@ -2,43 +2,31 @@ from __future__ import print_function
 import abc
 import re
 import os
-import pymel.core as pm
+import maya.cmds as cmds
 import maya.mel as mel
 import json
 import textwrap
 import shutil
 from functools import partial
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 # maya module imports
-import maya.cmds as cmds
-from apps.tb_functions import functions
-import tb_helpStrings
+
+from tb_mainFunctions import Functions
+from tb_mainUtility import *
+from callback import create_callback
+import tb_mainHelpStrings
 
 from apps.tb_UI import *
-from apps.tb_UI import *
-import maya
 import apps.tb_fileTools as ft
 
 # compatible with Python 2 *and* 3:
 ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})
 
-
 class hotKeyAbstractFactory(ABC):
     # __metaclass__ = abc.ABCMeta
     category = 'tbtools'
     commandList = list()
-    helpStrings = tb_helpStrings
+    helpStrings = tb_mainHelpStrings
 
     def __init__(self, **kwargs):
         pass
@@ -147,7 +135,7 @@ class toolAbstractFactory(ABC):
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotKeyAbstractFactory()
-        self.funcs = functions()
+        self.funcs = Functions()
         self.dataPath = None
     """
     Declare an interface for operations that create abstract product
@@ -176,7 +164,7 @@ class toolAbstractFactory(ABC):
         return None
 
     def initData(self):
-        baseDataPath = pm.optionVar.get(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         self.dataPath = os.path.join(baseDataPath, 'appData')
         if not os.path.isdir(self.dataPath):
             os.makedirs(self.dataPath)
@@ -200,7 +188,7 @@ class toolAbstractFactory(ABC):
         jsonFile.close()
 
     def revertAppData(self):
-        pm.optionVar['mainDataOption'] = os.path.normpath(os.path.dirname(__file__))
+        set_option_var('mainDataOption', os.path.normpath(os.path.dirname(__file__)))
         mel.eval('SavePreferences')
         raiseOk('appData location reverted to default/n'
                 'RESTART MAYA NOW',
@@ -211,8 +199,7 @@ class toolAbstractFactory(ABC):
         Copy the appData folder to a nother location
         :return:
         """
-        print('copying')
-        baseDataPath = pm.optionVar.get(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         dataPath = os.path.join(baseDataPath, 'appData')
         selected_directory = ft.selectDirectory(baseDataPath)
         if not selected_directory:
@@ -227,7 +214,7 @@ class toolAbstractFactory(ABC):
             # set the current data path to the new location
             self.dataPath = selected_directory
             # set the option variable and save preferences
-            pm.optionVar[self.mainDataOption] = selected_directory
+            set_option_var(self.mainDataOption, selected_directory)
             mel.eval('SavePreferences')
         except:
             raiseError('Failed to copy appData folder to new location')
@@ -276,7 +263,7 @@ class toolAbstractFactory(ABC):
     def drawPreview(self, optionVar=str(), drawType='orb'):
         self.funcs.tempControl(name='temp',
                                suffix='Preview',
-                               scale=pm.optionVar.get(optionVar, 1),
+                               scale=get_option_var(optionVar, 1),
                                drawType=drawType)
 
     def createAsset(self, name, imageName=None, transform=False, assetTag=str(), assetCommandName=str()):
@@ -292,10 +279,10 @@ class toolAbstractFactory(ABC):
                                    includeTransform=True,
                                    )
         if imageName:
-            pm.setAttr(asset + '.iconName', imageName, type="string")
+            cmds.setAttr(asset + '.iconName', imageName, type="string")
         if assetTag:
-            pm.addAttr(asset, ln='assetTag', dt='string')
-            pm.setAttr(asset + '.assetTag', assetTag, type="string")
+            cmds.addAttr(asset, ln='assetTag', dt='string')
+            cmds.setAttr(asset + '.assetTag', assetTag, type="string")
         if not assetCommandName:
             cmds.setAttr(asset + '.rmbCommand', self.assetCommandName, type='string')
         else:
@@ -336,34 +323,34 @@ class toolAbstractFactory(ABC):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'
         cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = pm.ls(sl=True)
-        asset = pm.container(query=True, findContainer=sel[0])
+        sel = cmds.ls(sl=True)
+        asset = cmds.container(query=True, findContainer=sel[0])
 
         cmds.menuItem(label=self.assetTitleLabel, enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Bake selected temp pivots to layer',
-                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
-        cmds.menuItem(label='Bake all temp pivots to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
-        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
-        cmds.menuItem(label='Delete all temp pivots', command=pm.Callback(self.deleteControlsCommand, asset, sel))
+                      command=create_callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp pivots to layer', command=create_callback(self.bakeAllCommand, asset, sel))
+        # cmds.menuItem(label='Bake out to layer', command=create_callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete all temp pivots', command=create_callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
-    def bakeSelectedCommand(self, asset, sel):
-        targets = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
-        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+    def bakeSelectedCommand(self, asset, sel, *args):
+        targets = [x for x in sel if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [cmds.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
         bakeRange = self.funcs.getBakeRange(filteredTargets)
         self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
                                                    deleteConstraints=True)
-        pm.delete(filteredTargets)
+        cmds.delete(filteredTargets)
 
-    def bakeAllCommand(self, asset, sel):
-        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
-        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
-        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+    def bakeAllCommand(self, asset, sel, *args):
+        nodes = cmds.ls(cmds.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [cmds.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
         bakeRange = self.funcs.getBakeRange(filteredTargets)
         self.allTools.tools['BakeTools'].quickBake(filteredTargets, startTime=bakeRange[0], endTime=bakeRange[-1],
                                                    deleteConstraints=True)
-        pm.delete(asset)
+        cmds.delete(asset)
 
-    def deleteControlsCommand(self, asset, sel):
-        pm.delete(asset)
+    def deleteControlsCommand(self, asset, sel, *args):
+        cmds.delete(asset)

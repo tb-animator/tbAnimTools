@@ -22,24 +22,7 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    #from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    #from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-import maya.OpenMaya as OpenMaya
-import maya.OpenMayaUI as OpenMayaUI
-from Abstract import *
+from . import *
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -72,7 +55,7 @@ class TrackingCamera(toolAbstractFactory):
     __instance = None
     toolName = 'TrackingCamera'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     current_t = None
     current_r = None
@@ -90,7 +73,7 @@ class TrackingCamera(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -158,7 +141,7 @@ class TrackingCamera(toolAbstractFactory):
 
 
             if self.camera_target:
-                self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
+                self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)[0]
             self.setCameraTransform(self.trackerCam)
 
     def updateTrackTarget(self):
@@ -178,7 +161,7 @@ class TrackingCamera(toolAbstractFactory):
                 for c in self.constraint:
                     if cmds.objExists(c):
                         cmds.delete(c)
-            self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)
+            self.constraint = cmds.pointConstraint(self.camera_target, self.trackerGrp)[0]
             self.setCameraTransform(cam)
 
     def getCurrentCamera(self):

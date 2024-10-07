@@ -22,25 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.mel as mel
-from Abstract import *
-import maya
-import maya.cmds as cmds
-maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+from . import *
 
+maya.utils.loadStringResourcesForModule(__name__)
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -91,7 +75,7 @@ class Timeline(toolAbstractFactory):
     __instance = None
     toolName = 'Timeline'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     skipFramesOption = 'tb_skip'
 
@@ -104,7 +88,7 @@ class Timeline(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -137,10 +121,10 @@ class Timeline(toolAbstractFactory):
         return None
 
     def skip(self, mode=-1):
-        amount = pm.optionVar.get(self.skipFramesOption, 5)
-        pm.currentTime(int(amount * mode + pm.getCurrentTime()))
+        amount = get_option_var(self.skipFramesOption, 5)
+        cmds.currentTime(int(amount * mode + cmds.currentTime(query=True)))
 
-        pm.optionVar(intValue=(self.skipFramesOption, amount))
+        cmds.optionVar(intValue=(self.skipFramesOption, amount))
 
     def crop_start(self):
         if self.funcs.isTimelineHighlighted():

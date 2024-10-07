@@ -22,17 +22,8 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import tb_timeline as tl
-import maya.mel as mel
-import maya.cmds as cmds
-import maya.api.OpenMaya as om2
-import pymel.core.datatypes as dt
-import math
-from Abstract import *
+from . import *
 
-import maya.api.OpenMaya as OpenMaya
-import maya.OpenMaya as om
 
 xAx = om.MVector.xAxis
 yAx = om.MVector.yAxis
@@ -57,26 +48,12 @@ kRotateOrderMapping = {
     '4': om.MEulerRotation.kYXZ,
     '5': om.MEulerRotation.kZYX
 }
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 
-import maya.cmds as cmds
-import maya.api.OpenMaya as OpenMaya
 
-import maya.OpenMaya as om
 
 assetCommandName = 'aimToolAssetMenu'
 maya.utils.loadStringResourcesForModule(__name__)
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -138,7 +115,7 @@ class AimTools(toolAbstractFactory):
     __instance = None
     toolName = 'AimTools'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     foundControls = dict()  # use this to save the last used settings to a file
     axisDict = {'x': om.MVector.xAxis,
@@ -173,7 +150,7 @@ class AimTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
         self.target = None
         self.Ptarget = None
@@ -377,18 +354,18 @@ class AimTools(toolAbstractFactory):
         up = self.funcs.tempControl(name=name, suffix='upLoc', scale=data.get('scale', 1.0))
         aim = self.funcs.tempControl(name=name, suffix='fwdLoc', scale=data.get('scale', 1.0))
 
-        pm.addAttr(up, ln=self.mainAssetAttr, at='message')
-        pm.addAttr(aim, ln=self.mainAssetAttr, at='message')
-        pm.addAttr(up, ln=self.constraintTargetAttr, at='message')
-        pm.addAttr(up, ln=self.tempControlPairAttr, at='message')
-        pm.addAttr(aim, ln=self.constraintTargetAttr, at='message')
-        pm.addAttr(aim, ln=self.tempControlPairAttr, at='message')
-        pm.connectAttr(asset + '.message', up + '.' + self.mainAssetAttr)
-        pm.connectAttr(asset + '.message', aim + '.' + self.mainAssetAttr)
-        pm.connectAttr(target + '.message', up + '.' + self.constraintTargetAttr)
-        pm.connectAttr(target + '.message', aim + '.' + self.constraintTargetAttr)
-        pm.connectAttr(aim + '.message', up + '.' + self.tempControlPairAttr)
-        pm.connectAttr(up + '.message', aim + '.' + self.tempControlPairAttr)
+        cmds.addAttr(up, ln=self.mainAssetAttr, at='message')
+        cmds.addAttr(aim, ln=self.mainAssetAttr, at='message')
+        cmds.addAttr(up, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(up, ln=self.tempControlPairAttr, at='message')
+        cmds.addAttr(aim, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(aim, ln=self.tempControlPairAttr, at='message')
+        cmds.connectAttr(asset + '.message', up + '.' + self.mainAssetAttr)
+        cmds.connectAttr(asset + '.message', aim + '.' + self.mainAssetAttr)
+        cmds.connectAttr(target + '.message', up + '.' + self.constraintTargetAttr)
+        cmds.connectAttr(target + '.message', aim + '.' + self.constraintTargetAttr)
+        cmds.connectAttr(aim + '.message', up + '.' + self.tempControlPairAttr)
+        cmds.connectAttr(up + '.message', aim + '.' + self.tempControlPairAttr)
 
         self.locators.extend([str(up), str(aim)])
         self.controlInfo[target] = [str(aim), aimAxis, str(up), upAxis]
@@ -397,8 +374,8 @@ class AimTools(toolAbstractFactory):
 
         fwdPos = self.getPosition(target, self.getAxis(data['aimAxis'], data['flipAim']), data['distance'])
         upPos = self.getPosition(target, self.getAxis(data['upAxis'], data['flipUp']), data['distance'])
-        aim.translate.set(fwdPos)
-        up.translate.set(upPos)
+        cmds.setAttr(aim + '.translate', *fwdPos)
+        cmds.setAttr(up + '.translate', *upPos)
 
         self.constraints.append(cmds.parentConstraint(target, str(aim),
                                                       maintainOffset=True,
@@ -417,19 +394,19 @@ class AimTools(toolAbstractFactory):
                                              'scale': data.get('scale', 1.0)
                                              }
 
-        pm.container(asset, edit=True,
-                     includeHierarchyBelow=True,
-                     force=True,
-                     addNode=[up, aim])
-        pm.container(asset, edit=True,
-                     includeHierarchyBelow=True,
-                     force=True,
-                     addNode=self.constraints)
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=[up, aim])
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=self.constraints)
 
-        if pm.optionVar.get(self.aimFwdMotionTrailOption, False):
+        if get_option_var(self.aimFwdMotionTrailOption, False):
             cmds.select(str(aim), replace=True)
             mel.eval('createMotionTrail')
-        if pm.optionVar.get(self.aimUpMotionTrailOption, False):
+        if get_option_var(self.aimUpMotionTrailOption, False):
             cmds.select(str(up), replace=True)
             mel.eval('createMotionTrail')
 
@@ -512,20 +489,19 @@ class AimTools(toolAbstractFactory):
         upPreview = 'up_Preview'
         if not cmds.objExists(fwdPreview):
             fwdPreview = self.funcs.tempControl(name='fwd', suffix='Preview', scale=scale)
-            fwdAnn = pm.annotate(fwdPreview, tx='Aim Forward', p=(0, 1, 0))
-            pm.parent(fwdAnn, fwdPreview)
+            fwdAnn = cmds.annotate(fwdPreview, tx='Aim Forward', p=(0, 1, 0))
+            cmds.parent(fwdAnn, fwdPreview)
         if not cmds.objExists(upPreview):
             upPreview = self.funcs.tempControl(name='up', suffix='Preview', scale=scale)
-            upAnn = pm.annotate(upPreview, tx='Aim Up', p=(0, 1, 0))
-            pm.parent(upAnn, upPreview)
-        fwdPreview = pm.PyNode(fwdPreview)
-        upPreview = pm.PyNode(upPreview)
-        fwdPreview.scale.set(scale, scale, scale)
-        upPreview.scale.set(scale, scale, scale)
+            upAnn = cmds.annotate(upPreview, tx='Aim Up', p=(0, 1, 0))
+            cmds.parent(upAnn, upPreview)
+
+        cmds.setAttr(fwdPreview + '.scale', scale, scale, scale)
+        cmds.setAttr(upPreview + '.scale', scale, scale, scale)
         fwdPos = self.getPosition(controlName, self.getAxis(aimAxis, flipAim), distance)
         upPos = self.getPosition(controlName, self.getAxis(upAxis, flipUp), distance)
-        fwdPreview.translate.set(fwdPos)
-        upPreview.translate.set(upPos)
+        cmds.setAttr(fwdPreview + '.translate', *fwdPos)
+        cmds.setAttr(upPreview + '.translate', *upPos)
 
     def updateDefault(self, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         self.defaultAimData['aimAxis'] = aimAxis
@@ -559,7 +535,7 @@ class AimTools(toolAbstractFactory):
                                includeTransform=True,
                                )
         if imageName:
-            pm.setAttr(asset + '.iconName', imageName, type="string")
+            cmds.setAttr(asset + '.iconName', imageName, type="string")
         cmds.setAttr(asset + '.rmbCommand', assetCommandName, type='string')
         return asset
 
@@ -567,20 +543,17 @@ class AimTools(toolAbstractFactory):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'
         cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = pm.ls(sl=True)
-        asset = pm.container(query=True, findContainer=sel[0])
-
-        # check asset message attribute
-        print("asset", asset)
+        sel = cmds.ls(sl=True)
+        asset = cmds.container(query=True, findContainer=sel[0])
 
         cmds.menuItem(label='Aim Tool', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
-        cmds.menuItem(label='Re bake to fixed distance', command=pm.Callback(self.rebakeCommand, asset))
-        cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, sel, asset))
-        cmds.menuItem(label='Delete all controls', command=pm.Callback(self.deletControlsCommand, asset))
+        cmds.menuItem(label='Re bake to fixed distance', command=create_callback(self.rebakeCommand, asset))
+        cmds.menuItem(label='Bake out to layer', command=create_callback(self.bakeOutCommand, sel, asset))
+        cmds.menuItem(label='Delete all controls', command=create_callback(self.deletControlsCommand, asset))
         cmds.menuItem(divider=True)
 
-    def rebakeCommand(self, asset):
+    def rebakeCommand(self, asset, *args):
         sel = cmds.ls(sl=True)
         control = cmds.listConnections(asset + '.' + self.constraintTargetAttr)[0]
         locators = cmds.listConnections(asset + '.message')
@@ -597,13 +570,13 @@ class AimTools(toolAbstractFactory):
         self.allTools.tools['BakeTools'].simpleBake(sel=temp)
         cmds.delete(constraints)
         for index, loc in enumerate(locators):
-            pm.pointConstraint(temp[index], loc)
+            cmds.pointConstraint(temp[index], loc)
 
         self.allTools.tools['BakeTools'].bake_to_override(sel=locators)
         cmds.delete(temp)
         cmds.select(sel, replace=True)
 
-    def bakeOutCommand(self, sel, asset):
+    def bakeOutCommand(self, sel, asset, *args):
         filteredTargets = list()
         allControls = list()
         for s in sel:
@@ -619,13 +592,13 @@ class AimTools(toolAbstractFactory):
 
         locators = cmds.listConnections(asset + '.message')
         filteredTargets.extend(locators)
-        filteredTargets=list(set(filteredTargets))
+        filteredTargets = list(set(filteredTargets))
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
-        pm.delete(asset)
-        pm.select(allControls)
+        cmds.delete(asset)
+        cmds.select(allControls)
 
-    def deletControlsCommand(self, asset):
-        pm.delete(asset)
+    def deletControlsCommand(self, asset, *args):
+        cmds.delete(asset)
 
     def assignDefault(self, controlName, aimAxis, upAxis, flipAim, flipUp, distance, scale):
         refName, refState = self.funcs.getRefName(controlName)
@@ -661,12 +634,12 @@ class AimTools(toolAbstractFactory):
         for j in self.aimAtTempControlScriptJobs:
             if j in allJobID:
                 try:
-                    pm.scriptJob(kill=j)
+                    cmds.scriptJob(kill=j)
                 except:
                     pass
 
     def aimAtTempControl(self, *args):
-        sel = pm.ls(selection=True)
+        sel = cmds.ls(selection=True)
         parentControl = None
         if not sel:
             return
@@ -678,7 +651,7 @@ class AimTools(toolAbstractFactory):
         cmds.undoInfo(openChunk=True, chunkName='aimAtTempControl', stateWithoutFlush=False)
         tempControl = self.funcs.tempLocator(name=control, suffix='AimTempNode')
         cmds.undoInfo(closeChunk=True, stateWithoutFlush=True)
-        pm.delete(pm.parentConstraint(control, tempControl))
+        cmds.delete(cmds.parentConstraint(control, tempControl))
         cmds.MoveTool()
         cmds.manipMoveContext('Move', edit=True, mode=0)
         cmds.setToolTo(cmds.currentCtx())
@@ -689,30 +662,32 @@ class AimTools(toolAbstractFactory):
                                                               killWithScene=True,
                                                               compressUndo=True,
                                                               event=("SelectionChanged",
-                                                                     pm.Callback(self.bakeTempAim, control,
-                                                                                 tempControl, parentControl=parentControl))))
+                                                                     create_callback(self.bakeTempAim, control,
+                                                                                     tempControl,
+                                                                                     parentControl=parentControl))))
         self.aimAtTempControlScriptJobs.append(cmds.scriptJob(runOnce=True,
                                                               killWithScene=True,
                                                               compressUndo=True,
                                                               event=("ToolChanged",
-                                                                     pm.Callback(self.bakeTempAim, control,
-                                                                                 tempControl, parentControl=parentControl))))
+                                                                     create_callback(self.bakeTempAim, control,
+                                                                                     tempControl,
+                                                                                     parentControl=parentControl))))
 
-    def bakeTempAim(self, control, tempControl, parentControl=None):
+    def bakeTempAim(self, control, tempControl, parentControl=None, *args):
 
         aimLocator = self.funcs.tempControl(name=control, suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
                                             drawType='orb')
         if parentControl:
             cmds.connectAttr(str(parentControl) + '.worldMatrix[0]', str(aimLocator) + '.offsetParentMatrix')
 
-        pm.delete(pm.orientConstraint(tempControl, aimLocator))
-        pm.delete(pm.pointConstraint(tempControl, aimLocator))
+        cmds.delete(cmds.orientConstraint(tempControl, aimLocator))
+        cmds.delete(cmds.pointConstraint(tempControl, aimLocator))
 
         cmds.undoInfo(openChunk=True, chunkName='aimAtTempControl', stateWithoutFlush=False)
-        pm.delete(tempControl)
+        cmds.delete(tempControl)
         cmds.undoInfo(closeChunk=True, stateWithoutFlush=True)
 
-        tempConstraint = pm.parentConstraint(control, aimLocator, maintainOffset=True)
+        tempConstraint = cmds.parentConstraint(control, aimLocator, maintainOffset=True)
         keyTimes = self.funcs.get_object_key_times(str(control))
         if not keyTimes:
             keyTimes = [cmds.playbackOptions(query=True, min=True), cmds.playbackOptions(query=True, max=True)]
@@ -720,36 +695,36 @@ class AimTools(toolAbstractFactory):
         max_key = max(keyTimes)
         keyRange = self.funcs.getBestTimelineRangeForBake()
 
-        pm.bakeResults(aimLocator,
-                       attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
-                       simulation=False,
-                       minimizeRotation=True,
-                       time=(keyRange[0], keyRange[1]))
+        cmds.bakeResults(aimLocator,
+                         attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
+                         simulation=False,
+                         minimizeRotation=True,
+                         time=(keyRange[0], keyRange[1]))
 
         cmds.filterCurve(str(aimLocator) + '.rotateX', str(aimLocator) + '.rotateY', str(aimLocator) + '.rotateZ',
                          filter='euler')
-        pm.delete(tempConstraint)
+        cmds.delete(tempConstraint)
 
         constraint = self.constrainAimToTarget(str(control), str(aimLocator))
 
         asset = self.createAsset(name=control + '_AimAsset')
-        pm.addAttr(aimLocator, ln=self.mainAssetAttr, at='message')
-        pm.addAttr(asset, ln=self.constraintTargetAttr, at='message')
-        pm.connectAttr(asset + '.message', aimLocator + '.' + self.mainAssetAttr)
-        pm.connectAttr(control + '.message', asset + '.' + self.constraintTargetAttr)
+        cmds.addAttr(aimLocator, ln=self.mainAssetAttr, at='message')
+        cmds.addAttr(asset, ln=self.constraintTargetAttr, at='message')
+        cmds.connectAttr(asset + '.message', aimLocator + '.' + self.mainAssetAttr)
+        cmds.connectAttr(control + '.message', asset + '.' + self.constraintTargetAttr)
 
-        pm.container(asset, edit=True,
-                     includeHierarchyBelow=True,
-                     force=True,
-                     addNode=str(aimLocator))
-        pm.container(asset, edit=True,
-                     includeHierarchyBelow=True,
-                     force=True,
-                     addNode=constraint)
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=str(aimLocator))
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=constraint)
 
         self.clearAimAtTempControlScriptJobs()
 
-        if pm.optionVar.get(self.aimTempMotionTrailOption, False):
+        if get_option_var(self.aimTempMotionTrailOption, False):
             mel.eval('createMotionTrail')
 
         cmds.select(str(aimLocator), replace=True)
@@ -760,20 +735,20 @@ class AimTools(toolAbstractFactory):
         min_key = min(keyTimes)
         max_key = max(keyTimes)
 
-        constraint = pm.parentConstraint(control, target, maintainOffset=True)
+        constraint = cmds.parentConstraint(control, target, maintainOffset=True)
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        pm.bakeResults(target,
-                       attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
-                       simulation=False,
-                       minimizeRotation=False,
-                       time=(keyRange[0], keyRange[1]))
-        pm.delete(constraint)
+        cmds.bakeResults(target,
+                         attribute=['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ'],
+                         simulation=False,
+                         minimizeRotation=False,
+                         time=(keyRange[0], keyRange[1]))
+        cmds.delete(constraint)
 
     def getLocalVector(self, node, vec=om.MVector.yAxis, offset=om.MVector(0, 0, 0), mult=1.0):
         animNode = self.getDagNode(node)
         matrix = animNode.inclusiveMatrix()
         vec = ((vec * matrix).normal() * mult) + offset
-        return dt.Vector(vec.x, vec.y, vec.z)
+        return om2.MVector(vec.x, vec.y, vec.z)
 
     def getWorldSpaceVectorOffset(self, control, target, vec=om.MVector.yAxis):
         controlNode = self.getDagNode(control)
@@ -783,7 +758,7 @@ class AimTools(toolAbstractFactory):
         targetMatrix = targetNode.inclusiveMatrix()
 
         vec = ((vec * controlMatrix) * targetMatrix.inverse()).normal()
-        return dt.Vector(vec.x, vec.y, vec.z)
+        return om2.MVector(vec.x, vec.y, vec.z)
 
     def getDagNode(self, node):
         selList = om.MSelectionList()
@@ -793,32 +768,32 @@ class AimTools(toolAbstractFactory):
         return nodeDagPath
 
     def constrainAimToTarget(self, control, target):
-        locatorPos = dt.Vector(pm.xform(target, query=True, worldSpace=True,
-                                        # translation=True,
-                                        rotatePivot=True))
-        controlPos = dt.Vector(pm.xform(control, query=True, worldSpace=True,
-                                        # translation=True,
-                                        rotatePivot=True))
+        locatorPos = om2.MVector(cmds.xform(target, query=True, worldSpace=True,
+                                            # translation=True,
+                                            rotatePivot=True))
+        controlPos = om2.MVector(cmds.xform(control, query=True, worldSpace=True,
+                                            # translation=True,
+                                            rotatePivot=True))
         aimVec = (locatorPos - controlPos).normal()
 
-        xDot = aimVec * om.MVector.xAxis
-        yDot = aimVec * om.MVector.yAxis
-        zDot = aimVec * om.MVector.zAxis
+        xDot = aimVec * om2.MVector(1, 0, 0)
+        yDot = aimVec * om2.MVector(0, 1, 0)
+        zDot = aimVec * om2.MVector(0, 0, 1)
 
         axisList = [abs(xDot), abs(yDot), abs(zDot)]
-        localAxisVecList = [dt.Vector(1, 0, 0), dt.Vector(0, 1, 0), dt.Vector(0, 0, 1)]
+        localAxisVecList = [om2.MVector(1, 0, 0), om2.MVector(0, 1, 0), om2.MVector(0, 0, 1)]
         upXxisIndex = axisList.index(min(axisList))
 
         aimVector = self.getVectorToTarget(target, control)
         upVector = localAxisVecList[upXxisIndex]
         worldUpVector = self.getWorldSpaceVectorOffset(control, target, vec=axisMapping[upXxisIndex])
-        aimConstraint = pm.aimConstraint(target, control,
-                                         aimVector=aimVector,
-                                         worldUpObject=target,
-                                         worldUpVector=worldUpVector,
-                                         upVector=upVector,
-                                         worldUpType='objectRotation',
-                                         maintainOffset=False)
+        aimConstraint = cmds.aimConstraint(target, control,
+                                           aimVector=aimVector,
+                                           worldUpObject=target,
+                                           worldUpVector=worldUpVector,
+                                           upVector=upVector,
+                                           worldUpType='objectRotation',
+                                           maintainOffset=False)[0]
         return aimConstraint
 
     def getMatrix(self, node):
@@ -855,7 +830,7 @@ class AimTools(toolAbstractFactory):
     def drawTempControlPreview(self):
         self.funcs.tempControl(name='temp',
                                suffix='Preview',
-                               scale=pm.optionVar.get(self.tempAimSizeOption, 1),
+                               scale=get_option_var(self.tempAimSizeOption, 1),
                                drawType='orb')
 
     def updateTempControlPreview(self, scale):
@@ -1154,12 +1129,12 @@ class AimAxisWidgetVertical(QWidget):
         # self.itemLayout.addWidget(distanceLabel)
         # self.itemLayout.addWidget(self.distanceSpinBox)
 
-        aimLabel.setFixedWidth(64*dpiScale())
-        upLabel.setFixedWidth(64*dpiScale())
-        flipAimLabel.setFixedWidth(64*dpiScale())
-        flipUpLabel.setFixedWidth(64*dpiScale())
-        distanceLabel.setFixedWidth(64*dpiScale())
-        scaleLabel.setFixedWidth(64*dpiScale())
+        aimLabel.setFixedWidth(64 * dpiScale())
+        upLabel.setFixedWidth(64 * dpiScale())
+        flipAimLabel.setFixedWidth(64 * dpiScale())
+        flipUpLabel.setFixedWidth(64 * dpiScale())
+        distanceLabel.setFixedWidth(64 * dpiScale())
+        scaleLabel.setFixedWidth(64 * dpiScale())
         self.itemLayout.addRow(aimLabel, self.aimComboBox)
         self.itemLayout.addRow(upLabel, self.upComboBox)
         self.itemLayout.addRow(flipAimLabel, self.flipAimCB)

@@ -50,24 +50,10 @@ defaultSides = {'left': '_l_', 'right': '_r_'}
 """
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
-import pymel.core as pm
-import maya.cmds as cmds
 
-from Abstract import *
-from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+from . import *
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 __author__ = 'tom.bailey'
 
 
@@ -336,7 +322,7 @@ class CharacterTool(toolAbstractFactory):
     __instance = None
     toolName = 'CharacterTool'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     libraryName = 'characterLibraryData'
     charSubFolder = 'charTemplates'
     charTemplateDir = None
@@ -358,7 +344,7 @@ class CharacterTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
         self.loadCharacterLibrary()
 
     def initData(self):
@@ -376,13 +362,13 @@ class CharacterTool(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Character Definition', image='out_character.png', command='characterDefinitionUI',
+        cmds.menuItem(label='Character Definition', image='out_character.png', command='characterDefinitionUI',
                     sourceType='mel',
                     parent=parentMenu)
 
     def getCharacterByName(self, char, openUI=False):
         if char not in self.allCharacters.keys():
-            print('Loacing character {}'.format(char))
+            print('Loading character {}'.format(char))
             self.loadCharacterIfNotLoaded(char, node=None)
             if openUI:
                 self.toolBoxUI(
@@ -417,7 +403,6 @@ class CharacterTool(toolAbstractFactory):
         :param node:
         :return:
         """
-        print('tagTopNodeAsCharacter', node, character)
         topNode = self.funcs.getTopParent(node)
         if not cmds.attributeQuery(characterAttribute, node=str(topNode), exists=True):
             cmds.addAttr(str(topNode), ln=characterAttribute, dt='string')
@@ -494,7 +479,6 @@ class CharacterTool(toolAbstractFactory):
 
             self.leftSideLineEdit.setText(leftSide)
             self.rightSideLineEdit.setText(rightSide)
-            print ('getting control labels', self.currentCharData.globalControl)
             self.globalControlLabel.setText(self.currentCharData.globalControl)
             self.driverControlLabel.setText(self.currentCharData.driverControl)
             self.exportControlLabel.setText(self.currentCharData.exportControl)
@@ -792,7 +776,7 @@ class CharacterTool(toolAbstractFactory):
             button.attribute = str(x)
             self.mirrorTranslateFormLayout.addRow(label, button)
             self.mirrorChannelWidgets[x] = button
-            button.clicked.connect(pm.Callback(self.updateMirroChannelForControl, button))
+            button.clicked.connect(create_callback(self.updateMirroChannelForControl, button))
         for x in ['rotateX', 'rotateY', 'rotateZ']:
             label = QLabel(x)
             button = QPushButton()
@@ -801,7 +785,7 @@ class CharacterTool(toolAbstractFactory):
             button.attribute = str(x)
             self.mirrorRotateFormLayout.addRow(label, button)
             self.mirrorChannelWidgets[x] = button
-            button.clicked.connect(pm.Callback(self.updateMirroChannelForControl, button))
+            button.clicked.connect(create_callback(self.updateMirroChannelForControl, button))
 
         mirrorChannelMainLayout.addLayout(self.mirrorTranslateFormLayout)
         mirrorChannelMainLayout.addLayout(self.mirrorRotateFormLayout)
@@ -815,7 +799,7 @@ class CharacterTool(toolAbstractFactory):
             x.setFixedWidth(48 * dpiScale())
         return mirrorChannelLayout
 
-    def updateMirroChannelForControl(self, button):
+    def updateMirroChannelForControl(self, button, *args):
         MirrorTools = self.allTools.tools['MirrorTools']
         characters = self.funcs.splitSelectionToCharacters(self.currentControls)
         MirrorTools.loadDataForCharacters(characters)
@@ -895,28 +879,28 @@ class CharacterTool(toolAbstractFactory):
 
         defineGlobalButton = ToolButton(text='Set Global Control',
                                         imgLabel='Pick global control',
-                                        width=0.33 * (buttonWidth * 2 + 32),
+                                        width=buttonWidth,
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setGlobalControl)
         defineDriverButton = ToolButton(text='Set Mover Control',
                                         imgLabel='Pick driver control',
-                                        width=0.33 * (buttonWidth * 2 + 32),
+                                        width=buttonWidth,
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setDriverControl)
         defineExportButton = ToolButton(text='Set Export Control',
                                         imgLabel='Pick export control',
-                                        width=0.33 * (buttonWidth * 2 + 32),
+                                        width=buttonWidth,
                                         height=buttonHeight,
                                         icon=":/pickPivotComp.png",
                                         sourceType='py',
                                         command=self.setExportControl)
         defineFeetButton = ToolButton(text='Set Feet Controls',
                                       imgLabel='Pick feet controls',
-                                      width=0.33 * (buttonWidth * 2 + 32),
+                                      width=buttonWidth,
                                       height=buttonHeight,
                                       icon=":/pickPivotComp.png",
                                       sourceType='py',

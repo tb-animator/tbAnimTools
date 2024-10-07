@@ -22,39 +22,13 @@
 
 *******************************************************************************
 '''
-import time
-import pymel.core as pm
 
 QSS_Suffix = '_qss'
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-import maya.cmds as cmds
-import maya.mel as mel
-import os, stat
-import pickle
-import json
-import maya.OpenMayaUI as omUI
-from Abstract import *
-from tb_UI import *
-import getStyleSheet as getqss
-
+from . import *
 _repeat_function = None
 _args = None
 _kwargs = None
-
-import inspect
 
 
 def get_class_that_defined_method(meth):
@@ -133,7 +107,7 @@ class QuickSelectionTools(toolAbstractFactory):
     __instance = None
     toolName = 'QuickSelectionSets'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     quickSelectFolderOption = 'tb_qs_folder'
     quickSelectFolder = 'qssFiles'
@@ -156,11 +130,11 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
         self.all_sets = self.get_sets()
 
-        self.quickSelectSavePath = pm.optionVar.get(self.quickSelectFolderOption, self.quickSelectFolderDefault)
+        self.quickSelectSavePath = get_option_var(self.quickSelectFolderOption, self.quickSelectFolderDefault)
 
         self.qss_files = list()
 
@@ -231,9 +205,9 @@ class QuickSelectionTools(toolAbstractFactory):
 
         all_sets = [q for q in all_sets if cmds.sets(q, query=True, text=True) == 'gCharacterSet']
         all_sets = [q for q in all_sets if not q.split(':')[-1].startswith('uber')]
-        if pm.optionVar.get(self.quickSelectOnQssSuffix, True) and not forceAll:
+        if get_option_var(self.quickSelectOnQssSuffix, True) and not forceAll:
             all_sets = [q for q in all_sets if q.endswith(QSS_Suffix)]
-        ignoreValues = pm.optionVar.get(self.quickSelectionIgnore, '')
+        ignoreValues = get_option_var(self.quickSelectionIgnore, '')
 
         ignoredSets = list()
 
@@ -269,7 +243,7 @@ class QuickSelectionTools(toolAbstractFactory):
                 unmatchedSets.append(s)
         return matchedSets, unmatchedSets
 
-    def selectQuickSelectionSet(self, name, add=True):
+    def selectQuickSelectionSet(self, name, add=True, *args):
         cmds.select(self.get_set_contents(name), add=add, replace=not add)
 
     def addColourAttribute(self, name):
@@ -441,7 +415,7 @@ class QuickSelectionTools(toolAbstractFactory):
     def saveQssDialog(self, quick=False):
         sel = cmds.ls(selection=True)
         if not sel:
-            return pm.warning('Unable to save empty selection')
+            return cmds.warning('Unable to save empty selection')
 
         dialog = QssSaveWidget(title='Save Selection Set', label='Enter Name', buttonText="Save",
                                default=sel[-1].split(':')[-1],
@@ -506,7 +480,7 @@ class QuickSelectionTools(toolAbstractFactory):
         existing_obj = self.existing_obj_in_list(selection)
         if existing_obj:
             cmds.select(existing_obj, replace=True)
-            newSetNamespace = pm.PyNode(existing_obj[0]).namespace()
+            newSetNamespace = self.funcs.namespace(existing_obj[0])
             if newSetNamespace:
                 qs_name = newSetNamespace + ':' + qs_name
             if qs_name.startswith(':'):
@@ -543,7 +517,7 @@ class QuickSelectionTools(toolAbstractFactory):
         # only select existing objects
         existing_obj = self.existing_obj_in_list(selection)
         if existing_obj:
-            newSetNamespace = pm.PyNode(existing_obj[0]).namespace()
+            newSetNamespace = self.funcs.namespace(existing_obj[0])
             if newSetNamespace:
                 qs_name = newSetNamespace + ':' + qs_name
             if qs_name.startswith(':'):
@@ -564,8 +538,8 @@ class QuickSelectionTools(toolAbstractFactory):
         namespace_override = None
 
         processed_list = []
-        sel = pm.ls(selection=True)
-        namespace_override = sel[0].namespace()
+        sel = cmds.ls(selection=True)
+        namespace_override = self.funcs.namespace(sel[0])
         for sel in selection:
             processed_list.append(namespace_override + sel.split(":")[-1])
 
@@ -719,27 +693,14 @@ class QuickSelectionTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return
-        allSets = self.get_sets()
-        charDict = dict()
+
         for s in sel:
             if not cmds.referenceQuery(s, isNodeReferenced=True):
                 continue
             refname, namespace = self.funcs.getCurrentRig(sel=s)
-            if refname not in charDict.keys():
-                charDict[refname] = list()
-            for s in allSets:
-                if s.split(':')[0] != refname:
-                    continue
-                if cmds.referenceQuery(s, isNodeReferenced=True):
-                    continue
-                charDict[refname].append(s)
-
-        for refname, sets in charDict.items():
-            if not refname:
+            if not cmds.objExists(namespace + ':' + 'QuickSelects'):
+                self.load_qss_file(refname)
                 return
-            if len(sets):
-                continue
-            self.load_qss_file(refname)
 
     def checkDownstreamTempControls(self, control, found_controls=None):
         """
@@ -836,7 +797,7 @@ class QuickSelectionTools(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='QuickSelectDialog')
 
         sel = cmds.ls(sl=True)
         allSets = self.get_sets(forceAll=True)
@@ -875,12 +836,12 @@ class QuickSelectionTools(toolAbstractFactory):
             setColour = self.getSetColoursForUI(mset)
 
             button = ToolboxButton(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                   command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
+                                   command=create_callback(self.selectQuickSelectionSet, mset, add=True),
                                    closeOnPress=False,
                                    icon=':\create.png',
                                    isSmall=True)
             altButton = ToolboxColourButton(label=mset, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                            command=pm.Callback(self.selectQuickSelectionSet, mset, add=False),
+                                            command=create_callback(self.selectQuickSelectionSet, mset, add=False),
                                             closeOnPress=False,
                                             isSmall=False,
                                             colour=setColour,
@@ -902,12 +863,12 @@ class QuickSelectionTools(toolAbstractFactory):
             setColour = self.getSetColoursForUI(mset)
 
             button = ToolboxButton(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                   command=pm.Callback(self.selectQuickSelectionSet, mset, add=True),
+                                   command=create_callback(self.selectQuickSelectionSet, mset, add=True),
                                    closeOnPress=False,
                                    icon=':\create.png',
                                    isSmall=True)
             altButton = ToolboxColourButton(label=mset, parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                            command=pm.Callback(self.selectQuickSelectionSet, mset, add=False),
+                                            command=create_callback(self.selectQuickSelectionSet, mset, add=False),
                                             closeOnPress=False,
                                             isSmall=False,
                                             colour=setColour,
@@ -1001,9 +962,9 @@ class AdjustmentButtonPopup(ButtonPopup):
 
 
 class SaveCurrentStateWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+    def __init__(self, parent=getMainWindow(),
+                 parentMenu=None, name='SaveCurrentStateWidget'):
+        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu,name=name)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -1056,7 +1017,7 @@ class QssSaveWidget(QWidget):
                  helpString=None,
                  parentWidget=None,
                  qss=False,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+                 parent=getMainWindow()):
         super(QssSaveWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
         self.parentWidget = parentWidget
@@ -1068,7 +1029,7 @@ class QssSaveWidget(QWidget):
 
         self.combo = combo
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -1083,7 +1044,7 @@ class QssSaveWidget(QWidget):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -1124,7 +1085,7 @@ class QssSaveWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(getScreenCenter() - self.rect().center())
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(
@@ -1147,8 +1108,8 @@ class QssSaveWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
@@ -1262,18 +1223,18 @@ class NamespaceWidget(QWidget):
             self.namespaceModeOption.addItem(namespaceMode)
         self.mainLayout.addWidget(self.label)
         self.mainLayout.addWidget(self.namespaceModeOption)
-        self.namespaceModeOption.setCurrentIndex(pm.optionVar.get(self.namespaceModesOptionVar, 0))
+        self.namespaceModeOption.setCurrentIndex(get_option_var(self.namespaceModesOptionVar, 0))
         self.namespaceModeOption.currentIndexChanged.connect(self.namespaceIndexChanged)
         self.namespaceIndexChanged()
 
     def namespaceIndexChanged(self):
-        pm.optionVar(intValue=(self.namespaceModesOptionVar, self.namespaceModeOption.currentIndex()))
+        cmds.optionVar(intValue=(self.namespaceModesOptionVar, self.namespaceModeOption.currentIndex()))
         self.namespaceChangedSignal.emit(self.namespaceModeOption.currentIndex())
 
 
 class LoadQuickSelectWindow(QMainWindow):
     def __init__(self):
-        super(LoadQuickSelectWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(LoadQuickSelectWindow, self).__init__(parent=getMainWindow())
         # DATA
         self.setMinimumWidth(300)
         # self.setMinimumHeight(400)
@@ -1440,7 +1401,7 @@ class SaveQssToFileWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(getScreenCenter() - self.rect().center())
 
         self.lineEdit.setFocus()
         # self.lineEdit.setFixedWidth(self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 16)
@@ -1487,13 +1448,13 @@ class SaveQssToFileWidget(QWidget):
             for set in self.charDict[char]:
                 wd = QssSaveStateWidget(setName=set)
                 wd.loadButton.clicked.connect(
-                    pm.Callback(self.toggleExportSetState, char, set, wd.loadButton.isChecked))
+                    create_callback(self.toggleExportSetState, char, set, wd.loadButton.isChecked))
                 setLayout.addWidget(wd)
             setWidget.setLayout(setLayout)
             self.setsStack.addWidget(setWidget)
         self.currentRigChanged()
 
-    def toggleExportSetState(self, char, setName, state):
+    def toggleExportSetState(self, char, setName, state, *args):
         self.setSaveStates[char][setName] = state()
 
     def currentRigChanged(self):
@@ -1506,8 +1467,8 @@ class SaveQssToFileWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))

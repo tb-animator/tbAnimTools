@@ -1,33 +1,8 @@
-import inspect
-import math
-import maya.OpenMaya as api
-import pymel.core as pm
-import maya.OpenMayaUI as omui
-import getStyleSheet as getqss
-import os
-import maya.cmds as cmds
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    from PySide.QtWidgets import *
-
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    from shiboken2 import wrapInstance
+from . import *
 
 filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "\\"  # script directory
 
 iconPath2 = filepath.replace('apps', 'Icons') + 'icecream.png'
-
-from tb_UI import *
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -45,9 +20,9 @@ class hotkeys(hotKeyAbstractFactory):
 
 
 class ViewportRadialMenu(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(), name='ViewportRadialMenu',
                  *args, **kwargs):
-        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict)
+        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict, name=name)
         self.centralPoint = QPoint(0, 0)  # the central point of the radial menu
         self.parentPos = QPoint(0, 0)  # the button position that raised this menu
         self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
@@ -100,7 +75,6 @@ class ViewportRadialMenu(ViewportDialog):
         super(ViewportRadialMenu, self).show()
 
     def arrangeButtons(self):
-        print ('arrangeButtons')
         self.maxButtons = len(self.widgets['radial'])
         initialAngle = 0
         if self.parentMenu:
@@ -176,10 +150,10 @@ class ViewportRadialMenu(ViewportDialog):
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(blank))
-        qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Clear)
         qp.drawRoundedRect(0, 0, self.width(), 20, 8, 8)
 
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setBrush(QBrush(blank))
@@ -253,7 +227,7 @@ class ViewportRadialMenu(ViewportDialog):
                 qp.setPen(pen)
 
                 fontMetrics = QFontMetrics(font)
-                pixelsWide = fontMetrics.width(self.activeButton.labelText)
+                pixelsWide = fontMetrics.boundingRect(self.activeButton.labelText).width()
                 pixelsHigh = fontMetrics.height()
 
                 radius = self.distance(self.centralPoint, self.parentPos) + 128
@@ -268,7 +242,7 @@ class ViewportRadialMenu(ViewportDialog):
 
                 pen = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
                 brush = QBrush(fillColor)
-                qp.setCompositionMode(qp.CompositionMode_SourceOver)
+                qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
                 qp.strokePath(path, pen)
                 qp.fillPath(path, brush)
 
@@ -318,9 +292,8 @@ class ViewportRadialMenu(ViewportDialog):
 
 
 class SubToolboxWidget(ViewportRadialMenu):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+    def __init__(self, parent=getMainWindow(), parentMenu=None, name='SubToolboxWidget'):
+        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -359,7 +332,7 @@ class ViewportToolbox(toolAbstractFactory):
     __instance = None
     toolName = 'ViewportToolbox'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     markingMenuWidget = None
 
     baseDataFile = None
@@ -378,7 +351,7 @@ class ViewportToolbox(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -490,7 +463,7 @@ class RadialToolboxButton(ToolboxButton):
         self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         self.popupPixmap = QPixmap(IconPath + '\popupSubmenu.png')
-        self.popupPixmap = self.popupPixmap.scaled(36, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.popupPixmap = self.popupPixmap.scaled(36 * dpiScale(), 36 * dpiScale(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.setNonHoverSS()
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
@@ -500,7 +473,6 @@ class RadialToolboxButton(ToolboxButton):
         except:
             pass
         if self.closeOnPress:
-            # print ('closeOnPress', self.cls)
             self.cls.closeMenu()
             self.cls.deleteLater()
 
@@ -574,7 +546,7 @@ class RadialToolboxButton(ToolboxButton):
 
 class EventFilterManager(object):
     __instance = None
-    mainWindow = wrapInstance(int(omui.MQtUtil.findControl(pm.melGlobals['gMainWindow'])), QWidget)
+    mainWindow = wrapInstance(int(omUI.MQtUtil.findControl(mel.eval('$temp=$gMainWindow'))), QWidget)
     uiUpdateFilter = None
     markingMenuFilter = None
     markingMenuClass = None
@@ -601,7 +573,7 @@ class EventFilterManager(object):
         try:
             self.mainWindow.removeEventFilter(self.uiUpdateFilter)
         except Exception as e:
-            pm.warning(e.message)
+            cmds.warning(e.message)
 
     def isPanelWidget(self, widget):
         return len(widget.children()) == 0 and \
@@ -616,29 +588,28 @@ class EventFilterManager(object):
                 matches[0].removeEventFilter(filter)
             else:
                 matches[0].installEventFilter(filter)
-            # print "installing event filter,", filter, "on", matches[0], matches[0].__class__
+
         except Exception as e:
             print (e)
             for child in widget.children():
                 self.recursive_widget_lookup(child, filter)
 
     def addFilterToModelPanels(self, filter):
-        print('addFilterToModelPanels')
-        for p in pm.lsUI(editors=True):
-            if pm.objectTypeUI(p) == 'modelEditor':
+        for p in cmds.lsUI(editors=True):
+            if cmds.objectTypeUI(p) == 'modelEditor':
                 self.recursive_widget_lookup(self.getQObjectFromName(p), filter)
 
     def removeFilterToModelPanels(self, filter):
-        for p in pm.lsUI(editors=True):
-            if pm.objectTypeUI(p) == 'modelEditor':
+        for p in cmds.lsUI(editors=True):
+            if cmds.objectTypeUI(p) == 'modelEditor':
                 self.recursive_widget_lookup(self.getQObjectFromName(p), filter, remove=True)
 
     def getQObjectFromName(self, name):
-        ptr = omui.MQtUtil.findControl(name)
+        ptr = omUI.MQtUtil.findControl(name)
         if ptr is None:
-            ptr = omui.MQtUtil.findLayout(name)
+            ptr = omUI.MQtUtil.findLayout(name)
             if ptr is None:
-                ptr = omui.MQtUtil.findMenuItem(name)
+                ptr = omUI.MQtUtil.findMenuItem(name)
         if ptr is not None:
             return wrapInstance(int(ptr), QObject)
 
@@ -656,11 +627,11 @@ class UiUpdateFilter(QObject):
                 try:
                     EventFilterManager().addMarkingMenuFilters()
                 except Exception as e:
-                    pm.error(Exception, e.message)
+                   cmds.error(Exception, e.message)
                 return False
 
         except Exception as e:
-            pm.warning('UiUpdateFilter', e.message)
+            cmds.warning('UiUpdateFilter', e.message)
         return False
 
     def forceAddition(self):
@@ -786,21 +757,21 @@ class QtMarkingMenu(QObject):
 
 def selectFromScreenApi(x, y, x_rect=None, y_rect=None):
     # get current selection
-    sel = api.MSelectionList()
-    api.MGlobal.getActiveSelectionList(sel)
+    sel = om.MSelectionList()
+    om.MGlobal.getActiveSelectionList(sel)
 
-    # api.MGlobal.selectionMethod()
+    # om.MGlobal.selectionMethod()
     # select from screen
     args = [x, y]
     if x_rect and y_rect:
-        api.MGlobal.selectFromScreen(x, y, x_rect, y_rect, api.MGlobal.kReplaceList)
+        om.MGlobal.selectFromScreen(x, y, x_rect, y_rect, om.MGlobal.kReplaceList)
     else:
-        api.MGlobal.selectFromScreen(x, y, api.MGlobal.kReplaceList, 0)
-    objects = api.MSelectionList()
-    api.MGlobal.getActiveSelectionList(objects)
+        om.MGlobal.selectFromScreen(x, y, om.MGlobal.kReplaceList, 0)
+    objects = om.MSelectionList()
+    om.MGlobal.getActiveSelectionList(objects)
 
     # restore selection
-    api.MGlobal.setActiveSelectionList(sel, api.MGlobal.kReplaceList)
+    om.MGlobal.setActiveSelectionList(sel, om.MGlobal.kReplaceList)
 
     # return the objects as strings
     fromScreen = []
@@ -933,10 +904,9 @@ class _pMap(QGraphicsPixmapItem):
         # font = QtGui.QFont('Comic Sans MS')
         self.dot1 = _textItem(self.label, self.textColour, self)
         self.dot1.setFont(self.font)
-        self.dot1.setPos(self.dot1.boundingRect().width() / 2, self.dot1.boundingRect().height() / 2)
-        # self.drawWidth = self.dot1.boundingRect().width()
-        print (self.dot1.boundingRect().width())
-        print (self.boundingRect().width())
+        self.dot1.setPos(self.dot1.boundingRect(self.label).width() / 2, self.dot1.boundingRect(self.label).height() / 2)
+        print (self.dot1.boundingRect(self.label).width())
+        print (self.boundingRect(self.label).width())
 
     def paint(self, painter, option, widget):
         '''

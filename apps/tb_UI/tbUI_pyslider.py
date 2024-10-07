@@ -1,20 +1,8 @@
-import pymel.core as pm
+
 import os
 import re
 
-qtVersion = pm.about(qtVersion=True)
-QTVERSION = int(qtVersion.split('.')[0])
-if QTVERSION < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 
 from . import *
 
@@ -429,7 +417,7 @@ class Slider(QSlider):
 
         lineColor = QColor(68, 68, 68, 64)
 
-        qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        qp.setCompositionMode(QPainter.CompositionMode_ColorBurn)
         qp.setRenderHint(QPainter.Antialiasing)
 
         # # Draw the groove
@@ -497,7 +485,7 @@ class Slider(QSlider):
         qp.end()
 
     def drawTextOverlay(self, qp):
-        rectHandle = self.style.subControlRect(self.style.CC_Slider, self.opt, self.style.SC_SliderHandle, self)
+        rectHandle = self.style.subControlRect(QStyle.CC_Slider, self.opt, QStyle.SC_SliderHandle, self)
         pose_left = rectHandle.topLeft()
         pose_right = rectHandle.topRight()
         weirdOffset = (self.handle_width - self.handle_margin) * map_value_to_range(self.value(), self.minimum(),
@@ -524,9 +512,10 @@ class Slider(QSlider):
         xAxisStr = ' {}'.format("{}".format(self.getOutputValue()))
 
         fontMetrics = QFontMetrics(font)
-        labelWidth = fontMetrics.width(labelStr)
-        pixelsWide = fontMetrics.width(xAxisStr)
-        pixelsHigh = fontMetrics.height()
+
+        labelWidth = fontMetrics.boundingRect(labelStr).width()
+        pixelsWide = fontMetrics.boundingRect(xAxisStr).width()
+        pixelsHigh = fontMetrics.boundingRect(labelStr).height()
         leftPosition = pose_left.x() - weirdOffset - pixelsWide - 16
         rightPosition = pose_left.x() - weirdOffset + (self.handle_width + self.handle_margin)
         # print('leftPosition', leftPosition)
@@ -548,7 +537,7 @@ class Slider(QSlider):
         '''
         pen = QPen(self.darkGrey, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.white)
-        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
         qp.strokePath(path, pen)
         qp.fillPath(path, brush)
 
@@ -626,7 +615,7 @@ class Slider(QSlider):
                 x.show()
 
     def contextMenuEvent(self, event):
-        print('contextMenuEvent', event.globalPos())
+        # print('contextMenuEvent', event.globalPos())
         self._showMenu(event.globalPos())
 
     def toggleOvershoot(self, overshootState, baseWidth):
@@ -1047,7 +1036,7 @@ class SliderPopup(QSlider):
 
         lineColor = QColor(68, 68, 68, 64)
 
-        qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        qp.setCompositionMode(QPainter.CompositionMode_ColorBurn)
         qp.setRenderHint(QPainter.Antialiasing)
 
         # # Draw the groove
@@ -1099,7 +1088,7 @@ class SliderPopup(QSlider):
 
         pen = QPen(self.darkGrey, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.white)
-        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
         qp.strokePath(path, pen)
         qp.fillPath(path, brush)
         '''
@@ -1213,7 +1202,7 @@ class SliderPopup(QSlider):
         '''
         pen = QPen(self.darkGrey, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.white)
-        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
         qp.strokePath(path, pen)
         qp.fillPath(path, brush)
 
@@ -1543,8 +1532,8 @@ class SliderToolbarWidget(QWidget):
         # self.setToolTip("%s<br>Hold <b>Ctrl+Alt</b> for info" % toolTipSmall)
         self.icon = sliderData['icon']
         self.altIcon = altSliderData['icon']
-        self.defaultWidth = pm.optionVar.get('sliderButtonWidth', 22)
-        self.defaultSliderWidth = pm.optionVar.get('persistentSliderWidth', 200)
+        self.defaultWidth = get_option_var('sliderButtonWidth', 22)
+        self.defaultSliderWidth = get_option_var('persistentSliderWidth', 200)
 
         self.helpWidget = InfoPromptWidget(title=toolTip.get('title', 'toolTipText'),
                                            buttonText='Ok',
@@ -1597,7 +1586,7 @@ class SliderToolbarWidget(QWidget):
         # # edit = "height: 10px;"
         # self.button.setStyleSheet(modifyStyleSheet(self.button.styleSheet(), pattern, linePatterm, edit))
         # self.button.setStyleSheet("background-color: rgba(255, 0, 128, 0);")
-        state = pm.optionVar.get('geSliderToolbar', False)
+        state = get_option_var('geSliderToolbar', False)
         self.toggleButton = CollapsibleBox(optionVar=sliderData.get('mode', "Tween"))
 
         # self.toggleButton.setFixedHeight(4 * dpiScale())
@@ -1655,7 +1644,7 @@ class SliderToolbarWidget(QWidget):
         size = self.sizeHint() * 0.5
 
         self.toggleButton.collapseSignal.connect(self.togglePersistentSlider)
-        self.togglePersistentSlider(pm.optionVar.get(sliderData.get('mode', "Tween"), True))
+        self.togglePersistentSlider(get_option_var(sliderData.get('mode', "Tween"), True))
 
     def togglePersistentSlider(self, state):
         # print('togglePersistentSlider')
@@ -1689,15 +1678,17 @@ class SliderToolbarWidget(QWidget):
         self.sliderEndedSignal.emit(self.sliderData['mode'], value, 0)
 
     def keyPressEvent(self, event):
+        # print ('toolbarWidget.keyPressEvent', event, self)
         self.button.keyPressEvent(event)
         self.popup.keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
+        # print('toolbarWidget.keyReleaseEvent', event, self)
         self.button.keyReleaseEvent(event)
         self.popup.keyReleaseEvent(event)
 
     def raisePopup(self):
-        print ('raisePop', QApplication.keyboardModifiers() == Qt.ShiftModifier)
+        # print ('raisePop', QApplication.keyboardModifiers() == Qt.ShiftModifier)
         if QApplication.keyboardModifiers() == Qt.ShiftModifier:
             popup = self.altPopup
         else:
@@ -1912,12 +1903,12 @@ class PopupSlider(QWidget):
     def drawHorizontalBar(self, qp):
         leftBarPos = self.minValue
         righBarPos = self.rightBorder - self.leftBorder + 4
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setBrush(QBrush(self.midGrey))
         qp.setPen(QPen(QBrush(self.midGrey), 2 * dpiScale()))
         qp.drawRoundedRect(0, 0, self.width(), self.height(), 4 * dpiScale(), 4 * dpiScale())
 
-        qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
 
         r1 = QRegion(QRect(0, 0, self.width(), self.height()))
@@ -1933,7 +1924,7 @@ class PopupSlider(QWidget):
 
         qp.setClipRegion(QRect(0, 0, self.width(), self.height()))
 
-        qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        qp.setCompositionMode(QPainter.CompositionMode_ColorBurn)
         qp.setPen(QPen(QBrush(self.clear), 0))
         backgroundGradient = QLinearGradient(0.0, 0.0, 0.0, self.height())
         backgroundGradient.setColorAt(0, self.midGreyFaint)
@@ -1963,7 +1954,7 @@ class PopupSlider(QWidget):
         lineColor = QColor(68, 68, 68, 64)
         qp.setPen(QPen(QBrush(lineColor), 0))
         qp.setBrush(QBrush(lineColor))
-        qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
         # qp.drawLine(righBarPos, 0, righBarPos, self.height())
         # qp.drawLine(leftBarPos, 0, leftBarPos, self.height())
@@ -1991,7 +1982,7 @@ class PopupSlider(QWidget):
 
         pen = QPen(self.darkGrey, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.white)
-        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
         qp.strokePath(path, pen)
         qp.fillPath(path, brush)
         '''
@@ -2012,7 +2003,7 @@ class PopupSlider(QWidget):
         leftBarPos = self.minValue
         righBarPos = self.rightBorder - self.leftBorder
 
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setBrush(QBrush(self.midGrey))
         qp.setPen(QPen(QBrush(self.midGrey), 2))
         qp.drawRoundedRect(0, 0, self.width(), self.height(), 4 * dpiScale(), 4 * dpiScale())
@@ -2020,7 +2011,7 @@ class PopupSlider(QWidget):
         lineColor = QColor(68, 68, 68, 64)
         qp.setPen(QPen(QBrush(lineColor), 0))
         qp.setBrush(QBrush(lineColor))
-        qp.setCompositionMode(qp.CompositionMode_Darken)
+        qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setBrush(QBrush(self.darkGrey))
@@ -2037,7 +2028,7 @@ class PopupSlider(QWidget):
 
         qp.setClipRegion(QRect(0, 0, self.width(), self.height()))
 
-        qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+        qp.setCompositionMode(QPainter.CompositionMode_ColorBurn)
 
         backgroundGradient = QLinearGradient(0.0, 0.0, 0.0, self.height())
         backgroundGradient.setColorAt(0, self.midGreyFaint)
@@ -2104,7 +2095,7 @@ class PopupSlider(QWidget):
 
         pen = QPen(self.darkGrey, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.white)
-        qp.setCompositionMode(qp.CompositionMode_SourceOver)
+        qp.setCompositionMode(QPainter.CompositionMode_SourceOver)
         qp.strokePath(path, pen)
         qp.fillPath(path, brush)
 
@@ -2140,13 +2131,13 @@ class PopupSlider(QWidget):
         self.sliderBeginSignal.emit(self.mode, 0.0, 0.0)
 
     def keyPressEvent(self, event):
-        if event.type() == event.KeyPress:
+        if event.type() == QEvent.KeyPress:
             modifiers = QApplication.keyboardModifiers()
             if event.key() == Qt.Key_Control:
                 self.setOvershoot(True)
 
     def keyReleaseEvent(self, event):
-        if event.type() == event.KeyRelease:
+        if event.type() == QEvent.KeyRelease:
             modifiers = QApplication.keyboardModifiers()
             if event.key() == Qt.Key_Control:
                 self.setOvershoot(False)
@@ -2165,7 +2156,7 @@ class PopupSliderDialog(QDialog):
         self.noButtons = noButtons
         self.parentWidget = parentWidget
         self.sliderData = sliderData
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Popup | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -2250,7 +2241,7 @@ class PopupSliderDialog(QDialog):
         QApplication.instance().sendEvent(self.slider, click_event)
 
     def keyPressEvent(self, event):
-        if event.type() == event.KeyPress:
+        if event.type() == QEvent.KeyPress:
             modifiers = QApplication.keyboardModifiers()
             if event.key() == Qt.Key_Control:
                 self.slider.toggleOvershoot(True, self.baseSliderWidth)
@@ -2258,7 +2249,7 @@ class PopupSliderDialog(QDialog):
                 self.moveToCachedCursor()
 
     def keyReleaseEvent(self, event):
-        if event.type() == event.KeyRelease:
+        if event.type() == QEvent.KeyRelease:
             modifiers = QApplication.keyboardModifiers()
             if event.key() == Qt.Key_Control:
                 self.slider.toggleOvershoot(False, self.baseSliderWidth)
@@ -2297,7 +2288,7 @@ class PopupSliderWidget(QWidget):
         # self.setToolTip("%s<br>Hold <b>Ctrl+Alt</b> for info" % toolTipSmall)
         self.icon = sliderData['icon']
         self.altIcon = altSliderData['icon']
-        self.defaultWidth = pm.optionVar.get('sliderButtonWidth', 24)
+        self.defaultWidth = get_option_var('sliderButtonWidth', 24)
         self.button = PopupSliderButton(icon=self.icon, altIcon=self.altIcon, width=self.defaultWidth,
                                         height=self.defaultWidth,
                                         toolTipText='Words',
@@ -2327,6 +2318,7 @@ class PopupSliderWidget(QWidget):
         self.slider.keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
+        # print ('is this happening?')
         self.button.keyReleaseEvent(event)
         self.slider.keyReleaseEvent(event)
 
@@ -2504,7 +2496,7 @@ class PopupSliderButton(QPushButton):
 
         self.graphicsEffect().setStrength(0.0)
         self.parentWidget.helpWidget.hide()
-        return super(PopupSliderButton, self).enterEvent(event)
+        return super(PopupSliderButton, self).leaveEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

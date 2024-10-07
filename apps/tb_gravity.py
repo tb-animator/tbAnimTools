@@ -22,17 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.mel as mel
-import maya.cmds as cmds
-import maya.OpenMaya as om
-import maya.api.OpenMaya as om2
-import pymel.core.datatypes as dt
-import math
+
 import bisect
-from Abstract import *
-from tb_UI import *
-import maya
+from . import *
 
 mainNodeName = 'CoM_Nodes'
 capsuleNodeName = 'Capsules'
@@ -43,29 +35,6 @@ capsuleSideA = 'tbCapsuleSideA'
 capsuleSideB = 'tbCapsuleSideB'
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-import maya.cmds as cmds
-import maya.api.OpenMaya as OpenMaya
-
-import maya.OpenMaya as om
-
-import math
-import sys
-import pymel.core as pm
-import pymel.core.datatypes as dt
-import maya.cmds as cmds
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -116,7 +85,7 @@ class GravityTools(toolAbstractFactory):
     toolName = 'GravityTools'
     comTemplateSubFolder = 'comTemplates'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     gravityOption = 'tbGravityOption'
     defaultGravity = -981
@@ -132,9 +101,9 @@ class GravityTools(toolAbstractFactory):
                             'RotateY': 0,
                             'RotateZ': 0,
                             }
-    sides = [pm.optionVar.get(capsuleSideA, '_L'),
-             pm.optionVar.get(capsuleSideB, '_R')]
-    editMode = pm.optionVar.get('tbComEditMode', True)
+    sides = [get_option_var(capsuleSideA, '_L'),
+             get_option_var(capsuleSideB, '_R')]
+    editMode = get_option_var('tbComEditMode', True)
 
     lastSelectedRig = None
 
@@ -149,9 +118,9 @@ class GravityTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
-        self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity)
+        self.gravity = get_option_var(self.gravityOption, self.defaultGravity)
         self.uiUnit = om.MTime.uiUnit()
 
     """
@@ -172,7 +141,7 @@ class GravityTools(toolAbstractFactory):
             'Set the gravity value in cm here. Default is -981. Some rigs are built to odd units/dimensions so adjust accordingly')
         infoText.setWordWrap(True)
         gravityScale = intFieldWidget(optionVar=self.gravityOption,
-                                      defaultValue=pm.optionVar.get(self.gravityOption, self.defaultGravity),
+                                      defaultValue=get_option_var(self.gravityOption, self.defaultGravity),
                                       label='Gravity Override (cm)', minimum=-9999, maximum=9999, step=0.1)
         self.layout.addWidget(infoText)
         self.layout.addWidget(gravityScale)
@@ -183,7 +152,7 @@ class GravityTools(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Centre of Mass', image='CoM.png', command='GravityToolsOpenUI', sourceType='mel',
+        cmds.menuItem(label='Centre of Mass', image='CoM.png', command='GravityToolsOpenUI', sourceType='mel',
                     parent=parentMenu)
 
     def build_MM(self):
@@ -206,7 +175,7 @@ class GravityTools(toolAbstractFactory):
 
     def getGravity(self):
         worldAxis = cmds.upAxis(query=True, axis=True)
-        self.gravity = pm.optionVar.get(self.gravityOption, self.defaultGravity) / self.funcs.unit_conversion()
+        self.gravity = get_option_var(self.gravityOption, self.defaultGravity) / self.funcs.unit_conversion()
         gravityVector = {'y': [0, self.gravity, 0],
                          'z': [0, 0, self.gravity]}
         return gravityVector[worldAxis]
@@ -224,9 +193,9 @@ class GravityTools(toolAbstractFactory):
             tempControl = self.funcs.tempControl(name='Gravity', suffix='', drawType='cross')
         else:
             tempControl = self.funcs.tempControl(name=sel[0], suffix='Gravity', drawType='cross')
-            pm.delete(pm.pointConstraint(sel[0], tempControl))
+            cmds.delete(cmds.pointConstraint(sel[0], tempControl))
 
-        pm.select(tempControl, replace=True)
+        cmds.bakeResults(tempControl, replace=True)
         self.doJumpUsingInitialFrameVelocity()
 
     def doQuickJump(self):
@@ -300,8 +269,8 @@ class GravityTools(toolAbstractFactory):
                     if curve:
                         curves[s + '.' + attr] = curve[0]
                         curveDuplicates[s + '.' + attr] = cmds.duplicate(curve[0])[0]
-                constraints.append(pm.pointConstraint(locs, s))
-                pm.bakeResults(attrList,
+                constraints.append(cmds.pointConstraint(locs, s)[0])
+                cmds.bakeResults(attrList,
                                simulation=False,
                                disableImplicitControl=True,
                                # removeBakedAttributeFromLayer=False,
@@ -318,7 +287,7 @@ class GravityTools(toolAbstractFactory):
                                shape=False,
                                time=(start, end),
                                )
-                pm.delete(constraints)
+                cmds.delete(constraints)
                 if cmds.animLayer(selectedLayer[0], query=True, override=True):
                     for attr in ['translateX', 'translateY', 'translateZ']:
                         # hack for pre maya 2020.4.3
@@ -355,15 +324,15 @@ class GravityTools(toolAbstractFactory):
                         cmds.connectAttr(curveOriginal + '.output', plugs[s + '.' + attr], force=True)
                         cmds.delete(resultCurve)
             else:
-                constraints.append(pm.pointConstraint(locs, s))
-                pm.bakeResults(sel, simulation=False,
+                constraints.append(cmds.pointConstraint(locs, s)[0])
+                cmds.bakeResults(sel, simulation=False,
                                disableImplicitControl=True,
                                preserveOutsideKeys=True,
                                time=(start, end),
                                sampleBy=1)
-                pm.delete(constraints)
+                cmds.delete(constraints)
 
-        pm.delete(locs)
+        cmds.delete(locs)
 
     def doJumpUsingInitialFrameVelocity(self):
         with self.funcs.keepSelection():
@@ -451,9 +420,9 @@ class GravityTools(toolAbstractFactory):
 
     def keyJumpArc(self, arcX, arcY, arcZ, start, end, loc):
         for t in range(int(end - start) + 1):
-            pm.setKeyframe(loc + '.translateX', time=start + t, value=arcX[t])
-            pm.setKeyframe(loc + '.translateY', time=start + t, value=arcY[t])
-            pm.setKeyframe(loc + '.translateZ', time=start + t, value=arcZ[t])
+            cmds.setKeyframe(loc + '.translateX', time=start + t, value=arcX[t])
+            cmds.setKeyframe(loc + '.translateY', time=start + t, value=arcY[t])
+            cmds.setKeyframe(loc + '.translateZ', time=start + t, value=arcZ[t])
 
     def getTranslationAtTime(self, target, time):
         mobj = self.getMobject(target)
@@ -607,8 +576,8 @@ class GravityTools(toolAbstractFactory):
         :param sel:
         :return:
         """
-        sel = pm.PyNode(sel)
-        namespace = sel.namespace()
+
+        namespace = self.funcs.namepace(sel)
         mainNode = self.mainCapsuleNode(sel)
         mainComNode = self.mainCoMNode(sel)
         if not cmds.objExists(namespace + comNodeName):
@@ -627,30 +596,30 @@ class GravityTools(toolAbstractFactory):
 
 
     def mainCoMNode(self, sel):
-        sel = pm.PyNode(sel)
-        namespace = sel.namespace()
+
+        namespace = self.funcs.namespace(sel)
         if not cmds.objExists(namespace + mainNodeName):
             node = cmds.createNode('transform', name=namespace + mainNodeName)
             cmds.addAttr(node, ln='rig', at='message')
             topNode = self.getTopParent(str(sel))
-            pm.connectAttr(topNode + '.message', node + '.rig')
+            cmds.connectAttr(topNode + '.message', node + '.rig')
             return node
         return namespace + mainNodeName
 
     def mainCapsuleNode(self, sel):
-        sel = pm.PyNode(sel)
-        namespace = sel.namespace()
+
+        namespace = self.funcs.namespace(sel)
         mainComNode = self.mainCoMNode(sel)
         if not cmds.objExists(namespace + capsuleNodeName):
             node = cmds.createNode('transform', name=namespace + capsuleNodeName)
             cmds.addAttr(node, ln='rig', at='message')
             topNode = self.getTopParent(str(sel))
-            pm.connectAttr(topNode + '.message', node + '.rig')
-            pm.parent(node, mainComNode)
+            cmds.connectAttr(topNode + '.message', node + '.rig')
+            cmds.parent(node, mainComNode)
             return node
         return namespace + capsuleNodeName
 
-    def createCapsuleAtSelection(self, sel=None, axis='x'):
+    def createCapsuleAtSelection(self, sel=None, axis='x', *args):
         if not sel:
             sel = cmds.ls(sl=True, type='joint')
         if not sel:
@@ -787,11 +756,11 @@ class GravityTools(toolAbstractFactory):
 
     def sideAUpdated(self, value):
         self.sides[0] = value
-        pm.optionVar[capsuleSideA] = value
+        set_option_var(capsuleSideA, value)
 
     def sideBUpdated(self, value):
         self.sides[1] = value
-        pm.optionVar[capsuleSideB] = value
+        set_option_var(capsuleSideB, value)
 
     def mirrorSelectedCapsules(self, sideList=None):
         if not sideList:
@@ -831,7 +800,7 @@ class GravityTools(toolAbstractFactory):
         else:
             bakeRange = self.funcs.getTimelineRange()
 
-        pm.pointConstraint(targetObject, tempControl)
+        cmds.pointConstraint(targetObject, tempControl)
         t = cmds.currentTime(query=True)
         cmds.currentTime(cmds.playbackOptions(query=True, min=True))
         self.allTools.tools['BakeTools'].quickBake(tempControl, startTime=bakeRange[0], endTime=bakeRange[-1],
@@ -844,7 +813,7 @@ class GravityTools(toolAbstractFactory):
             sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('No last rig used')
-        sel = pm.PyNode(sel[0])
+        sel = sel[0]
 
         visState = cmds.getAttr(self.mainCapsuleNode(sel) + '.visibility')
         cmds.setAttr(self.mainCapsuleNode(sel) + '.visibility', not visState)
@@ -855,7 +824,7 @@ class GravityTools(toolAbstractFactory):
         if not sel:
             return cmds.warning('No last rig used')
 
-        sel = pm.PyNode(sel[0])
+        sel = sel[0]
         com, floorCom = self.centreOfMassNode(sel)
         visState = cmds.getAttr(com + '.visibility')
         cmds.setAttr(com + '.visibility', not visState)
@@ -946,8 +915,7 @@ class GravityTools(toolAbstractFactory):
 
         for cap in capsules:
             copyData, copyConstraintOffset = self.cacheCapsule(cap)
-            pCap = pm.PyNode(cap)
-            capName = pCap.stripNamespace()
+            capName = self.funcs.stripNamespace(cap)
             targetName = capName.rsplit('_cap')[0]
 
             setData['targets'][capName] = targetName
@@ -971,13 +939,13 @@ class GravityTools(toolAbstractFactory):
             stackedWidget.setCurrentIndex(0)
             animButton.setEnabled(True)
             editButton.setDisabled(True)
-            pm.optionVar['tbComEditMode'] = True
+            set_option_var('tbComEditMode', True)
 
         def setEditMode():
             stackedWidget.setCurrentIndex(1)
             animButton.setDisabled(True)
             editButton.setEnabled(True)
-            pm.optionVar['tbComEditMode'] = False
+            set_option_var('tbComEditMode', False)
 
         toolBoxWidget = QWidget()
         toolBoxWidget.setContentsMargins(0, 0, 0, 0)
@@ -1049,17 +1017,17 @@ class GravityTools(toolAbstractFactory):
                                         imgLabel='Sel',
                                         height=22,
                                         width=(2 * buttonWidth) / 3.0, sourceType='py',
-                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'x'))
+                                        command=create_callback(self.createCapsuleAtSelection, None, 'x'))
         createYAlignButton = ToolButton(text='Y',
                                         imgLabel='All',
                                         height=22,
                                         width=(2 * buttonWidth) / 3.0, sourceType='py',
-                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'y'))
+                                        command=create_callback(self.createCapsuleAtSelection, None, 'y'))
         createZAlignButton = ToolButton(text='Z',
                                         imgLabel='All',
                                         height=22,
                                         width=(2 * buttonWidth) / 3.0, sourceType='py',
-                                        command=pm.Callback(self.createCapsuleAtSelection, None, 'z'))
+                                        command=create_callback(self.createCapsuleAtSelection, None, 'z'))
 
         createAlignLayout.addWidget(createXAlignButton)
         createAlignLayout.addWidget(createYAlignButton)
@@ -1192,7 +1160,7 @@ class GravityTools(toolAbstractFactory):
 
         animMainLayout.addLayout(bakeLayout)
 
-        editMode = pm.optionVar.get('tbComEditMode', True)
+        editMode = get_option_var('tbComEditMode', True)
         if editMode:
             setAnimMode()
         else:
@@ -1201,7 +1169,7 @@ class GravityTools(toolAbstractFactory):
 
     def toolBoxUI(self):
         # if not self.toolbox:
-        self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+        self.toolbox = BaseDialog(parent=getMainWindow(),
                                   title='tb Centre of Mass', text=str(),
                                   lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
         self.toolbox.mainLayout.addWidget(self.getToolboxWidget(self.toolbox))
@@ -1211,14 +1179,14 @@ class GravityTools(toolAbstractFactory):
 
 
 def createDebug_shader(name='capsuleShader', colour=[0.034, 1, 0]):
-    if not pm.objExists(name):
-        shader = pm.shadingNode('lambert', asShader=True, name=name)
-        shader.color.set(colour)
-        shader.ambientColor.set(0.266, 0.266, 0.266)
-        shader.transparency.set(0.75, 0.75, 0.75)
+    if not cmds.objExists(name):
+        shader = cmds.shadingNode('lambert', asShader=True, name=name)
+        cmds.setAttr(shader + '.color', *colour)
+        cmds.setAttr(shader + '.ambientColor', (0.266, 0.266, 0.266))
+        cmds.setAttr(shader + '.transparency', (0.75, 0.75, 0.75))
         # shader.incandescence.set(colour)
     else:
-        shader = pm.PyNode(name)
+        shader = name
 
 
 def assignDebug_shader(shader='capsuleShader', obj=[]):

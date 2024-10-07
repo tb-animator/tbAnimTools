@@ -22,35 +22,10 @@
 
 *******************************************************************************
 '''
-
-import pymel.core as pm
-import re
-from difflib import SequenceMatcher, get_close_matches, ndiff
-import maya
-import maya.api.OpenMaya as om2
-import maya.OpenMaya as om
-
+from . import *
 # maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-import maya.cmds as cmds
-import maya.mel as mel
-import os, stat
-import pickle
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
-from Abstract import *
 
 mirrorPlane = {'YZ': [-1, 1, 1],
                'XZ': [1, -1, 1],
@@ -169,7 +144,7 @@ class MirrorTools(toolAbstractFactory):
     toolName = 'MirrorTools'
     subFolder = 'mirrorTables'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     lastSelected = None
 
     loadedMirrorTables = dict()
@@ -183,7 +158,7 @@ class MirrorTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
         self.initData()
 
     def initData(self):
@@ -266,7 +241,7 @@ class MirrorTools(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='MirrorDialog')
 
         sel = cmds.ls(sl=True)
         if not sel:
@@ -626,18 +601,17 @@ class MirrorTools(toolAbstractFactory):
         for control in controls:
             if not cmds.objectType(control, isAType='transform'):
                 continue
-            pControl = pm.PyNode(control)
 
             opposite = self.getMirrorForControlFromCharacter(character, control)
             # print ('opposite', opposite)
             if not maya.cmds.objExists(opposite):
                 continue
-            pOpposite = pm.PyNode(opposite)
+
             mirrorAxisRaw = character.getMirrorAxis()
             mirrorAxis = self.calculateMirrorAxis(control, opposite, mirrorAxisRaw)
             axisDict = dict()
-            mirrorData.controls[pControl.stripNamespace()] = axisDict
-            mirrorData.oppositeControls[pControl.stripNamespace()] = pOpposite.stripNamespace()
+            mirrorData.controls[self.funcs.stripNamespace(control)] = axisDict
+            mirrorData.oppositeControls[self.funcs.stripNamespace(control)] = self.funcs.stripNamespace(opposite)
 
             for attr in allAttrs:
                 axisDict[attr] = self.getMirrorValue(attr, 1, mirrorAxis)
@@ -725,7 +699,7 @@ class MirrorTools(toolAbstractFactory):
                 self.mirrorControl(src, dst, char, option=option)
 
     def setIsMirror(self, fromControl, character, attr, value):
-        strippedFrom = pm.PyNode(fromControl).stripNamespace()
+        strippedFrom = self.funcs.stripNamespace(fromControl)
 
         if not self.isMirror(strippedFrom, character, 'swap'):
             return
@@ -739,7 +713,7 @@ class MirrorTools(toolAbstractFactory):
         print(self.loadedMirrorTables[character].controls[strippedFrom][attr])
 
     def getIsMirror(self, fromControl, character, attr):
-        strippedFrom = pm.PyNode(fromControl).stripNamespace()
+        strippedFrom = self.funcs.stripNamespace(fromControl)
 
         if not self.isMirror(strippedFrom, character, 'swap'):
             return
@@ -764,8 +738,8 @@ class MirrorTools(toolAbstractFactory):
 
         attrs = cmds.listAttr(fromControl, keyable=True, scalar=True, settable=True, inUse=True)
         toAttrs = cmds.listAttr(toControl, keyable=True, scalar=True, settable=True, inUse=True)
-        strippedFrom = pm.PyNode(fromControl).stripNamespace()
-        strippedTo = pm.PyNode(toControl).stripNamespace()
+        strippedFrom = self.funcs.stripNamespace(fromControl)
+        strippedTo = self.funcs.stripNamespace(toControl)
         valuesDict[fromControl] = dict()
         valuesDict[toControl] = dict()
         for index, a in enumerate(attrs):

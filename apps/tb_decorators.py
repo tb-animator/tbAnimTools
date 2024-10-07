@@ -2,8 +2,7 @@
 #   REPEAT COMMAND
 # -----------------------------------------------------------------
 
-import pymel.core as pmc
-
+from . import *
 _repeat_function = None
 _args = None
 _kwargs = None
@@ -27,7 +26,7 @@ def repeat_command():
 
             ret = function(*args, **kwargs)
 
-            pmc.repeatLast(addCommand=commandToRepeat, addCommandLabel=function.__name__)
+            cmds.repeatLast(addCommand=commandToRepeat, addCommandLabel=function.__name__)
 
             return ret
 

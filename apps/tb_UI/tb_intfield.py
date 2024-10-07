@@ -17,7 +17,7 @@ class intFieldWidget(QWidget):
         self.optionVar = optionVar
         self.defaultValue = defaultValue
         if optionVar is not None:
-            self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+            self.optionValue = get_option_var(self.optionVar, defaultValue)
         else:
             self.optionValue = None
         self.layout = QHBoxLayout()
@@ -43,7 +43,7 @@ class intFieldWidget(QWidget):
 
     def interactivechange(self, b):
         if self.optionVar is not None:
-            pm.optionVar[self.optionVar] = self.spinBox.value()
+            cmds.optionVar(floatValue=(self.optionVar, self.spinBox.value()))
         self.changedSignal.emit(self.spinBox.value())
         # print ('interactiveChange', self.spinBox.value())
         self.editedSignalKey.emit(self.key, self.spinBox.value())

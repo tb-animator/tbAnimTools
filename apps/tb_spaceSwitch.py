@@ -22,12 +22,7 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-import pymel.core.datatypes as dt
-from Abstract import *
-import maya.api.OpenMaya as om2
-from difflib import SequenceMatcher
+from . import *
 
 str_spacePresets = 'spacePresets'
 str_spaceDefaultValues = 'spaceDefaultValues'
@@ -37,19 +32,6 @@ str_spaceGlobalValues = 'spaceGlobalValues'
 str_spaceControlKey = 'spaceControl'
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -185,7 +167,9 @@ class SpaceSwitch(toolAbstractFactory):
     __instance = None
     toolName = 'SpaceSwitch'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
+
+    markingMenuWidget = None
 
     culledUserAttributes = ['blendParent', 'blendOrient', 'blendPoint']
     quickBakeSimOption = 'tbSpaceSwitchBakeUseSim'
@@ -215,7 +199,7 @@ class SpaceSwitch(toolAbstractFactory):
 
     def __init__(self, **kwargs):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     def initData(self):
         super(SpaceSwitch, self).initData()
@@ -238,14 +222,14 @@ class SpaceSwitch(toolAbstractFactory):
 
         self.bakeRangeModeWidget = comboBoxWidget(optionVar=self.bakeTimelineModeOption,
                                                   values=self.bakeTimelineModes,
-                                                  defaultValue=pm.optionVar.get(self.bakeTimelineModeOption,
+                                                  defaultValue=get_option_var(self.bakeTimelineModeOption,
                                                                                 self.bakeTimelineModes[0]),
                                                   label='Bake mode range')
         simOptionWidget = optionVarBoolWidget('Space switch bake uses Simulation ', self.quickBakeSimOption)
         infoText4 = QLabel('<b>Bake to layer</b> - A space bake will bake to a new override layer')
         self.bakeLayerModeWidget = comboBoxWidget(optionVar=self.bakeToLayerModeOption,
                                                   values=self.bakeLayerModes,
-                                                  defaultValue=pm.optionVar.get(self.bakeToLayerModeOption,
+                                                  defaultValue=get_option_var(self.bakeToLayerModeOption,
                                                                                 self.bakeLayerModes[0]),
                                                   label='Bake Layer Mode')
         self.layout.addWidget(sub)
@@ -265,7 +249,7 @@ class SpaceSwitch(toolAbstractFactory):
         return None
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
+        cmds.menuItem(label='SpaceSwitch Data Editor', image='menuIconChannels.png',
                     command='tbOpenSpaceSwitchDataEditor', sourceType='mel',
                     parent=parentMenu)
 
@@ -281,7 +265,7 @@ class SpaceSwitch(toolAbstractFactory):
                     }
 
         # TODO - change this so the event filter doesn't get rebuilt all the time
-        self.presetMarkingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        self.presetMarkingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='SpaceSwitchPresetDialog')
 
         sel = cmds.ls(sl=True)
         if not sel:
@@ -343,10 +327,10 @@ class SpaceSwitch(toolAbstractFactory):
                     ToolboDivider(label='Space Switch Presets', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
                 for preset in presets.keys():
                     button = ToolboxButton(label='Switch', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
-                                           command=pm.Callback(self.switchFromPreset, preset, rigName, namespace),
+                                           command=create_callback(self.switchFromPreset, preset, rigName, namespace),
                                            closeOnPress=True)
                     altButton = ToolboxButton(label='Bake', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget,
-                                              command=pm.Callback(self.bakeFromPreset, preset, rigName, namespace),
+                                              command=create_callback(self.bakeFromPreset, preset, rigName, namespace),
                                               closeOnPress=True)
                     menuDict['SE'].append(ToolboxDoubleButton(preset,
                                                               self.presetMarkingMenuWidget,
@@ -361,13 +345,13 @@ class SpaceSwitch(toolAbstractFactory):
                                             icon=IconPath + '\popupWindow.png',
                                             parent=self.presetMarkingMenuWidget,
                                             cls=self.presetMarkingMenuWidget,
-                                            command=pm.Callback(SpaceSwitch().openEditorWindow),
+                                            command=create_callback(SpaceSwitch().openEditorWindow),
                                             closeOnPress=True))
         menuDict['SW'].append(ToolboDivider(label='', parent=self.presetMarkingMenuWidget, cls=self.presetMarkingMenuWidget))
         menuDict['SW'].append(ToolboxButton(label='Save selection as preset...',
                                             parent=self.presetMarkingMenuWidget,
                                             cls=self.presetMarkingMenuWidget,
-                                            command=pm.Callback(SpaceSwitch().saveSelectionAsPreset),
+                                            command=create_callback(SpaceSwitch().saveSelectionAsPreset),
                                             closeOnPress=True))
 
     def openMM(self):
@@ -382,7 +366,8 @@ class SpaceSwitch(toolAbstractFactory):
                     }
 
         # TODO - change this so the event filter doesn't get rebuilt all the time
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        if not self.markingMenuWidget:
+            self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='SpaceSwitchDialog')
 
         sel = cmds.ls(sl=True)
         if not sel:
@@ -444,10 +429,10 @@ class SpaceSwitch(toolAbstractFactory):
                     ToolboDivider(label='Space Switch Presets', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
                 for preset in presets.keys():
                     button = ToolboxButton(label='Switch', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                           command=pm.Callback(self.switchFromPreset, preset, rigName, namespace),
+                                           command=create_callback(self.switchFromPreset, preset, rigName, namespace),
                                            closeOnPress=True)
                     altButton = ToolboxButton(label='Bake', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                              command=pm.Callback(self.bakeFromPreset, preset, rigName, namespace),
+                                              command=create_callback(self.bakeFromPreset, preset, rigName, namespace),
                                               closeOnPress=True)
                     menuDict['SE'].append(ToolboxDoubleButton(preset,
                                                               self.markingMenuWidget,
@@ -458,10 +443,10 @@ class SpaceSwitch(toolAbstractFactory):
             for space in enumNames:
                 valueDict = {k: space for k in attrDict.keys()}
                 button = ToolboxButton(label='Switch', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                       command=pm.Callback(self.switchFromData, attrDict, valueDict),
+                                       command=create_callback(self.switchFromData, attrDict, valueDict),
                                        closeOnPress=True)
                 altButton = ToolboxButton(label='Bake', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                          command=pm.Callback(self.bakeFromData, attrDict, valueDict),
+                                          command=create_callback(self.bakeFromData, attrDict, valueDict),
                                           closeOnPress=True)
                 menuDict['SE'].append(ToolboxDoubleButton(space,
                                                           self.markingMenuWidget,
@@ -473,13 +458,13 @@ class SpaceSwitch(toolAbstractFactory):
                                             icon=IconPath + '\popupWindow.png',
                                             parent=self.markingMenuWidget,
                                             cls=self.markingMenuWidget,
-                                            command=pm.Callback(SpaceSwitch().openEditorWindow),
+                                            command=create_callback(SpaceSwitch().openEditorWindow),
                                             closeOnPress=True))
         menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
         menuDict['SW'].append(ToolboxButton(label='Save selection as preset...',
                                             parent=self.markingMenuWidget,
                                             cls=self.markingMenuWidget,
-                                            command=pm.Callback(SpaceSwitch().saveSelectionAsPreset),
+                                            command=create_callback(SpaceSwitch().saveSelectionAsPreset),
                                             closeOnPress=True))
         menuDict['SW'].append(ToolboDivider(label='', parent=self.markingMenuWidget, cls=self.markingMenuWidget))
         menuDict['SW'].append(ToolboxButton(label='Save current state as ...',
@@ -544,13 +529,13 @@ class SpaceSwitch(toolAbstractFactory):
                 spaceAttribute = [spaceAttribute]
 
             for attr in spaceAttribute:
-                spaceSwitchAttr = pm.Attribute(attr)
+                spaceSwitchAttr = attr
 
                 cmds.select(clear=True)
 
-                allSpaceAttrKeyTimes = sorted(list(set(pm.keyframe(spaceSwitchAttr, query=True))))
+                allSpaceAttrKeyTimes = sorted(list(set(cmds.keyframe(spaceSwitchAttr, query=True))))
                 duplicateSpaceKeyTimes = []
-                spaceAttrValues = pm.keyframe(spaceSwitchAttr, query=True, valueChange=True)
+                spaceAttrValues = cmds.keyframe(spaceSwitchAttr, query=True, valueChange=True)
                 for index in range(0, len(spaceAttrValues) - 1):
                     if spaceAttrValues[index] != spaceAttrValues[index + 1]:
                         continue
@@ -558,13 +543,13 @@ class SpaceSwitch(toolAbstractFactory):
 
                 # remove the duplicate values
                 for keyTime in duplicateSpaceKeyTimes:
-                    pm.cutKey(spaceSwitchAttr, time=keyTime)
+                    cmds.cutKey(spaceSwitchAttr, time=(keyTime,))
 
                 # put this as an option
-                pm.keyframe(spaceSwitchAttr, tickDrawSpecial=True)
+                cmds.keyframe(spaceSwitchAttr, tickDrawSpecial=True)
 
                 # set the tangents to stepped and flat
-                pm.keyTangent(spaceSwitchAttr, outTangentType='step', inTangentType='linear')
+                cmds.keyTangent(spaceSwitchAttr, outTangentType='step', inTangentType='linear')
 
     def getAllControlsInSpace(self, mode=str_spaceGlobalValues):
         sel = cmds.ls(sl=True)
@@ -771,7 +756,7 @@ class SpaceSwitch(toolAbstractFactory):
     def bakeFromData(self, attributes, values):
         resultLayer = None
         timeRange = self.funcs.getTimelineRange()
-        bakeOption = pm.optionVar.get(self.bakeToLayerModeOption, self.bakeLayerModes[0])
+        bakeOption = get_option_var(self.bakeToLayerModeOption, self.bakeLayerModes[0])
         initialTime = cmds.currentTime(query=True)
         preSel = cmds.ls(sl=True)
         selection = list(set(attributes.values()))
@@ -813,7 +798,7 @@ class SpaceSwitch(toolAbstractFactory):
         with self.funcs.suspendUpdate():
             cmds.bakeResults(list(locators.values()),
                              time=(startTime, endTime),
-                             # simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                             # simulation=get_option_var(self.quickBakeSimOption, False),
                              simulation=True,
                              sampleBy=1)
 
@@ -826,10 +811,12 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.animLayer(resultLayer, edit=True, preferred=True)
 
         for key, attr in spaceAttributes.items():
-            spaceSwitchAttr = pm.Attribute(key)
+            spaceSwitchAttr = key
             spaceValue = values[key]
+            print ('spaceSwitchAttr', spaceSwitchAttr)
+            print ('spaceValue', spaceValue)
             if not isinstance(values[key], int) and not isinstance(values[key], float):
-                spaceEnums = dict((k.lower(), v) for k, v in spaceSwitchAttr.getEnums().items())
+                spaceEnums = dict((k.lower(), v) for k, v in self.funcs.get_enums(spaceSwitchAttr).items())
                 spaceValue = spaceEnums[spaceValue.lower()]
 
             cmds.setKeyframe(key, time=(startTime, endTime), value=spaceValue)
@@ -838,7 +825,7 @@ class SpaceSwitch(toolAbstractFactory):
             cmds.bakeResults(bakeAttributes,
                              time=(startTime, endTime),
                              destinationLayer=resultLayer,
-                             # simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                             # simulation=get_option_var(self.quickBakeSimOption, False),
                              simulation=True,
                              sampleBy=1)
 
@@ -867,7 +854,6 @@ class SpaceSwitch(toolAbstractFactory):
         finalSpaceList = list()
         unknownControls = list()
         for s in sel:
-            node = pm.PyNode(s)
             if not ':' in s:
                 namespace = ''
                 control = s
@@ -888,11 +874,11 @@ class SpaceSwitch(toolAbstractFactory):
                 if control in values:
                     attr = attrs[values.index(control)]
                     attrName = attr.split('.')[-1]
-                    p_attr = pm.Attribute(s + '.' + attrName)
+                    p_attr = s + '.' + attrName
                     if not cmds.attributeQuery(attrName, node=s, attributeType=True) == 'enum':
                         continue
 
-                    spaceValues = p_attr.getEnums()
+                    spaceValues = self.funcs.get_enums(p_attr)
                     all_spaces.append(spaceValues)
 
                     allAttrNames.append(attrName)
@@ -906,8 +892,8 @@ class SpaceSwitch(toolAbstractFactory):
                             continue
                         if not cmds.attributeQuery(attrName, node=s, attributeType=True) == 'enum':
                             continue
-                        p_attr = pm.Attribute(s + '.' + attrName)
-                        spaceValues = p_attr.getEnums()
+                        p_attr = s + '.' + attrName
+                        spaceValues = self.funcs.get_enums(p_attr)
                         all_spaces.append(spaceValues)
 
                         allAttrNames.append(attrName)
@@ -937,17 +923,34 @@ class SpaceSwitch(toolAbstractFactory):
             if not intersection:
                 continue
             attrName = list(intersection)[0]
-            p_attr = pm.Attribute(control + '.' + attrName)
-            spaceValues = p_attr.getEnums()
+            p_attr = control + '.' + attrName
+            spaceValues = self.funcs.get_enums(p_attr)
             all_spaces.append(spaceValues)
             dataValues[attr] = spaceValues
             dataControls[attr] = namespace + ':' + c
 
-        for space in all_spaces:
+        # for space in all_spaces:
+        #     ordered_sub_space = []
+        #     for index in range(len(space)):
+        #         ordered_sub_space.append(space.key(index))
+        #     ordered_spaces.append(ordered_sub_space)
+        """
+        spaceValues EnumDict({'Master': 0, 'Master Offset': 1, 'Lower Base': 2, 'COG': 3, 'Limb Root': 4})
+        Space EnumDict({'Master': 0, 'Master Offset': 1, 'Lower Base': 2, 'COG': 3, 'Limb Root': 4})
+             searching space.key(index) Master
+             searching space.key(index) Master Offset
+             searching space.key(index) Lower Base
+             searching space.key(index) COG
+             searching space.key(index) Limb Root
+        ordered_spaces [['Master', 'Master Offset', 'Lower Base', 'COG', 'Limb Root']]
+        """
+        for spaceValues in all_spaces:
+            print('\tSpace', spaceValues)
             ordered_sub_space = []
-            for index in range(len(space)):
-                ordered_sub_space.append(space.key(index))
+            for index in range(len(spaceValues)):
+                ordered_sub_space.append(list(spaceValues.keys())[list(spaceValues.values()).index(index)])
             ordered_spaces.append(ordered_sub_space)
+        print('ordered_spaces', ordered_spaces)
 
         if ordered_spaces:
             finalSpaceList = list(
@@ -955,17 +958,17 @@ class SpaceSwitch(toolAbstractFactory):
         return dataControls, finalSpaceList, rigName, namespace
 
     def createLayer(self):
-        newAnimLayer = pm.animLayer('SpaceSwitch',
+        newAnimLayer = cmds.animLayer('SpaceSwitch',
                                     override=True)
-        newAnimLayer.rotationAccumulationMode.set(True)
-        newAnimLayer.ghostColor.set(self.allTools.tools['BakeTools'].overrideLayerColour)
+        cmds.setAttr(newAnimLayer + ".rotationAccumulationMode", True)
+        cmds.setAttr(newAnimLayer + ".ghostColor", self.allTools.tools['BakeTools'].overrideLayerColour)
         self.allTools.tools['BakeTools'].deselect_layers()
-        newAnimLayer.selected.set(True)
-        newAnimLayer.preferred.set(True)
-        newAnimLayer.scaleAccumulationMode.set(0)
+        cmds.setAttr(newAnimLayer + ".selected", True)
+        cmds.setAttr(newAnimLayer + ".preferred", True)
+        cmds.setAttr(newAnimLayer + ".scaleAccumulationMode", 0)
         return newAnimLayer
 
-    def switchFromPreset(self, preset, rigName, namespace):
+    def switchFromPreset(self, preset, rigName, namespace, *args):
         presetData = self.loadedSpaceData[rigName].spacePresets[preset]
         values = dict()
         attributes = dict()
@@ -975,7 +978,7 @@ class SpaceSwitch(toolAbstractFactory):
             values[namespace + ':' + key] = value
 
         self.switchFromData(attributes, values)
-    def bakeFromPreset(self, preset, rigName, namespace):
+    def bakeFromPreset(self, preset, rigName, namespace, *args):
         presetData = self.loadedSpaceData[rigName].spacePresets[preset]
         values = dict()
         attributes = dict()
@@ -1026,12 +1029,12 @@ class SpaceSwitch(toolAbstractFactory):
         :return:
         """
         if not cmds.objExists(node):
-            return pm.warning(node + ' does not exist')
+            return cmds.warning(node + ' does not exist')
         if not isinstance(node, list):
             node = [node]
         resultLayer = None
         timeRange = self.funcs.getTimelineRange()
-        bakeOption = pm.optionVar.get(self.bakeToLayerModeOption, self.bakeLayerModes[0])
+        bakeOption = get_option_var(self.bakeToLayerModeOption, self.bakeLayerModes[0])
         initialTime = cmds.currentTime(query=True)
         if bakeOption != self.bakeLayerModes[-1]:
             resultLayer = self.createLayer()
@@ -1064,13 +1067,18 @@ class SpaceSwitch(toolAbstractFactory):
         :return:
         """
         if not cmds.objExists(node):
-            return pm.warning(node + ' does not exist')
+            return cmds.warning(node + ' does not exist')
         # if there is no control node specified, just use the main node
-
-        spaceSwitchAttr = pm.Attribute(node + '.' + spaceAttribute)
-
+        if '.' not in spaceAttribute:
+            spaceSwitchAttr = node + '.' + spaceAttribute
+        else:
+            spaceSwitchAttr = spaceAttribute
+        print ('node', node)
+        print ('spaceAttribute', spaceAttribute)
+        print ('spaceValue', spaceValue)
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
-            spaceEnums = dict((k.lower(), v) for k, v in list(spaceSwitchAttr.getEnums().items()))
+            print ('spaceSwitchAttr', spaceSwitchAttr)
+            spaceEnums = dict((k.lower(), v) for k, v in list(self.funcs.get_enums(spaceSwitchAttr).items()))
             spaceValue = spaceEnums[spaceValue.lower()]
 
         rotation = cmds.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
@@ -1084,7 +1092,7 @@ class SpaceSwitch(toolAbstractFactory):
         storedMtx = self.funcs.getMatrix(node)
 
         # swap the space value
-        pm.setAttr(spaceSwitchAttr, spaceValue)
+        cmds.setAttr(spaceSwitchAttr, spaceValue)
 
         # get the new matrix
         postMtx = self.funcs.getMatrix(node)
@@ -1103,7 +1111,7 @@ class SpaceSwitch(toolAbstractFactory):
         # translate it
         cmds.xform(node, relative=True, translation=pos)
         '''
-        if pm.keyframe(node, query=True) and pm.autoKeyframe(state=True, q=True):
+        if cmds.keyframe(node, query=True) and cmds.autoKeyframe(state=True, q=True):
             try:
                 cmds.setKeyframe(node + '.translate')
             except:
@@ -1117,13 +1125,13 @@ class SpaceSwitch(toolAbstractFactory):
         self.deleteBlendAttributes(node)
 
     def deleteBlendAttributes(self, node):
-        for attr in pm.listAttr(node, userDefined=True, keyable=True):
+        for attr in cmds.listAttr(node, userDefined=True, keyable=True):
             if attr not in self.culledUserAttributes:
                 continue
             # deleted constraints remove the connection to the blend point/parent/orient attributes
             # if there's no connection then it's safe to delete, probably
-            if not pm.listConnections(node + '.' + attr, source=False, destination=True):
-                pm.deleteAttr(node + '.' + attr)
+            if not cmds.listConnections(node + '.' + attr, source=False, destination=True):
+                cmds.deleteAttr(node + '.' + attr)
 
     def findSpaceAttributes(self, sel):
         if not sel:
@@ -1156,10 +1164,10 @@ class SpaceSwitch(toolAbstractFactory):
     def getSavePresetSignal(self, name=str()):
         self.captureData(presetName=name)
 
-    def saveSelectionAsPreset(self):
+    def saveSelectionAsPreset(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            return pm.warning('Unable to save preset with no selection')
+            return cmds.warning('Unable to save preset with no selection')
 
         attrDict, characters = self.getAllSpaceSwitchAttributes()
         if not attrDict.keys():
@@ -1171,27 +1179,30 @@ class SpaceSwitch(toolAbstractFactory):
                                   default=sel[-1].split(':')[-1])
         dialog.acceptedSignal.connect(self.getSavePresetSignal)
 
-    def openEditorWindow(self):
+    def openEditorWindow(self, *args):
         if not self.win:
             self.win = SpaceSwitchSetupUI()
         self.win.show()
 
 
 class ToolboxWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), menuDict=dict()):
-        super(ToolboxWidget, self).__init__(parent=parent)
+    def __init__(self, parent=getMainWindow(), menuDict=dict(), name='ToolboxWidget'):
+        super(ToolboxWidget, self).__init__(parent=parent, name=name)
         # TODO - make this part of the space switch class, add buttons to the base dialog class
         # TODO - move custom code here into maain class
         # TODO - fix double action
-        self.app = QApplication.instance()
-        self.keyPressHandler = markingMenuKeypressHandler(UI=self)
-        self.app.installEventFilter(self.keyPressHandler)
+
+        # TODO - add this back
+        pass
+        # self.app = QApplication.instance()
+        # self.keyPressHandler = getMarkingMenuFilter(UI=self)
+        # self.app.installEventFilter(self.keyPressHandler)
 
 
 class SubToolboxWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+    def __init__(self, parent=getMainWindow(),
+                 parentMenu=None, name='SubToolboxWidget'):
+        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -1214,9 +1225,9 @@ class SubToolboxWidget(ViewportDialog):
 
 
 class SaveCurrentStateWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+    def __init__(self, parent=getMainWindow(),
+                 parentMenu=None, name='SaveCurrentStateWidget'):
+        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -1245,7 +1256,7 @@ class SaveCurrentStateWidget(ViewportDialog):
 
 class SpaceSwitchSetupUI(QMainWindow):
     def __init__(self):
-        super(SpaceSwitchSetupUI, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SpaceSwitchSetupUI, self).__init__(parent=getMainWindow())
 
         self.setObjectName('SpaceSwitch_SetupUI')
 
@@ -1341,7 +1352,7 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.createSelectionChangedScriptJob()
 
     def createSelectionChangedScriptJob(self):
-        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", pm.Callback(self.selectionChanged)))
+        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", create_callback(self.selectionChanged)))
         return self.selectionChangedCallback
 
     def selectionChanged(self, *args):
@@ -1626,7 +1637,7 @@ class SwitchValuesIntWidget(QWidget):
     editedSignal = Signal(str, float)
 
     def __init__(self):
-        super(SwitchValuesIntWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SwitchValuesIntWidget, self).__init__(parent=getMainWindow())
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
@@ -1664,7 +1675,7 @@ class SwitchValuesEnumWidget(QWidget):
     editedSignal = Signal(str, str)
 
     def __init__(self):
-        super(SwitchValuesEnumWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SwitchValuesEnumWidget, self).__init__(parent=getMainWindow())
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
@@ -1705,7 +1716,7 @@ class SwitchValuesDoubleWidget(QWidget):
     editedSignal = Signal(str, float)
 
     def __init__(self):
-        super(SwitchValuesDoubleWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SwitchValuesDoubleWidget, self).__init__(parent=getMainWindow())
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
 
@@ -1744,7 +1755,7 @@ class SwitchValuesComboWidget(QWidget):
     doubleEditedSignal = Signal(str, float)
 
     def __init__(self, key=str_spaceGlobalValues):
-        super(SwitchValuesComboWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SwitchValuesComboWidget, self).__init__(parent=getMainWindow())
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(2, 2, 2, 2)
         self.stackWidget = QStackedWidget(self)
@@ -1809,7 +1820,7 @@ class SwitchableObjectWidget(QWidget):
     objectDeletedSignal = Signal(str)
 
     def __init__(self, cls, attributeName):
-        super(SwitchableObjectWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(SwitchableObjectWidget, self).__init__(parent=getMainWindow())
         self.cls = cls
         self.key = attributeName
 
@@ -2071,7 +2082,7 @@ class PresetSaveWidget(QWidget):
                  helpString=None,
                  parentWidget=None,
                  qss=False,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+                 parent=getMainWindow()):
         super(PresetSaveWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
         self.parentWidget = parentWidget
@@ -2098,7 +2109,7 @@ class PresetSaveWidget(QWidget):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -2137,7 +2148,7 @@ class PresetSaveWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(getScreenCenter() - self.rect().center())
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(
@@ -2160,8 +2171,8 @@ class PresetSaveWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2))

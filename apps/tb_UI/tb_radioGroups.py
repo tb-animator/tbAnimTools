@@ -14,7 +14,7 @@ class radioGroupWidget(QWidget):
         self.optionVarList = optionVarList
         self.optionVar = optionVar
         self.defaultValue = defaultValue
-        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        self.optionValue = get_option_var(self.optionVar, defaultValue)
 
         layout = QHBoxLayout()
         self.setLayout(layout)
@@ -34,7 +34,7 @@ class radioGroupWidget(QWidget):
     def extBtnState(self, button):
         for button in self.buttons:
             if button.isChecked() == True:
-                pm.optionVar[self.optionVar] = button.text()
+                cmds.optionVar(stringValue=(self.optionVar, button.text()))
         self.editedSignal.emit()
 
 
@@ -53,7 +53,7 @@ class radioGroupVertical(object):
         self.optionVarList = optionVarList
         self.optionVar = optionVar
         self.defaultValue = defaultValue
-        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        self.optionValue = get_option_var(self.optionVar, defaultValue)
 
         self.btnGrp = QButtonGroup()  # Letter group
         self.returnedWidgets = list()
@@ -72,7 +72,7 @@ class radioGroupVertical(object):
     def buttonChecked(self, value):
         for button in self.buttons:
             if button.isChecked() == True:
-                pm.optionVar[self.optionVar] = button.text()
+                cmds.optionVar(stringValue=(self.optionVar, button.text()))
 
 
 class RadioGroup(QWidget):
@@ -89,7 +89,7 @@ class RadioGroup(QWidget):
         self.tooltips = tooltips
         self.optionVarList = optionVarList
         self.defaultValue = defaultValue
-        self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+        self.optionValue = get_option_var(self.optionVar, defaultValue)
         self.formLayout = QFormLayout()
         self.setLayout(self.formLayout)
         self.btnGrp = QButtonGroup()  # Letter group

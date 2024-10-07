@@ -30,7 +30,8 @@ class TextInputWidget(QWidget):
         self.checkBox = checkBox
         self.combo = combo
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        #Qt.PopupFocusReason |
+        self.setWindowFlags( Qt.Popup | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -45,7 +46,7 @@ class TextInputWidget(QWidget):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -94,7 +95,7 @@ class TextInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        # self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        # self.move(getScreenCenter() - self.rect().center())
 
         self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 16)
@@ -118,8 +119,8 @@ class TextInputWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -190,7 +191,7 @@ class ChannelInputWidget(QWidget):
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -201,7 +202,7 @@ class ChannelInputWidget(QWidget):
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -227,7 +228,7 @@ class ChannelInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -243,8 +244,8 @@ class ChannelInputWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -259,7 +260,7 @@ class ChannelInputWidget(QWidget):
     def pickChannel(self, *args):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            return pm.warning('no channel selected')
+            return cmds.warning('no channel selected')
         self.lineEdit.setText(channels[0].rsplit('.', 1)[-1])
 
     def acceptedFunction(self, *args):
@@ -299,7 +300,7 @@ class IntInputWidget(QWidget):
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -310,7 +311,7 @@ class IntInputWidget(QWidget):
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -333,7 +334,7 @@ class IntInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -349,8 +350,8 @@ class IntInputWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -402,7 +403,7 @@ class ObjectInputWidget(QWidget):
         self.data = data
         self.objectType = objectType
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -414,7 +415,7 @@ class ObjectInputWidget(QWidget):
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -440,7 +441,7 @@ class ObjectInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -455,8 +456,8 @@ class ObjectInputWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -469,7 +470,7 @@ class ObjectInputWidget(QWidget):
         qp.end()
 
     def pickObject(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
 
@@ -477,13 +478,13 @@ class ObjectInputWidget(QWidget):
             shape = sel[0].getShape()
             if not shape:
                 return
-            if pm.nodeType(shape) == "nurbsCurve":
+            if cmds.nodeType(shape) == "nurbsCurve":
                 self.lineEdit.setText(str(sel[0]))
         elif self.objectType == "nurbsSurface":
             shape = sel[0].getShape()
             if not shape:
                 return
-            if pm.nodeType(shape) == "nurbsSurface":
+            if cmds.nodeType(shape) == "nurbsSurface":
                 self.lineEdit.setText(str(sel[0]))
         elif self.objectType == "transform":
             if not cmds.objectType(str(sel[0])) == 'transform':

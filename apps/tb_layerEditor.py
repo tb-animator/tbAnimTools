@@ -22,31 +22,11 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-from functools import partial
-
-from Abstract import *
-import maya.OpenMayaUI as omui
-import maya
+from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-from getStyleSheet import *
 
 __author__ = 'tom.bailey'
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -93,7 +73,7 @@ class LayerEditor(toolAbstractFactory):
     __instance = None
     toolName = 'LayerEditor'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     hasAppliedUI = False
 
     useCustomUIOption = 'tUseCustomLayerEditor'
@@ -114,7 +94,7 @@ class LayerEditor(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
         """
         Put this in the startup script, not on class initialize
         """
@@ -179,13 +159,13 @@ class LayerEditor(toolAbstractFactory):
     def modifyAnimLayerTab(self):
         if self.hasAppliedUI:
             return
-        if not pm.optionVar.get(self.useCustomUIOption, False):
+        if not get_option_var(self.useCustomUIOption, False):
             return
         self.styleSheet = getStyleSheet()
         buttonSize = 22 * dpiScale()
 
         self.animLayerTabName = 'AnimLayerTab'
-        self.animLayerTab = wrapInstance(int(omui.MQtUtil.findControl(self.animLayerTabName)), QWidget)
+        self.animLayerTab = wrapInstance(int(omUI.MQtUtil.findControl(self.animLayerTabName)), QWidget)
         self.animLayerTab.objectName()
         animLayerTab_children = self.animLayerTab.children()
         animLayerTabLayout = animLayerTab_children[0]  # our layout to drop widgets in
@@ -507,7 +487,7 @@ class LayerEditor(toolAbstractFactory):
 
         if not self.selectBestLayerRepeat:
             self.selectBestLayerRepeat = True
-            pm.scriptJob(runOnce=True, event=['SelectionChanged', partial(self.clearBestAnimSelection)])
+            cmds.scriptJob(runOnce=True, event=['SelectionChanged', partial(self.clearBestAnimSelection)])
 
     def clearBestAnimSelection(self):
         self.selectBestLayerRepeat = False
@@ -523,13 +503,13 @@ class LayerEditor(toolAbstractFactory):
             return a * alpha + b * (1.0 - alpha)
 
         # TODO - hook this up to a script job when anim layer tab is rebuilt
-        if not pm.treeView('AnimLayerTabanimLayerEditor', query=True, exists=True):
+        if not cmds.treeView('AnimLayerTabanimLayerEditor', query=True, exists=True):
             return
         layers = cmds.ls(type='animLayer')
         for layer in layers:
             colour = cmds.getAttr(layer + '.ghostColor') - 1
             col = cmds.colorIndex(colour, q=True)
-            pm.treeView('AnimLayerTabanimLayerEditor',
+            cmds.treeView('AnimLayerTabanimLayerEditor',
                         edit=True,
                         labelBackgroundColor=[layer,
                                               lerpFloat(col[0], 0.5, 0.5),
@@ -545,7 +525,7 @@ class LayerEditor(toolAbstractFactory):
         overrideLayer = None
 
         for layer in selectedLayers:
-            if not pm.animLayer(layer, query=True, override=True):
+            if not cmds.animLayer(layer, query=True, override=True):
                 continue
             overrideLayer = layer
         if not overrideLayer:
@@ -554,10 +534,10 @@ class LayerEditor(toolAbstractFactory):
         attributes = cmds.animLayer(overrideLayer, query=True, attribute=True)
 
         additiveLayer = self.allTools.tools['BakeTools'].createLayer(override=False, suffixStr=None, component=True)
-        pm.rename(additiveLayer, overrideLayer + '_toAdditive')
-        pm.animLayer(additiveLayer, edit=True, moveLayerBefore=overrideLayer)
-        pm.animLayer(additiveLayer, edit=True, weight=0)
-        pm.animLayer(additiveLayer, edit=True, attribute=attributes)
+        additiveLayer = cmds.rename(additiveLayer, overrideLayer + '_toAdditive')
+        cmds.animLayer(additiveLayer, edit=True, moveLayerBefore=overrideLayer)
+        cmds.animLayer(additiveLayer, edit=True, weight=0)
+        cmds.animLayer(additiveLayer, edit=True, attribute=attributes)
 
         # get the time range from the animation layer
         startTime = 99999
@@ -569,20 +549,20 @@ class LayerEditor(toolAbstractFactory):
 
         # deselect all layers
         for layer in selectedLayers:
-            pm.animLayer(layer, edit=True, selected=False)
-            pm.animLayer(layer, edit=True, preferred=False)
+            cmds.animLayer(layer, edit=True, selected=False)
+            cmds.animLayer(layer, edit=True, preferred=False)
 
         # select the new layer
-        pm.animLayer(additiveLayer, edit=True, selected=True)
-        pm.animLayer(additiveLayer, edit=True, preferred=True)
+        cmds.animLayer(additiveLayer, edit=True, selected=True)
+        cmds.animLayer(additiveLayer, edit=True, preferred=True)
         with self.funcs.suspendUpdate():
             for x in range(int(startTime), int(endTime)+1):
                 cmds.currentTime(x - startTime)
                 cmds.setKeyframe(attributes, breakdown=False, preserveCurveShape=False, hierarchy=False,
                                  controlPoints=False, shape=False)
-        pm.animLayer(additiveLayer, edit=True, weight=1)
-        pm.animLayer(overrideLayer, edit=True, mute=True)
-        pm.animLayer(additiveLayer, edit=True, moveLayerAfter=overrideLayer)
+        cmds.animLayer(additiveLayer, edit=True, weight=1)
+        cmds.animLayer(overrideLayer, edit=True, mute=True)
+        cmds.animLayer(additiveLayer, edit=True, moveLayerAfter=overrideLayer)
         # create the additive layer
         # move it below the override layer
         # add the attributes to the additive layer

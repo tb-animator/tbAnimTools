@@ -22,25 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
+from . import *
 
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
-
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -55,7 +39,7 @@ class hotkeys(hotKeyAbstractFactory):
         return self.commandList
 
     def assignHotkeys(self):
-        return pm.warning(self, 'assignHotkeys', ' function not implemented')
+        return
 
 
 class NoiseTool(toolAbstractFactory):
@@ -66,7 +50,7 @@ class NoiseTool(toolAbstractFactory):
     __instance = None
     toolName = 'Noise'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     toolbox = None
 
     def __new__(cls):
@@ -78,7 +62,7 @@ class NoiseTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -97,7 +81,7 @@ class NoiseTool(toolAbstractFactory):
 
     def toolBoxUI(self):
         if not self.toolbox:
-            self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+            self.toolbox = BaseDialog(parent=getMainWindow(),
                              title='tbNoise Toolbox', text=str(),
                              lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
             widget = ToolBoxWidget()
@@ -202,16 +186,14 @@ class ToolBoxWidget(QWidget):
 
     def amplitudeChanged(self, value):
         self.amplitude = value
-        print ('amp', self.amplitude)
         self.doTween()
 
     def doTween(self):
-        print (self.getMode(), self.frequency, self.amplitude)
         if self.isCached:
             cmds.tbKeyTween(alpha=self.frequency, alphaB=self.amplitude, blendMode=self.getMode(), clearCache=False)
 
     def getMode(self):
-        return self.loopModes[self.loopOptions.index(pm.optionVar.get(self.loopOption, self.loopOptions[0]))]
+        return self.loopModes[self.loopOptions.index(get_option_var(self.loopOption, self.loopOptions[0]))]
 
     def cache(self):
         self.frequencySlider.reset()

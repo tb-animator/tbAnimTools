@@ -22,25 +22,8 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
+from . import *
 
-from Abstract import *
-import maya
-import maya.OpenMayaUI as omui
-# maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
 
@@ -63,7 +46,7 @@ class ShotCam(toolAbstractFactory):
     __instance = None
     toolName = 'ShotCam'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     def __new__(cls):
         if ShotCam.__instance is None:
@@ -74,7 +57,7 @@ class ShotCam(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -105,7 +88,7 @@ class ShotCamViewport(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
 
         self.model_panel = ShotCam.create_simulated_model_panel()
-        self.model_panel_widget = wrapInstance(int(omui.MQtUtil.findControl(self.model_panel)), QWidget)
+        self.model_panel_widget = wrapInstance(int(omUI.MQtUtil.findControl(self.model_panel)), QWidget)
 
         layout = QVBoxLayout()
         layout.addWidget(self.model_panel_widget)

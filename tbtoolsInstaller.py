@@ -26,7 +26,7 @@
 '''
 import maya.mel as mel
 import maya.cmds as cmds
-import pymel.core as pm
+
 import os, stat
 import sys
 import inspect
@@ -34,20 +34,28 @@ import io
 
 from functools import partial
 
-qtVersion = pm.about(qtVersion=True)
+
+
+qtVersion = cmds.about(qtVersion=True)
 QTVERSION = int(qtVersion.split('.')[0])
 if QTVERSION < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     # from pysideuic import *
     from shiboken import wrapInstance
-else:
+
+elif QTVERSION < 6:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
     # from pyside2uic import *
     from shiboken2 import wrapInstance
-
+else:
+    from PySide6.QtWidgets import *
+    from PySide6.QtGui import *
+    from PySide6.QtCore import *
+    # from pyside2uic import *
+    from shiboken6 import wrapInstance
 import maya.OpenMayaUI as omUI
 qssFile = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\", 'darkorange.qss'))
 
@@ -62,18 +70,6 @@ def getStyleSheet():
         print(stream.errorString())
     return st
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    #from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    #from pyside2uic import *
-    from shiboken2 import wrapInstance
 
 from tb_UI import *
 
@@ -118,7 +114,6 @@ QLabel
 }
 '''
 def onMayaDroppedPythonFile(*args):
-    print ('onMayaDroppedPythonFile')
     module_maker().install()
     installer().install()
 
@@ -128,13 +123,13 @@ class module_maker():
                         'green': "color:#82C99A;",
                         'yellow': "color:#F4FA58;"
                         }
-        self.win_versions = ['win32', 'win64'][pm.about(is64=True)]
-        self.maya_version = pm.about(version=True)
+        self.win_versions = ['win32', 'win64'][cmds.about(is64=True)]
+        self.maya_version = cmds.about(version=True)
         self.filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) +"\\"  # script directory
         self.python_paths = ['', 'apps']
         #'proApps/Python39', 'proApps/Python3', 'proApps/Python2']  # empty string is the base dir (don't forget again)
         self.maya_script_paths = ['scripts']
-        self.maya_plugin_paths = ['plugins/%s' % pm.about(version=True)]
+        self.maya_plugin_paths = ['plugins/%s' % cmds.about(version=True)]
         self.maya_common_plugin_paths = ['plugins/common']
         self.xbmlang_paths = ['Icons']
         self.out_lines = []
@@ -144,7 +139,7 @@ class module_maker():
         self.firstInstall = False
 
     def maya_module_dir(self):
-        return os.path.join(pm.internalVar(userAppDir=True) + "modules\\")
+        return os.path.join(cmds.internalVar(userAppDir=True) + "modules\\")
 
     def module_path(self):
         return os.path.join(self.maya_module_dir(), self.module_file)
@@ -271,17 +266,17 @@ class module_maker():
             resultUI.show()
 
     def result_window(self):
-        if pm.window("installWin", exists=True):
-            pm.deleteUI("installWin")
-        window = pm.window( title="success!")
-        layout = pm.columnLayout(adjustableColumn=True )
-        pm.text(font="boldLabelFont", label="tbtools installed")
-        pm.text(label="")
-        pm.text(label="please restart maya for everything to load")
+        if cmds.window("installWin", exists=True):
+            cmds.deleteUI("installWin")
+        window = cmds.window( title="success!")
+        layout = cmds.columnLayout(adjustableColumn=True )
+        cmds.text(font="boldLabelFont", label="tbtools installed")
+        cmds.text(label="")
+        cmds.text(label="please restart maya for everything to load")
 
-        pm.button( label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
-        pm.setParent('..')
-        pm.showWindow(window)
+        cmds.button( label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
+        cmds.setParent('..')
+        cmds.showWindow(window)
 
 class installer():
     filepath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "\\"  # script directory
@@ -319,7 +314,7 @@ class installer():
 
 class ResultWindow(BaseDialog):
     def __init__(self):
-        super(ResultWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(ResultWindow, self).__init__(parent=getMainWindow())
 
         self.titleText.setText('tbAnimTools')
         self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
@@ -368,8 +363,10 @@ class ResultWindow(BaseDialog):
         mel.eval("hotkeyEditorWindow")
 
     def openOptionWindow(self, *args):
-        import tb_options as tbo
-        tbo.showOptions()
+
+        pass
+        # TODO - hook up option window
+        #  showOptions()
 
     def openCustomHotkeyWindow(self, *args):
         from pluginLookup import ClassFinder

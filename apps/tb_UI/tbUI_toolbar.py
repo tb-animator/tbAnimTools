@@ -1,25 +1,7 @@
+from . import *
 import sys
 
-import pymel.core as pm
-
 toolbarName = 'WorkspaceControl'
-qtVersion = pm.about(qtVersion=True)
-QTVERSION = int(qtVersion.split('.')[0])
-if QTVERSION < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-from shiboken2 import getCppPointer
-
-import maya.OpenMayaUI as omui
-import maya.cmds as cmds
 
 sheet = """
 QTabBar::tab {
@@ -34,13 +16,15 @@ QTabBar::tab:selected {
 }
 """
 
+
 def getWorkspaceControlWidget(workspace_control):
     """
     Returns the QWidget of a workspaceControl by its name
     """
-    control_widget_ptr = omui.MQtUtil.findControl(workspace_control)
+    control_widget_ptr = omUI.MQtUtil.findControl(workspace_control)
     control_widget = wrapInstance(int(control_widget_ptr), QWidget)
     return control_widget
+
 
 class WorkspaceControl(object):
 
@@ -49,10 +33,10 @@ class WorkspaceControl(object):
         self.widget = None
 
     def create(self, label, widget, ui_script=None):
-        print('create', ui_script)
+        # print('create', ui_script)
         workspace = cmds.workspaceControl(self.name, label=label,
-                              #dockToPanel=['modelPanel4', 'bottom', True],
-                              )
+                                          # dockToPanel=['modelPanel4', 'bottom', True],
+                                          )
 
         # workspace_widget  = getWorkspaceControlWidget(workspace)
         # workspace_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -77,13 +61,13 @@ class WorkspaceControl(object):
             self.widget.setAttribute(Qt.WA_DontCreateNativeAncestors)
 
             if sys.version_info.major >= 3:
-                workspace_control_ptr = int(omui.MQtUtil.findControl(self.name))
+                workspace_control_ptr = int(omUI.MQtUtil.findControl(self.name))
                 widget_ptr = int(getCppPointer(self.widget)[0])
             else:
-                workspace_control_ptr = int(omui.MQtUtil.findControl(self.name))
+                workspace_control_ptr = int(omUI.MQtUtil.findControl(self.name))
                 widget_ptr = int(getCppPointer(self.widget)[0])
 
-            omui.MQtUtil.addWidgetToMayaLayout(widget_ptr, workspace_control_ptr)
+            omUI.MQtUtil.addWidgetToMayaLayout(widget_ptr, workspace_control_ptr)
 
     def exists(self):
         return cmds.workspaceControl(self.name, q=True, exists=True)
@@ -110,7 +94,7 @@ class WorkspaceControl(object):
         cmds.workspaceControl(self.name, e=True, resizeWidth=value)
 
     def getOrientation(self):
-        layout_object = omui.MQtUtil.findControl(self.name)
+        layout_object = omUI.MQtUtil.findControl(self.name)
         layout_widget = wrapInstance(int(layout_object), QWidget)
         if self.is_floating:
             splitterParent = layout_widget.parent().parent().parent().parent()
@@ -119,8 +103,8 @@ class WorkspaceControl(object):
             return splitterParent.orientation()
         return Qt.Orientation.Horizontal
 
-class DockableUI(QDialog):
 
+class DockableUI(QDialog):
     WINDOW_TITLE = "tbToolbar"
 
     ui_instance = None
@@ -130,7 +114,7 @@ class DockableUI(QDialog):
         if cls.ui_instance:
             cls.ui_instance.show_workspace_control()
         else:
-            print ('creating new workspace control')
+            # print ('creating new workspace control')
             cls.ui_instance = cls()
 
     @classmethod
@@ -139,11 +123,12 @@ class DockableUI(QDialog):
 
     @classmethod
     def get_ui_script(cls):
+        print ('get_ui_script')
         module_name = cls.__module__
         if module_name == "__main__":
             module_name = cls.module_name_override
 
-        ui_script = "from {0} import {1}\n{1}.display()".format(module_name, toolbarName)
+        ui_script = "maya.mel.eval('createToolbar')"
         return ui_script
 
     def __init__(self):
@@ -163,8 +148,8 @@ class DockableUI(QDialog):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
@@ -197,7 +182,7 @@ class DockableUI(QDialog):
             self.workspace_control_instance.restore(self)
         else:
             self.workspace_control_instance.create(self.WINDOW_TITLE, self, ui_script=self.get_ui_script())
-        print ('self.workspace_control_instance', self.workspace_control_instance)
+        # print ('self.workspace_control_instance', self.workspace_control_instance)
 
         p = self.parent()
         pp = p.parent()
@@ -208,8 +193,8 @@ class DockableUI(QDialog):
         self.tabBar = self.tabWidget.children()[1]
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
-        print (self.tabBar)
-        print (self.tabBar.children())
+        # print (self.tabBar)
+        # print (self.tabBar.children())
         # TabWidget.setVisible(True)
         # TabWidget.children()[1].setVisible(False)
         self.tabWidget.children()[1].setTabText(0, '')
@@ -220,8 +205,8 @@ class DockableUI(QDialog):
         self.tabBar.children()[0].setFixedSize(0, 0)
         self.tabBar.setStyleSheet(sheet)
 
-        print (self.tabBar.children())
-        self.parent().parent().resize(200,100)
+        # print (self.tabBar.children())
+        self.parent().parent().resize(200, 100)
 
     def show_workspace_control(self):
         self.workspace_control_instance.set_visible(True)
@@ -260,41 +245,44 @@ class DockableUI(QDialog):
         self.tabBar = self.tabWidget.children()[1]
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
-        print (self.tabBar)
-        print (self.tabBar.children())
+        # print (self.tabBar)
+        # print (self.tabBar.children())
         # TabWidget.setVisible(True)
         # TabWidget.children()[1].setVisible(False)
         self.tabWidget.children()[1].setTabText(0, '')
         self.tabWidget.children()[1].setVisible(True)
         self.tabWidget.children()[1].setTabIcon(0, QIcon(':delete.png'))
         self.tabWidget.children()[1].setTabIcon(0, QIcon('C:/AnimationWork/tbAnimTools/Icons/gpuCacheRestore.png'))
-        print ('!!', self.tabWidget.children()[0].children())
+        # print ('!!', self.tabWidget.children()[0].children())
         self.tabBar.setExpanding(True)
         # self.tabBar.children()[1].setFixedSize(0, 0)
         # self.tabBar.children()[0].setFixedSize(0, 0)
         self.tabBar.setStyleSheet(sheet)
         # print (self.size())
         # self.parent().resize(20,20)
-        print ('is floating', self.workspace_control_instance.is_floating())
-        print ('state', self.workspace_control_instance.getOrientation())
+        # print ('is floating', self.workspace_control_instance.is_floating())
+        # print ('state', self.workspace_control_instance.getOrientation())
         if self.workspace_control_instance.is_floating():
-            print ('is floating, resize')
+            # print ('is floating, resize')
             self.parent().resize(self.sizeHint().width(), 60)
             self.resize(self.sizeHint().width(), 60)
             self.parent().setMaximumHeight(60)
             self.setMaximumHeight(60)
         else:
             if self.parent().height() > self.parent().width():
-                print ('side docked?')
+                pass
+                # print ('side docked?')
             else:
-                print ('horizontal docked')
+                pass
+                # print ('horizontal docked')
 
         if 'Horizontal' in str(self.workspace_control_instance.getOrientation()):
             layout = QHBoxLayout()
             self.setLayout(layout)
             for w in self.widgets:
-                print('reparenting widget horizontalLayout', w)
-                #layout.addWidget(w)
+                pass
+                # print('reparenting widget horizontalLayout', w)
+                # layout.addWidget(w)
             self.resize(self.sizeHint().width(), 60)
         else:
             self.parent().resize(60, self.sizeHint().height())
@@ -305,8 +293,9 @@ class DockableUI(QDialog):
             layout = QVBoxLayout()
             self.setLayout(layout)
             for w in self.widgets:
-                print('reparenting widget verticalLayout', w)
-                #layout.addWidget(w)
+                pass
+                # print('reparenting widget verticalLayout', w)
+                # layout.addWidget(w)
 
     def closeEvent(self, event):
         """
@@ -327,5 +316,3 @@ if __name__ == "__main__":
 
     DockableUI.module_name_override = "workspace_control"
     test_dialog = DockableUI()
-
-

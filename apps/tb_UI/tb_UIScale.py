@@ -1,29 +1,16 @@
-import pymel.core as pm
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
 from . import *
 
+
 def dpiScale():
-    if not pm.optionVar.get('tbUseWindowsScale', True):
+    if not get_option_var('tbUseWindowsScale', True):
         return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
-    return pm.optionVar.get('tbCustomDpiScale', 1)
+    return get_option_var('tbCustomDpiScale', 1)
 
 
 def dpiFontScale():
-    if not pm.optionVar.get('tbUseFontScale', True):
+    if not get_option_var('tbUseFontScale', True):
         return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
-    return pm.optionVar.get('tbCustomFontScale', 1)
+    return get_option_var('tbCustomFontScale', 1)
 
 
 def defaultFont():

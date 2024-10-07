@@ -22,27 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-import traceback
-from Abstract import *
-import maya
-import time
-from maya.api import OpenMaya
+from . import *
+maya.utils.loadStringResourcesForModule(__name__)
 
-# maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
 turnexpressionName = '_turnExpression'
@@ -57,7 +39,11 @@ class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('view'))
         self.commandList = list()
-
+        self.addCommand(self.tb_hkey(name='redirectSelected',
+                                     annotation='constrain to object to locator - rotate only',
+                                     category=self.category,
+                                     command=['LocomotionTools.redirectSelected()'],
+                                     help=maya.stringTable['tbCommand.redirectSelected']))
         self.addCommand(self.tb_hkey(name='tbOpenCircleWalkUI',
                                      annotation='',
                                      category=self.category,
@@ -80,7 +66,7 @@ class LocomotionTools(toolAbstractFactory):
     __instance = None
     toolName = 'LocomotionTools'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     start_time = 0
     last_time = 0
     circleToolbox = None
@@ -100,7 +86,7 @@ class LocomotionTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -114,10 +100,10 @@ class LocomotionTools(toolAbstractFactory):
         return None
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Curved Locomotion Tool', image='redirectSelected.png', command='tbOpenCircleWalkUI',
+        cmds.menuItem(label='Curved Locomotion Tool', image='redirectSelected.png', command='tbOpenCircleWalkUI',
                     sourceType='mel',
                     parent=parentMenu)
-        pm.menuItem(label='Strafe Locomotion Tool', image='directKeySmall.png', command='tbOpenStrafeUI',
+        cmds.menuItem(label='Strafe Locomotion Tool', image='directKeySmall.png', command='tbOpenStrafeUI',
                     sourceType='mel',
                     parent=parentMenu)
 
@@ -125,7 +111,7 @@ class LocomotionTools(toolAbstractFactory):
         if self.strafeToolbox:
             self.strafeToolbox.show()
             return
-        self.strafeToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+        self.strafeToolbox = BaseDialog(parent=getMainWindow(),
                                         title='tb Strafe Maker', text=str(),
                                         lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
         toolboxWidget = QWidget()
@@ -146,7 +132,7 @@ class LocomotionTools(toolAbstractFactory):
         for key, angle in anglesAndLabels.items():
             angleButton = QPushButton(key)
             angleButton.angle = angle
-            angleButton.clicked.connect(pm.Callback(self.strafeUpdated, value=angle))
+            angleButton.clicked.connect(create_callback(self.strafeUpdated, value=angle))
             walkAngleQuickButtonLayout.addWidget(angleButton)
         walkAngleLayout = QHBoxLayout()
         walkAngleField = intFieldWidget(defaultValue=0, minimum=-180, maximum=180, step=1)
@@ -173,8 +159,8 @@ class LocomotionTools(toolAbstractFactory):
         buttonLayout.addWidget(bakeOutButton)
         self.strafeToolbox.mainLayout.addWidget(toolboxWidget)
 
-        self.autoFootPeelCheckbox.setChecked(pm.optionVar.get(self.autoAlignFeetOption, False))
-        pm.optionVar(intValue=(self.autoAlignFeetOption, pm.optionVar.get(self.autoAlignFeetOption, False)))
+        self.autoFootPeelCheckbox.setChecked(get_option_var(self.autoAlignFeetOption, False))
+        cmds.optionVar(intValue=(self.autoAlignFeetOption, get_option_var(self.autoAlignFeetOption, False)))
 
         addSelectedButton.clicked.connect(lambda: self.addStrafeToSelected(rotateOnly=False))
         addSelectedRotationButton.clicked.connect(lambda: self.addStrafeToSelected(rotateOnly=True))
@@ -184,7 +170,7 @@ class LocomotionTools(toolAbstractFactory):
         resetCurveButton.clicked.connect(self.resetStrafe)
         bakeOutButton.clicked.connect(self.bakeOut)
 
-        self.autoFootPeelCheckbox.clicked.connect(lambda x: pm.optionVar(intValue=(self.autoAlignFeetOption, x)))
+        self.autoFootPeelCheckbox.clicked.connect(lambda x: cmds.optionVar(intValue=(self.autoAlignFeetOption, x)))
 
         self.strafeToolbox.show()
         self.strafeToolbox.setFixedSize(self.strafeToolbox.sizeHint())
@@ -193,7 +179,7 @@ class LocomotionTools(toolAbstractFactory):
         if self.circleToolbox:
             self.circleToolbox.show()
             return
-        self.circleToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+        self.circleToolbox = BaseDialog(parent=getMainWindow(),
                                         title='tb Circle Walk', text=str(),
                                         lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
         toolboxWidget = QWidget()
@@ -307,7 +293,7 @@ class LocomotionTools(toolAbstractFactory):
             finally:
                 pass
 
-    def strafeUpdated(self, value=0):
+    def strafeUpdated(self, value=0, *args):
         upAxis = cmds.upAxis(query=True, axis=True)
         curveMains = cmds.ls('*:Strafe_Control')
         for c in curveMains:
@@ -318,7 +304,7 @@ class LocomotionTools(toolAbstractFactory):
                     cmds.setAttr(c + '.rotate', 0, 0, value)
             finally:
                 pass
-        if pm.optionVar.get(self.autoAlignFeetOption, False):
+        if get_option_var(self.autoAlignFeetOption, False):
             self.alignFeet()
 
     def addStrafeToSelected(self, rotateOnly=False):
@@ -367,7 +353,7 @@ class LocomotionTools(toolAbstractFactory):
             cmds.addAttr(tempController, ln=circleCentreAttr, at='float')
             cmds.setAttr(tempController + '.' + circleCentreAttr, edit=True, channelBox=True)
 
-            # pm.container(globalControl, edit=True,
+            # cmds.container(globalControl, edit=True,
             #              includeHierarchyBelow=True,
             #              force=True,
             #              addNode=[tempControllerParent])
@@ -394,13 +380,13 @@ class LocomotionTools(toolAbstractFactory):
                                                        suffix='Shape',
                                                        drawType='arrow',
                                                        scale=2.0)
-            pm.delete(assetShapeControl, ch=True)
+            cmds.delete(assetShapeControl, ch=True)
             cicleControlAsset = self.createAsset(turnControllerName,
                                                  transform=True,
                                                  imageName='redirectSelected.png',
                                                  assetCommandName=assetCommandName)
-            cmds.parent(assetShapeControl.getShapes(), cicleControlAsset, r=True, s=True)
-            pm.delete(str(assetShapeControl))
+            cmds.parent(self.funcs.getShapes(assetShapeControl), cicleControlAsset, r=True, s=True)
+            cmds.delete(str(assetShapeControl))
 
         if not cmds.attributeQuery(attrName, node=turnControllerName, exists=True):
             cmds.addAttr(turnControllerName, ln=attrName, at='double')
@@ -422,7 +408,7 @@ class LocomotionTools(toolAbstractFactory):
             return None, None
         tempController = str(self.funcs.tempControl(name=control, suffix='Loco', scale=1.0))
         tempParent = str(self.funcs.tempNull(name=control, suffix='LocoGrp'))
-        constraint = cmds.parentConstraint(control, tempController)
+        constraint = cmds.parentConstraint(control, tempController)[0]
         cmds.parent(tempController, tempParent)
         forwardAxis = self.guessForwardAxis(control=tempController)
         return {'tempParent': tempParent,
@@ -552,10 +538,10 @@ class LocomotionTools(toolAbstractFactory):
                                              imageName='directKeySmall.png',
                                              assetCommandName=assetCommandName)
         else:
-            strafeControl = pm.PyNode(currentAssetName)
-        pm.delete(assetShapeControl, ch=True)
-        pm.parent(assetShapeControl.getShapes(), strafeControl, r=True, s=True)
-        pm.delete(assetShapeControl)
+            strafeControl = currentAssetName
+        cmds.delete(assetShapeControl, ch=True)
+        cmds.parent(self.funcs.getShapes(assetShapeControl), strafeControl, r=True, s=True)
+        cmds.delete(assetShapeControl)
         # cache the strafe value
         rotateCache = cmds.getAttr(strafeControl + '.rotate')[0]
         cmds.setAttr(strafeControl + '.rotate', 0, 0, 0)
@@ -589,7 +575,7 @@ class LocomotionTools(toolAbstractFactory):
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.15)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.15)
 
-            if pm.attributeQuery('jointOrient', node=s, exists=True):
+            if cmds.attributeQuery('jointOrient', node=s, exists=True):
                 tiltComposeMatrix = cmds.createNode('composeMatrix')
                 tiltInverseMatrix = cmds.createNode('inverseMatrix')
 
@@ -598,41 +584,41 @@ class LocomotionTools(toolAbstractFactory):
                 jointOrientInverseMatrix = cmds.createNode('inverseMatrix')
                 jointOrientOutMultMatrix = cmds.createNode('multMatrix')
 
-                pm.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
-                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
+                cmds.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
+                cmds.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
 
                 # connect the joint orient to some mult matrices to compensate
-                pm.connectAttr(s + '.jointOrient', jointOrientComposeMatrix + '.inputRotate')
-                pm.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[0]')
-                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[1]')
+                cmds.connectAttr(s + '.jointOrient', jointOrientComposeMatrix + '.inputRotate')
+                cmds.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[0]')
+                cmds.connectAttr(tiltComposeMatrix + '.outputMatrix', jointOrientMultMatrix + '.matrixIn[1]')
 
-                pm.connectAttr(jointOrientMultMatrix + '.matrixSum', jointOrientOutMultMatrix + '.matrixIn[0]')
-                pm.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientInverseMatrix + '.inputMatrix')
-                pm.connectAttr(jointOrientInverseMatrix + '.outputMatrix', jointOrientOutMultMatrix + '.matrixIn[1]')
-                pm.connectAttr(jointOrientOutMultMatrix + '.matrixSum', tiltInverseMatrix + '.inputMatrix')
-                pm.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
+                cmds.connectAttr(jointOrientMultMatrix + '.matrixSum', jointOrientOutMultMatrix + '.matrixIn[0]')
+                cmds.connectAttr(jointOrientComposeMatrix + '.outputMatrix', jointOrientInverseMatrix + '.inputMatrix')
+                cmds.connectAttr(jointOrientInverseMatrix + '.outputMatrix', jointOrientOutMultMatrix + '.matrixIn[1]')
+                cmds.connectAttr(jointOrientOutMultMatrix + '.matrixSum', tiltInverseMatrix + '.inputMatrix')
+                cmds.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
             else:
                 tiltComposeMatrix = cmds.createNode('composeMatrix')
                 tiltInverseMatrix = cmds.createNode('inverseMatrix')
 
-                pm.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
-                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', tiltInverseMatrix + '.inputMatrix')
-                pm.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
-                pm.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
+                cmds.connectAttr(tiltAnimOffsetNode + '.rotate', tiltComposeMatrix + '.inputRotate')
+                cmds.connectAttr(tiltComposeMatrix + '.outputMatrix', tiltInverseMatrix + '.inputMatrix')
+                cmds.connectAttr(tiltComposeMatrix + '.outputMatrix', rotateAnimNode + ' .offsetParentMatrix')
+                cmds.connectAttr(tiltInverseMatrix + '.outputMatrix', rotateAnimOffsetNode + ' .offsetParentMatrix')
 
-            pm.parent(tiltAnimOffsetNode, rotationRoot)
-            pm.parent(rotateAnimOffsetNode, rotateAnimNode)
-            pm.parent(rotateAnimNode, rotationRoot)
+            cmds.parent(tiltAnimOffsetNode, rotationRoot)
+            cmds.parent(rotateAnimOffsetNode, rotateAnimNode)
+            cmds.parent(rotateAnimNode, rotationRoot)
 
-            # pm.parent(translateAnimOFfsetNode, translateAnimNode)
+            # cmds.parent(translateAnimOFfsetNode, translateAnimNode)
 
-            rotationRoot.inheritsTransform.set(0)
+            cmds.setAttr(rotationRoot + '.inheritsTransform', 0)
 
-            tempConstraints.append(pm.parentConstraint(s, rotateAnimNode))
+            tempConstraints.append(cmds.parentConstraint(s, rotateAnimNode)[0])
 
-            # tempConstraints.append(pm.parentConstraint(s, worldOffsetControl, skipRotate=('x', 'y', 'z')))
-            tempConstraints.append(pm.parentConstraint(s, rotationRoot, skipRotate=('x', 'y', 'z')))
-            # pm.pointConstraint(worldOffsetControl, rotationRoot)
+            # tempConstraints.append(cmds.parentConstraint(s, worldOffsetControl, skipRotate=('x', 'y', 'z')))
+            tempConstraints.append(cmds.parentConstraint(s, rotationRoot, skipRotate=('x', 'y', 'z'))[0])
+            # cmds.pointConstraint(worldOffsetControl, rotationRoot)
 
             bakeAttrs.extend([str(rotationRoot) + '.translate' + x for x in ['X','Y','Z']])
             bakeAttrs.extend([str(rotateAnimNode) + '.rotate' + x for x in ['X','Y','Z']])
@@ -642,9 +628,9 @@ class LocomotionTools(toolAbstractFactory):
             # translateAnimOffsetNodes[s] = worldOffsetControl
             rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
 
-            # pm.parent(worldOffsetControl, strafeControl)
-            pm.parent(rotationRoot, strafeControl)
-        # pm.container(strafeControl, edit=True,
+            # cmds.parent(worldOffsetControl, strafeControl)
+            cmds.parent(rotationRoot, strafeControl)
+        # cmds.container(strafeControl, edit=True,
         #              includeHierarchyBelow=False,
         #              force=True,
         #              addNode=list(roots.values()))
@@ -653,7 +639,7 @@ class LocomotionTools(toolAbstractFactory):
 
         keyRange = self.funcs.getBestTimelineRangeForBake()
         with self.funcs.suspendUpdate():
-            pm.bakeResults(bakeAttrs,
+            cmds.bakeResults(bakeAttrs,
                            time=(keyRange[0], keyRange[1]),
                            simulation=True,
                            sampleBy=1,
@@ -667,7 +653,7 @@ class LocomotionTools(toolAbstractFactory):
                            minimizeRotation=True,
                            controlPoints=False,
                            shape=False)
-        pm.delete(tempConstraints)
+        cmds.delete(tempConstraints)
 
         if int(cmds.about(majorVersion=True)) >= 2020:
             for o in rotationRoots.values():
@@ -700,12 +686,12 @@ class LocomotionTools(toolAbstractFactory):
             rotateTarget = rotateAnimOffsetNodes.get(s, None)
             if translateTarget:
                 if not rotateOnly:
-                    pm.pointConstraint(rotateAnimOffsetNodes[s], s)
+                    cmds.pointConstraint(rotateAnimOffsetNodes[s], s)
             if rotateTarget:
 
                 if self.funcs.getAvailableRotates(s):
                     continue
-                pm.orientConstraint(rotateAnimOffsetNodes[s], s)
+                cmds.orientConstraint(rotateAnimOffsetNodes[s], s)
 
         cmds.setAttr(strafeControl + '.rotate', *rotateCache)
 

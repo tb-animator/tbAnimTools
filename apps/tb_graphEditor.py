@@ -22,30 +22,12 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-import maya.mel as mel
-from Abstract import *
 
+from . import *
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 
-import maya.OpenMayaUI as omui
-
 _modifiedGraphEditor = 'ModifiedGraphEditor'
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -81,7 +63,7 @@ class GraphEditor(toolAbstractFactory):
     __instance = None
     toolName = 'GraphEditor'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     customUiLocationOption = 'tbCustomGEUILocation'
     customUiLocation = ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
@@ -96,7 +78,7 @@ class GraphEditor(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -109,7 +91,7 @@ class GraphEditor(toolAbstractFactory):
         self.layout.addWidget(useTumbleOptionWidget)
         self.uiLocationWidget = comboBoxWidget(optionVar=self.customUiLocationOption,
                                                values=self.customUiLocation,
-                                               defaultValue=pm.optionVar.get(self.customUiLocationOption,
+                                               defaultValue=get_option_var(self.customUiLocationOption,
                                                                              self.customUiLocation[0]),
                                                label='Custom UI location')
         self.layout.addWidget(self.uiLocationWidget)
@@ -130,11 +112,11 @@ class GraphEditor(toolAbstractFactory):
     def loadGraphEditorModifications(self, *args):
         ge = cmds.getPanel(scriptType="graphEditor")
         for g in ge:
-            control = omui.MQtUtil.findControl(g)
+            control = omUI.MQtUtil.findControl(g)
             if not control:
                 continue
             pge = wrapInstance(int(control), QWidget)
-            if pm.optionVar.get(self.graphEditorToolbarOption, False):
+            if get_option_var(self.graphEditorToolbarOption, False):
                 self.modifyGraphEditorToolbar(pge)
             # self.createPopup(pge)
 
@@ -175,6 +157,10 @@ class GraphEditor(toolAbstractFactory):
         '''
 
         # print('modifyGraphEditorToolbar')
+        if int(cmds.about(majorVersion=True)) >= 2025:
+            self.modifyGraphEditorToolbar_2025(graphEditor)
+            return
+
         if int(cmds.about(majorVersion=True)) >= 2024:
             self.modifyGraphEditorToolbar_2024(graphEditor)
             return
@@ -183,7 +169,7 @@ class GraphEditor(toolAbstractFactory):
                 self.modifyGraphEditorToolbar_2024(graphEditor)
                 return
         # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
+        graphEditor1 = wrapInstance(int(omUI.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
         graphEditorLayout = widgets[0]
         if graphEditorLayout.objectName() == _modifiedGraphEditor:
@@ -235,7 +221,7 @@ class GraphEditor(toolAbstractFactory):
 
 
         defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
-        currentLocation = pm.optionVar.get(self.allTools.tools['GraphEditor'].customUiLocationOption,
+        currentLocation = get_option_var(self.allTools.tools['GraphEditor'].customUiLocationOption,
                                            defaultLocation)
 
         if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[-1]:
@@ -341,7 +327,7 @@ class GraphEditor(toolAbstractFactory):
                 self.keyTweenMethods[key].instance = value()
         '''
         # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
+        graphEditor1 = wrapInstance(int(omUI.MQtUtil.findControl('graphEditor1')), QWidget)
         # I wish autodesk would name their UI layouts
         # print('this', graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1])
         widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
@@ -368,7 +354,7 @@ class GraphEditor(toolAbstractFactory):
             # graphEditor1.children()[-1].addLayout(verticalLayout)
 
             defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
-            currentLocation = pm.optionVar.get(self.allTools.tools['GraphEditor'].customUiLocationOption,
+            currentLocation = get_option_var(self.allTools.tools['GraphEditor'].customUiLocationOption,
                                                defaultLocation)
 
             sliderLayout = self.createSliderToolBar()
@@ -396,7 +382,118 @@ class GraphEditor(toolAbstractFactory):
             dupeLayout.setSpacing(0)
             dupeLayout.setContentsMargins(0, 0, 0, 0)
             buttons = widgets[1:]
+            #dupeLayout.addWidget(widgets[1])
             for b in buttons:
+                # print ('dupeLayout', dupeLayout, b)
+                dupeLayout.addWidget(b)
+
+            blankLabel = QLabel('')
+            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+            dupeLayout.addWidget(blankLabel)
+            dupeLayout.addStretch(100)
+            customLayout = QHBoxLayout()
+            customLayout.setSpacing(0)
+            customLayout.setContentsMargins(0, 0, 0, 0)
+            customLayout.setAlignment(Qt.AlignCenter)
+
+            # ['AboveButtons', 'BelowButtons', 'BeforeButtons', 'AfterButtons', 'MenuBar']
+            if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[0]:
+                tempLayout = QVBoxLayout()
+                tempLayout.addLayout(dupeLayout)
+                tempLayout.insertLayout(0, customLayout)
+            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[1]:
+                tempLayout = QVBoxLayout()
+                tempLayout.addLayout(dupeLayout)
+                tempLayout.addLayout(customLayout)
+            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[2]:
+                tempLayout = QHBoxLayout()
+                tempLayout.addLayout(dupeLayout)
+                tempLayout.insertLayout(0, customLayout)
+            elif currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[3]:
+                tempLayout = QHBoxLayout()
+                tempLayout.addLayout(dupeLayout)
+                tempLayout.addLayout(customLayout)
+
+            tempWidget.setLayout(tempLayout)
+            w = QWidget()
+            w.setLayout(sliderLayout)
+            customLayout.addWidget(w)
+
+            graphEditor1.__dict__['modified'] = True
+            # print('graphEditor1', graphEditor1.__dict__['modified'])
+        # except:
+        #     return
+    def modifyGraphEditorToolbar_2025(self, graphEditor):
+        # check tween classes
+        '''
+
+        :return:
+        '''
+        '''
+        for key, value in self.keyTweenDict.items():
+            if not self.keyTweenMethods[key]:
+                self.keyTweenMethods[key] = value()
+            if not self.keyTweenMethods[key].instance:
+                self.keyTweenMethods[key].instance = value()
+        '''
+        # maya 2024 actually has collapsing widgets in the graph editor, so got to change this
+        graphEditor1 = wrapInstance(int(omUI.MQtUtil.findControl('graphEditor1')), QWidget)
+        # I wish autodesk would name their UI layouts
+        # print('this', graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1])
+        widgets = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1].children()[1].children()
+        graphEditorLayout = widgets[0]
+        # print('widgets', widgets)
+
+        # print('hex(id(widget))', hex(id(graphEditorLayout)))
+        # print('graphEditorLayout', graphEditorLayout)
+        # print('graphEditorLayout children', graphEditorLayout.children())
+        # print('sliderParentWidget', self.sliderParentWidget)
+        # print('object name', graphEditorLayout.objectName())
+
+        # try:
+        if not graphEditorLayout.objectName() == _modifiedGraphEditor:
+            graphEditorLayout.setObjectName(_modifiedGraphEditor)
+            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1].children()[-1]
+            # print('parentWidget', parentWidget)
+            parentWidget = graphEditor1.children()[-1].children()[1].children()[-1]
+            # print('parentWidget', parentWidget)
+            parentWidget = graphEditor1.children()[-1].children()[1]
+            # verticalLayout = QVBoxLayout()
+            # verticalLayout.addWidget(parentWidget)
+            parentLayout = parentWidget.parent()
+            # graphEditor1.children()[-1].addLayout(verticalLayout)
+
+            defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
+            currentLocation = get_option_var(self.allTools.tools['GraphEditor'].customUiLocationOption,
+                                               defaultLocation)
+
+            sliderLayout = self.createSliderToolBar()
+
+            tempWidget = GraphEditorWidget()
+
+            graphEditorLayout.addWidget(tempWidget)
+
+            if currentLocation == self.allTools.tools['GraphEditor'].customUiLocation[-1]:
+                widgets = graphEditor1.children()
+                self.graphEdiMenuBar = None
+                for w in widgets:
+                    # print(str(w.__class__))
+                    if 'QMenuBar' in str(w.__class__):
+                        self.graphEdiMenuBar = w
+                if self.graphEdiMenuBar:
+                    self.sliderParentWidget = GraphEdToolbarWidget()
+                    self.sliderParentWidget.setLayout(sliderLayout)
+                    self.graphEdiMenuBar.setCornerWidget(self.sliderParentWidget)
+                return
+
+            # extra layout to hold the original maya buttons
+            dupeLayout = QHBoxLayout()
+            dupeLayout.setAlignment(Qt.AlignLeft)
+            dupeLayout.setSpacing(0)
+            dupeLayout.setContentsMargins(0, 0, 0, 0)
+            buttons = widgets[2:]
+            for b in buttons:
+                # print ('dupeLayout', dupeLayout, b)
                 dupeLayout.addWidget(b)
             blankLabel = QLabel('')
             blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
@@ -434,9 +531,8 @@ class GraphEditor(toolAbstractFactory):
             # print('graphEditor1', graphEditor1.__dict__['modified'])
         # except:
         #     return
-
     def resizeCornerWidget(self):
-        graphEditor1 = wrapInstance(int(omui.MQtUtil.findControl('graphEditor1')), QWidget)
+        graphEditor1 = wrapInstance(int(omUI.MQtUtil.findControl('graphEditor1')), QWidget)
         widgets = graphEditor1.children()
         for w in widgets:
             # print(str(w.__class__))

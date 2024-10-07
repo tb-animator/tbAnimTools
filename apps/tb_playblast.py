@@ -22,26 +22,7 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-import os.path
-from Abstract import *
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    #from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    #from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-from tb_UI import *
+from . import *
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -74,7 +55,7 @@ class PlayblastTool(toolAbstractFactory):
     __instance = None
     toolName = 'Playblast'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     playblastDir_opv = 'tb_playblast_folder'
     playblastDir_default = 'c://playblasts//'
@@ -91,7 +72,7 @@ class PlayblastTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -122,7 +103,7 @@ class PlayblastTool(toolAbstractFactory):
         # TODO - mp4 support
         formats = {"mov": "qt", "avi": "avi"}
 
-        directory = pm.optionVar.get(self.playblastDir_opv, self.playblastDir_default)
+        directory = get_option_var(self.playblastDir_opv, self.playblastDir_default)
         file = cmds.file(query=True, sceneName=True, shortName=True)
         filename = file.split('.')[0]
 

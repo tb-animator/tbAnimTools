@@ -38,25 +38,34 @@ import datetime
 import zipfile
 from distutils.dir_util import copy_tree
 import ssl
-import pymel.core as pm
+
 import maya.cmds as cmds
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
+qtVersion = cmds.about(qtVersion=True)
+QTVERSION = int(qtVersion.split('.')[0])
+if QTVERSION < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     # from pysideuic import *
     from shiboken import wrapInstance
-else:
+
+elif QTVERSION < 6:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
     # from pyside2uic import *
     from shiboken2 import wrapInstance
+else:
+    from PySide6.QtWidgets import *
+    from PySide6.QtGui import *
+    from PySide6.QtCore import *
+    # from pyside2uic import *
+    from shiboken6 import wrapInstance
 
 import getStyleSheet as getqss
 import os
-from functools  import partial
+from functools import partial
+from apps.tb_optionVars import *
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Icons'))
 baseIconFile = 'checkBox.png'
 
@@ -92,14 +101,61 @@ commentList = [
 ]
 '''
 
+def get_option_var(var_name, default=None):
+    """
+    Get the value of an option variable.
+
+    Parameters:
+    - var_name (str): The name of the option variable.
+    - default (any): The default value to return if the option variable does not exist.
+
+    Returns:
+    - The value of the option variable or the default value.
+    """
+    if cmds.optionVar(exists=var_name):
+        return cmds.optionVar(q=var_name)
+    return default
+
+def set_option_var(var_name, value):
+    """
+    Set the value of an option variable.
+
+    Parameters:
+    - var_name (str): The name of the option variable.
+    - value (any): The value to set for the option variable.
+    """
+    if isinstance(value, int):
+        cmds.optionVar(iv=(var_name, value))
+    elif isinstance(value, float):
+        cmds.optionVar(fv=(var_name, value))
+    elif isinstance(value, str):
+        cmds.optionVar(sv=(var_name, value))
+    elif isinstance(value, list):
+        if all(isinstance(item, int) for item in value):
+            cmds.optionVar(clearArray=var_name)
+            for item in value:
+                cmds.optionVar(iva=(var_name, item))
+        elif all(isinstance(item, float) for item in value):
+            cmds.optionVar(clearArray=var_name)
+            for item in value:
+                cmds.optionVar(fva=(var_name, item))
+        elif all(isinstance(item, str) for item in value):
+            cmds.optionVar(clearArray=var_name)
+            for item in value:
+                cmds.optionVar(sva=(var_name, item))
+    else:
+        raise ValueError("Unsupported value type: {}".format(type(value)))
+
 def dpiScale():
-    if not pm.optionVar.get('tbUseWindowsScale', True):
+    if not get_option_var('tbUseWindowsScale', True):
         return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
-    return pm.optionVar.get('tbCustomDpiScale', 1)
+    return get_option_var('tbCustomDpiScale', 1)
 
 
 def get_commit_details(repo_owner, repo_name):
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
+    url = "https://api.github.com/repos/{repo_owner}/{repo_name}/commits".format(repo_owner=repo_owner,
+                                                                                 repo_name=repo_name)
+
     with urlopen(url) as response:
         data = response.read().decode('utf-8')
         commits = json.loads(data)
@@ -107,7 +163,11 @@ def get_commit_details(repo_owner, repo_name):
 
 
 def get_commit_comments_and_files(repo_owner, repo_name, commit_sha):
-    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{commit_sha}"
+
+    url = "https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{commit_sha}".format(repo_owner=repo_owner,
+                                                                                              repo_name=repo_name,
+                                                                                              commit_sha=commit_sha)
+    # url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{commit_sha}"
     with urlopen(url) as response:
         data = response.read().decode('utf-8')
         commit_details = json.loads(data)
@@ -117,34 +177,49 @@ def get_commit_comments_and_files(repo_owner, repo_name, commit_sha):
 
 
 def download_commit_zip(repo_owner, repo_name, commit_sha):
-    url = f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
-    zip_filename = f"{repo_name}_{commit_sha}.zip"
+    url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
+                                                                                        repo_name=repo_name,
+                                                                                        commit_sha=commit_sha)
+    # url = f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
+    zip_filename = "{repo_name}_{commit_sha}.zip".format(repo_name=repo_name,
+                                                         commit_sha=commit_sha)
+    # zip_filename = f"{repo_name}_{commit_sha}.zip"
     urlretrieve(url, zip_filename)
-    print(f"Downloaded {zip_filename}")
+    print("Downloaded {zip_filename}".format(zip_filename))
 
 
-def get_update_urls():
+def get_update_urls(previousCommits):
     repo_owner = "tb-animator"
     repo_name = "tbAnimTools"
     commits = get_commit_details(repo_owner, repo_name)
-    maxCommits = 10
+    maxCommits = 5
     count = 0
 
+    shaList = list()
     urls = list()
     comments = list()
-
     for commit in commits:
         commit_sha = commit['sha']
+
+        for previous in previousCommits:
+            if previous.get('sha', None):
+
+                return shaList, urls, comments
+
         count += 1
         if count > maxCommits:
             break
-        url = f"https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip"
+        url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
+                                                                                            repo_name=repo_name,
+                                                                                            commit_sha=commit_sha)
         comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
+        shaList.append(commit_sha)
         urls.append(url)
         comments.append(comment)
 
         continue
-    return urls, comments
+    return shaList, urls, comments
+
 
 class updater():
     def __init__(self):
@@ -167,17 +242,28 @@ class updater():
         self.uiDateFormat = '%Y-%m-%d'
         self.timeFormat = '%H:%M'
         # query github for the latest version info
-        self.data = self.getGithubData()
-        # the most recent github push date
-        self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
-        # the most recent of the published/released versions
-        self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
+        self.lastPush = datetime.datetime.strptime("2021-08-16T21:21", self.dateFormat)
+        self.latestRelease = None
+        self.latestTag = None
+        self.releaseZip = None
 
         # save the project data if it doesn't exist
         if not os.path.isfile(self.versionDataFile):
             self.save(self.lastPush, self.latestRelease)
         # get the project data as a json
         self.jsonProjectData = json.load(open(self.versionDataFile))
+
+        self.data = self.getGithubData()
+
+        self.getPreviousCommits()
+
+        # the most recent github push date
+        self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
+
+        # the most recent of the published/released versions
+        self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
+
+
         # convert the time format to the version format
         self.currentVersion = self.convertDateFromString(self.jsonProjectData.get('version', self.lastPush))
         # do the same for the release version
@@ -187,9 +273,9 @@ class updater():
         self.lastUpdateType = self.jsonProjectData.get('lastUpdateType', 'release')
 
         # what updates is the user subscribed to
-        self.updateType = pm.optionVar.get('tbUpdateType', -1)
+        self.updateType = get_option_var('tbUpdateType', -1)
         # set that as an option variable for fun
-        pm.optionVar['tbUpdateType'] = self.updateType
+        set_option_var('tbUpdateType', self.updateType)
 
         # IF the user has not set an update type, query it with a UI
         if self.updateType == -1:
@@ -203,6 +289,18 @@ class updater():
                 pass
             else:
                 pass
+
+    def getPreviousCommits(self):
+        shaList, urlList, commentList = get_update_urls(self.jsonProjectData.get('previousCommits', list()))
+        newCommits = list()
+        if not shaList:
+            return False
+        for sha, url, comment in zip(shaList, urlList, commentList):
+            commitData = {'sha': sha,'url': url,'comment': comment}
+            newCommits.append(commitData)
+        for commit in newCommits.reversed():
+            self.jsonProjectData['previousCommits'].insert(0, commit)
+        self.saveNewCommitInfo()
 
     def downloadHelpImages(self):
         try:
@@ -221,16 +319,23 @@ class updater():
             cmds.warning('failed to download help images')
 
     def assignUpdateType(self, mode, blank):
-        pm.optionVar['tbUpdateType'] = self.updateTypes.index(mode)
+        set_option_var('tbUpdateType', self.updateTypes.index(mode))
+
+    def saveNewCommitInfo(self):
+        j = json.dumps(self.jsonProjectData, indent=4, separators=(',', ': '))
+        f = open(self.versionDataFile, 'w')
+        f.write(j)
+        f.close()
 
     def save(self, version, release):
-        pm.optionVar['tb_version'] = version.strftime(self.dateFormat)
+        set_option_var('tb_version', version.strftime(self.dateFormat))
         jsonData = '''{}'''
         jsonObjectInfo = json.loads(jsonData)
 
         jsonObjectInfo['version'] = version.strftime(self.dateFormat)
         jsonObjectInfo['release'] = release.strftime(self.dateFormat)
         jsonObjectInfo['lastUpdateType'] = self.lastUpdateType
+
         j = json.dumps(jsonObjectInfo, indent=4, separators=(',', ': '))
         f = open(self.versionDataFile, 'w')
         f.write(j)
@@ -253,8 +358,10 @@ class updater():
         updateWin = UpdateWin(newVersion=lastPushDay + ' ' + lastPushTime,
                               oldVersion=currentVersionDay + ' ' + currentVersionTime,
                               updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
-                              unstable=False,
-                              defaultUrl=self.latestZip)
+                              unstable=True,
+                              defaultUrl=self.latestZip,
+                              previousCommits=self.jsonProjectData.get('previousCommits', list()),
+                              )
         if updateWin.exec_() != 1:
             return
         self.download_project_files(updateWin.selectedUrl)
@@ -263,11 +370,11 @@ class updater():
 
     def check_version(self):
         if self.updateType == 0:
-            print('Check for latest stable version')
-            print('lastPush', self.lastPush)
-            print('currentVersion', self.currentVersion)
-            print('currentRelease', self.currentRelease)
-            print('latestRelease', self.latestRelease)
+            # print('Check for latest stable version')
+            # print('lastPush', self.lastPush)
+            # print('currentVersion', self.currentVersion)
+            # print('currentRelease', self.currentRelease)
+            # print('latestRelease', self.latestRelease)
             if self.latestRelease > self.currentRelease:
                 lastPushDay = self.latestRelease.strftime(self.uiDateFormat)
                 lastPushTime = self.latestRelease.strftime(self.timeFormat)
@@ -284,12 +391,12 @@ class updater():
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(updateWin.selectedUrl)
-                #self.downloadHelpImages()
-                self.save(self.lastPush,  self.latestRelease)
+                # self.downloadHelpImages()
+                self.save(self.lastPush, self.latestRelease)
 
         elif self.updateType == 1:
-            print('lastPush', self.lastPush)
-            print('currentVersion', self.currentVersion)
+            # print('lastPush', self.lastPush)
+            # print('currentVersion', self.currentVersion)
             if self.lastPush > self.currentVersion:
                 lastPushDay = self.lastPush.strftime(self.uiDateFormat)
                 lastPushTime = self.lastPush.strftime(self.timeFormat)
@@ -301,11 +408,12 @@ class updater():
                                       oldVersion=currentVersionDay + ' ' + currentVersionTime,
                                       updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
                                       unstable=True,
-                                      defaultUrl=self.latestZip)
+                                      defaultUrl=self.latestZip,
+                                      previousCommits=self.jsonProjectData.get('previousCommits', list()),)
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(updateWin.selectedUrl)
-                #self.downloadHelpImages()
+                # self.downloadHelpImages()
                 self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):
@@ -315,6 +423,7 @@ class updater():
         except:
             response = urlopen(self.datUrl)
         data = json.load(response)
+
         return data
 
     def getLatestReleaseVersion(self):
@@ -361,14 +470,14 @@ class updater():
 
         copy_tree(os.path.join(destinationPath, 'tbAnimTools-main'), destinationPathFinal)
 
-        message_state = pm.optionVar.get("inViewMessageEnable", 1)
-        pm.optionVar(intValue=("inViewMessageEnable", 1))
-        pm.inViewMessage(amg='tbAnimTools update complete',
+        message_state = cmds.optionVar(query="inViewMessageEnable")
+        cmds.optionVar(intValue=("inViewMessageEnable", 1))
+        cmds.inViewMessage(amg='tbAnimTools update complete',
                          pos='botRight',
                          dragKill=True,
                          fadeOutTime=10.0,
                          fade=False)
-        pm.optionVar(intValue=("inViewMessageEnable", message_state))
+        cmds.optionVar(intValue=("inViewMessageEnable", message_state))
 
 
 class UpdateBaseDialog(QDialog):
@@ -376,7 +485,7 @@ class UpdateBaseDialog(QDialog):
     oldPos = None
 
     def __init__(self, parent=None, title='', text='',
-                 lockState=False,  showCloseButton=True, showInfo=True,
+                 lockState=False, showCloseButton=True, showInfo=True,
                  *args, **kwargs):
         super(UpdateBaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
@@ -385,7 +494,7 @@ class UpdateBaseDialog(QDialog):
         self.showCloseButton = showCloseButton
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -439,8 +548,8 @@ class UpdateBaseDialog(QDialog):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -456,6 +565,7 @@ class UpdateBaseDialog(QDialog):
         self.widgetClosed.emit()
         super(UpdateBaseDialog, self).close()
 
+
 class UpdateWin(UpdateBaseDialog):
     ActivateSignal = Signal(str, str)
     leftClick = False
@@ -467,7 +577,9 @@ class UpdateWin(UpdateBaseDialog):
                  oldVersion=str(),
                  updateText=str(),
                  unstable=False,
-                 defaultUrl=None):
+                 defaultUrl=None,
+                 previousCommits=list(),
+                 ):
         super(UpdateWin, self).__init__(parent=parent)
 
         self.defaultWidth = 800
@@ -482,10 +594,10 @@ class UpdateWin(UpdateBaseDialog):
         # QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
         # self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox = QDialogButtonBox()
-        self.buttonBox.setFixedWidth(self.defaultWidth-10)
+        self.buttonBox.setFixedWidth(self.defaultWidth - 10)
         self.updateButton = QPushButton("Update To Latest")
         self.cancelButton = QPushButton("Cancel")
-        self.updateButton.setFixedWidth(self.defaultWidth-90)
+        self.updateButton.setFixedWidth(self.defaultWidth - 90)
         self.updateButton.setStyleSheet(
             'background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #52bf90, stop: 0.1 #49ab81, stop: 0.5 #419873, stop: 0.9 #398564, stop: 1 #317256);color: 	#3b2f2f;font-weight: bold; font-size: 14px;')
         self.cancelButton.setFixedWidth(80)
@@ -532,17 +644,18 @@ class UpdateWin(UpdateBaseDialog):
         self.mainLayout.addWidget(label)
         self.mainLayout.addLayout(self.formLayout)
 
-        urlList, commentList = get_update_urls()
-        if unstable:
-            for commit, comment in zip(urlList, commentList):
+        if previousCommits:
+            for commit in previousCommits:
+                url = commit.get('url')
+                comment = commit.get('comment')
                 button = QPushButton(' Get ')
-                button.url = commit
+                button.url = url
                 button.clicked.connect(partial(self.getSpecificZip, commit))
                 self.formLayout.addRow(button, QLabel(comment))
 
         # self.activateButton.clicked.connect(self.activate)
         self.startPos = None
-        self.move(0,0)
+        self.move(0, 0)
 
     def getSpecificZip(self, url):
         self.selectedUrl = url

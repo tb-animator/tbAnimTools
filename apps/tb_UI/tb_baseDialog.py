@@ -15,7 +15,7 @@ class BaseDialog(QDialog):
         self.showCloseButton = showCloseButton
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -66,14 +66,20 @@ class BaseDialog(QDialog):
         self.pinButton.setVisible(self.showLockButton)
         self.closeButton.setVisible(self.showCloseButton)
 
+    def showEvent(self, event):
+        super(BaseDialog, self).showEvent(event)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocus()
+
+
     def paintEvent(self, event):
         qp = QPainter()
         qp.begin(self)
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -86,11 +92,13 @@ class BaseDialog(QDialog):
         qp.end()
 
     def keyReleaseEvent(self, event):
+        # print ('base dialog keyReleaseEvent')
         if event.key() == Qt.Key_Control:
             self.controlKeyPressed = False
         return False
 
     def keyPressEvent(self, event):
+        # print ('base dialog keyPressEvent', event)
         if event.key() == Qt.Key_Escape:
             self.close()
         if event.key() == Qt.Key_Control:
@@ -133,6 +141,7 @@ class BaseDialog(QDialog):
         self.closeButton.setVisible(True)
 
     def close(self):
+        # print ('widget closed')
         self.widgetClosed.emit()
         super(BaseDialog, self).close()
 

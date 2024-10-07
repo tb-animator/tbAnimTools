@@ -27,25 +27,9 @@ defaultSides = {'left': '_l_', 'right': '_r_'}
 """
 TODO - add option for combining selections into one cache object, feature to reload multiple references from one cache
 """
-import pymel.core as pm
-import maya.cmds as cmds
+from . import *
 
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -66,7 +50,7 @@ class Utility(toolAbstractFactory):
     __instance = None
     toolName = 'Utility'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     libraryName = 'characterLibraryData'
     charSubFolder = 'charTemplates'
     charTemplateDir = None
@@ -88,7 +72,7 @@ class Utility(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     def initData(self):
         super(Utility, self).initData()

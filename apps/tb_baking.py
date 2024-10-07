@@ -22,32 +22,10 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.mel as mel
-import maya.cmds as cmds
-import maya.api.OpenMaya as om2
-import maya.api.OpenMayaAnim as oma2
-import pymel.core.datatypes as dt
-import math
-from Abstract import *
-from tb_UI import *
-import tb_helpStrings
-import maya
-import traceback
+from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 
 assetCommandName = 'tempControlCommand'
 
@@ -217,11 +195,6 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
                                      help=maya.stringTable['tbCommand.bakeToLocatorRotation']))
-        self.addCommand(self.tb_hkey(name='redirectSelected',
-                                     annotation='constrain to object to locator - rotate only',
-                                     category=self.category,
-                                     command=['BakeTools.redirectSelected()'],
-                                     help=maya.stringTable['tbCommand.redirectSelected']))
         self.addCommand(self.tb_hkey(name='worldOffsetSelection',
                                      annotation='worldOffsetSelection',
                                      category=self.category,
@@ -259,7 +232,7 @@ class BakeTools(toolAbstractFactory):
     __instance = None
     toolName = 'BakeTools'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     quickBakeSimOption = 'tbQuickBakeUseSim'
 
@@ -292,7 +265,7 @@ class BakeTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -388,7 +361,7 @@ class BakeTools(toolAbstractFactory):
         return None
 
     def deferredLoad(self):
-        self.deferredLoadJob = pm.scriptJob(event=('animLayerRefresh', self.fixSelectedLayerEnum))
+        self.deferredLoadJob = cmds.scriptJob(event=('animLayerRefresh', self.fixSelectedLayerEnum))
 
     """
     Functions
@@ -397,7 +370,7 @@ class BakeTools(toolAbstractFactory):
     def drawPreview(self):
         self.funcs.tempControl(name='temp',
                                suffix='Preview',
-                               scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1),
+                               scale=get_option_var(self.tbBakeLocatorSizeOption, 1),
                                drawType='cross')
 
     def updatePreview(self, scale):
@@ -439,29 +412,29 @@ class BakeTools(toolAbstractFactory):
             return
         with self.funcs.undoChunk():
             with self.funcs.keepSelection():
-                preContainers = set(pm.ls(type='container'))
-                preBakeLayers = pm.ls(type='animLayer')
+                preContainers = set(cmds.ls(type='container'))
+                preBakeLayers = cmds.ls(type='animLayer')
                 keyRange = self.funcs.getBestTimelineRangeForBake(sel, keyRange=keyRange)
-                newAnimLayer = pm.animLayer('resultLayerBLANKNAME', override=True, passthrough=True)
+                newAnimLayer = cmds.animLayer('resultLayerBLANKNAME', override=True, passthrough=True)
 
-                pm.bakeResults(sel,
-                               time=(keyRange[0], keyRange[-1]),
-                               destinationLayer=str(newAnimLayer),
-                               simulation=False,
-                               sampleBy=1,
-                               oversamplingRate=1,
-                               disableImplicitControl=True,
-                               preserveOutsideKeys=False,
-                               sparseAnimCurveBake=True,
-                               removeBakedAttributeFromLayer=False,
-                               removeBakedAnimFromLayer=False,
-                               bakeOnOverrideLayer=True,
-                               minimizeRotation=True,
-                               controlPoints=False,
-                               shape=False)
+                cmds.bakeResults(sel,
+                                 time=(keyRange[0], keyRange[-1]),
+                                 destinationLayer=str(newAnimLayer),
+                                 simulation=False,
+                                 sampleBy=1,
+                                 oversamplingRate=1,
+                                 disableImplicitControl=True,
+                                 preserveOutsideKeys=False,
+                                 sparseAnimCurveBake=True,
+                                 removeBakedAttributeFromLayer=False,
+                                 removeBakedAnimFromLayer=False,
+                                 bakeOnOverrideLayer=True,
+                                 minimizeRotation=True,
+                                 controlPoints=False,
+                                 shape=False)
 
-                pm.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
-                pm.rename(newAnimLayer, layerPrefix + 'OverrideBaked')
+                cmds.setAttr(newAnimLayer + ".ghostColor", self.overrideLayerColour)
+                newAnimLayer = cmds.rename(newAnimLayer, layerPrefix + 'OverrideBaked')
 
                 if deleteConstraints:
                     if not isinstance(sel, list):
@@ -478,11 +451,11 @@ class BakeTools(toolAbstractFactory):
                 self.resampleLayer(str(newAnimLayer), sampleRate, startTime=keyRange[0], endTime=keyRange[-1])
             if not highlighted:
                 # timeline isn't highlighted, do we bookend the weight anyway?
-                if pm.optionVar.get(self.bookendBakeOption, False):
+                if get_option_var(self.bookendBakeOption, False):
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
             else:
                 # timeline is highlighted, do we bookend the weight for "convenience"?
-                if pm.optionVar.get(self.bookendBakeHighlightOption, False):
+                if get_option_var(self.bookendBakeHighlightOption, False):
                     self.funcs.bookEndLayerWeight(str(newAnimLayer), keyRange[0], keyRange[-1])
             cmds.refresh()
 
@@ -499,34 +472,34 @@ class BakeTools(toolAbstractFactory):
             return
         with self.funcs.keepSelection():
             keyRange = self.funcs.getBestTimelineRangeForBake(sel)
-            pm.bakeResults(sel,
-                           time=(keyRange[0], keyRange[-1]),
-                           simulation=False,
-                           sampleBy=1,
-                           oversamplingRate=1,
-                           disableImplicitControl=True,
-                           preserveOutsideKeys=False,
-                           sparseAnimCurveBake=True,
-                           removeBakedAttributeFromLayer=False,
-                           removeBakedAnimFromLayer=False,
-                           bakeOnOverrideLayer=False,
-                           minimizeRotation=True,
-                           controlPoints=False,
-                           shape=False)
+            cmds.bakeResults(sel,
+                             time=(keyRange[0], keyRange[-1]),
+                             simulation=False,
+                             sampleBy=1,
+                             oversamplingRate=1,
+                             disableImplicitControl=True,
+                             preserveOutsideKeys=False,
+                             sparseAnimCurveBake=True,
+                             removeBakedAttributeFromLayer=False,
+                             removeBakedAnimFromLayer=False,
+                             bakeOnOverrideLayer=False,
+                             minimizeRotation=True,
+                             controlPoints=False,
+                             shape=False)
 
     def removeContainersPostBake(self, preContainers):
-        if pm.optionVar.get(self.quickBakeRemoveContainerOption, False):
-            resultContainer = list(set(pm.ls(type='container')).difference(set(preContainers)))
+        if get_option_var(self.quickBakeRemoveContainerOption, False):
+            resultContainer = list(set(cmds.ls(type='container')).difference(set(preContainers)))
             if not resultContainer:
                 return
-            pm.select(resultContainer, replace=True)
+            cmds.select(resultContainer, replace=True)
             mel.eval('SelectContainerContents')
             mel.eval('doRemoveFromContainer(1, {"container -e -includeShapes -includeTransform "})')
-            pm.delete(resultContainer)
+            cmds.delete(resultContainer)
 
     def bake_to_locator(self, sel=list(), constrain=False, orientOnly=False, select=True, skipMotionTrails=False):
         if not sel:
-            sel = pm.ls(sl=True)
+            sel = cmds.ls(sl=True)
 
         # swap non transform nodes for their parent
         for index, s in enumerate([str(s) for s in sel]):
@@ -548,31 +521,32 @@ class BakeTools(toolAbstractFactory):
                 if sel:
                     for s in sel:
                         # loc = self.funcs.tempLocator(name=s, suffix='baked')
-                        ps = pm.PyNode(s)
-                        ns = ps.namespace()
+                        ns = self.funcs.namespace(s)
                         if not cmds.objExists(ns + self.assetName):
                             self.createAsset(ns + self.assetName, imageName=None)
                         asset = ns + self.assetName
                         loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
-                                                     scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1))
-                        pm.setAttr(loc + '.rotateOrder')
-                        pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
-                        pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+                                                     scale=get_option_var(self.tbBakeLocatorSizeOption, 1))
+
+                        # TODO - set this to an actual value
+                        # cmds.setAttr(loc + '.rotateOrder')
+                        cmds.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                        cmds.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                         const = cmds.parentConstraint(str(s), str(loc))
                         locs.append(loc)
                         constraints.append(const[0])
-                        pm.container(asset, edit=True,
-                                     includeHierarchyBelow=True,
-                                     force=True,
-                                     addNode=loc)
+                        cmds.container(asset, edit=True,
+                                       includeHierarchyBelow=True,
+                                       force=True,
+                                       addNode=loc)
                 if locs:
-                    preContainers = set(pm.ls(type='container'))
+                    preContainers = set(cmds.ls(type='container'))
                     keyRange = self.funcs.getBestTimelineRangeForBake()
                     self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
                                    simulation=True,
                                    slow=False)
                     '''
-                    pm.bakeResults(locs,
+                    cmds.bakeResults(locs,
                                    simulation=True,
                                    sampleBy=1,
                                    oversamplingRate=1,
@@ -597,23 +571,23 @@ class BakeTools(toolAbstractFactory):
                         for cnt, loc in zip(sel, locs):
                             skipT = self.funcs.getAvailableTranslates(cnt)
                             skipR = self.funcs.getAvailableRotates(cnt)
-                            constraint = pm.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                                      False: [x.split('translate')[-1]
-                                                                                              for x in
-                                                                                              skipT]}[
+                            constraint = cmds.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
+                                                                                        False: [x.split('translate')[-1]
+                                                                                                for x in
+                                                                                                skipT]}[
                                 orientOnly],
-                                                             skipRotate=[x.split('rotate')[-1] for x in skipR])
-                            pm.container(asset, edit=True,
-                                         includeHierarchyBelow=True,
-                                         force=True,
-                                         addNode=constraint)
-                if pm.optionVar.get(self.tbTempControlMotionTrailOption, False):
+                                                               skipRotate=[x.split('rotate')[-1] for x in skipR])
+                            cmds.container(asset, edit=True,
+                                           includeHierarchyBelow=True,
+                                           force=True,
+                                           addNode=constraint)
+                if get_option_var(self.tbTempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
                             cmds.select(str(l), replace=True)
                             mel.eval('createMotionTrail')
                 if select:
-                    pm.select(locs, replace=True)
+                    cmds.select(locs, replace=True)
                 return locs
             except Exception:
                 cmds.warning(traceback.format_exc())
@@ -631,7 +605,7 @@ class BakeTools(toolAbstractFactory):
         :return:
         """
         if not sel:
-            sel = pm.ls(sl=True)
+            sel = cmds.ls(sl=True)
         locs = []
         constraints = []
         if not sel:
@@ -643,43 +617,42 @@ class BakeTools(toolAbstractFactory):
             try:
                 parentNode = self.funcs.tempNull(name=target, suffix='baked')
 
-                ps = pm.PyNode(parentNode)
-                ns = ps.namespace()
+                ns = self.funcs.namespace(parentNode)
                 if not cmds.objExists(ns + self.assetName):
                     self.createAsset(ns + self.assetName, imageName=None)
                 asset = ns + self.assetName
 
-                constraint = pm.parentConstraint(target, parentNode)
-                pm.container(asset, edit=True,
-                             includeHierarchyBelow=True,
-                             force=True,
-                             addNode=[parentNode, constraint])
+                constraint = cmds.parentConstraint(target, parentNode)[0]
+                cmds.container(asset, edit=True,
+                               includeHierarchyBelow=True,
+                               force=True,
+                               addNode=[parentNode, constraint])
 
                 for s in controls:
                     # loc = self.funcs.tempLocator(name=s, suffix='baked')
 
                     loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
-                                                 scale=pm.optionVar.get(self.tbBakeLocatorSizeOption, 1))
-                    pm.parent(loc, parentNode)
-                    pm.addAttr(loc, ln=self.constraintTargetAttr, at='message')
-                    pm.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
-                    const = pm.parentConstraint(s, loc)
+                                                 scale=get_option_var(self.tbBakeLocatorSizeOption, 1))
+                    cmds.parent(loc, parentNode)
+                    cmds.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                    cmds.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+                    const = cmds.parentConstraint(s, loc)[0]
                     locs.append(loc)
                     constraints.append(const)
-                    pm.container(asset, edit=True,
-                                 includeHierarchyBelow=True,
-                                 force=True,
-                                 addNode=loc)
+                    cmds.container(asset, edit=True,
+                                   includeHierarchyBelow=True,
+                                   force=True,
+                                   addNode=loc)
 
                 if locs:
-                    preContainers = set(pm.ls(type='container'))
+                    preContainers = set(cmds.ls(type='container'))
                     keyRange = self.funcs.getBestTimelineRangeForBake()
                     self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
                                    simulation=True,
                                    slow=False)
                     '''
-                    pm.bakeResults(locs,
-                                   simulation=pm.optionVar.get(self.quickBakeSimOption, False),
+                    cmds.bakeResults(locs,
+                                   simulation=get_option_var(self.quickBakeSimOption, False),
                                    sampleBy=1,
                                    oversamplingRate=1,
                                    disableImplicitControl=True,
@@ -705,20 +678,20 @@ class BakeTools(toolAbstractFactory):
                                                                          orientOnly=orientOnly,
                                                                          maintainOffset=False)
                             '''
-                            pm.container(asset, edit=True,
+                            cmds.container(asset, edit=True,
                                          includeHierarchyBelow=True,
                                          force=True,
                                          addNode=constraint)
                             '''
                 '''
-                if pm.optionVar.get(self.tempControlMotionTrailOption, False):
+                if get_option_var(self.tempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
                             cmds.select(str(l), replace=True)
                             mel.eval('createMotionTrail')
                 '''
                 if select:
-                    pm.select(locs, replace=True)
+                    cmds.select(locs, replace=True)
                 return locs
 
             except Exception:
@@ -726,12 +699,12 @@ class BakeTools(toolAbstractFactory):
                 self.funcs.resumeSkinning()
 
     def bakeSelectedHotkey(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
         assets = list()
         for s in sel:
-            asset = pm.container(query=True, findContainer=s)
+            asset = cmds.container(query=True, findContainer=s)
             if asset not in assets:
                 assets.append(asset)
 
@@ -740,19 +713,19 @@ class BakeTools(toolAbstractFactory):
         self.bakeSelectedCommand(assets, sel)
 
     def bakeAllHotkey(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
-        asset = pm.container(query=True, findContainer=sel[0])
+        asset = cmds.container(query=True, findContainer=sel[0])
         if not asset:
             return
         self.bakeAllCommand(asset, sel)
 
     def removeAllHotkey(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
-        asset = pm.container(query=True, findContainer=sel[0])
+        asset = cmds.container(query=True, findContainer=sel[0])
         if not asset:
             return
         self.deleteControlsCommand(asset, sel)
@@ -761,28 +734,28 @@ class BakeTools(toolAbstractFactory):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'
         cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = pm.ls(sl=True)
-        asset = pm.container(query=True, findContainer=sel[0])
+        sel = cmds.ls(sl=True)
+        asset = cmds.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Bake selected temp controls to layer',
-                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
-        cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
+                      command=create_callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Delete selected temp controls',
-                      command=pm.Callback(self.deleteSelectedControlsCommand, asset, sel))
-        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset, sel))
+                      command=create_callback(self.deleteSelectedControlsCommand, asset, sel))
+        cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
     def assetRmbCommand(self):
         panel = cmds.getPanel(underPointer=True)
         parentMMenu = panel + 'ObjectPop'
         cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = pm.ls(sl=True)
-        asset = pm.container(query=True, findContainer=sel[0])
+        sel = cmds.ls(sl=True)
+        asset = cmds.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
         # print ("asset", asset, sel)
@@ -790,10 +763,10 @@ class BakeTools(toolAbstractFactory):
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Bake selected temp controls to layer',
-                      command=pm.Callback(self.bakeSelectedCommand, asset, sel))
-        cmds.menuItem(label='Bake all temp controls to layer', command=pm.Callback(self.bakeAllCommand, asset, sel))
-        # cmds.menuItem(label='Bake out to layer', command=pm.Callback(self.bakeOutCommand, asset))
-        cmds.menuItem(label='Delete all temp controls', command=pm.Callback(self.deleteControlsCommand, asset, sel))
+                      command=create_callback(self.bakeSelectedCommand, asset, sel))
+        cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
+        # cmds.menuItem(label='Bake out to layer', command=create_callback(self.bakeOutCommand, asset))
+        cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
 
     def get_available_attrs(self, node):
@@ -805,20 +778,20 @@ class BakeTools(toolAbstractFactory):
         lockedTranslates = []
         lockedRotates = []
         for attr in attrs:
-            if not pm.getAttr(node + '.' + 'translate' + attr, settable=True):
+            if not cmds.getAttr(node + '.' + 'translate' + attr, settable=True):
                 lockedTranslates.append(attr.lower())
-            if not pm.getAttr(node + '.' + 'rotate' + attr, settable=True):
+            if not cmds.getAttr(node + '.' + 'rotate' + attr, settable=True):
                 lockedRotates.append(attr.lower())
 
         return lockedTranslates, lockedRotates
 
-    def bakeSelectedCommand(self, asset, sel):
+    def bakeSelectedCommand(self, asset, sel, *args):
         if not isinstance(asset, list):
             asset = [asset]
-        tempControls = [x for x in sel if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        tempControls = [x for x in sel if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         # print ('tempControls', tempControls)
-        pairedControls = [x for x in tempControls if pm.attributeQuery(self.tempControlPairAttr, node=x, exists=True)]
-        pairedControls = [pm.listConnections(x + '.' + self.tempControlPairAttr) for x in pairedControls]
+        pairedControls = [x for x in tempControls if cmds.attributeQuery(self.tempControlPairAttr, node=x, exists=True)]
+        pairedControls = [cmds.listConnections(x + '.' + self.tempControlPairAttr) for x in pairedControls]
         # print ('pairedControls', pairedControls)
         filteredPairedControls = [item for sublist in pairedControls for item in sublist if item]
         # print ('filteredPairedControls', filteredPairedControls)
@@ -832,48 +805,48 @@ class BakeTools(toolAbstractFactory):
         # print ('filteredTargets', filteredTargets)
 
         self.bake_to_override(sel=filteredTargets)
-        pm.delete(tempControls)
+        cmds.delete(tempControls)
 
-    def bakeAllCommand(self, asset, sel):
-        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
-        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
-        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+    def bakeAllCommand(self, asset, sel, *args):
+        nodes = cmds.ls(cmds.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [cmds.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
 
         self.bake_to_override(sel=filteredTargets)
-        pm.delete(asset)
+        cmds.delete(asset)
 
-    def deleteSelectedControlsCommand(self, asset, sel):
-        pm.delete(sel)
+    def deleteSelectedControlsCommand(self, asset, sel, *args):
+        cmds.delete(sel)
 
-    def deleteControlsCommand(self, asset, sel):
-        pm.delete(asset)
+    def deleteControlsCommand(self, asset, sel, *args):
+        cmds.delete(asset)
 
     def parentConst(self, constrainGroup=False, offset=True, postBake=False, postReverseConst=False):
-        drivers = pm.ls(sl=True)
+        drivers = cmds.ls(sl=True)
         if not len(drivers) > 1:
-            return pm.warning('not enough objects selected to constrain, please select at least 2')
+            return cmds.warning('not enough objects selected to constrain, please select at least 2')
         target = drivers.pop(-1)
 
         if constrainGroup:
             if not target.getParent():
-                pm.warning("trying to constrain object's parent, but it is parented to the world")
+                cmds.warning("trying to constrain object's parent, but it is parented to the world")
             else:
                 target = target.getParent()
 
-        pm.parentConstraint(drivers, target,
-                            skipTranslate=self.funcs.getAvailableTranslates(target),
-                            skipRotate=self.funcs.getAvailableRotates(target),
-                            maintainOffset=offset)
+        cmds.parentConstraint(drivers, target,
+                              skipTranslate=self.funcs.getAvailableTranslates(target),
+                              skipRotate=self.funcs.getAvailableRotates(target),
+                              maintainOffset=offset)
         if postBake:
             self.quickBake(target)
             if postReverseConst:
                 if len(drivers) != 1:
-                    return pm.warning('Can only post reverse constraint if 2 objects are used')
+                    return cmds.warning('Can only post reverse constraint if 2 objects are used')
                 else:
-                    pm.parentConstraint(target, drivers[0],
-                                        skipTranslate=self.funcs.getAvailableTranslates(drivers[0]),
-                                        skipRotate=self.funcs.getAvailableRotates(drivers[0]),
-                                        maintainOffset=True)
+                    cmds.parentConstraint(target, drivers[0],
+                                          skipTranslate=self.funcs.getAvailableTranslates(drivers[0]),
+                                          skipRotate=self.funcs.getAvailableRotates(drivers[0]),
+                                          maintainOffset=True)
 
     def clearBlendAttrs(self, node):
         for attr in cmds.listAttr(node):
@@ -892,20 +865,19 @@ class BakeTools(toolAbstractFactory):
         :return:
         """
         if not startTime:
-            startTime = pm.playbackOptions(query=True, minTime=True)
+            startTime = cmds.playbackOptions(query=True, minTime=True)
         if not endTime:
-            endTime = pm.playbackOptions(query=True, maxTime=True)
+            endTime = cmds.playbackOptions(query=True, maxTime=True)
         with self.funcs.suspendUpdate(slow):
             try:
                 keyRange = self.getBestTimelineRangeForBake()
                 if not isinstance(node, list):
                     node = [node]
-                pm.bakeResults(node,
-                               simulation=simulation,
-                               disableImplicitControl=False,
-                               time=[keyRange[0],
-                                     keyRange[1]],
-                               sampleBy=1)
+                cmds.bakeResults(node,
+                                 simulation=simulation,
+                                 disableImplicitControl=False,
+                                 time=(keyRange[0], keyRange[1]),
+                                 sampleBy=1)
                 if deleteConstraints:
 
                     for n in node:
@@ -933,23 +905,22 @@ class BakeTools(toolAbstractFactory):
 
         colour = {True: self.overrideLayerColour, False: self.additiveLayerColour}
 
-        newAnimLayer = pm.animLayer(suffixStr,
+        newAnimLayer = cmds.animLayer(suffixStr,
                                     override=override,
                                     addSelectedObjects=True,
                                     passthrough=True,
                                     lock=False)
 
-        newAnimLayer.ghostColor.set(colour[override])
-        newAnimLayer.scaleAccumulationMode.set(not override)
-        newAnimLayer.rotationAccumulationMode.set(component)
+        cmds.setAttr(newAnimLayer + '.ghostColor', colour[override])
+        cmds.setAttr(newAnimLayer + '.scaleAccumulationMode', not override)
+        cmds.setAttr(newAnimLayer + '.rotationAccumulationMode', component)
 
         self.deselect_layers()
-        newAnimLayer.selected.set(True)
-        newAnimLayer.preferred.set(True)
+        self.funcs.select_layer(newAnimLayer)
         return newAnimLayer
 
     def fixSelectedLayerEnum(self):
-        if not pm.optionVar.get(self.autoFixEnumOption, False):
+        if not get_option_var(self.autoFixEnumOption, False):
             return
         layers = self.funcs.get_selected_layers()
         if not layers:
@@ -1021,7 +992,7 @@ class BakeTools(toolAbstractFactory):
             timeRange = self.funcs.getTimelineHighlightedRange()
         newAnimLayer = self.createLayer(override=override, component=component)
         if not override:
-            if pm.optionVar.get(self.autoFixEnumOnCreateOption, False):
+            if get_option_var(self.autoFixEnumOnCreateOption, False):
                 self.additiveEnumFix(str(newAnimLayer))
         if timeRange:
             if override:
@@ -1054,14 +1025,14 @@ class BakeTools(toolAbstractFactory):
         '''
         '''
         # in case there's something to do automatically to the objects?
-        sel = pm.ls(selection=True)
+        sel = cmds.ls(selection=True)
         if not sel:
             return
         '''
 
     def deselect_layers(self):
-        for layers in pm.ls(type='animLayer'):
-            layers.selected.set(False)
+        for layer in cmds.ls(type='animLayer'):
+            self.funcs.deselectLayer(layer)
 
     def counterLayerAnimation(self):
         """
@@ -1070,7 +1041,7 @@ class BakeTools(toolAbstractFactory):
         TODO - fix this so it gets a better key range!
         :return:
         """
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('nothing selected')
         if len(sel) == 1:
@@ -1087,45 +1058,45 @@ class BakeTools(toolAbstractFactory):
         keyRange = self.funcs.get_all_key_times(str(driver), selected=False)
         if not keyRange:
             return cmds.warning('driver control does not appear to have any keys in the selected layer')
-        resultLayer = pm.animLayer(animLayer[0] + '_Counter')
-        pm.setAttr(resultLayer + '.scaleAccumulationMode', 0)
-        pm.animLayer(resultLayer, edit=True, override=True, parent=animLayer[0])
+        resultLayer = cmds.animLayer(animLayer[0] + '_Counter')
+        cmds.setAttr(resultLayer + '.scaleAccumulationMode', 0)
+        cmds.animLayer(resultLayer, edit=True, override=True, parent=animLayer[0])
         allAttrs = list()
         for target in targets:
             translates = self.funcs.getAvailableTranslates(target)
             rotates = self.funcs.getAvailableRotates(target)
             attrs = ['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ']
             layerAttrs = [target + '.' + x for x in attrs if x not in translates + rotates]
-            pm.animLayer(resultLayer, edit=True, attribute=layerAttrs)
+            cmds.animLayer(resultLayer, edit=True, attribute=layerAttrs)
             allAttrs.extend(layerAttrs)
 
         # mut the layer to get the underlying animtion
-        pm.animLayer(animLayer[0], edit=True, mute=True)
+        cmds.animLayer(animLayer[0], edit=True, mute=True)
         # bake the controls to locators
         locators = self.bake_to_locator(sel=targets, constrain=True, select=False)
         # restore the animation layer
-        pm.animLayer(animLayer[0], edit=True, mute=False)
+        cmds.animLayer(animLayer[0], edit=True, mute=False)
 
         # bake out the result values
 
-        preContainers = set(pm.ls(type='container'))
+        preContainers = set(cmds.ls(type='container'))
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        pm.bakeResults(allAttrs,
-                       time=(keyRange[0], keyRange[-1]),
-                       destinationLayer=resultLayer,
-                       simulation=False,
-                       sampleBy=1,
-                       oversamplingRate=1,
-                       disableImplicitControl=True,
-                       preserveOutsideKeys=False,
-                       sparseAnimCurveBake=True,
-                       removeBakedAttributeFromLayer=False,
-                       removeBakedAnimFromLayer=False,
-                       bakeOnOverrideLayer=True,
-                       minimizeRotation=True,
-                       controlPoints=False,
-                       shape=False)
-        pm.delete(locators)
+        cmds.bakeResults(allAttrs,
+                         time=(keyRange[0], keyRange[-1]),
+                         destinationLayer=resultLayer,
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=True,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+        cmds.delete(locators)
         self.removeContainersPostBake(preContainers)
 
         for v in allAttrs:
@@ -1146,10 +1117,9 @@ class BakeTools(toolAbstractFactory):
 
             for x in range(0, animRange):
                 cmds.setKeyframe(layerplug, time=keyRange[0] + x, value=layerValues[x])
-        pm.animLayer(resultLayer, edit=True, override=False)
+        cmds.animLayer(resultLayer, edit=True, override=False)
 
     def additiveExtractSelection(self):
-        print('additiveExtractSelection')
 
         sel = cmds.ls(sl=True)
         if sel:
@@ -1319,10 +1289,9 @@ class BakeTools(toolAbstractFactory):
         :param nodes:
         :return:
         """
-        print('additiveExtract', nodes)
         overrideLayer = cmds.animLayer('AdditiveBase', override=True)
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        print('key range', keyRange)
+
         cmds.bakeResults(nodes,
                          time=(keyRange[0], keyRange[-1]),
                          destinationLayer=overrideLayer,
@@ -1542,7 +1511,8 @@ class BakeTools(toolAbstractFactory):
                     cmds.bakeResults(selection,
                                      time=(keyRange[0], keyRange[-1]),
                                      # destinationLayer=rootLayer,
-                                     simulation=len(selection) > pm.optionVar.get(self.tbBakeSimObjectCountOption, 10),
+                                     simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
+                                                                                    10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1559,7 +1529,8 @@ class BakeTools(toolAbstractFactory):
                     cmds.bakeResults(selection,
                                      time=(keyRange[0], keyRange[-1]),
                                      destinationLayer=resultLayer,
-                                     simulation=len(selection) > pm.optionVar.get(self.tbBakeSimObjectCountOption, 10),
+                                     simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
+                                                                                    10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1614,21 +1585,22 @@ class BakeTools(toolAbstractFactory):
             rotationRoot = self.funcs.tempControl(name=s,
                                                   suffix='worldOffset',
                                                   drawType='orb',
-                                                  scale=pm.optionVar.get(self.tbBakeWorldOffsetSizeOption, 0.5))
+                                                  scale=get_option_var(self.tbBakeWorldOffsetSizeOption, 0.5))
             rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
             rotateAnimOffsetNode = self.funcs.tempControl(name=s,
                                                           suffix='localOffset',
                                                           drawType='diamond',
-                                                          scale=pm.optionVar.get(self.tbBakeWorldOffsetSizeOption, 0.5))
+                                                          scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
+                                                                                   0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
 
-            pm.parent(rotateAnimNode, rotationRoot)
-            pm.parent(rotateAnimOffsetNode, rotateAnimNode)
+            cmds.parent(rotateAnimNode, rotationRoot)
+            cmds.parent(rotateAnimOffsetNode, rotateAnimNode)
 
-            tempConstraints.append(pm.pointConstraint(s, rotationRoot))
-            tempConstraints.append(pm.parentConstraint(s, rotateAnimNode))
+            tempConstraints.append(cmds.pointConstraint(s, rotationRoot)[0])
+            tempConstraints.append(cmds.parentConstraint(s, rotateAnimNode)[0])
 
             rotationRoots[s] = rotationRoot
             rotateAnimNodes[s] = rotateAnimNode
@@ -1638,47 +1610,47 @@ class BakeTools(toolAbstractFactory):
                 self.createAsset(ns + self.worldOffsetAssetName, imageName=None)
             asset = ns + self.worldOffsetAssetName
 
-            pm.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
-            pm.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
-            pm.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
-            pm.connectAttr(s + '.message', rotationRoot + '.' + self.constraintTargetAttr)
-            pm.connectAttr(s + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
-            pm.connectAttr(s + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
-            pm.container(asset, edit=True,
-                         includeHierarchyBelow=True,
-                         force=True,
-                         addNode=rotationRoot)
+            cmds.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
+            cmds.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
+            cmds.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
+            cmds.connectAttr(s + '.message', rotationRoot + '.' + self.constraintTargetAttr)
+            cmds.connectAttr(s + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
+            cmds.connectAttr(s + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
+            cmds.container(asset, edit=True,
+                           includeHierarchyBelow=True,
+                           force=True,
+                           addNode=rotationRoot)
 
         bakeTargets = list(rotationRoots.values()) + list(rotateAnimNodes.values())
         keyRange = self.funcs.getBestTimelineRangeForBake()
-        pm.bakeResults(bakeTargets,
-                       time=(keyRange[0], keyRange[1]),
-                       simulation=False,
-                       sampleBy=1,
-                       oversamplingRate=1,
-                       disableImplicitControl=True,
-                       preserveOutsideKeys=False,
-                       sparseAnimCurveBake=True,
-                       removeBakedAttributeFromLayer=False,
-                       removeBakedAnimFromLayer=False,
-                       bakeOnOverrideLayer=False,
-                       minimizeRotation=True,
-                       controlPoints=False,
-                       shape=False)
+        cmds.bakeResults(bakeTargets,
+                         time=(keyRange[0], keyRange[1]),
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=False,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
         for c in bakeTargets:
             cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
                              filter='euler')
-        pm.delete(tempConstraints)
+        cmds.delete(tempConstraints)
         if int(cmds.about(majorVersion=True)) >= 2020:
             for o in rotationRoots.values():
                 composeMatrix = cmds.createNode('composeMatrix')
-                for a in ['X','Y','Z']:
-                    conns = cmds.listConnections(o + '.translate'+a, source=True, destination=False,
+                for a in ['X', 'Y', 'Z']:
+                    conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
                                                  plugs=True)[0]
-                    cmds.disconnectAttr(conns, o + '.translate'+a)
+                    cmds.disconnectAttr(conns, o + '.translate' + a)
                     cmds.connectAttr(conns, composeMatrix + '.inputTranslate.inputTranslate' + a)
                 cmds.connectAttr(composeMatrix + '.outputMatrix', o + '.offsetParentMatrix')
-                cmds.setAttr(o + '.translate', 0,0,0)
+                cmds.setAttr(o + '.translate', 0, 0, 0)
 
         channels = self.funcs.getChannels()
         for s in sel:
@@ -1686,8 +1658,7 @@ class BakeTools(toolAbstractFactory):
                                             orientOnly=rotationOnly,
                                             maintainOffset=False,
                                             channels=channels)
-        pm.select(rotationRoots.values(), replace=True)
-
+        cmds.select(list(rotationRoots.values()), replace=True)
 
     def resampleSelectedLayer(self, sample=1):
         allLayers = self.funcs.get_selected_layers(None)
@@ -1739,8 +1710,8 @@ class bakeOnXWidget(IntInputWidget):
         self.acceptedSignal.connect(self.bake_pressed)
 
     def bake_pressed(self, sample):
-        pm.Callback(BakeTools().bake_to_override(sampleRate=sample))
+        create_callback(BakeTools().bake_to_override(sampleRate=sample))
 
     def button_pushed(self):
-        pm.Callback(BakeTools().bake_to_override(sampleRate=self.sender().sample))
+        create_callback(BakeTools().bake_to_override(sampleRate=self.sender().sample))
         self.close()

@@ -22,25 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya
+from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-import maya.cmds as cmds
-import pymel.core as pm
-from Abstract import *
 
 viewFlags = ['controllers',
              'polymeshes',
@@ -154,7 +138,7 @@ class ViewModeTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
         self.loadData()
 
     """
@@ -244,33 +228,33 @@ class ViewModeTool(toolAbstractFactory):
 
     def setCustomControlView(self, *args):
         self.savePreset('controls')
-        pm.optionVar(intValue=(self.viewControlsCustomOption, True))
+        cmds.optionVar(intValue=(self.viewControlsCustomOption, True))
         self.loadData()
 
     def setCustomModelView(self, *args):
         self.savePreset('models')
-        pm.optionVar(intValue=(self.viewMeshesCustomOption, True))
+        cmds.optionVar(intValue=(self.viewMeshesCustomOption, True))
         self.loadData()
 
     def setCustomAllView(self, *args):
         self.savePreset('everything')
-        pm.optionVar(intValue=(self.viewAllCustomOption, True))
+        cmds.optionVar(intValue=(self.viewAllCustomOption, True))
         self.loadData()
 
     def removeCustomControlView(self, *args):
-        pm.optionVar(intValue=(self.viewControlsCustomOption, False))
+        cmds.optionVar(intValue=(self.viewControlsCustomOption, False))
         if 'controls' in self.viewData['viewData'].keys():
             self.viewData['viewData'].pop('controls')
         self.saveData()
 
     def removeCustomModelView(self, *args):
-        pm.optionVar(intValue=(self.viewMeshesCustomOption, False))
+        cmds.optionVar(intValue=(self.viewMeshesCustomOption, False))
         if 'models' in self.viewData['viewData'].keys():
             self.viewData['viewData'].pop('models')
         self.saveData()
 
     def removeCustomAllView(self, *args):
-        pm.optionVar(intValue=(self.viewAllCustomOption, False))
+        cmds.optionVar(intValue=(self.viewAllCustomOption, False))
         if 'everything' in self.viewData['viewData'].keys():
             self.viewData['viewData'].pop('everything')
         self.saveData()
@@ -291,13 +275,13 @@ class ViewModeTool(toolAbstractFactory):
         cmds.modelEditor(self.funcs.getModelPanel(), edit=True, manipulators=True, sel=True)
 
     def viewControls(self):
-        self.viewMode(key='controls', custom=pm.optionVar.get(self.viewControlsCustomOption, False), default=controls)
+        self.viewMode(key='controls', custom=get_option_var(self.viewControlsCustomOption, False), default=controls)
 
     def viewMeshes(self):
-        self.viewMode(key='models', custom=pm.optionVar.get(self.viewMeshesCustomOption, False), default=models)
+        self.viewMode(key='models', custom=get_option_var(self.viewMeshesCustomOption, False), default=models)
 
     def viewAll(self):
-        self.viewMode(key='everything', custom=pm.optionVar.get(self.viewAllCustomOption, False), default=everything)
+        self.viewMode(key='everything', custom=get_option_var(self.viewAllCustomOption, False), default=everything)
 
     def toggleXrayJoints(self):
         panel = self.funcs.getModelPanel()
@@ -315,13 +299,13 @@ class ViewModeTool(toolAbstractFactory):
             self.allTools.tools['GraphEditor'].loadGraphEditorModifications()
 
     def toggleMenuBarVisibility(self):
-        state = int(pm.optionVar['mainWindowMenubarVis'])
+        state = int(get_option_var('mainWindowMenubarVis'))
         mel.eval('setMainMenubarVisible %s' % int(not state))
         mel.eval('toggleMenuBarsInPanels %s' % int(not state))
         mel.eval('toggleModelEditorBarsInAllPanels %s' % int(state))
         # tool box and status line toggle
-        pm.workspaceControl("StatusLine", edit=True, visible=int(not state))
-        pm.workspaceControl("ToolBox", edit=True, visible=int(not state))
+        cmds.workspaceControl("StatusLine", edit=True, visible=int(not state))
+        cmds.workspaceControl("ToolBox", edit=True, visible=int(not state))
 
     def toggleDockedOutliner(self):
         panel = "Outliner"

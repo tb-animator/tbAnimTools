@@ -22,18 +22,11 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.mel as mel
-import maya.cmds as cmds
-import pymel.core.datatypes as dt
-import os
-from functools import partial
-import maya.OpenMayaUI as omUI
-import getStyleSheet as getqss
-import json
-from Abstract import *
-from tb_UI import *
-from collections import deque
+from . import *
+try:
+    basestring  # Python 2
+except NameError:
+    basestring = str  # Python 3 and later
 
 presetPrefix = 'pwref_'
 
@@ -55,18 +48,6 @@ ToolTip_DownMulti = 'Quick add down from one object to many (e.g. Hand to Finger
 ToolTip_UpMulti = 'Quick add up from many to one (e.g. Finger controls to hand)\n First control is the destination'
 ToolTip_AddRigToMap = 'Select a map from the pickwalk map list to assign a rig file to it'
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 
 walkDirections = ['up', 'down', 'left', 'right']
 skipDirections = ['upSkip', 'downSkip', 'leftSkip', 'rightSkip']
@@ -464,9 +445,9 @@ class PickwalkCreator(object):
     def quickUpFromMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('No objects selected')
+            return cmds.warning('No objects selected')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickUpFromMulti')
+            # cmds.warning('inputSignal_quickUpFromMulti')
             control = sel[0].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[1:]]
             for s in targets:
@@ -477,9 +458,9 @@ class PickwalkCreator(object):
     def quickDownToMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('No objects selected')
+            return cmds.warning('No objects selected')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickDownToMulti')
+            # cmds.warning('inputSignal_quickDownToMulti')
             control = sel[0].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[1:]]
             name = control + '_' + targets[0] + '_mult'
@@ -496,9 +477,9 @@ class PickwalkCreator(object):
     def quickLeftRight(self):
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('No objects selected')
+            return cmds.warning('No objects selected')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickLeftRight')
+            # cmds.warning('inputSignal_quickLeftRight')
             self.addPickwalkChain(controls=sel,
                                   direction='left',
                                   loop=True,
@@ -509,9 +490,9 @@ class PickwalkCreator(object):
     def quickUpDown(self):
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('No objects selected')
+            return cmds.warning('No objects selected')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickUpDown')
+            # cmds.warning('inputSignal_quickUpDown')
             self.addPickwalkChain(controls=sel,
                                   direction='down',
                                   loop=False,
@@ -562,7 +543,7 @@ class PickwalkCreator(object):
             for dKey, dValue in value.items():
                 # print ('dKey', dKey)
                 # print ('dValue', dValue)
-                if isinstance(dValue, str):
+                if isinstance(dValue, basestring):
                     self.setControlDestination(key,
                                                direction=dKey,
                                                destination=dValue)
@@ -804,13 +785,13 @@ class Pickwalk(toolAbstractFactory):
         Pickwalk.__instance.newConditionPopup = None
         Pickwalk.__instance.existingConditionPopup = None
         Pickwalk.__instance.mirrorPopup = None
-        Pickwalk.__instance.funcs = functions()
+        Pickwalk.__instance.funcs = Functions()
         return Pickwalk.__instance
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        pm.optionVar[self.saveOnUpdateOption] = pm.optionVar.get(self.saveOnUpdateOption, True)
-        pm.optionVar[self.autoApplyOption] = pm.optionVar.get(self.autoApplyOption, True)
+        set_option_var(self.saveOnUpdateOption, get_option_var(self.saveOnUpdateOption, True))
+        set_option_var(self.autoApplyOption, get_option_var(self.autoApplyOption, True))
 
     def initData(self):
         super(Pickwalk, self).initData()
@@ -898,9 +879,9 @@ class Pickwalk(toolAbstractFactory):
         return cmds.warning(self, 'optionUI', ' function not implemented')
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Pickwalk Creator', image='walk.png', command='tbOpenPickwalkCreator', sourceType='mel',
+        cmds.menuItem(label='Pickwalk Creator', image='walk.png', command='tbOpenPickwalkCreator', sourceType='mel',
                     parent=parentMenu)
-        pm.menuItem(label='Pickwalk Library', image='QR_settings.png', command='tbOpenPickwalkLibrary',
+        cmds.menuItem(label='Pickwalk Library', image='QR_settings.png', command='tbOpenPickwalkLibrary',
                     sourceType='mel', parent=parentMenu)
 
     def build_MM(self):
@@ -932,19 +913,19 @@ class Pickwalk(toolAbstractFactory):
                       )
 
         cmds.menuItem(label='Left',
-                      command=pm.Callback(self.walkCreate, 'left', condition=False),
+                      command=create_callback(self.walkCreate, 'left', condition=False),
                       radialPosition='W'
                       )
         cmds.menuItem(label='Right',
-                      command=pm.Callback(self.walkCreate, 'right', condition=False),
+                      command=create_callback(self.walkCreate, 'right', condition=False),
                       radialPosition='E'
                       )
         cmds.menuItem(label='Up',
-                      command=pm.Callback(self.walkCreate, 'up', condition=False),
+                      command=create_callback(self.walkCreate, 'up', condition=False),
                       radialPosition='N'
                       )
         cmds.menuItem(label='Down',
-                      command=pm.Callback(self.walkCreate, 'down', condition=False),
+                      command=create_callback(self.walkCreate, 'down', condition=False),
                       radialPosition='S'
                       )
         cmds.menuItem(label='Add Down To Many',
@@ -1073,9 +1054,9 @@ class Pickwalk(toolAbstractFactory):
         if cmds.getAttr(node + '.' + attribute, type=True) == u'string':
             # use string attribute method
             destination = cmds.getAttr(node + '.' + attribute)
-            pNode = pm.PyNode(node)
-            if cmds.objExists(pNode.namespace() + cmds.getAttr(node + '.' + attribute)):
-                return pNode.namespace() + destination
+
+            if cmds.objExists(self.funcs.namespace(node) + cmds.getAttr(node + '.' + attribute)):
+                return self.funcs.namespace(node) + destination
 
         elif cmds.getAttr(node + '.' + attribute, type=True) == u'message':
             # list connection to message attribute
@@ -1119,7 +1100,7 @@ class Pickwalk(toolAbstractFactory):
         self.saveLibrary()
         self.forceReloadData()
 
-    def walkCreate(self, direction=str(), condition=False):
+    def walkCreate(self, direction=str(), condition=False, *args):
         sel = cmds.ls(sl=True, type='transform')
         # print ('sel', sel)
         returnedControls = list()
@@ -1226,8 +1207,7 @@ class Pickwalk(toolAbstractFactory):
         for conn in messageConnections:
             if not cmds.attributeQuery('constraintTarget', node=str(conn.split('.')[0]), exists=True):
                 continue
-            walkObject = pm.PyNode(self.recursiveLookDown(str(conn.split('.')[0]), 'constraintTarget'), source=False,
-                                   destination=True)
+            walkObject = self.recursiveLookDown(str(conn.split('.')[0]), 'constraintTarget', source=False, destination=True)
             if walkObject:
                 return self.checkDownstreamTempControls(walkObject)
             else:
@@ -1245,28 +1225,28 @@ class Pickwalk(toolAbstractFactory):
         return control
 
     def pickwalk(self, direction=str, add=False):
-        # print ('pickwalk')
-        sel = pm.ls(sl=True, type='transform')
+        print ('pickwalk')
+        sel = cmds.ls(sl=True, type='transform')
         returnedControls = list()
         finalControls = list()
         if not sel:
             self.walkStandard(direction)
             return
 
-        if not pm.optionVar.get(self.walkMultipleObjectsOption, False):
+        if not get_option_var(self.walkMultipleObjectsOption, False):
             if not add:
                 sel = [sel[-1]]
 
         for walkObject in sel:
-            # print (walkObject)
+            print (walkObject)
             if cmds.attributeQuery('constraintTarget', node=str(walkObject), exists=True):
-                walkObject = pm.PyNode(self.recursiveLookup(str(walkObject), 'constraintTarget'))
+                walkObject = self.recursiveLookup(str(walkObject), 'constraintTarget')
 
             if direction not in self.walkDirectionNames.keys():
                 return cmds.error('\nInvalid pick direction, only up, down, left, right are supported')
 
             refName, refState = self.funcs.getRefName(walkObject)
-            # print (refName, refState)
+            print (refName, refState)
             if not refName:
                 # if the object is not referenced, check the top node
                 refName = self.funcs.getRefNameFromTopParent(walkObject)
@@ -1278,20 +1258,20 @@ class Pickwalk(toolAbstractFactory):
                 if not refState:
                     # not referenced, check against UUID
                     refName = self.funcs.getRefNameFromTopParent(walkObject)
-                    # print ('non referenced rig', refName)
+                    print ('non referenced rig', refName)
                     if not refName:
                         self.walkStandard(direction)
                         return
 
             if refName:
-                # print ('ok, refname', refName)
-                # print ('query against pickwalk library')
+                #print ('ok, refname', refName)
+                print ('query against pickwalk library')
                 returnedControls = self.dataDrivenWalk(direction, refName, walkObject)
-                # print('returnedControls', returnedControls)
+                print('returnedControls', returnedControls)
                 if returnedControls == False:
                     # means a standard walk has been performed
                     return
-                # print 'main', returnedControls
+                print ('main', returnedControls)
 
             if not returnedControls:
                 # anything beyond here is using attribute based pickwalking
@@ -1374,8 +1354,9 @@ class Pickwalk(toolAbstractFactory):
     def dataDrivenWalk(self, direction, refName, walkObject):
         # print('dataDrivenWalk', direction, refName, walkObject)
         returnedControls = list()
-        walkObjectStripped = walkObject.stripNamespace()
-        walkObjectNS = walkObject.namespace()
+        walkObjectStripped = self.funcs.stripNamespace(walkObject)
+        walkObjectNS = self.funcs.namespace(walkObject)
+        print ('walkObjectNS', walkObjectNS)
         userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         vaildObject = False
         if refName in self.walkDataLibrary._fileToMapDict.keys():
@@ -1389,9 +1370,9 @@ class Pickwalk(toolAbstractFactory):
             result = self.pickwalkData[mapName].walk(namespace=walkObjectNS,
                                                      node=walkObjectStripped,
                                                      direction=direction)
-            # print('result', result)
+            print('result', result)
             vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
-            # print('vaildObject', vaildObject)
+            print('vaildObject', vaildObject)
             if not vaildObject:
                 if direction == 'up' or direction == 'down':
                     result = self.findIncrementalControl(walkObjectStripped,
@@ -1451,15 +1432,16 @@ class Pickwalk(toolAbstractFactory):
                         self.createDestination(walkObject, existingEntry, direction)
 
                     return [walkObjectNS + ':' + c for c in existingEntry.destination]
-                self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
+                else:
+                    self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
 
-            if cmds.objExists(walkObjectNS + result):
-                # print 'final result', walkObject.namespace() + result
-                returnedControls.append(walkObjectNS + result)
+            if cmds.objExists(walkObjectNS + ":" + result):
+                print ('final result', self.funcs.namespace(walkObject) + ":" + result)
+                returnedControls.append(walkObjectNS + ":" + result)
             else:
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
-                if pm.optionVar.get(self.defaultToStandardAtDeadEndOption, True):
+                if get_option_var(self.defaultToStandardAtDeadEndOption, True):
                     self.walkStandard(direction)
                     return
                 return False
@@ -1550,7 +1532,7 @@ class Pickwalk(toolAbstractFactory):
             return cmds.warning('Nothing selected')
         self.loadLibraryForCurrent()
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickLeftRight')
+            # cmds.warning('inputSignal_quickLeftRight')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='left',
                                                   loop=True,
@@ -1567,7 +1549,7 @@ class Pickwalk(toolAbstractFactory):
             return cmds.warning('Nothing selected')
         self.loadLibraryForCurrent()
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickUpDown')
+            # cmds.warning('inputSignal_quickUpDown')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='down',
                                                   loop=False,
@@ -2010,18 +1992,15 @@ pwShapeWindow = None
 pickwalkWorkspaceControlName = 'pwWorkspaceControl'
 
 
-def getMainWindow():
-    return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
-
 
 def workspaceScript(*args):
-    parentWidget = pm.toQtObject(pm.setParent(q=True))
+    parentWidget = toQtObject(cmds.setParent(q=True))
     parentLayout = filter(lambda c: isinstance(c, QLayout), parentWidget.children())
 
     global pwShapeWindow
 
     if 'controlShapeWindow' not in globals():
-        pm.mel.evalDeferred(
+        mel.evalDeferred(
             'if (`workspaceControl -exists "shapeWorkspaceControl"`) workspaceControl -e -close "shapeWorkspaceControl";')
 
     if pwShapeWindow:
@@ -2036,13 +2015,13 @@ def workspaceScript(*args):
 
 
 def dockControl():
-    channelBoxTab = pm.mel.eval('getUIComponentDockControl("Channel Box / Layer Editor", false)')
-    if pm.workspaceControl(pickwalkWorkspaceControlName, exists=True):
+    channelBoxTab = mel.eval('getUIComponentDockControl("Channel Box / Layer Editor", false)')
+    if cmds.workspaceControl(pickwalkWorkspaceControlName, exists=True):
         try:
-            pm.deleteUI(pickwalkWorkspaceControlName)
+            cmds.deleteUI(pickwalkWorkspaceControlName)
         except:
             pass
-    pm.workspaceControl(pickwalkWorkspaceControlName,
+    cmds.workspaceControl(pickwalkWorkspaceControlName,
                         tabToControl=[channelBoxTab, -1],
                         uiScript='import tb_pickwalk as tbPW;reload(tbPW);tbPW.workspaceScript()',
                         loadImmediately=True,
@@ -2284,13 +2263,13 @@ class PickDirectionWidget(QFrame):
 
 
     def toggleAutoApply(self):
-        if pm.optionVar.get(autoApplyOption, True):
+        if get_option_var(autoApplyOption, True):
             self.applyButton.setDisabled(True)
         else:
             self.applyButton.setEnabled(True)
 
     def autoApplyData(self, *args):
-        if pm.optionVar.get(autoApplyOption, True):
+        if get_option_var(autoApplyOption, True):
             # print ('auto apply', args)
             self.applyData()
 
@@ -2513,15 +2492,15 @@ class pickContextDirectionWidget(QFrame):
         self.mode = data
 
     def setActiveObject(self):
-        sel = pm.ls(selection=True, type='transform')
+        sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            # pm.warning('No objects selected')
+            # cmds.warning('No objects selected')
             self.currentObjLabel.setText("None")
             return
         if len(sel) > 1:
             return
         else:
-            lbl = sel[0].stripNamespace()
+            lbl = funcs.stripNamespace(sel[0])
             self.activeObject = lbl
             self.currentObjLabel.setText(lbl)
 
@@ -2534,9 +2513,9 @@ class pickContextDirectionWidget(QFrame):
     def inputSignal_pickDirection(self, direction):
         direction = '{0}{1}'.format(direction, {True: 'Skip', False: ''}[self.mode])
         if not self.activeObject:
-            return pm.warning('No current object')
+            return cmds.warning('No current object')
         if not self.activeDestination:
-            return pm.warning('No current object')
+            return cmds.warning('No current object')
         self.directionPressedObjectSignal.emit(direction, self.activeObject, self.activeDestination)
 
     @Slot()
@@ -2813,7 +2792,7 @@ class ControlListWidget(QWidget):
                 # print 'direction', item.direction
                 sel = cmds.ls(sl=True, type='transform')
                 if not sel:
-                    return pm.warning('nothing selected')
+                    return cmds.warning('nothing selected')
                 walkObject = sel[0].split(':')[-1] + '_in'
                 item.setText(walkObject)
                 self.sendNewDestinationSignal(item.control, item.direction, sel)
@@ -3160,7 +3139,7 @@ class DestinationWidget(QWidget):
         self.updatedSignal.emit(self.currentItems())
 
     def pickButtonPressed(self):
-        sel = pm.ls(selection=True, type='transform')
+        sel = cmds.ls(selection=True, type='transform')
         self.listwidget.clear()
         if sel:
             items = [s.stripNamespace() for s in sel]
@@ -3168,7 +3147,7 @@ class DestinationWidget(QWidget):
         self.sendUpdateSignal()
 
     def addButtonPressed(self):
-        sel = pm.ls(selection=True, type='transform')
+        sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return
         items = [s.stripNamespace() for s in sel]
@@ -3302,7 +3281,7 @@ class PickwalkExistingConditionPopup(BaseDialog):
 
     def __init__(self, control=None, destination=None, *args, **kwargs):
         super(PickwalkExistingConditionPopup, self).__init__(
-            parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+            parent=getMainWindow(),
             title='Assign Pickwalk')
         self.borderHighlightQSS = "QLineEdit {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}" \
                                   "QListWidget {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}"
@@ -3389,7 +3368,7 @@ class PickwalkExistingConditionPopup(BaseDialog):
     def pickControl(self, control=None, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            return pm.warning('no object selected')
+            return cmds.warning('no object selected')
         controlString = sel[0].split(':')[-1]
         if len(sel) > 1:
             controlString += '...'
@@ -3439,7 +3418,7 @@ class PickwalkExistingConditionPopup(BaseDialog):
         # 'new destination item is,', item.text()
         sel = cmds.ls(sl=True)
         if not sel:
-            return pm.warning('no object selected')
+            return cmds.warning('no object selected')
         for s in sel:
             self.pickwalkWindow.pickwalkCreator.setControlDestination(s,
                                                                       direction=direction,
@@ -3456,7 +3435,7 @@ class MirrorPickwalkPopup(BaseDialog):
 
     def __init__(self, *args, **kwargs):
         super(MirrorPickwalkPopup, self).__init__(
-            parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+            parent=getMainWindow(),
             title='Mirror Selected Pickwalk',
             showInfo=False, )
         # TODO - move these functions out of the window and into Pickwalk()
@@ -3508,7 +3487,7 @@ class MirrorPickwalkPopup(BaseDialog):
         # print ('mirrorWalk', fromText, toText)
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('no object selected')
+            return cmds.warning('no object selected')
         for s in sel:
             self.pickwalkCreator.mirror(s.split(':')[-1], [fromText, toText])
         self.pickwalkWindow.saveLibrary()
@@ -3521,7 +3500,7 @@ class PickwalkNewConditionPopup(BaseDialog):
     changed = Signal(str)
 
     def __init__(self, control=None, destination=None, *args, **kwargs):
-        super(PickwalkNewConditionPopup, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+        super(PickwalkNewConditionPopup, self).__init__(parent=getMainWindow(),
                                                         title='Context pickwalk Creation')
         # TODO - move these functions out of the window and into Pickwalk()
         self.borderHighlightQSS = "QLineEdit {border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a)}" \
@@ -3641,7 +3620,7 @@ class PickwalkNewConditionPopup(BaseDialog):
     def pickControl(self, control=None, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            return pm.warning('no object selected')
+            return cmds.warning('no object selected')
         controlString = sel[0].split(':')[-1]
         if len(sel) > 1:
             controlString += '...'
@@ -3651,13 +3630,13 @@ class PickwalkNewConditionPopup(BaseDialog):
     def pickObject(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            pm.warning('no object selected')
+            cmds.warning('no object selected')
         self.nameWidget.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
     def pickAttribute(self, *args):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            return pm.warning('no channel selected')
+            return cmds.warning('no channel selected')
         self.conditionAttrWidget.lineEdit.setText(channels[0].split(':')[-1])
         self.setOKHighlight(self.conditionAttrWidget.lineEdit)
 
@@ -3700,13 +3679,13 @@ class PickwalkNewConditionPopup(BaseDialog):
         outData = dict()
         if not self.conditionAttrWidget.lineEdit.text():
             self.setErrorHighlight(self.conditionAttrWidget.lineEdit)
-            return pm.warning('No valid attribute')
+            return cmds.warning('No valid attribute')
         if not self.destinationsWidget.currentItems():
             self.setErrorHighlight(self.destinationsWidget.listwidget)
-            return pm.warning('No destinations')
+            return cmds.warning('No destinations')
         if not self.altDestinationsWidget.currentItems():
             self.setErrorHighlight(self.altDestinationsWidget.listwidget)
-            return pm.warning('No alt destinations')
+            return cmds.warning('No alt destinations')
 
         outData['destination'] = self.destinationsWidget.currentItems()
         outData['destinationAlt'] = self.altDestinationsWidget.currentItems()
@@ -3860,8 +3839,7 @@ class mirrorPickwalkWidget(QFrame):
 class pickwalkRigAssignemtWindow(QMainWindow):
 
     def __init__(self):
-        super(pickwalkRigAssignemtWindow, self).__init__(
-            parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(pickwalkRigAssignemtWindow, self).__init__(parent=getMainWindow())
         # DATA
         self.setMinimumWidth(400)
         self.setMinimumHeight(400)
@@ -3870,7 +3848,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
         self.defaultPickwalkDir = Pickwalk().defaultPickwalkDir
         if not os.path.isdir(self.defaultPickwalkDir):
             os.mkdir(self.defaultPickwalkDir)
-        self.libraryFile = pm.optionVar.get('pickwalkLibrary', 'pickwalkLibraryData.json')
+        self.libraryFile = get_option_var('pickwalkLibrary', 'pickwalkLibraryData.json')
         self.libraryFilePath = os.path.join(self.defaultPickwalkDir, self.libraryFile)
 
         if not os.path.isfile(self.libraryFilePath):
@@ -4008,7 +3986,7 @@ class pickwalkRigAssignemtWindow(QMainWindow):
     def createLibrary(self):
         # print 'createLibrary'
         self.walkDataLibrary.save(self.libraryFilePath)
-        pm.optionVar['pickwalkLibrary'] = self.libraryFile
+        set_option_var('pickwalkLibrary', self.libraryFile)
 
     def getAllPickwalkMaps(self):
         jsonFiles = list()
@@ -4038,7 +4016,7 @@ class pickwalkMainWindow(QMainWindow):
     selectionChangedScriptJob = -1
 
     def __init__(self):
-        super(pickwalkMainWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(pickwalkMainWindow, self).__init__(parent=getMainWindow())
         # DATA
         self.overlay = None
         self.overlayFlag = False
@@ -4548,7 +4526,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickUpFromMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickUpFromMulti')
+            # cmds.warning('inputSignal_quickUpFromMulti')
             control = sel[0].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[1:]]
             for s in targets:
@@ -4562,7 +4540,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickDownToMulti(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickDownToMulti')
+            # cmds.warning('inputSignal_quickDownToMulti')
             control = sel[0].split(':')[-1]
             targets = [s.split(':')[-1] for s in sel[1:]]
             name = control + '_' + targets[0] + '_mult'
@@ -4581,7 +4559,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickLeftRight(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickLeftRight')
+            # cmds.warning('inputSignal_quickLeftRight')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='left',
                                                   loop=True,
@@ -4594,7 +4572,7 @@ class pickwalkMainWindow(QMainWindow):
     def inputSignal_quickUpDown(self):
         sel = cmds.ls(selection=True, type='transform')
         if len(sel) > 1:
-            # pm.warning('inputSignal_quickUpDown')
+            # cmds.warning('inputSignal_quickUpDown')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction='down',
                                                   loop=False,
@@ -4633,7 +4611,7 @@ class pickwalkMainWindow(QMainWindow):
         self.saveOnUpdate()
 
     def saveOnUpdate(self):
-        if pm.optionVar.get(saveOnUpdateOption, True):
+        if get_option_var(saveOnUpdateOption, True):
             self.saveLibrary()
 
     def inputSignal_activeObjectSetFromDestination(self, item):
@@ -4677,7 +4655,7 @@ class pickwalkMainWindow(QMainWindow):
         # print ('inputSignal_mirrorSelection', sideA, sideB)
         sel = cmds.ls(selection=True, type='transform')
         if not sel:
-            return pm.warning('No selection')
+            return cmds.warning('No selection')
         for s in sel:
             self.pickwalkCreator.mirror(s.split(':')[-1], [sideA, sideB])
         self.updateTreeView()
@@ -4703,11 +4681,11 @@ class pickwalkMainWindow(QMainWindow):
         sel = cmds.ls(selection=True, type='transform')
         # print direction, sel
         if not sel:
-            return pm.warning('No selection')
+            return cmds.warning('No selection')
         if self.lockState:
             # print('main object is locked', self.activeObject)
             if not self.activeObject:
-                return pm.warning('Unable to add single destination with no active object')
+                return cmds.warning('Unable to add single destination with no active object')
             # there is an active (locked object)
             if len(sel) > 1:
                 # multiple objects, quick set up destination
@@ -4730,7 +4708,7 @@ class pickwalkMainWindow(QMainWindow):
             return
 
         if len(sel) > 1:
-            # pm.warning('Adding chain style')
+            # cmds.warning('Adding chain style')
             self.pickwalkCreator.addPickwalkChain(controls=sel,
                                                   direction=direction,
                                                   loop=self.loop,
@@ -4740,8 +4718,8 @@ class pickwalkMainWindow(QMainWindow):
             return
 
         if not self.activeObject:
-            return pm.warning('Unable to add single destination with no active object')
-        # pm.warning('Adding single style')
+            return cmds.warning('Unable to add single destination with no active object')
+        # cmds.warning('Adding single style')
         self.pickwalkCreator.setControlDestination(self.activeObject,
                                                    direction=direction,
                                                    destination=sel[0])
@@ -4752,7 +4730,7 @@ class pickwalkMainWindow(QMainWindow):
 
     def toggleSaveOnEdit(self):
         # print ('toggleSaveOnEdit', self.saveOnEdit_action.isChecked())
-        pm.optionVar[saveOnUpdateOption] = self.editOnSaveCB.isChecked.isChecked()
+        set_option_var(saveOnUpdateOption, self.editOnSaveCB.isChecked.isChecked())
 
     def openDataFolder(self):
         os.startfile(Pickwalk().defaultPickwalkDir)
@@ -4855,7 +4833,7 @@ class PickWalkObjectDialog(BaseDialog):
         self.close()
 
     def pickObject(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
         self.itemLabel.setText(str(sel[0]))
@@ -4990,7 +4968,7 @@ class PickwalkControlWidget(QWidget):
     def pickControl(self, control=None, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            return pm.warning('no object selected')
+            return cmds.warning('no object selected')
         controlString = sel[0].split(':')[-1]
         if len(sel) > 1:
             controlString += '...'
@@ -5000,13 +4978,13 @@ class PickwalkControlWidget(QWidget):
     def pickObject(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            pm.warning('no object selected')
+            cmds.warning('no object selected')
         self.nameWidget.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
     def pickAttribute(self, *args):
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            return pm.warning('no channel selected')
+            return cmds.warning('no channel selected')
         self.conditionAttrWidget.lineEdit.setText(channels[0].split(':')[-1])
         self.setOKHighlight(self.conditionAttrWidget.lineEdit)
 
@@ -5049,13 +5027,13 @@ class PickwalkControlWidget(QWidget):
         outData = dict()
         if not self.conditionAttrWidget.lineEdit.text():
             self.setErrorHighlight(self.conditionAttrWidget.lineEdit)
-            return pm.warning('No valid attribute')
+            return cmds.warning('No valid attribute')
         if not self.destinationsWidget.currentItems():
             self.setErrorHighlight(self.destinationsWidget.listwidget)
-            return pm.warning('No destinations')
+            return cmds.warning('No destinations')
         if not self.altDestinationsWidget.currentItems():
             self.setErrorHighlight(self.altDestinationsWidget.listwidget)
-            return pm.warning('No alt destinations')
+            return cmds.warning('No alt destinations')
 
         outData['destination'] = self.destinationsWidget.currentItems()
         outData['destinationAlt'] = self.altDestinationsWidget.currentItems()

@@ -1,16 +1,6 @@
-import pymel.core as pm
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+import maya.cmds as cmds
+# TODO - move this bs to the ui classes
+
 
 def selectDirectory(basePath=''):
     dialog = QFileDialog(None, caption="Pick Folder")

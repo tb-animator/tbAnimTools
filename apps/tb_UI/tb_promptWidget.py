@@ -8,7 +8,7 @@ class promptWidget(QWidget):
         self.setStyleSheet(getqss.getStyleSheet())
 
         self.setWindowOpacity(0.9)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -40,7 +40,7 @@ class promptWidget(QWidget):
         self.confirmButton.clicked.connect(self.confirm)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
 
@@ -50,8 +50,8 @@ class promptWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
@@ -107,7 +107,7 @@ class InfoPromptWidget(QWidget):
         self.checkBox = checkBox
         self.combo = combo
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -119,7 +119,7 @@ class InfoPromptWidget(QWidget):
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         if image:
             self.imageLabel = QLabel(self)
@@ -181,7 +181,7 @@ class InfoPromptWidget(QWidget):
             mainLayout.addWidget(self.saveButton)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
 
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -209,8 +209,8 @@ class InfoPromptWidget(QWidget):
         else:
             lineColor = QColor(68, 240, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))

@@ -22,28 +22,8 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.mel as mel
-import maya
-import maya.cmds as cmds
+from . import *
 maya.utils.loadStringResourcesForModule(__name__)
-import pymel.core.datatypes as dt
-from Abstract import *
-import maya.OpenMaya as om
-import maya.api.OpenMaya as om2
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 
 
 class hotkeys(hotKeyAbstractFactory):
@@ -123,7 +103,7 @@ class SnapTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     def loadData(self):
         super(SnapTools, self).loadData()
@@ -222,7 +202,7 @@ class SnapTools(toolAbstractFactory):
         if not sel:
             return
         if len(sel) >= 2:
-            state = pm.optionVar.get(self.selectionOrderOption, False)
+            state = get_option_var(self.selectionOrderOption, False)
             original = {True: sel[1], False: sel[0]}[state]
             target = {True: sel[0], False: sel[1]}[state]
 
@@ -257,11 +237,11 @@ class SnapTools(toolAbstractFactory):
 
         if orient:
             self.set_world_rotation(original, target_rotation)
-            rot = pm.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
-            node_ro = pm.xform(original, query=True, rotateOrder=True)
-            ro = pm.xform(target, query=True, rotateOrder=True)
-            pm.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
-            pm.xform(original, rotateOrder=node_ro, preserve=True)
+            rot = cmds.xform(target, query=True, absolute=True, worldSpace=True, rotation=True)
+            node_ro = cmds.xform(original, query=True, rotateOrder=True)
+            ro = cmds.xform(target, query=True, rotateOrder=True)
+            cmds.xform(original, absolute=True, worldSpace=True, rotation=rot, rotateOrder=ro, preserve=True)
+            cmds.xform(original, rotateOrder=node_ro, preserve=True)
 
     def init_relative_transform_key(self, key):
         self.relativeTransformClipboard[key] = self.relativeTransformClipboard.get(key, dict())
@@ -271,7 +251,7 @@ class SnapTools(toolAbstractFactory):
         if len(sel) < 2:
             return
 
-        state = pm.optionVar.get(self.relativeSelectionOrderOption, False)
+        state = get_option_var(self.relativeSelectionOrderOption, False)
         parent = {True: sel[0], False: sel[-1]}[state]
         targets = {True: sel[1:], False: sel[:-1]}[state]
 
@@ -293,7 +273,7 @@ class SnapTools(toolAbstractFactory):
         if len(sel) < 2:
             return
 
-        state = pm.optionVar.get(self.relativeSelectionOrderOption, False)
+        state = get_option_var(self.relativeSelectionOrderOption, False)
         parent = {True: sel[0], False: sel[-1]}[state]
         targets = {True: sel[1:], False: sel[:-1]}[state]
         with self.funcs.keepSelection():
@@ -325,7 +305,7 @@ class SnapTools(toolAbstractFactory):
         if self.funcs.isTimelineHighlighted():
             startTime, endTime = self.funcs.getTimelineHighlightedRange()
 
-        constrain = pm.optionVar.get(self.relativeSelectionConstraintOption, False)
+        constrain = get_option_var(self.relativeSelectionConstraintOption, False)
         for x in range(int(startTime), int(endTime) + 1):
             if int(cmds.currentTime(query=True)) != x:
                 cmds.currentTime(x)
@@ -345,8 +325,8 @@ class SnapTools(toolAbstractFactory):
                 else:
                     self.set_world_matrix(target, targetMatrix * parentMatrix, channels=channels)
             if constrain:
-                pm.setKeyframe(targets)
-                pm.delete(tempNodes)
+                cmds.setKeyframe(targets)
+                cmds.delete(tempNodes)
 
     def store_transform(self):
         sel = cmds.ls(selection=True)
@@ -443,23 +423,23 @@ class SnapTools(toolAbstractFactory):
 
     def get_world_pivot(self, node):
         # get the world pivot
-        return pm.xform(node, query=True, worldSpace=True, rotatePivot=True)
+        return cmds.xform(node, query=True, worldSpace=True, rotatePivot=True)
 
     def get_world_space(self, node):
         # gets the world space, not really world space tho, just what maya thinks is world space
-        return pm.xform(node, query=True, relative=True, worldSpace=True, translation=True)
+        return cmds.xform(node, query=True, relative=True, worldSpace=True, translation=True)
 
     def set_world_translation(self, node, position):
         # set the world space position on the object
-        pm.xform(node, absolute=True, worldSpace=True, translation=position)
+        cmds.xform(node, absolute=True, worldSpace=True, translation=position)
 
     def get_world_rotation(self, node):
         # get the absolute world rotation of the object
-        return pm.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
+        return cmds.xform(node, query=True, absolute=True, worldSpace=True, rotation=True)
 
     def set_world_rotation(self, node, rotation):
         # set the absolute world rotation
-        pm.xform(node, absolute=True, worldSpace=True, rotation=rotation)
+        cmds.xform(node, absolute=True, worldSpace=True, rotation=rotation)
 
     def get_world_matrix(self, node):
         #
@@ -467,7 +447,7 @@ class SnapTools(toolAbstractFactory):
 
     def set_world_matrix(self, node, matrix, channels=list()):
         #
-        pm.xform(node, absolute=True, worldSpace=True, matrix=matrix)
+        cmds.xform(node, absolute=True, worldSpace=True, matrix=matrix)
         '''
         print ('currentMatrix', currentMatrix)
         print ('matrix', matrix)
@@ -501,7 +481,7 @@ class SnapTools(toolAbstractFactory):
         """
         n = cmds.createNode('transform')
         self.set_world_matrix(n, matrix)
-        if not pm.optionVar.get(self.relativeSelectionChannelFilterOption, False):
+        if not get_option_var(self.relativeSelectionChannelFilterOption, False):
             channels = list()
         constraint = self.funcs.safeParentConstraint(n, node, channels=channels)
         return n, constraint

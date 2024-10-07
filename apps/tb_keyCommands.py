@@ -22,29 +22,25 @@
 
 *******************************************************************************
 '''
-import maya
-import pymel.core as pm
-import maya.cmds as cmds
-import re
-import getStyleSheet as getqss
-import maya.OpenMayaUI as omUI
 from tb_UI import *
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
 # TODO - make add to shelf button
 # TODO - add images and overlay labels to commands
 # TODO - add copy to clipboard for command/figure out drag drop to marking menu editor
+
+def get_option_var(var_name, default=None):
+    """
+    Get the value of an option variable.
+
+    Parameters:
+    - var_name (str): The name of the option variable.
+    - default (any): The default value to return if the option variable does not exist.
+
+    Returns:
+    - The value of the option variable or the default value.
+    """
+    if cmds.optionVar(exists=var_name):
+        return cmds.optionVar(q=var_name)
+    return default
 
 class tbToolLoader(object):
     __instance = None
@@ -52,7 +48,7 @@ class tbToolLoader(object):
     allCommandNames = list()  # names of commands generated this run by tbtools scripts
     allCategories = list()  # categories found via tbtools scripts
     existing_commands = list()  # currently existing tbtools commands
-    extra_commands = pm.optionVar.get('tb_extra_commands', '')
+    extra_commands = get_option_var('tb_extra_commands', '')
     loadedHotkeyClasses = list()
 
     hotkeys = dict()
@@ -66,14 +62,11 @@ class tbToolLoader(object):
         return tbToolLoader.__instance
 
     def loadAllCommands(self):
-        # print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
         self.allCommands = list()
         self.instantiateHotkeyClasses()
         self.getHotkeyCommandsFromLoadedClasses()
         self.allCommandNames = [command.name for command in self.allCommands]
         self.allCategories = list(set([command.category for command in self.allCommands]))
-        # print ('allCommands', self.allCommands)
-        # print ('allCategories', self.allCategories)
         self.getExistingCommands()
         self.updateCommands()
         self.removeBadCommands()
@@ -99,12 +92,12 @@ class tbToolLoader(object):
         return all commands in categories created by tbtools scripts
         :return:
         """
-        allUserCommands = pm.runTimeCommand(query=True, userCommandArray=True)
+        allUserCommands = cmds.runTimeCommand(query=True, userCommandArray=True)
 
         if not allUserCommands:
             return
         self.existing_commands = [com for com in allUserCommands if
-                                  pm.runTimeCommand(com, query=True, category=True) in self.allCategories]
+                                  cmds.runTimeCommand(com, query=True, category=True) in self.allCategories]
 
     def updateCommands(self):
         for commands in self.allCommands:
@@ -113,10 +106,10 @@ class tbToolLoader(object):
     def addCommand(self, command):
         try:
             # in theory deleting the command and re adding it will keep everything in a nice order
-            if pm.runTimeCommand(command.name, exists=True):
-                pm.runTimeCommand(command.name, edit=True, delete=True)
+            if cmds.runTimeCommand(command.name, exists=True):
+                cmds.runTimeCommand(command.name, edit=True, delete=True)
 
-            pm.runTimeCommand(command.name,
+            cmds.runTimeCommand(command.name,
                               # edit=True,
                               annotation=command.annotation,
                               category=command.category.replace('_', '.'),
@@ -142,10 +135,9 @@ class tbToolLoader(object):
         for items in self.extra_commands:
             if items in self.existing_commands:
                 needed_ignore_names.append(items)
-
-        pm.optionVar.pop('tb_extra_commands')
+        cmds.optionVar(remove='tb_extra_commands')
         for items in needed_ignore_names:
-            pm.optionVar(stringValueAppend=('tb_extra_commands', items))
+            cmds.optionVar(stringValueAppend=('tb_extra_commands', items))
 
     def removeBadCommands(self):
         # print 'removeBadCommands...'
@@ -168,7 +160,7 @@ class tbToolLoader(object):
             commandNameStripped = commandName.replace('NameCommand', '')
             if commandNameStripped not in self.allCommandNames:
                 continue
-            category = pm.runTimeCommand(commandNameStripped, query=True, category=True)
+            category = cmds.runTimeCommand(commandNameStripped, query=True, category=True)
             if category not in allHotkeyCategories.keys():
                 allHotkeyCategories[category] = list()
 
@@ -195,18 +187,24 @@ class tbToolLoader(object):
 
 
 def getMainWindow():
-    return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    if not cmds.about(batch=True):
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    return None
 
 
-class SearchProxyModel(QSortFilterProxyModel):
+class SearchProxyModelPyside2(QSortFilterProxyModel):
+
+    def setFilter(self, pattern):
+        self.setFilterRegExp(pattern)
     def setFilterRegExp(self, pattern):
         if isinstance(pattern, str):
             pattern = QRegExp(pattern, Qt.CaseInsensitive, QRegExp.FixedString)
-        super(SearchProxyModel, self).setFilterRegExp(pattern)
+        super(SearchProxyModelPyside2, self).setFilterRegExp(pattern)
 
     def _accept_index(self, idx):
         if idx.isValid():
             text = idx.data(Qt.DisplayRole)
+
             if self.filterRegExp().indexIn(text.lower()) >= 0:
                 return True
             for row in range(idx.model().rowCount(idx)):
@@ -218,6 +216,29 @@ class SearchProxyModel(QSortFilterProxyModel):
         idx = self.sourceModel().index(sourceRow, 0, sourceParent)
         return self._accept_index(idx)
 
+
+class SearchProxyModel(QSortFilterProxyModel):
+    def setFilter(self, pattern):
+        self.setFilterRegularExpression(pattern)
+    def setFilterRegularExpression(self, pattern):
+        if isinstance(pattern, str):
+            pattern = QRegularExpression(pattern, QRegularExpression.CaseInsensitiveOption)
+        super(SearchProxyModel, self).setFilterRegularExpression(pattern)
+
+    def _accept_index(self, idx):
+        if idx.isValid():
+            text = idx.data(Qt.DisplayRole).lower()
+
+            if self.filterRegularExpression().match(text).hasMatch():
+                return True
+            for row in range(idx.model().rowCount(idx)):
+                if self._accept_index(idx.model().index(row, 0, idx)):
+                    return True
+        return False
+
+    def filterAcceptsRow(self, sourceRow, sourceParent):
+        idx = self.sourceModel().index(sourceRow, 0, sourceParent)
+        return self._accept_index(idx)
 
 class mainHotkeyWindow(QMainWindow):
     """
@@ -272,7 +293,10 @@ class mainHotkeyWindow(QMainWindow):
         self.filterLineEdit.addAction(QIcon(":/resources/search.ico"), QLineEdit.LeadingPosition)
         self.filterLineEdit.setPlaceholderText("Search...")
 
-        self.proxyModel = SearchProxyModel()
+        if QTVERSION < 6:
+            self.proxyModel = SearchProxyModelPyside2()
+        else:
+            self.proxyModel = SearchProxyModel()
         self.proxyModel.setDynamicSortFilter(True)
 
         self.model = QStandardItemModel()
@@ -341,7 +365,7 @@ class mainHotkeyWindow(QMainWindow):
         self.populateTreeView()
 
     def filterRegExpChanged(self, value):
-        self.proxyModel.setFilterRegExp(value.lower())
+        self.proxyModel.setFilter(value.lower())
         if len(value) >= 1 and self.proxyModel.rowCount() > 0:
             self.treeView.expandAll()
         else:
@@ -474,40 +498,40 @@ class hotkey_cleanup(object):
         pass
 
     def remove_hotkey(self, command_name, layout_name):
-        pm.runTimeCommand(command_name, edit=True, delete=True)
-        pm.deleteUI(layout_name)
+        cmds.runTimeCommand(command_name, edit=True, delete=True)
+        cmds.deleteUI(layout_name)
 
     def ignore_hotkey(self, command_name, layout_name):
-        pm.optionVar(stringValueAppend=('tb_extra_commands', command_name))
-        pm.rowLayout(layout_name, edit=True, bgc=(0.2, 0.6, 0.2))
+        cmds.optionVar(stringValueAppend=('tb_extra_commands', command_name))
+        cmds.rowLayout(layout_name, edit=True, bgc=(0.2, 0.6, 0.2))
 
     def command_widget(self, command_name="", parent=""):
-        rLayout = pm.rowLayout(numberOfColumns=4, adjustableColumn=2, parent=parent)
-        pm.text(label="command:", parent=rLayout)
-        pm.text(label=str(command_name), parent=rLayout)
+        rLayout = cmds.rowLayout(numberOfColumns=4, adjustableColumn=2, parent=parent)
+        cmds.text(label="command:", parent=rLayout)
+        cmds.text(label=str(command_name), parent=rLayout)
 
-        pm.button(label="keep", parent=rLayout, command=lambda *args: self.ignore_hotkey(command_name, rLayout))
-        pm.button(label="delete", parent=rLayout, command=lambda *args: self.remove_hotkey(command_name, rLayout))
+        cmds.button(label="keep", parent=rLayout, command=lambda *args: self.ignore_hotkey(command_name, rLayout))
+        cmds.button(label="delete", parent=rLayout, command=lambda *args: self.remove_hotkey(command_name, rLayout))
 
     def showUI(self):
-        window = pm.window(title="hotkey check!")
-        layout = pm.columnLayout(adjustableColumn=True)
-        pm.text(font="boldLabelFont", label="Uknown or outdated commands")
-        pm.text(label="")
+        window = cmds.window(title="hotkey check!")
+        layout = cmds.columnLayout(adjustableColumn=True)
+        cmds.text(font="boldLabelFont", label="Uknown or outdated commands")
+        cmds.text(label="")
 
-        pm.text(label="your own commands saved in tbtools categories")
-        pm.text(label="will show up here. If you wish to keep them,")
-        pm.text(label="press the 'keep' button and they won't appear")
-        pm.text(label="in this window again.")
-        pm.text(label="")
-        pm.text(label="If you didn't make it and it's here it means it")
-        pm.text(label="is an old or outdated hotkey and should be removed")
-        pm.text(label="")
+        cmds.text(label="your own commands saved in tbtools categories")
+        cmds.text(label="will show up here. If you wish to keep them,")
+        cmds.text(label="press the 'keep' button and they won't appear")
+        cmds.text(label="in this window again.")
+        cmds.text(label="")
+        cmds.text(label="If you didn't make it and it's here it means it")
+        cmds.text(label="is an old or outdated hotkey and should be removed")
+        cmds.text(label="")
 
         for items in self.command_list:
             self.command_widget(command_name=items, parent=layout)
 
-        # pm.button( label='Delete all', parent=layout)
-        pm.button(label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
-        pm.setParent('..')
-        pm.showWindow(window)
+        # cmds.button( label='Delete all', parent=layout)
+        cmds.button(label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
+        cmds.setParent('..')
+        cmds.showWindow(window)

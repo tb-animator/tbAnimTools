@@ -20,7 +20,7 @@ class comboBoxWidget(QWidget):
         self.optionVar = optionVar
         self.defaultValue = defaultValue
         if optionVar is not None:
-            self.optionValue = pm.optionVar.get(self.optionVar, defaultValue)
+            self.optionValue = get_option_var(self.optionVar, defaultValue)
         else:
             self.optionValue = None
         self.mainLayout = QHBoxLayout()
@@ -45,7 +45,7 @@ class comboBoxWidget(QWidget):
 
     def interactivechange(self, b):
         if self.optionVar is not None:
-            pm.optionVar[self.optionVar] = self.comboBox.currentText()
+            cmds.optionVar(stringValue=(self.optionVar, self.comboBox.currentText()))
         self.changedSignal.emit(self.comboBox.currentText())
         self.editedSignalKey.emit(self.key, self.comboBox.currentText())
 

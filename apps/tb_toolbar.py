@@ -22,26 +22,10 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-
-from Abstract import *
-import maya
+from . import *
 
 str_TOOLBAR = 'tbAnimTools'
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 __author__ = 'tom.bailey'
 global tbToolBarDialog
 
@@ -70,7 +54,7 @@ class TBToolBar(toolAbstractFactory):
     __instance = None
     toolName = 'toolbar'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     toolbar = None
 
     def __new__(cls):
@@ -82,7 +66,7 @@ class TBToolBar(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product

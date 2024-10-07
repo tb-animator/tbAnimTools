@@ -118,21 +118,21 @@ class MiniDestinationWidget(ToolTipWidget):
 
     def pickButtonPressed(self, override=None):
         if not override:
-            sel = pm.ls(selection=True, type='transform')
+            sel = cmds.ls(selection=True, type='transform')
         else:
             sel = override
         self.listwidget.clear()
         if sel:
-            items = [s.stripNamespace() for s in sel]
+            items = [stripNamespace(s) for s in sel]
             self.listwidget.addItems(items)
 
         self.sendUpdateSignal()
 
     def addButtonPressed(self):
-        sel = pm.ls(selection=True, type='transform')
+        sel = cmds.ls(selection=True, type='transform')
         if not sel:
             return
-        items = [s.stripNamespace() for s in sel]
+        items = [stripNamespace(s) for s in sel]
         currentItems = self.currentItems()
         resultItems = self.currentItems()
         # print 'before', currentItems
@@ -216,14 +216,14 @@ class PickwalkLabelledLineEdit(QWidget):
         # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            pm.warning('no channel selected')
+            cmds.warning('no channel selected')
         self.lineEdit.setText(channels[0].split(':')[-1])
         self.sendtextChangedSignal()
 
     def pickObject(self, *args):
         sel = cmds.ls(sl=True)
         if not sel:
-            pm.warning('no object selected')
+            cmds.warning('no object selected')
         self.lineEdit.setText(sel[0].split(':')[-1] + '_in')
 
 
@@ -319,7 +319,7 @@ class PickObjectLineEdit(QWidget):
         # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            pm.warning('no channel selected')
+            cmds.warning('no channel selected')
         self.lineEdit.setText(channels[0].split(':')[-1])
 
 
@@ -366,7 +366,7 @@ class PickChannelLineEdit(ToolTipWidget):
         # print ('picking channel')
         channels = mel.eval('selectedChannelBoxPlugs')
         if not channels:
-            pm.warning('no channel selected')
+            cmds.warning('no channel selected')
         self.lineEdit.setText(channels[0].split(':')[-1])
         self.sendtextChangedSignal()
 
@@ -483,14 +483,14 @@ class PickwalkDestinationWidget(QFrame):
         self.destinationDoubleClickSignal.emit(item.text())
 
     def pickControl(self):
-        sel = pm.ls(selection=True, type='transform')
+        sel = cmds.ls(selection=True, type='transform')
         if not sel:
             lbl = ''
         if len(sel) > 1:
-            pm.warning('need to make this support auto creation of contexts')
+            cmds.warning('need to make this support auto creation of contexts')
             lbl = ''
         else:
-            lbl = sel[0].stripNamespace()
+            lbl = stripNamespace(sel[0])
         self.lineEdit.setText(lbl)
         self.sendData()
 
@@ -547,7 +547,7 @@ class PickObjectWidget(QWidget):
     lockChangedSignal = Signal(bool)
 
     def __init__(self, *args, **kwargs):
-        super(PickObjectWidget, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(PickObjectWidget, self).__init__(parent=getMainWindow())
         self.mainLayout = QHBoxLayout()
         self.infoLayout = QHBoxLayout()
 
@@ -598,7 +598,7 @@ class PickwalkQueryWidget(QDialog):
         self.setStyleSheet(getqss.getStyleSheet())
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(0.9)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -663,8 +663,8 @@ class PickwalkQueryWidget(QDialog):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))

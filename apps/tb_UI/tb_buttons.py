@@ -243,7 +243,7 @@ class ToolButton(QPushButton):
     def mousePressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
         if modifiers == Qt.ControlModifier:
-            currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
+            currentShelf = cmds.tabLayout(mel.eval('$temp=$gShelfTopLevel'), query=True, selectTab=True)
             cmds.setParent(currentShelf)
             shelfButton = cmds.shelfButton(image1=self.icon,
                                            imageOverlayLabel=self.imgLabel,
@@ -258,7 +258,7 @@ class ToolButton(QPushButton):
             cmds.shelfButton(shelfButton, e=True, command=self.command, sourceType=self.sourceType)
             return
         elif modifiers == Qt.AltModifier:
-            print('assign hotkey')
+            # print('assign hotkey')
             return
         return super(ToolButton, self).mousePressEvent(event)
 
@@ -323,7 +323,7 @@ class HotkeyToolButton(QPushButton):
     def mousePressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
         if modifiers == Qt.ControlModifier:
-            currentShelf = cmds.tabLayout(pm.melGlobals['gShelfTopLevel'], query=True, selectTab=True)
+            currentShelf = cmds.tabLayout(mel.eval('$temp=$gShelfTopLevel'), query=True, selectTab=True)
             cmds.setParent(currentShelf)
             shelfButton = cmds.shelfButton(image1=self.icon,
                                            imageOverlayLabel=self.imgLabel,
@@ -528,7 +528,7 @@ class ToolboxButton(QPushButton):
 
         lineColorFull = QColor(32, 32, 32)
         fillColor = QColor(198, 198, 198)
-        # qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Source)
         if self.isSmall:
             pos_x = 0.5 * (self.width() - self.pixmap.width())  # hardcoded horizontal margin
         else:
@@ -562,7 +562,7 @@ class ToolboxButton(QPushButton):
         if self.pixmap:
             textPos.setX(self.pixmap.width() + textPos.x())
         fontMetrics = QFontMetrics(font)
-        pixelsWide = fontMetrics.width(self.labelText)
+        pixelsWide = fontMetrics.boundingRect(self.labelText).width()
         pixelsHigh = fontMetrics.height()
 
         path.addText(textPos.x(), pixelsHigh, font, self.labelText)
@@ -572,12 +572,12 @@ class ToolboxButton(QPushButton):
         brush = QBrush(self.textColour)
 
         if self.isLight:
-            qp.setCompositionMode(qp.CompositionMode_ColorBurn)
+            qp.setCompositionMode(QPainter.CompositionMode_ColorBurn)
         else:
-            qp.setCompositionMode(qp.CompositionMode_ColorDodge)
+            qp.setCompositionMode(QPainter.CompositionMode_ColorDodge)
         qp.strokePath(path, pen)
         qp.strokePath(path, pen2)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.fillPath(path, brush)
 
         font = qp.font()

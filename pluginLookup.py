@@ -3,14 +3,12 @@ import sys
 import os
 import copy
 import maya.cmds as cmds
-import pymel.core as pm
 import maya.OpenMaya as om
 import maya.api.OpenMaya as om2
 import maya.api.OpenMayaAnim as om2a
 import traceback
 import apps.tb_keyCommands as tb_keyCommands
 from Abstract import *
-
 import zipfile
 
 
@@ -63,7 +61,10 @@ class ClassFinder(object):
         self.proToolsBaseDirectory = 'proApps'
         self.proToolsVerionDirectory = 'proApps'
         self.toolsDirectory = os.path.join(self.directory, self.toolsBaseDirectory)
-        if sys.version_info >= (3, 10):
+        if sys.version_info >= (3, 11):
+            self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python311')
+            self.proToolsVerionDirectory = 'proApps.Python311'
+        elif sys.version_info >= (3, 10):
             self.proToolsDirectory = os.path.join(self.directory, self.proToolsBaseDirectory, 'Python310')
             self.proToolsVerionDirectory = 'proApps.Python310'
         elif sys.version_info >= (3, 8):
@@ -138,6 +139,7 @@ class ClassFinder(object):
 
     def getAllModulesInFolder(self, baseDirectory, toolDirectory, compiledOnly=False):
         allFiles = list()
+
         for (dirpath, dirnames, filenames) in os.walk(toolDirectory):
             allFiles += [os.path.join(dirpath, file) for file in filenames]
         ignored = ['__init__', '__pycache__']
@@ -201,8 +203,8 @@ class ClassFinder(object):
             widgets = self.collectAnimLayerTabWidgets()
             for widget in widgets:
                 animLayerLayouts[-1].insertWidget(0, widget)
-            if pm.optionVar.get('tbEmbedOutlinerInChannelBox', False):
-                channelBox = pm.melGlobals['gChannelBoxName']
+            if get_option_var('tbEmbedOutlinerInChannelBox', False):
+                channelBox = mel.eval('$temp=$gChannelBoxName')
                 animLayerTab = "AnimLayerTab"
                 pane_layout = 'ChannelBoxLayerEditor|MainChannelsLayersLayout|ChannelsLayersPaneLayout'
                 cmds.paneLayout(pane_layout, edit=True, configuration="horizontal3")
@@ -213,7 +215,7 @@ class ClassFinder(object):
                 cmds.paneLayout(pane_layout, edit=True, setPane=(animLayerTab, 3))
 
         except Exception:
-            cmds.warning('Failing to modify animLayerTab ::', cmds.warning(traceback.format_exc()))
+            cmds.warning('Failing to modify animLayerTab ::',traceback.format_exc())
 
 
     def installFromZip(self, filename):
@@ -231,14 +233,14 @@ class ClassFinder(object):
             zip_ref.extractall(destinationPath)
         loadState = self.loadPluginsByClass()
         if loadState:
-            message_state = pm.optionVar.get("inViewMessageEnable", 1)
-            pm.optionVar(intValue=("inViewMessageEnable", 1))
-            pm.inViewMessage(amg='tbAnimTools loading complete',
+            message_state = get_option_var("inViewMessageEnable", 1)
+            set_option_var("inViewMessageEnable", 1)
+            cmds.inViewMessage(amg='tbAnimTools loading complete',
                              pos='botRight',
                              dragKill=True,
                              fadeOutTime=10.0,
                              fade=False)
-            pm.optionVar(intValue=("inViewMessageEnable", message_state))
+            set_option_var("inViewMessageEnable", 0)
             cmds.warning('tbAnimTools loading complete')
             try:
                 self.pluginWidget.close()

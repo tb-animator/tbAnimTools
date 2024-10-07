@@ -23,7 +23,7 @@ class PickObjectDialog(BaseDialog):
         self.show()
 
     def pickObject(self):
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
         if not sel:
             return
         self.itemLabel.setText(str(sel[0]))

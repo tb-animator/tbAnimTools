@@ -1,10 +1,11 @@
 from . import *
 
+
 class ViewportDialog(QDialog):
     closeSignal = Signal()
     keyReleasedSignal = Signal()
 
-    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(),
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(), name='ViewportDialog',
                  *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
@@ -31,7 +32,10 @@ class ViewportDialog(QDialog):
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        window_flags = Qt.Tool | Qt.FramelessWindowHint
+        self.setWindowFlags(window_flags)
+
+        self.setWindowFlags(Qt.Popup | Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -57,12 +61,14 @@ class ViewportDialog(QDialog):
                                    self.parentMenu.cursorPos.y() - (self.returnButton.height() * 0.5))
 
         else:
-            self.keyPressHandler = markingMenuKeypressHandler(UI=self)
+            if not self.keyPressHandler:
+                self.keyPressHandler = getMarkingMenuFilter(UI=self, name=name)
             self.app.installEventFilter(self.keyPressHandler)
         self.tooltipEnabled = True
 
     def returnButtonHovered(self):
-        print('returnButtonHovered')
+        pass
+        # print('returnButtonHovered')
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -176,6 +182,10 @@ class ViewportDialog(QDialog):
     def hide(self):
         # print ('being hidden', self)
         super(ViewportDialog, self).hide()
+        try:
+            self.app.removeEventFilter(self.keyPressHandler)
+        except:
+            pass
 
     def resetOpacity(self):
         self.setWindowOpacity(1.0)
@@ -213,11 +223,12 @@ class ViewportDialog(QDialog):
                             Qt.NoModifier)
 
         QApplication.instance().sendEvent(self.parentMenu, event)
-        self.parentMenu.setFocusPolicy(Qt.StrongFocus)
-        self.parentMenu.setFocus()
-        self.parentMenu.enableLayer()
         self.parentMenu.resetOpacity()
         self.parentMenu.moveAll()
+        self.parentMenu.enableLayer()
+        self.parentMenu.setFocus()
+        self.parentMenu.setFocusPolicy(Qt.StrongFocus)
+
 
     def moveToCursor(self):
         pos = QCursor.pos()
@@ -246,10 +257,10 @@ class ViewportDialog(QDialog):
         grad.setColorAt(0.1, "#373737")
         grad.setColorAt(1, "#323232")
         qp.setBrush(QBrush(grad))
-        qp.setCompositionMode(qp.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Clear)
         qp.drawRoundedRect(0, 0, self.width(), self.height(), self.width() * 0.5, self.width() * 0.5)
 
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setBrush(QBrush(blank))
@@ -354,10 +365,17 @@ class ViewportDialog(QDialog):
         return distance
 
     def tabletEvent(self, e):
-        print(e.pressure())
+        pass
+        # print(e.pressure())
+
 
     def keyPressEvent(self, event):
-        if event.type() == event.KeyPress:
+        # check version
+        eventType = QEvent.KeyPress
+
+        if QTVERSION < 6:
+            eventType = QEvent.KeyPress
+        if event.type() == eventType:
             if self.recentlyOpened:
                 if event.key() is not None:
                     self.invokedKey = event.key()
@@ -380,7 +398,7 @@ class ViewportDialog(QDialog):
 
                 self.close()
                 if self.parentMenu:
-                    # print ('sending keyreleaseevent')
+                    # print('sending keyreleaseEvent')
                     self.parentMenu.keyReleaseEvent(event)
                 self.invokedKey = None
         try:
@@ -395,7 +413,3 @@ class ViewportDialog(QDialog):
             opacity += event.delta() * 0.001
             opacity = min(max(opacity, 0.2), 1)
             self.setWindowOpacity(opacity)
-
-
-
-

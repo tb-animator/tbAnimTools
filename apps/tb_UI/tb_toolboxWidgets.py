@@ -51,7 +51,7 @@ class ToolboxDoubleButton(QWidget):
         self.label = DropShadowLabel(label)
         self.label.setStyleSheet("background-color:transparent")
         font = defaultFont()
-        self.label.setFixedWidth(QFontMetrics(font).width(self.label.text()) + 8)
+        self.label.setFixedWidth(QFontMetrics(font).boundingRect(self.label.text()).width() + 8)
         self.buttons = buttons
 
         if not hideLabel: self.mainLayout.addWidget(self.label)
@@ -105,8 +105,8 @@ class ToolboxDoubleButton(QWidget):
         linePenColor = QColor(255, 160, 47, 255)
         blank = QColor(124, 124, 124, 64)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         if not self.hideLabel:

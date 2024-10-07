@@ -22,29 +22,9 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import tb_timeline as tl
-import maya.mel as mel
-import maya.cmds as cmds
-import maya.api.OpenMaya as om2
-import pymel.core.datatypes as dt
-import math
-from Abstract import *
+from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -164,7 +144,7 @@ class KeyModifiers(toolAbstractFactory):
     __instance = None
     toolName = 'KeyModifiers'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     def __new__(cls):
         if KeyModifiers.__instance is None:
@@ -175,7 +155,7 @@ class KeyModifiers(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -199,15 +179,15 @@ class KeyModifiers(toolAbstractFactory):
         matchTangentEndButton = GraphToolbarButton(icon='matchTangentEnd.png', toolTip='Match Tangents End',
                                                    width=18)
         plotButton = GraphToolbarButton(icon='plotKey.png', toolTip='Look at me a tooltip')
-        plotButton.clicked.connect(pm.Callback(self.plot_guess))
+        plotButton.clicked.connect(create_callback(self.plot_guess))
 
         flipFirstButton = GraphToolbarButton(icon='flipKeysStart.png', toolTip='Flip First')
         flipZeroButton = GraphToolbarButton(icon='flipKeys.png', toolTip='Flip')
         flipLastButton = GraphToolbarButton(icon='flipKeysEnd.png', toolTip='Flip Last')
 
-        flipFirstButton.clicked.connect(pm.Callback(self.flipKeyValues, first=True))
-        flipZeroButton.clicked.connect(pm.Callback(self.flipKeyValues))
-        flipLastButton.clicked.connect(pm.Callback(self.flipKeyValues, last=True))
+        flipFirstButton.clicked.connect(create_callback(self.flipKeyValues, first=True))
+        flipZeroButton.clicked.connect(create_callback(self.flipKeyValues))
+        flipLastButton.clicked.connect(create_callback(self.flipKeyValues, last=True))
         matchTangentStartButton.clicked.connect(self.matchStartTangentsToEndTangents)
         matchTangentEndButton.clicked.connect(self.matchEndTangentsToStartTangents)
         layout.addWidget(autoTangentWidget)
@@ -257,7 +237,7 @@ class KeyModifiers(toolAbstractFactory):
         editTime = range[not data]
         animcurves = cmds.keyframe(query=True, name=True)
         if not animcurves:
-            return pm.warning('no anim curves found to match tangents with')
+            return cmds.warning('no anim curves found to match tangents with')
 
         for curve in animcurves:
             inTangent = None
@@ -424,7 +404,7 @@ class KeyModifiers(toolAbstractFactory):
         keyTimes = [keyTimes[0], keyTimes[-1]]
         cmds.keyframe(animation='keys', option='over', relative=True, timeChange=currentTime - keyTimes[not start])
 
-    def flipKeyValues(self, first=False, last=False):
+    def flipKeyValues(self, first=False, last=False, *args):
         """
         Flip the key values around either the first value, last value or 0
         :return:
@@ -448,7 +428,6 @@ class KeyModifiers(toolAbstractFactory):
         sel = cmds.ls(selection=True)
         if sel:
             for se in sel:
-                _node = pm.PyNode(se)
                 upAxis = cmds.upAxis(query=True, axis=True)
                 worldAxis = {'y': [1, 0, 1],
                              'z': [1, 1, 0]}
@@ -456,7 +435,7 @@ class KeyModifiers(toolAbstractFactory):
 
     def do_level(self, node, upAxis='y', worldAxis=[1.0, 0.0, 1.0]):
         def multiply(input1, input2):
-            mult = dt.Vector([input1[0] * input2[0], input1[1] * input2[1], input1[2] * input2[2]])
+            mult = om2.MVector([input1[0] * input2[0], input1[1] * input2[1], input1[2] * input2[2]])
             _out = mult
             return _out
 
@@ -477,14 +456,14 @@ class KeyModifiers(toolAbstractFactory):
         _original_matrix = om2.MTransformationMatrix(_matrix)
         # cache the rotate pivots
 
-        _rp = pm.xform(node, query=True, rotatePivot=True)
-        _lsp = pm.xform(node, query=True, scalePivot=True)
+        _rp = cmds.xform(node, query=True, rotatePivot=True)
+        _lsp = cmds.xform(node, query=True, scalePivot=True)
 
         rotOrder = cmds.getAttr('%s.rotateOrder' % node)
-        _flat = dt.Vector(worldAxis)
-        x_vector = dt.Vector([_matrix[0], _matrix[1], _matrix[2]])
-        y_vector = dt.Vector([_matrix[4], _matrix[5], _matrix[6]])
-        z_vector = dt.Vector([_matrix[8], _matrix[9], _matrix[10]])
+        _flat = om2.MVector(worldAxis)
+        x_vector = om2.MVector([_matrix[0], _matrix[1], _matrix[2]])
+        y_vector = om2.MVector([_matrix[4], _matrix[5], _matrix[6]])
+        z_vector = om2.MVector([_matrix[8], _matrix[9], _matrix[10]])
 
         _flatX = multiply(x_vector, _flat)
         _flatY = multiply(y_vector, _flat)
@@ -510,8 +489,7 @@ class KeyModifiers(toolAbstractFactory):
         eulerRot = mTransformMtx.rotation()
         eulerRot.reorderIt(rotOrder)
         angles = [math.degrees(angle) for angle in (eulerRot.x, eulerRot.y, eulerRot.z)]
-        _node = pm.PyNode(node)
-        pm.setAttr(_node.rotate, angles)
+        cmds.setAttr(node + '.rotate', *angles)
 
     def clampCurve(self, low=True):
         currentTime = cmds.currentTime(query=True)
@@ -593,14 +571,14 @@ class KeyModifiers(toolAbstractFactory):
                                 outTangentType='flat',
                                 time=(t,))
 
-    def autoTangentKey(self):
+    def autoTangentKey(self, *args):
         self.autoTangent(self.defaultSoftness(), False)
 
     def defaultSoftness(self):
-        return pm.optionVar.get('tbAutoTangent', 0.7)
+        return get_option_var('tbAutoTangent', 0.7)
 
     def setDefaultSoftness(self, value):
-        pm.optionVar['tbAutoTangent'] = value
+        set_option_var('tbAutoTangent', value)
 
     def autoTangent(self, softness, bFlatten):
         curves = cmds.keyframe(q=True, name=True, sl=True)  # get all selected animCurve Nodes
@@ -740,7 +718,7 @@ class KeyModifiers(toolAbstractFactory):
             1] + t ** 3 * end[1]
         return x, y
 
-    def plot_guess(self):
+    def plot_guess(self, *args):
         curves = cmds.keyframe(q=True, name=True, sl=True)  # get all selected animCurve Nodes
         if not curves:
             return
@@ -797,7 +775,7 @@ class AutoTangentWidget(QFrame):
         layout.addWidget(self.softnessLabel)
         layout.addWidget(self.spinBox)
 
-        self.autoTangentButton.clicked.connect(pm.Callback(KeyModifiers().autoTangentKey))
+        self.autoTangentButton.clicked.connect(create_callback(KeyModifiers().autoTangentKey))
         self.spinBox.valueChanged.connect(self.softnessChanged)
 
     def softnessChanged(self):

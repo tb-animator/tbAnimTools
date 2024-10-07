@@ -22,24 +22,8 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-import maya.mel as mel
-from Abstract import *
-from tb_UI import *
-import time
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+from . import *
+
 __author__ = 'tom.bailey'
 
 
@@ -65,7 +49,7 @@ class hotkeys(hotKeyAbstractFactory):
 
 def unit_conversion():
     conversion = {'mm': 0.1, 'cm': 1.0, 'm': 100.0, 'in': 2.54, 'ft': 30.48, 'yd': 91.44}
-    return conversion[pm.currentUnit(query=True, linear=True)]
+    return conversion[cmds.currentUnit(query=True, linear=True)]
 
 
 def midPoint(pointArray):
@@ -166,7 +150,7 @@ class CameraPivot(toolAbstractFactory):
     __instance = None
     toolName = 'CameraPivot'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     cameraPivotOption = 'tbCameraPivot'
     frequency = 0.1667
@@ -180,9 +164,9 @@ class CameraPivot(toolAbstractFactory):
     ModelPanelSetFocusScriptJob = int(-1)
     playbackModeChangedScriptJob = int(-1)
 
-    if not pm.optionVar(exists='tumbler_enabled'):
+    if not cmds.optionVar(exists='tumbler_enabled'):
         # TODO - make the option window so this is editable
-        pm.optionVar(intValue=('tumbler_enabled', 0))
+        cmds.optionVar(intValue=('tumbler_enabled', 0))
 
     def __new__(cls):
         if CameraPivot.__instance is None:
@@ -193,7 +177,7 @@ class CameraPivot(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
         self.time = cmds.timerX()
 
     """
@@ -250,7 +234,7 @@ class CameraPivot(toolAbstractFactory):
     def doIt(self, *args):
         cmds.undoInfo(stateWithoutFlush=False)
         try:
-            if pm.optionVar.get(self.cameraPivotOption, False) and self.elapsedTime():
+            if get_option_var(self.cameraPivotOption, False) and self.elapsedTime():
                 self.time = cmds.timerX()  # set a new time stamp to prevent spamming
                 selection = cmds.ls(selection=True)
                 if not selection:

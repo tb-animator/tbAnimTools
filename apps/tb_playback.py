@@ -22,27 +22,7 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.OpenMayaAnim as oma
-from maya.OpenMayaAnim import MAnimControl
-import maya.cmds as cmds
-from Abstract import *
-
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    #from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    #from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-from apps.tb_UI import *
+from . import *
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -85,11 +65,11 @@ class Playback(toolAbstractFactory):
     flipFrame_opv = 'tb_flip_frames'
     flipFrame_default = 10
 
-    if not pm.optionVar(exists=playbackModeOption):
-        pm.optionVar(stringValue=(playbackModeOption, defaultPlaybackMode))
+    if not cmds.optionVar(exists=playbackModeOption):
+        cmds.optionVar(stringValue=(playbackModeOption, defaultPlaybackMode))
 
-    if not pm.optionVar(exists=manipulationModeOption):
-        pm.optionVar(stringValue=(manipulationModeOption, defaultManipulationMode))
+    if not cmds.optionVar(exists=manipulationModeOption):
+        cmds.optionVar(stringValue=(manipulationModeOption, defaultManipulationMode))
 
     playback_state = False
     cropped = False
@@ -106,8 +86,8 @@ class Playback(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
-        self.playback_state = pm.play(query=True, state=True)
+        self.funcs = Functions()
+        self.playback_state = cmds.play(query=True, state=True)
 
     """
     Declare an interface for operations that create abstract product
@@ -127,10 +107,10 @@ class Playback(toolAbstractFactory):
         return None
 
     def get_flip_frames(self):
-        return pm.optionVar.get(self.flipFrame_opv, self.flipFrame_default)
+        return get_option_var(self.flipFrame_opv, self.flipFrame_default)
 
     def isPlaying(self):
-        return pm.play(query=True, state=True)
+        return cmds.play(query=True, state=True)
 
     def playPause(self, flip=False):
         if self.cached_start is None:
@@ -149,13 +129,13 @@ class Playback(toolAbstractFactory):
             if self.funcs.isTimelineHighlighted():
                 self.cropped = True
                 # TODO - make the time frame reset an option
-                # pm.setCurrentTime(self.funcs.getTimelineHighlightedRange(min=True))
+                # cmds.currentTime(self.funcs.getTimelineHighlightedRange(min=True))
                 self.funcs.setTimelineMinMax(highlightMin, highlightMax)
 
-        pm.evaluationManager(mode={False: pm.optionVar[self.playbackModeOption],
-                                   True: pm.optionVar[self.manipulationModeOption]}[self.isPlaying()])
+        cmds.evaluationManager(mode={False: get_option_var(self.playbackModeOption),
+                                   True: get_option_var(self.manipulationModeOption)}[self.isPlaying()])
 
-        pm.play(state=not self.isPlaying())
+        cmds.play(state=not self.isPlaying())
 
     def flipPlayback(self):
         if self.cached_start is None:
@@ -165,7 +145,7 @@ class Playback(toolAbstractFactory):
         if self.isPlaying():
             self.funcs.setTimelineMinMax(self.cached_start, self.cached_end)
             self.cropped = False
-            pm.play(state=False)
+            cmds.play(state=False)
         else:
             self.cached_currentTime = cmds.currentTime(query=True)
             if self.funcs.isTimelineHighlighted():
@@ -173,12 +153,12 @@ class Playback(toolAbstractFactory):
                 self.cropped = True
                 self.funcs.setTimelineMinMax(highlightMin, highlightMax)
             else:
-                self.funcs.setTimelineMax(pm.currentTime(query=True) + self.get_flip_frames())
+                self.funcs.setTimelineMax(cmds.currentTime(query=True) + self.get_flip_frames())
         self.funcs.setPlaybackOnce()
-        pm.play(state=True, wait=True)
+        cmds.play(state=True, wait=True)
         self.funcs.setPlaybackLoop()
         self.funcs.setTimelineMinMax(self.cached_start, self.cached_end)
         if self.cached_currentTime:
-            pm.currentTime(self.cached_currentTime)
+            cmds.currentTime(self.cached_currentTime)
 
 

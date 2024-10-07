@@ -1,5 +1,5 @@
 from . import *
-
+from apps.tb_optionVars import *
 
 class optionWidget(QWidget):
     def __init__(self, label=str):
@@ -53,8 +53,8 @@ class optionVarBoolWidget(optionVarWidget):
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
         self.checkBox = AnimatedCheckBox(text='On', offText='Off', width=36, height=14)
-        self.checkBox.setChecked(pm.optionVar.get(self.optionVar, False))
-        pm.optionVar(intValue=(self.optionVar, pm.optionVar.get(self.optionVar, False)))
+        self.checkBox.setChecked(get_option_var(self.optionVar, False))
+        set_option_var(self.optionVar, get_option_var(self.optionVar, False))
         self.checkBox.clicked.connect(self.checkBoxEdited)
         if len(label):
             self.layout.addWidget(self.labelText)
@@ -62,7 +62,7 @@ class optionVarBoolWidget(optionVarWidget):
         self.layout.addStretch()
 
     def checkBoxEdited(self):
-        pm.optionVar(intValue=(self.optionVar, self.checkBox.isChecked()))
+        set_option_var(self.optionVar, self.checkBox.isChecked())
         self.sendChangedSignal()
 
     def sendChangedSignal(self):
@@ -81,14 +81,14 @@ class optionVarStringListWidget(optionVarWidget):
         self.labelText = QLabel(label)
         self.lineEdit = QLineEdit()
 
-        optionValue = pm.optionVar(stringValue=(self.optionVar, pm.optionVar.get(self.optionVar, '')))
+        optionValue = set_option_var(self.optionVar, get_option_var(self.optionVar, ''))
         self.lineEdit.setText(optionValue)
         self.lineEdit.textEdited.connect(self.lineEditChanged)
         self.layout.addWidget(self.labelText)
         self.layout.addWidget(self.lineEdit)
 
     def lineEditChanged(self):
-        pm.optionVar[self.optionVar] = self.lineEdit.text()
+        set_option_var(self.optionVar, self.lineEdit.text())
 
     def sendChangedSignal(self):
         self.changedSignal.emit(self.lineEdit.isChecked())

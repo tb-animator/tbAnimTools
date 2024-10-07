@@ -32,7 +32,7 @@ Installer used to install the main tbAnimTools without having to go to github.
 
 import webbrowser
 import sys
-import pymel.core as pm
+import maya.cmds as cmds
 import glob
 if sys.version_info >= (2, 8):
     from urllib.request import *
@@ -48,24 +48,30 @@ import datetime
 import maya.OpenMayaUI as omUI
 
 def onMayaDroppedPythonFile(*args):
-    print(args)
-    print(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
     cls = tbAnimToolsInstaller()
     cls.show()
 
 
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
+qtVersion = cmds.about(qtVersion=True)
+QTVERSION = int(qtVersion.split('.')[0])
+if QTVERSION < 5:
     from PySide.QtGui import *
     from PySide.QtCore import *
     # from pysideuic import *
     from shiboken import wrapInstance
-else:
+
+elif QTVERSION < 6:
     from PySide2.QtWidgets import *
     from PySide2.QtGui import *
     from PySide2.QtCore import *
     # from pyside2uic import *
     from shiboken2 import wrapInstance
+else:
+    from PySide6.QtWidgets import *
+    from PySide6.QtGui import *
+    from PySide6.QtCore import *
+    # from pyside2uic import *
+    from shiboken6 import wrapInstance
 
 styleSheet = '''
 QLabel
@@ -100,7 +106,7 @@ QPushButton:hover
 class tbAnimToolsInstaller(QDialog):
     oldPos = None
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+    def __init__(self, parent=getMainWindow()):
         super(tbAnimToolsInstaller, self).__init__(parent=parent)
         self.datUrl = 'https://api.github.com/repos/tb-animator/tbAnimTools'
         self.master_url = 'https://raw.githubusercontent.com/tb-animator/tbtools/master/'
@@ -121,7 +127,7 @@ class tbAnimToolsInstaller(QDialog):
 
         self.setWindowTitle("HELLO!")
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.windowFlags()
@@ -172,8 +178,8 @@ class tbAnimToolsInstaller(QDialog):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
@@ -220,7 +226,7 @@ class tbAnimToolsInstaller(QDialog):
         jsonFile.close()
 
     def pickInstallFolder(self):
-        self.installPath = pm.fileDialog2(caption='tbAnimTools :: Choose installation directory',
+        self.installPath = cmds.fileDialog2(caption='tbAnimTools :: Choose installation directory',
                                           fileFilter='',
                                           dialogStyle=1,
                                           fileMode=3)
@@ -261,14 +267,14 @@ class tbAnimToolsInstaller(QDialog):
                 os.mkdir(newPath)
         copy_tree(extractedSubFolder, destinationPathFinal)
 
-        message_state = pm.optionVar.get("inViewMessageEnable", 1)
-        pm.optionVar(intValue=("inViewMessageEnable", 1))
-        pm.inViewMessage(amg='tbAnimTools download complete',
+        message_state = cmds.optionVar(q="inViewMessageEnable")
+        cmds.optionVar(intValue=("inViewMessageEnable", 1))
+        cmds.inViewMessage(amg='tbAnimTools download complete',
                          pos='botRight',
                          dragKill=True,
                          fadeOutTime=10.0,
                          fade=False)
-        pm.optionVar(intValue=("inViewMessageEnable", message_state))
+        cmds.optionVar(intValue=("inViewMessageEnable", message_state))
         self.close()
 
     def installModule(self):

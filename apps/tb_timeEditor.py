@@ -22,25 +22,10 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-
-from Abstract import *
-import maya
+from . import *
 
 # maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 __author__ = 'tom.bailey'
 
 animCompositions = 'animCompositions'
@@ -74,7 +59,7 @@ class TimeEditorTool(toolAbstractFactory):
     __instance = None
     toolName = 'TimeEditor'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     timeEditorToolbox = None
     timeEditorExportOption = 'tbTimeEditorDir'
 
@@ -87,7 +72,7 @@ class TimeEditorTool(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -107,15 +92,15 @@ class TimeEditorTool(toolAbstractFactory):
         return None
 
     def drawMenuBar(self, parentMenu):
-        pm.menuItem(label='Time Editor Tools', image='out_timeEditor.png', command='tbOpenTimeEditorToolBoxUI',
+        cmds.menuItem(label='Time Editor Tools', image='out_timeEditor.png', command='tbOpenTimeEditorToolBoxUI',
                     sourceType='mel',
                     parent=parentMenu)
 
     def getExportFolder(self):
-        if not pm.optionVar.get(self.timeEditorExportOption, None):
+        if not get_option_var(self.timeEditorExportOption, None):
             self.selectDirectory()
 
-        return pm.optionVar.get(self.timeEditorExportOption, None)
+        return get_option_var(self.timeEditorExportOption, None)
 
     def selectDirectory(self, *args):
         dialog = QFileDialog(None, caption="Pick GPU Cache Folder")
@@ -126,12 +111,12 @@ class TimeEditorTool(toolAbstractFactory):
         selected_directory = dialog.getExistingDirectory()
 
         if selected_directory:
-            pm.optionVar[self.timeEditorExportOption] = selected_directory
+            set_option_var(self.timeEditorExportOption, selected_directory)
 
     def timeEditorToolBoxUI(self):
         if self.timeEditorToolbox:
             self.timeEditorToolbox.show()
-        self.timeEditorToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+        self.timeEditorToolbox = BaseDialog(parent=getMainWindow(),
                                             title='tb Time Editor', text=str(),
                                             lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
         toolboxWidget = QWidget()
@@ -207,7 +192,7 @@ class TimeEditorTool(toolAbstractFactory):
 
     def getCurrentComposition(self):
         currentComposition = cmds.timeEditorComposition(query=True, active=True)
-        print('currentComposition', currentComposition)
+
         return currentComposition
 
     def addClipFromFile(self, fbx=None):
@@ -334,9 +319,9 @@ class TimeEditorTool(toolAbstractFactory):
         print ('relocator', relocator)
         assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='redirectRoot', scale=1.5)
 
-        pm.delete(assetShapeControl, ch=True)
-        pm.parent(assetShapeControl.getShapes(), relocator, r=True, s=True)
-        pm.delete(assetShapeControl)
+        cmds.delete(assetShapeControl, ch=True)
+        cmds.parent(assetShapeControl.getShapes(), relocator, r=True, s=True)
+        cmds.delete(assetShapeControl)
         return relocator
 
     def browseToFile(self):

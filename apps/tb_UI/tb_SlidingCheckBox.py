@@ -1,23 +1,4 @@
-import pymel.core as pm
-import os
-import re
-
-qtVersion = pm.about(qtVersion=True)
-QTVERSION = int(qtVersion.split('.')[0])
-if QTVERSION < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
 from . import *
-
 
 class AnimatedCheckBox(QCheckBox):
     def __init__(self,
@@ -106,8 +87,8 @@ class AnimatedCheckBox(QCheckBox):
             p.drawEllipse(self._handlePosition, self.margin, circleSize, circleSize)
 
             # draw text
-            pixelsWide = fontMetrics.width(self.offText)
-            pixelsHigh = fontMetrics.height()
+            pixelsWide = fontMetrics.boundingRect(self.offText).width()
+            pixelsHigh = fontMetrics.boundingRect(self.offText).height()
             text_rect = QRect(self._handlePosition + circleSize + self.margin, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.offText)
@@ -122,8 +103,8 @@ class AnimatedCheckBox(QCheckBox):
             p.drawEllipse(self._handlePosition, self.margin, circleSize, circleSize)
 
             # draw text
-            pixelsWide = fontMetrics.width(self.onText)
-            pixelsHigh = fontMetrics.height()
+            pixelsWide = fontMetrics.boundingRect(self.onText).width()
+            pixelsHigh = fontMetrics.boundingRect(self.onText).height()
             text_rect = QRect(self._handlePosition - self.margin - pixelsWide, self.margin, pixelsWide, circleSize)
             p.setPen(Qt.black)
             p.drawText(text_rect, Qt.AlignCenter, self.onText)

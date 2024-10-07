@@ -140,7 +140,7 @@ class OfflineActivateInputWidget(QWidget):
         self.overlay = overlay
 
         self.setWindowOpacity(1.0)
-        self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.autoFillBackground = True
         self.setAttribute(Qt.WA_TranslucentBackground, True)
@@ -155,7 +155,7 @@ class OfflineActivateInputWidget(QWidget):
         self.closeButton = MiniButton()
         self.closeButton.clicked.connect(self.close)
 
-        sel = pm.ls(sl=True)
+        sel = cmds.ls(sl=True)
 
         self.titleText = QLabel(title)
         self.titleText.setAlignment(Qt.AlignCenter)
@@ -203,7 +203,7 @@ class OfflineActivateInputWidget(QWidget):
         self.saveButton.clicked.connect(self.acceptedFunction)
 
         self.setLayout(mainLayout)
-        self.move(QApplication.desktop().availableGeometry().center() - self.rect().center())
+        self.move(getScreenCenter() - self.rect().center())
         self.show()
         self.lineEdit.setFocus()
         self.setStyleSheet(
@@ -228,8 +228,8 @@ class OfflineActivateInputWidget(QWidget):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))

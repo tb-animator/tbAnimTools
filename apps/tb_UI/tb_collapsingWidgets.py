@@ -71,7 +71,7 @@ class CollapsibleBox(QWidget):
         self.toggleAnimation.start()
 
     def getState(self):
-        return pm.optionVar.get(self.optionVar, False)
+        return get_option_var(self.optionVar, False)
 
     @Slot()
     def on_pressed(self):
@@ -82,8 +82,7 @@ class CollapsibleBox(QWidget):
 
     def setOptionVarByState(self):
         checked = self.toggleButton.isChecked()
-        pm.optionVar[self.optionVar] = checked
-
+        cmds.optionVar(intValue = (self.optionVar, checked))
     def setIconByState(self):
         checked = self.getState()
         self.toggleButton.setIcon(

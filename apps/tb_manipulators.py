@@ -22,26 +22,10 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
-# from tb_optionVars import optionVar_utils
-import tb_optionVars as tb_optionVars
-from Abstract import *
-
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+from . import *
 
 tbZeroChannelOptionVar = 'tbZeroChannelOptionVar'
+
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -94,7 +78,7 @@ class Manipulators(toolAbstractFactory):
     __instance = None
     toolName = 'Manipulators'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     # translation
     translate_modes = ['Object', 'Local', 'World', 'Normal',
@@ -129,7 +113,7 @@ class Manipulators(toolAbstractFactory):
     rotate_messageVar = "tb_cycle_selection_msg_pos"
 
     # key types
-    key_modes = ["spline", "linear", "clamped", "step", "flat", "plateau", "auto"]
+    key_modes = ["spline", "linear", "clamped", "step", "flat", "plateau", "auto", 'autoease', 'automix']
     key_optionVar = "tb_cycle_keytype"
     key_messageVar = "tb_cycle_keytype_msg_pos"
     key_messageLabel = "message position"
@@ -150,8 +134,8 @@ class Manipulators(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
-        self.funcs = functions()
+        self.funcs = Functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -203,12 +187,9 @@ class Manipulators(toolAbstractFactory):
         self.modeData[key] = values
         self.saveData()
 
-    def set_optionVars(self):
-        if not pm.optionVar(exists=self.translate_optionVar):
-            pass
 
     def cycleCurrentManipulator(self):
-        currentCtx = pm.currentCtx()
+        currentCtx = cmds.currentCtx()
         ctxDict = {'RotateSuperContext': self.cycleRotation,
                    'moveSuperContext': self.cycleTranslation,
                    'selectSuperContext': self.cycle_selection_mask}
@@ -237,11 +218,11 @@ class Manipulators(toolAbstractFactory):
                                               user_modes=self.modeData[self.rotate_optionVar],
                                               default='Local')
 
-        pm.manipRotateContext('Rotate', edit=True, mode=self.rotate_modesDict[modeName])
-        if pm.optionVar.get(self.rotate_optionVar + "_msg", 0):
+        cmds.manipRotateContext('Rotate', edit=True, mode=self.rotate_modesDict[modeName])
+        if get_option_var(self.rotate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='rotate',
                                    message=' : %s' % modeName,
-                                   position=pm.optionVar.get(self.rotate_messageVar, 'topLeft')
+                                   position=get_option_var(self.rotate_messageVar, 'topLeft')
                                    )
 
     def cycleTranslation(self):
@@ -262,36 +243,40 @@ class Manipulators(toolAbstractFactory):
                                               user_modes=self.modeData[self.translate_optionVar],
                                               default='World')
 
-        pm.manipMoveContext('Move', edit=True, mode=self.translate_modesDict[modeName])
-        if pm.optionVar.get(self.translate_optionVar + "_msg", 0):
+        cmds.manipMoveContext('Move', edit=True, mode=self.translate_modesDict[modeName])
+        if get_option_var(self.translate_optionVar + "_msg", 0):
             self.funcs.infoMessage(prefix='translate',
                                    message=' : %s' % modeName,
-                                   position=pm.optionVar.get(self.translate_messageVar, 'topLeft')
+                                   position=get_option_var(self.translate_messageVar, 'topLeft')
                                    )
 
     # this cycle tool doesn't bother with options yet, just toggles between 2 states
     def cycle_selection_mask(self):
-        _mode = pm.selectType(query=True, polymesh=True)
+        _mode = cmds.selectType(query=True, polymesh=True)
 
-        pm.selectType(allObjects=not _mode)
+        cmds.selectType(allObjects=not _mode)
 
         if _mode:
             cmds.selectType(joint=_mode, nurbsCurve=_mode)
-        pm.selectMode(object=True)
+        cmds.selectMode(object=True)
 
         self.funcs.infoMessage(prefix='masking',
                                message=' : %s' % self.selection_modes[_mode],
-                               position=pm.optionVar.get(self.translate_messageVar, 'midCenter')
+                               position=get_option_var(self.translate_messageVar, 'midCenter')
                                )
 
     def cycle_key_type(self):
-        _current_key_type = pm.keyTangent(g=True, query=True, outTangentType=True)[0]
+        _current_key_type = cmds.keyTangent(g=True, query=True, outTangentType=True)[0]
 
-        new_mode, new_name = tb_optionVars.optionVar_utils.cycleOption(option_name=self.key_optionVar,
-                                                                       full_list=self.key_modes,
-                                                                       current=self.key_modes.index(_current_key_type),
-                                                                       default='spline'
-                                                                       )
+        if _current_key_type not in self.key_modes:
+            current = self.key_modes[0]
+        else:
+            current = self.key_modes.index(_current_key_type)
+        new_mode, new_name = cycleOption(option_name=self.key_optionVar,
+                                         full_list=self.key_modes,
+                                         current=current,
+                                         default='spline'
+                                         )
         if new_name == "step":
             _in = 'spline'
         else:
@@ -302,18 +287,18 @@ class Manipulators(toolAbstractFactory):
         cmds.keyTangent(g=True, edit=True, inTangentType=_in, outTangentType=_out)
         self.funcs.infoMessage(prefix='key type',
                                message=' : %s' % _out,
-                               position=pm.optionVar.get(self.key_messageVar, 'topLeft')
+                               position=get_option_var(self.key_messageVar, 'topLeft')
                                )
 
     def zero_channel(self, channels, value, sel=list()):
         if not sel:
-            sel = pm.ls(sl=True)
+            sel = cmds.ls(sl=True)
         if not sel:
             return
 
         getChannels = self.funcs.getChannels()
         channelSet = set(channels)
-        if pm.optionVar.get(tbZeroChannelOptionVar, False):
+        if get_option_var(tbZeroChannelOptionVar, False):
             if getChannels:
                 channels = getChannels.intersection(channelSet)
 
@@ -321,15 +306,15 @@ class Manipulators(toolAbstractFactory):
             for each in sel:
                 plug = each + '.' + channel
                 try:
-                    locked = pm.getAttr(plug, lock=True)
+                    locked = cmds.getAttr(plug, lock=True)
                     if locked:
-                        pm.setAttr(plug, lock=False)
+                        cmds.setAttr(plug, lock=False)
 
-                    if pm.getAttr(plug):
-                        pm.setAttr(plug, value)
+                    if cmds.getAttr(plug):
+                        cmds.setAttr(plug, value)
 
                     if locked:
-                        pm.setAttr(plug, lock=True)
+                        cmds.setAttr(plug, lock=True)
                 except:
                     pass
 
@@ -341,5 +326,3 @@ class Manipulators(toolAbstractFactory):
 
     def zero_scales(self):
         self.zero_channel(["sx", "sy", "sz"], 1.0)
-
-

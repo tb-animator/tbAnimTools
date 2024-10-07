@@ -23,8 +23,6 @@
 *******************************************************************************
 '''
 
-import pymel.core as pm
-import pymel.core.datatypes as dt
 import maya.cmds as cmds
 import random
 import maya.mel as mel
@@ -40,6 +38,7 @@ import tb_UI as tbui
 
 from apps.tb_UI import *
 
+
 '''
 blend to magnet (relative pose)
 
@@ -50,7 +49,6 @@ fn_SMOOTHBUTTER = 'SmoothButterworth'
 fn_SCALEFROMFIRST = 'ScaleFromFirst'
 fn_SCALEFROMLAST = 'ScaleFromLast'
 fn_CLOSEGAP = 'Fill Gap'
-fn_CLOSEGAPSCALE = 'Fill Gap Scale'
 fn_EASE = 'Ease'
 fn_EASESQUARED = 'EaseSquared'
 fn_EASECUBIC = 'EaseCubic'
@@ -64,7 +62,6 @@ fn_Zip = 'Zip'
 fn_SPLIT = 'Split'
 fn_BREAKDOWN = 'Tween'
 fn_NOISE = 'Noise'
-fn_NOISE1D = 'Noise1D'
 fn_RESAMPLE = 'Resample'
 fn_NOISELOOP = 'NoiseLoop'
 fn_NOISELOOP1D = 'NoiseLoop1D'
@@ -78,28 +75,15 @@ tt_BLOAT = 'Amplify'
 tt_BREAKDOWN = 'Tween'
 tt_BREAKDOWNGROUP = 'TweenGrp'
 
-qtVersion = pm.about(qtVersion=True)
+qtVersion = cmds.about(qtVersion=True)
 margin = 2
 from random import randint
 from Abstract import *
 import maya
-import maya.OpenMayaUI as omui
 
 maya.utils.loadStringResourcesForModule(__name__)
-QTVERSION = int(qtVersion.split('.')[0])
-if QTVERSION < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
+
 import sys, os
-import tb_functions as funcs
 
 scriptLocation = os.path.dirname(os.path.realpath(__file__))
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
@@ -120,7 +104,6 @@ rotateAttributes = ['rx', 'ry', 'rz']
 scaleAttributes = ['sx', 'sy', 'sz']
 
 curveTypeScalar = {
-    "animCurveTU": 1.0,
     "animCurveTL": 1.0,
     "animCurveTA": 1.0 / 57.296,
 }
@@ -181,12 +164,12 @@ class tweenBase(object):
     filterdAttributes = list()
 
     def __init__(self):
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         self.affectedObjects = list()
         self.alpha = 0
 
     def apply(self):
-        pm.autoKeyframe(state=self.keyState)
+        cmds.autoKeyframe(state=self.keyState)
         self.updateAlpha(self.alpha, disableAutoKey=False)
 
     @staticmethod
@@ -246,7 +229,7 @@ class tweenBase(object):
         '''
         self.get_modifier()
         if self.keyboardModifier == 'alt':
-            self.filterdAttributes = funcs.functions().getChannels()
+            self.filterdAttributes = SlideTools().funcs.functions().getChannels()
         elif self.keyboardModifier == 'shift':
             self.filterdAttributes = translateAttributes
         elif self.keyboardModifier == 'ctrl':
@@ -324,7 +307,7 @@ class WorldSpaceTween(tweenBase):
 
     def __init__(self):
         super(WorldSpaceTween, self).__init__()
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         self.affectedObjects = list()
         self.alpha = 0
         self.currentTime = float()
@@ -351,13 +334,13 @@ class WorldSpaceTween(tweenBase):
         super(WorldSpaceTween, self).apply()
 
     def startDrag(self, value):
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         # print ('self.keyState', self.keyState)
-        pm.autoKeyframe(state=False)
+        cmds.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             self.affectedObjects = list()
-            pm.autoKeyframe(state=self.keyState)
+            cmds.autoKeyframe(state=self.keyState)
             return
         try:
             self.affectedObjects = sel
@@ -365,14 +348,14 @@ class WorldSpaceTween(tweenBase):
             self.filterAffectedChannels()
             self.updateDrag(value)
         except:
-            pm.autoKeyframe(state=self.keyState)
+            cmds.autoKeyframe(state=self.keyState)
 
     def updateDrag(self, value):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
 
     def endDrag(self, value):
         # print ('WorldSpaceTween class end drag', value)
-        pm.autoKeyframe(state=self.keyState)
+        cmds.autoKeyframe(state=self.keyState)
         if not self.affectedObjects:
             return
         cmds.setKeyframe(self.affectedObjects)
@@ -466,7 +449,7 @@ class WorldSpaceTween(tweenBase):
 
     def updateAlpha(self, alpha, disableAutoKey=True):
         super(WorldSpaceTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
-        # pm.autoKeyframe(state=not disableAutoKey)
+        # cmds.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
 
         for obj in self.affectedObjects:
@@ -592,7 +575,7 @@ class LocalSpaceTween(tweenBase):
 
     def __init__(self):
         super(LocalSpaceTween, self).__init__()
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         self.affectedObjects = list()
         self.alpha = 0
         self.currentTime = float()
@@ -629,7 +612,7 @@ class LocalSpaceTween(tweenBase):
         '''
         self.get_modifier()
         if self.keyboardModifier == 'alt':
-            self.filterdAttributes = funcs.functions().getChannels()
+            self.filterdAttributes = SlideTools().funcs.functions().getChannels()
         elif self.keyboardModifier == 'shift':
             self.filterdAttributes = translateAttributes
         elif self.keyboardModifier == 'ctrl':
@@ -643,13 +626,13 @@ class LocalSpaceTween(tweenBase):
         super(LocalSpaceTween, self).apply()
 
     def startDrag(self, value):
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         # print('self.keyState', self.keyState)
-        pm.autoKeyframe(state=False)
+        cmds.autoKeyframe(state=False)
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             self.affectedObjects = list()
-            pm.autoKeyframe(state=self.keyState)
+            cmds.autoKeyframe(state=self.keyState)
             return
         try:
             self.affectedObjects = sel
@@ -657,14 +640,14 @@ class LocalSpaceTween(tweenBase):
             self.filterAffectedChannels()
             self.updateDrag(value)
         except:
-            pm.autoKeyframe(state=self.keyState)
+            cmds.autoKeyframe(state=self.keyState)
 
     def updateDrag(self, value):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
 
     def endDrag(self, value):
         # print ('local space class end drag', value, self.keyState)
-        pm.autoKeyframe(state=self.keyState)
+        cmds.autoKeyframe(state=self.keyState)
         if not self.affectedObjects:
             return
         cmds.setKeyframe(self.affectedObjects)
@@ -755,7 +738,7 @@ class LocalSpaceTween(tweenBase):
 
     def updateAlpha(self, alpha, disableAutoKey=True):
         super(LocalSpaceTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
-        # pm.autoKeyframe(state=not disableAutoKey)
+        # cmds.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
 
         for obj in self.affectedObjects:
@@ -785,7 +768,7 @@ class keyframeTween(tweenBase):
 
     def __init__(self):
         super(keyframeTween, self).__init__()
-        self.keyState = pm.autoKeyframe(query=True, state=True)
+        self.keyState = cmds.autoKeyframe(query=True, state=True)
         self.affectedObjects = list()
         self.alpha = 0
         self.currentTime = float()
@@ -794,7 +777,7 @@ class keyframeTween(tweenBase):
         self.selectedKeyValues = dict()
         self.curvePreviousValues = dict()
         self.curveNextValues = dict()
-        self.funcs = funcs.functions()
+        self.funcs = SlideTools().funcs.functions()
 
     def apply(self):
         super(keyframeTween, self).apply()
@@ -824,7 +807,7 @@ class keyframeTween(tweenBase):
 
     def updateAlpha(self, alpha, disableAutoKey=True):
         super(keyframeTween, self).updateAlpha(alpha, disableAutoKey=disableAutoKey)
-        pm.autoKeyframe(state=not disableAutoKey)
+        cmds.autoKeyframe(state=not disableAutoKey)
         self.alpha = alpha
         if self.keyboardModifier == 'shift':
             # print 'just shift'
@@ -888,7 +871,7 @@ class SlideTools(toolAbstractFactory):
     __instance = None
     toolName = 'SlideTools'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     app = None
     dependentPlugins = ["tbKeyTween.py"]
     slideUI = None
@@ -958,8 +941,6 @@ class SlideTools(toolAbstractFactory):
     selectedCurveDict = None
     sliderParentWidget = None
 
-    undoChunk = None
-
     def __new__(cls):
         if SlideTools.__instance is None:
             SlideTools.__instance = object.__new__(cls)
@@ -973,7 +954,6 @@ class SlideTools(toolAbstractFactory):
             fn_Zip: SlideTools.__instance.tweenZip,
             fn_SPLIT: SlideTools.__instance.tweenSplit,
             fn_NOISE: SlideTools.__instance.tweenNoise,
-            fn_NOISE1D: SlideTools.__instance.tweenNoise1D,
             fn_RESAMPLE: SlideTools.__instance.resample,
             fn_NOISELOOP: SlideTools.__instance.tweenNoiseLoop,
             fn_NOISELOOP1D: SlideTools.__instance.tweenNoiseLoop1D,
@@ -983,7 +963,6 @@ class SlideTools(toolAbstractFactory):
             fn_SCALEFROMFIRST: SlideTools.__instance.scaleFromFirstKey,
             fn_SCALEFROMLAST: SlideTools.__instance.scaleFromLastKey,
             fn_CLOSEGAP: SlideTools.__instance.closeGapFirstKey,
-            fn_CLOSEGAPSCALE: SlideTools.__instance.closeGapFirstKeyScale,
             fn_EASE: SlideTools.__instance.tweenEase,
             fn_EASECUBIC: SlideTools.__instance.tweenEaseCubic,
             fn_EASEQUAD: SlideTools.__instance.tweenEaseQuad,
@@ -1003,7 +982,7 @@ class SlideTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -1032,7 +1011,7 @@ class SlideTools(toolAbstractFactory):
         layout = QHBoxLayout()
         widget.setLayout(layout)
         layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0,0,0,0)
 
         for valueDict in self.rawJsonBaseData['toolbarSliders']:
             xformWidget = SliderToolbarWidget(**valueDict)
@@ -1064,7 +1043,6 @@ class SlideTools(toolAbstractFactory):
             layout.addWidget(xformWidget)  # .setParent(phLayout)
             # sliderLayout.addWidget(QPushButton('hello'))  # .setParent(phLayout)
         return widget
-
     def drawMenuBar(self, parentMenu):
         return None
 
@@ -1103,11 +1081,10 @@ class SlideTools(toolAbstractFactory):
             self.xformWidget.moveToCursor()
         self.xformWidget.show()
         self.xformWidget.raise_()
-        # self.app.installEventFilter(self.keyPressHandler)
-        # self.keyPressHandler.addUI(self.xformWidget)
+        self.app.installEventFilter(self.keyPressHandler)
+        self.keyPressHandler.addUI(self.xformWidget)
 
     def xformSliderBeginSignal(self, key, value):
-
         self.xformTweenClasses[key].startDrag(value)
 
     def xformSliderUpdateSignal(self, key, value):
@@ -1125,6 +1102,7 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
     # graphed key tween
+
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -1169,8 +1147,7 @@ class SlideTools(toolAbstractFactory):
     def keySliderBeginSignal(self, key, value, value2):
         if self.isDragging:
             return
-
-        # self.cacheKeyData()
+        self.cacheKeyData()
         cmds.undoInfo(openChunk=True, chunkName="tbInbetween")
         cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=True)
         self.isDragging = True
@@ -1185,13 +1162,13 @@ class SlideTools(toolAbstractFactory):
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
 
+
     def keySliderEndSignal(self, key, value, value2):
         try:
             cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=False)
             cmds.tbKeyTween(alpha=0, alphaB=0, blendMode=tt_BREAKDOWN, clearCache=True)
         finally:
             cmds.undoInfo(closeChunk=True)
-            cmds.undoInfo(stateWithoutFlush=True)
             self.isDragging = False
 
     def keySliderCancelSignal(self):
@@ -1266,11 +1243,7 @@ class SlideTools(toolAbstractFactory):
             self.keyframeData = None
             self.selectedCurveDict = dict()
             return
-        try:
-            self.keyframeData, self.keyframeRefData = self.getAnimCurveData(self.selectedCurveDict, minTime, maxTime)
-        except:
-            self.keyframeData = dict()
-            self.keyframeRefData = dict()
+        self.keyframeData, self.keyframeRefData = self.getAnimCurveData(self.selectedCurveDict, minTime, maxTime)
 
     def normalizeAlpha(self, alpha, minVal, maxVal, range=[0, 1]):
         """
@@ -1284,12 +1257,112 @@ class SlideTools(toolAbstractFactory):
 
     def doKeyTween(self, alpha=float(), alphaB=float(), mode=str(),
                    animCurveChange=None):
-        if not self.keyframeData.keys():
-            return cmds.warning("No key cache")
         try:
             self.keyTweenMethods[mode](alpha, alphaB, animCurveChange)
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
+
+    def tweenPreviousNextGroup(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.tweenPreviousNextGroupKey(alpha=alpha,
+                                                          currentValue=keyframeData.keyValues[i],
+                                                          previousValue=keyframeData.previousValues[
+                                                              keyframeData.keyIndexes[0]],
+                                                          nextValue=keyframeData.nextValues[
+                                                              keyframeData.keyIndexes[-1]],
+                                                          startValue=keyframeData.keyValues[0],
+                                                          endValue=keyframeData.keyValues[-1])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+        '''
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=self.animCurveChange)
+        '''
+
+    def closeGapFirstKey(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.closeGapKey(alpha=alpha,
+                                            currentValue=keyframeData.keyValues[i],
+                                            referenceStartValue=keyframeData.previousValues[keyframeData.keyIndexes[0]],
+                                            referenceEndValue=keyframeData.nextValues[keyframeData.keyIndexes[-1]],
+                                            firstValue=keyframeData.keyValues[0],
+                                            lastValue=keyframeData.keyValues[-1],
+                                            )
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def closeGapLastKey(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.scaleFromValueKey(alpha=alpha,
+                                                  currentValue=keyframeData.keyValues[i],
+                                                  referenceValue=keyframeData.nextValues[-1])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def scaleFromFirstKey(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.scaleFromValueKey(alpha=alpha,
+                                                  currentValue=keyframeData.keyValues[i],
+                                                  referenceValue=keyframeData.keyValues[0])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def scaleFromLastKey(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.scaleFromValueKey(alpha=alpha,
+                                                  currentValue=keyframeData.keyValues[i],
+                                                  referenceValue=keyframeData.keyValues[-1])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
+
+    def tweenPreviousCurrentNext(self, alpha, alphaB, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.items():
+            if not keyframeData.keyIndexes:
+                continue
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.tweenPreviousCurrentNextKey(alpha,
+                                                            keyframeData.previousValues[keyframeData.keyIndexes[i]],
+                                                            keyframeData.keyValues[i],
+                                                            keyframeData.nextValues[keyframeData.keyIndexes[i]])
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
 
     def tweenNoiseLoop(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
@@ -1377,129 +1450,6 @@ class SlideTools(toolAbstractFactory):
                 self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
                                                        change=animCurveChange)
 
-    def tweenPreviousNextGroup(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.tweenPreviousNextGroupKey(alpha=alpha,
-                                                          currentValue=keyframeData.keyValues[i],
-                                                          previousValue=keyframeData.previousValues[
-                                                              keyframeData.keyIndexes[0]],
-                                                          nextValue=keyframeData.nextValues[
-                                                              keyframeData.keyIndexes[-1]],
-                                                          startValue=keyframeData.keyValues[0],
-                                                          endValue=keyframeData.keyValues[-1])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-        '''
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = lerpFloat(keyframeData.keyValues[i], self.keyframeRefData[curve].keyValues[i], alpha)
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=self.animCurveChange)
-        '''
-
-    def closeGapFirstKey(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.closeGapKey(alpha=alpha,
-                                            currentValue=keyframeData.keyValues[i],
-                                            currentTime=keyframeData.keyTimes[i],
-                                            referenceStartValue=keyframeData.previousValues[keyframeData.keyIndexes[0]],
-                                            referenceEndValue=keyframeData.nextValues[keyframeData.keyIndexes[-1]],
-                                            firstValue=keyframeData.keyValues[0],
-                                            lastValue=keyframeData.keyValues[-1],
-                                            startTime=keyframeData.keyTimes[0],
-                                            endTime=keyframeData.keyTimes[-1]
-                                            )
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
-    def closeGapFirstKeyScale(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.closeGapScaleKey(alpha=alpha,
-                                                 currentValue=keyframeData.keyValues[i],
-                                                 referenceStartValue=keyframeData.previousValues[
-                                                     keyframeData.keyIndexes[0]],
-                                                 referenceEndValue=keyframeData.nextValues[keyframeData.keyIndexes[-1]],
-                                                 firstValue=keyframeData.keyValues[0],
-                                                 lastValue=keyframeData.keyValues[-1])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
-    def closeGapLastKey(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.scaleFromValueKey(alpha=alpha,
-                                                  currentValue=keyframeData.keyValues[i],
-                                                  referenceValue=keyframeData.nextValues[-1])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
-    def scaleFromFirstKey(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.scaleFromValueKey(alpha=alpha,
-                                                  currentValue=keyframeData.keyValues[i],
-                                                  referenceValue=keyframeData.keyValues[0])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
-    def scaleFromLastKey(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        alpha = self.normalizeAlpha(alpha, -100, 100, range=[-1, 1])
-        for curve, keyframeData in self.keyframeData.items():
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.scaleFromValueKey(alpha=alpha,
-                                                  currentValue=keyframeData.keyValues[i],
-                                                  referenceValue=keyframeData.keyValues[-1])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
-    def tweenPreviousCurrentNext(self, alpha, alphaB, animCurveChange):
-        if not self.keyframeData:
-            return
-        if not self.keyframeData.items():
-            return
-        for curve, keyframeData in self.keyframeData.items():
-            if not keyframeData.keyIndexes:
-                continue
-            for i in range(len(keyframeData.keyIndexes)):
-                outValue = self.tweenPreviousCurrentNextKey(alpha,
-                                                            keyframeData.previousValues[keyframeData.keyIndexes[i]],
-                                                            keyframeData.keyValues[i],
-                                                            keyframeData.nextValues[keyframeData.keyIndexes[i]])
-                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
-                                                       change=animCurveChange)
-
     def resample(self, alpha, alpha2, animCurveChange):
         if not self.keyframeData:
             return
@@ -1548,6 +1498,22 @@ class SlideTools(toolAbstractFactory):
                     for keyTime in divisionTimes:
                         self.selectedCurveDict[curve].insertKey(keyTime, breakdown=False,
                                                                 change=animCurveChange)
+
+    def tweenNoise(self, alpha, alpha2, animCurveChange):
+        if not self.keyframeData:
+            return
+        if not self.keyframeData.items():
+            return
+        for curve, keyframeData in self.keyframeData.items():
+            for i in range(len(keyframeData.keyIndexes)):
+                outValue = self.tweenNoiseKey(ampAlpha=alpha2,
+                                              freqAlpha=alpha,
+                                              seed=keyframeData.seed,
+                                              currentValue=keyframeData.keyValues[i],
+                                              currentTime=keyframeData.keyTimes[i],
+                                              curveType=keyframeData.curveType)
+                self.selectedCurveDict[curve].setValue(keyframeData.keyIndexes[i], outValue,
+                                                       change=animCurveChange)
 
     def tweenEase2D(self, powerAlpha, blendAlpha, animCurveChange):
         if not self.keyframeData:
@@ -2247,48 +2213,8 @@ class SlideTools(toolAbstractFactory):
         """
         return -alpha * (referenceValue - currentValue) + currentValue
 
-    def closeGapKey(self, alpha=0.5,
-                    currentValue=0,
-                    currentTime=0,
-                    firstValue=0,
-                    lastValue=0,
-                    referenceStartValue=0,
-                    referenceEndValue=0,
-                    startTime=0,
-                    endTime=100):
-        """
-
-        :param alpha:
-        :param currentValue:
-        :param firstValue:
-        :param nextValue:
-        :param startValue:
-        :param endValue:
-        :return:
-        """
-        #
-        shiftAmount = 0
-        # offset = referenceStartValue - firstValue
-        # print('currentValue', currentValue)
-        # print('currentTime', currentTime)
-        # print('startTime', startTime)
-        # print('endTime', endTime)
-        # print (offset)
-        timeAlpha = (currentTime - startTime) / (endTime - startTime)
-
-        if alpha < 0.0:
-            offset = (referenceStartValue - firstValue) * (1.0 - timeAlpha) * -alpha
-            return offset + currentValue
-        else:
-            offset = (referenceEndValue - lastValue) * (timeAlpha) * alpha
-            return offset + currentValue
-
-    def closeGapScaleKey(self, alpha=0.5,
-                         currentValue=0,
-                         firstValue=0,
-                         lastValue=0,
-                         referenceStartValue=0,
-                         referenceEndValue=0):
+    def closeGapKey(self, alpha=0.5, currentValue=0, firstValue=0, lastValue=0, referenceStartValue=0,
+                    referenceEndValue=0):
         """
 
         :param alpha:
@@ -2695,7 +2621,7 @@ class keypressHandler(QObject):
         self.UI = [UI]
 
     def eventFilter(self, target, event):
-        if event.type() == event.KeyRelease:
+        if event.type() == QEvent.KeyRelease:
             if event.isAutoRepeat():
                 return True
             for ui in self.UI:
@@ -2704,7 +2630,7 @@ class keypressHandler(QObject):
                 except:
                     continue
             return False
-        elif event.type() == event.KeyPress:
+        elif event.type() == QEvent.KeyPress:
             for ui in self.UI:
                 try:
                     ui.keyPressEvent(event)
@@ -2734,6 +2660,7 @@ def lerpMVector(vecA, vecB, alpha):
 
 def lerpFloat(a, b, alpha):
     return a * alpha + b * (1.0 - alpha)
+
 
 
 class DragButton(QLabel):
@@ -3054,8 +2981,8 @@ class sliderBar(QLabel):
         alpha = 128
         sideEdge = (1.0 / self.rect().width()) * 10
         topEdge = (1.0 / self.rect().height()) * 10
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
-        # qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        # qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
         orange = QColor(255, 160, 47, alpha)
         darkOrange = QColor(215, 128, 26, alpha)
@@ -3084,8 +3011,8 @@ class sliderBar(QLabel):
 
         qp.end()
         return
-        # qp.setCompositionMode(qp.CompositionMode_Overlay)
-        # qp.setCompositionMode(qp.CompositionMode_Darken)
+        # qp.setCompositionMode(QPainter.CompositionMode_Overlay)
+        # qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.setPen(QPen(QBrush(lineColor), 4))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, QColor(0, 0, 0, alpha))
@@ -3321,17 +3248,17 @@ class sliderWidget(QWidget):
         qp.setBrush(QBrush(fillColor))
         qp.setPen(QPen(QBrush(fillColor), 1))
         qp.setRenderHint(QPainter.Antialiasing)
-        # qp.setCompositionMode(qp.CompositionMode_Source)
-        # qp.setCompositionMode(qp.CompositionMode_Darken)
+        # qp.setCompositionMode(QPainter.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.drawRoundedRect(QRect(0, 0, 321 * dpiScale(), 52 * dpiScale()), 4, 4)
 
-        # qp.setCompositionMode(qp.CompositionMode_Clear)
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
 
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, orange)
         grad.setColorAt(1, darkOrange)
         qp.setBrush(QBrush(grad))
-        # qp.setCompositionMode(qp.CompositionMode_Source)
+        # qp.setCompositionMode(QPainter.CompositionMode_Source)
 
         font = defaultFont()
         # font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
@@ -3362,8 +3289,8 @@ class sliderWidget(QWidget):
         alpha = 50
         sideEdge = (1.0 / self.rect().width()) * 10
         topEdge = (1.0 / self.rect().height()) * 10
-        qp.setCompositionMode(qp.CompositionMode_Clear)
-        # qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        # qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
         orange = QColor(255, 160, 47, 32)
         darkOrange = QColor(215, 128, 26, 32)
@@ -3375,8 +3302,8 @@ class sliderWidget(QWidget):
         qp.setBrush(QBrush(grad))
         qp.drawRoundedRect(self.rect(), 4, 4)
 
-        # qp.setCompositionMode(qp.CompositionMode_Overlay)
-        # qp.setCompositionMode(qp.CompositionMode_Darken)
+        # qp.setCompositionMode(QPainter.CompositionMode_Overlay)
+        # qp.setCompositionMode(QPainter.CompositionMode_Darken)
         qp.setPen(QPen(QBrush(lineColor), 4))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, QColor(0, 0, 0, alpha))
@@ -3796,7 +3723,7 @@ class PySlider(QSlider):
 
         lineColor = QColor(68, 68, 68, 64)
 
-        qp.setCompositionMode(qp.CompositionMode_Overlay)
+        qp.setCompositionMode(QPainter.CompositionMode_Overlay)
         qp.setRenderHint(QPainter.Antialiasing)
         if self.overshootState:
             qp.setPen(QPen(QBrush(lineColor), 0))
@@ -3828,8 +3755,145 @@ class sliderButton(QPushButton):
         # self.setStyleSheet(adjust_style)
         self.setFixedSize(20 * dpiScale(), 20 * dpiScale())
 
+class SliderBaseDialog(QDialog):
+    widgetClosed = Signal()
+    oldPos = None
 
-class SliderWidget(BaseDialog):
+    def __init__(self, parent=None, title='', text='',
+                 lockState=False, showLockButton=False, showCloseButton=True, showInfo=True,
+                 *args, **kwargs):
+        super(SliderBaseDialog, self).__init__(parent=parent)
+        self.stylesheet = getqss.getStyleSheet()
+        self.setStyleSheet(self.stylesheet)
+        self.lockState = lockState
+        self.showLockButton = showLockButton
+        self.showCloseButton = showCloseButton
+        self.setWindowTitle("HELLO!")
+        self.setWindowOpacity(1.0)
+        self.setWindowFlags(Qt.Popup | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        self.setFixedSize(400 * dpiScale(), 120 * dpiScale())
+        self.mainLayout = QVBoxLayout()
+        self.mainLayout.setSpacing(0)
+        self.mainLayout.setContentsMargins(margin, margin, margin, margin)
+        self.layout = QVBoxLayout()
+        self.titleLayout = QHBoxLayout()
+        self.titleLayout.setSpacing(0)
+        self.titleLayout.setContentsMargins(0, 0, 0, 0)
+        self.pinButton = LockButton('', None, lockState=self.lockState)
+        self.pinButton.lockSignal.connect(self.togglePinState)
+        self.closeButton = MiniButton()
+        self.closeButton.clicked.connect(self.close)
+        self.titleText = QLabel(title)
+        # self.titleText.setFont(QFont('Lucida Console', 12))
+        # self.titleText.setStyleSheet("font-weight: lighter; font-size: 12px;")
+        # self.titleText.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        # self.titleText.setStyleSheet("QLabel {"
+        #                              "border-width: 0;"
+        #                              "border-radius: 4;"
+        #                              "border-style: solid;"
+        #                              "border-color: #222222;"
+        #                              "font-weight: bold; font-size: 12px;"
+        #                              "}"
+        #                              )
+
+        self.titleText.setAlignment(Qt.AlignCenter)
+        self.infoText = QLabel(text)
+        if not showInfo: self.infoText.hide()
+
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
+        self.titleLayout.addStretch()
+        self.titleLayout.addWidget(self.pinButton, alignment=Qt.AlignRight)
+        self.titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
+
+        self.mainLayout.addLayout(self.titleLayout)
+        self.infoText.setStyleSheet(self.stylesheet)
+        self.layout.addWidget(self.infoText)
+
+        self.mainLayout.addLayout(self.layout)
+        self.setLayout(self.mainLayout)
+
+        self.pinButton.setVisible(self.showLockButton)
+        self.closeButton.setVisible(self.showCloseButton)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        # qp.setCompositionMode(QPainter.CompositionMode_Clear)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, "#323232")
+        grad.setColorAt(0.1, "#373737")
+        grad.setColorAt(1, "#323232")
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
+        qp.end()
+
+    def keyReleaseEvent(self, event):
+        if event.key() == Qt.Key_Control:
+            self.controlKeyPressed = False
+        return False
+
+    def keyPressEvent(self, event):
+        # print ('slider base dialog keyPressEvent', event)
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        if event.key() == Qt.Key_Control:
+            self.controlKeyPressed = True
+        return super(SliderBaseDialog, self).keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if self.lockState and not modifiers == Qt.ControlModifier:
+            return
+        self.oldPos = event.globalPos()
+
+    def mouseMoveEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if self.lockState and not modifiers == Qt.ControlModifier:
+            return
+        if not self.oldPos:
+            return
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event):
+        self.oldPos = None
+
+    def wheelEvent(self, event):
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.ControlModifier:
+            opacity = self.windowOpacity()
+            opacity += event.delta() * 0.001
+            opacity = min(max(opacity, 0.2), 1)
+            self.setWindowOpacity(opacity)
+        # cmds.warning(self.x(), event.delta() / 120.0 * 25)
+        # self.setValue(self.value() + event.delta() / 120.0 * 25)
+        # super(PySlider, self).wheelEvent(event)
+        # self.wheelSignal.emit(self.value())
+
+    def togglePinState(self, pinState):
+        self.lockState = pinState
+        self.closeButton.setVisible(True)
+
+    def close(self):
+        self.widgetClosed.emit()
+        super(SliderBaseDialog, self).close()
+
+
+class ViewportSliderWidget(SliderBaseDialog):
     __instance = None
     # call the tween classes by name, send value
     sliderUpdateSignal = Signal(str, float, float)
@@ -3867,7 +3931,7 @@ class SliderWidget(BaseDialog):
     '''
 
     def __init__(self,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parent=getMainWindow(),
                  showLockButton=True, showCloseButton=False,
                  title='inbetween',
                  text='test',
@@ -3879,10 +3943,10 @@ class SliderWidget(BaseDialog):
                  altLabel='altLabel',
                  showInfo=True,
                  ):
-        super(SliderWidget, self).__init__(parent=parent,
-                                           title=title,
-                                           text=text,
-                                           showLockButton=showLockButton, showCloseButton=showCloseButton)
+        super(ViewportSliderWidget, self).__init__(parent=parent,
+                                                   title=title,
+                                                   text=text,
+                                                   showLockButton=showLockButton, showCloseButton=showCloseButton)
 
         self.isCancelled = False
         self.recentlyOpened = False
@@ -3976,7 +4040,8 @@ class SliderWidget(BaseDialog):
         self.setFixedSize(self.baseWidth, self.sizeHint().height())
 
     def show(self):
-        super(SliderWidget, self).show()
+        super(ViewportSliderWidget, self).show()
+        # print('showing')
         self.resetValues()
         self.setEnabled(True)
         self.setFocus()
@@ -3993,7 +4058,7 @@ class SliderWidget(BaseDialog):
 
         lineColor = QColor(68, 68, 68, 128)
 
-        qp.setCompositionMode(qp.CompositionMode_Source)
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setPen(QPen(QBrush(lineColor), 2))
@@ -4006,7 +4071,7 @@ class SliderWidget(BaseDialog):
         qp.end()
 
     def keyPressEvent(self, event):
-        if event.type() == event.KeyPress:
+        if event.type() == QEvent.KeyPress:
             if self.recentlyOpened:
                 if event.key() is not None:
                     self.invokedKey = event.key()
@@ -4029,7 +4094,7 @@ class SliderWidget(BaseDialog):
                         self.shiftPressed()
         if not self.invokedKey or self.invokedKey == event.key():
             return
-        super(SliderWidget, self).keyPressEvent(event)
+        super(ViewportSliderWidget, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
         if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
@@ -4037,7 +4102,7 @@ class SliderWidget(BaseDialog):
                 if not self.invokedKey or self.invokedKey == event.key():
                     SlideTools().removeKeyPressHandlers()
                     self.hide()
-        if event.type() == event.KeyRelease:
+        if event.type() == QEvent.KeyRelease:
             modifiers = QApplication.keyboardModifiers()
 
             if event.key() == Qt.Key_Alt:
@@ -4077,7 +4142,7 @@ class SliderWidget(BaseDialog):
             self.sliderReleased(cancel=True)
         if event.button() == Qt.LeftButton:
             self.restoreSlider()
-        super(SliderWidget, self).mousePressEvent(event)
+        super(ViewportSliderWidget, self).mousePressEvent(event)
 
     def sliderValueChanged(self):
         if self.slider.value() > self.slider.maximum() * 0.6:
@@ -4153,7 +4218,7 @@ class SliderWidget(BaseDialog):
         self.move(currentPos)
 
 
-class XformSliderWidget(SliderWidget):
+class XformSliderWidget(ViewportSliderWidget):
     __instance = None
     recentlyOpened = False
 
@@ -4173,7 +4238,7 @@ class XformSliderWidget(SliderWidget):
         return XformSliderWidget.__instance
     '''
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+    def __init__(self, parent=getMainWindow(),
                  title='Object Inbetween',
                  text='test',
                  showLockButton=True, showCloseButton=False,
@@ -4194,7 +4259,7 @@ class XformSliderWidget(SliderWidget):
         self.recentlyOpened = False
 
 
-class KeySliderWidget(SliderWidget):
+class KeySliderWidget(ViewportSliderWidget):
     __instance = None
     '''
     def __new__(cls):
@@ -4212,7 +4277,7 @@ class KeySliderWidget(SliderWidget):
         return KeySliderWidget.__instance
     '''
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+    def __init__(self, parent=getMainWindow(),
                  title='Key Inbetween',
                  text='test',
                  showLockButton=True, showCloseButton=False,
@@ -4234,6 +4299,9 @@ class KeySliderWidget(SliderWidget):
                                               )
         self.recentlyOpened = False
         # self.setFixedSize(self.baseSliderWidth, 46)
+
+
+
 
 
 class SliderButtonPopup(ButtonPopup):
@@ -4301,3 +4369,6 @@ class SliderButtonContextMenu(ButtonPopup):
         tbAdjustmentBlendLabel = QLabel(self.__dict__.get('menuLabel', 'Tween placeholder'))
         self.layout.addRow(tbAdjustmentBlendLabel)
         self.layout.addRow(self.toggleStateButton)
+
+
+

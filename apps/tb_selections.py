@@ -23,32 +23,8 @@
 *******************************************************************************
 '''
 
-import pymel.core as pm
-import re
-from difflib import SequenceMatcher, get_close_matches, ndiff
-import maya
-
+from . import *
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-
-import maya.cmds as cmds
-import maya.mel as mel
-import os, stat
-import pickle
-
-from Abstract import *
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -87,7 +63,7 @@ class SelectionTools(toolAbstractFactory):
     __instance = None
     toolName = 'SelectionTools'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     lastSelected = None
 
     def __new__(cls):
@@ -99,7 +75,7 @@ class SelectionTools(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -123,11 +99,11 @@ class SelectionTools(toolAbstractFactory):
                      cmds.lockNode(curve, query=True, lock=True)[0]], replace=True)
 
     def select_cheracter_set(self):
-        selection = pm.ls(selection=True)
+        selection = cmds.ls(selection=True)
         _characters = []  # will be a list of all associated character sets to seleciton
         if selection:
             for obj in selection:
-                _char = pm.listConnections(obj, destination=True,
+                _char = cmds.listConnections(obj, destination=True,
                                            connections=True,
                                            type='character')
                 if _char:
@@ -136,10 +112,10 @@ class SelectionTools(toolAbstractFactory):
 
             out_obj = []
             for char in _characters:
-                _obj_list = pm.sets(char, query=True, nodesOnly=True)
+                _obj_list = cmds.sets(char, query=True, nodesOnly=True)
                 for obj in _obj_list:
                     out_obj.append(obj)
-            pm.select(out_obj, add=True)
+            cmds.select(out_obj, add=True)
         else:
             msg = 'no character sets found for selection'
             self.funcs.errorMessage(position="botRight", prefix="Error", message=msg, fadeStayTime=3.0, fadeOutTime=4.0)

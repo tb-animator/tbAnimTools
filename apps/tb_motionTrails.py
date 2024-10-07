@@ -22,34 +22,11 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import tb_timeline as tl
-import maya.mel as mel
-import maya.cmds as cmds
-import maya.OpenMaya as om
-import maya.api.OpenMaya as om2
-import pymel.core.datatypes as dt
-import math
-from Abstract import *
-import itertools
-import maya
+from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
 
 assetCommandName = 'motionPathRmbCommand'
-
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -101,7 +78,7 @@ class MotionTrails(toolAbstractFactory):
     __instance = None
     toolName = 'MotionTrails'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
 
     bezierCurveOption = 'tbMotrailIsBezier'
     trailFadeFramesOption = 'tbMotrailFadeFramesOption'
@@ -128,7 +105,7 @@ class MotionTrails(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -225,22 +202,22 @@ class MotionTrails(toolAbstractFactory):
             cmds.menuItem(label=self.assetTitleLabel, enable=False, boldFont=True, image='container.svg')
             cmds.menuItem(divider=True)
             cmds.menuItem(label='Rebuild Path - replace old',
-                          command=pm.Callback(self.rebuildOfflinePath, control, path=[path[0], refNode[0], sel]))
+                          command=create_callback(self.rebuildOfflinePath, control, path=[path[0], refNode[0], sel]))
             cmds.menuItem(label='Rebuild Path - create new',
-                          command=pm.Callback(self.rebuildOfflinePath, control))
+                          command=create_callback(self.rebuildOfflinePath, control))
             cmds.menuItem(divider=True)
             cmds.menuItem(label='Constrain Control to Path',
-                          command=pm.Callback(self.constrainControlToPath, control, refNode[0]))
+                          command=create_callback(self.constrainControlToPath, control, refNode[0]))
             cmds.menuItem(divider=True)
             cmds.menuItem(label='Remove Path - selected',
-                          command=pm.Callback(self.removeSelectedOfflinePath, asset, [path[0], refNode[0], sel]))
+                          command=create_callback(self.removeSelectedOfflinePath, asset, [path[0], refNode[0], sel]))
             cmds.menuItem(label='Remove Path - all',
-                          command=pm.Callback(self.removeAllOfflinePath, asset))
+                          command=create_callback(self.removeAllOfflinePath, asset))
         elif cmds.attributeQuery('liveMotionPath', node=asset, exists=True):
             mainCurve = self.getAssetMainCurve(asset)
             allCurves = [self.getAssetMainCurve(a) for a in allAssets]
             try:
-                lockState = pm.getAttr(mainCurve.getShape().lockLength)
+                lockState = cmds.getAttr(self.funcs.namespace(mainCurve) + '.lockLength')
             except:
                 # print('fail')
                 lockState = False
@@ -251,9 +228,9 @@ class MotionTrails(toolAbstractFactory):
             fractionLabel = {True: 'Switch to keys fixed on curve', False: 'Switch to keys slide on curve'}[
                 fractionState]
 
-            cmds.menuItem(label='Select First CV', rp='W', command=pm.Callback(self.selectFirstCV, asset))
-            cmds.menuItem(label='Select Last CV', rp='E', command=pm.Callback(self.selectLastCV, asset))
-            cmds.menuItem(label='Edit CV', rp='N', command=pm.Callback(self.editCV, asset))
+            cmds.menuItem(label='Select First CV', rp='W', command=create_callback(self.selectFirstCV, asset))
+            cmds.menuItem(label='Select Last CV', rp='E', command=create_callback(self.selectLastCV, asset))
+            cmds.menuItem(label='Edit CV', rp='N', command=create_callback(self.editCV, asset))
 
             cmds.menuItem(label='MotionPath : %s' % mainLabel, enable=False, boldFont=True, image='container.svg')
             cmds.menuItem(divider=True)
@@ -262,21 +239,21 @@ class MotionTrails(toolAbstractFactory):
             lockCommand = {True: self.unlockCurveLength, False: self.lockCurveLength}[lockState]
             lockLabel = {True: 'Unlock Curve Length', False: 'Lock Curve Length'}[lockState]
 
-            cmds.menuItem(label=lockLabel, rp='SE', image=lockImage, command=pm.Callback(lockCommand, mainCurve))
+            cmds.menuItem(label=lockLabel, rp='SE', image=lockImage, command=create_callback(lockCommand, mainCurve))
             cmds.menuItem(label='Toggle Markers', rp='SW', image='',
-                          command=pm.Callback(self.toggleMarkers, mainCurve + '.showMarkers'))
+                          command=create_callback(self.toggleMarkers, mainCurve + '.showMarkers'))
 
-            cmds.menuItem(label=fractionLabel, image='', command=pm.Callback(self.toggleMode, mainCurve))
+            cmds.menuItem(label=fractionLabel, image='', command=create_callback(self.toggleMode, mainCurve))
             cmds.menuItem(divider=True)
             cmds.menuItem(label='Resample curve', image='', command=str(), enable=False)
             cmds.menuItem(label='Bake selected to layer', image='',
-                          command=pm.Callback(self.bakeSelectedCommand, allAssets, allControls, False))
+                          command=create_callback(self.bakeSelectedCommand, allAssets, allControls, False))
             cmds.menuItem(label='Bake selected to layer and delete curve', image='',
-                          command=pm.Callback(self.bakeSelectedCommand, allAssets, allControls, True))
-            # cmds.menuItem(label='Bake all to layer', image='', command=pm.Callback(self.bakeSelectedCommand, asset, allControls))
+                          command=create_callback(self.bakeSelectedCommand, allAssets, allControls, True))
+            # cmds.menuItem(label='Bake all to layer', image='', command=create_callback(self.bakeSelectedCommand, asset, allControls))
             cmds.menuItem(label='Rebuild curve', image='',
-                          command=pm.Callback(self.rebuildMotionPath, allControls, allCurves))
-            cmds.menuItem(label='Delete', image='', command=pm.Callback(self.deleteControlsCommand, allAssets, sel))
+                          command=create_callback(self.rebuildMotionPath, allControls, allCurves))
+            cmds.menuItem(label='Delete', image='', command=create_callback(self.deleteControlsCommand, allAssets, sel))
 
             '''
             make asset menu for offline trail
@@ -290,14 +267,14 @@ class MotionTrails(toolAbstractFactory):
     def bakeSelectedCommand(self, asset, sel, deleteAll):
         self.allTools.tools['BakeTools'].bake_to_override(sel=sel)
         if deleteAll:
-            pm.delete(asset)
+            cmds.delete(asset)
 
     def bakeAllCommand(self, asset, sel):
-        nodes = pm.ls(pm.container(asset, query=True, nodeList=True), transforms=True)
-        targets = [x for x in nodes if pm.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
-        filteredTargets = [pm.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
+        nodes = cmds.ls(cmds.container(asset, query=True, nodeList=True), transforms=True)
+        targets = [x for x in nodes if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
+        filteredTargets = [cmds.listConnections(x + '.' + self.constraintTargetAttr)[0] for x in targets]
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
-        pm.delete(asset)
+        cmds.delete(asset)
 
     def createInfoNode(self):
         if not cmds.objExists('motionTrailInfo'):
@@ -358,12 +335,12 @@ class MotionTrails(toolAbstractFactory):
             if not trail:
                 return
             for attr, value in data['motionTrail'][key].items():
-                if not pm.getAttr(trail[0][1] + '.' + attr, keyable=True):
+                if not cmds.getAttr(trail[0][1] + '.' + attr, keyable=True):
                     continue
                 if isinstance(value, list):
-                    pm.setAttr(trail[0][1] + '.' + attr, *value)
+                    cmds.setAttr(trail[0][1] + '.' + attr, *value)
                 else:
-                    pm.setAttr(trail[0][1] + '.' + attr, value)
+                    cmds.setAttr(trail[0][1] + '.' + attr, value)
 
     def getAttributes(self, node):
         allAttrs = cmds.listAttr(node)
@@ -421,7 +398,7 @@ class MotionTrails(toolAbstractFactory):
             if disable:
                 motionTrailShape = self.getMotionTrailShape(motionTrail)
                 # self.disableMotionTrail(motionTrail, motionTrailShape[0])
-                pm.delete(motionTrail, motionTrailShape[0])
+                cmds.delete(motionTrail, motionTrailShape[0])
             else:
                 self.createFromSceneInfo(key=motionTrail)
                 # self.getMotionTrailInfo()
@@ -477,12 +454,12 @@ class MotionTrails(toolAbstractFactory):
                                         increment=1,
                                         startTime=self.funcs.getTimelineMin(),
                                         endTime=self.funcs.getTimelineMax())
-                cmds.setAttr(moTrail[0] + '.trailThickness', pm.optionVar.get(self.trailThicknessOption, 1))
-                cmds.setAttr(moTrail[0] + '.fadeInoutFrames', pm.optionVar.get(self.trailFadeFramesOption, 0))
-                cmds.setAttr(moTrail[0] + '.preFrame', pm.optionVar.get(self.trailPreFramesOption, 0))
-                cmds.setAttr(moTrail[0] + '.postFrame', pm.optionVar.get(self.trailPostFramesOption, 0))
-                cmds.setAttr(moTrail[0] + '.frameMarkerSize', pm.optionVar.get(self.trailframeMarkerSizesOption, 1))
-                cmds.setAttr(moTrail[0] + '.showFrameMarkers', pm.optionVar.get(self.showframeMarkerOption, 0))
+                cmds.setAttr(moTrail[0] + '.trailThickness', get_option_var(self.trailThicknessOption, 1))
+                cmds.setAttr(moTrail[0] + '.fadeInoutFrames', get_option_var(self.trailFadeFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.preFrame', get_option_var(self.trailPreFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.postFrame', get_option_var(self.trailPostFramesOption, 0))
+                cmds.setAttr(moTrail[0] + '.frameMarkerSize', get_option_var(self.trailframeMarkerSizesOption, 1))
+                cmds.setAttr(moTrail[0] + '.showFrameMarkers', get_option_var(self.showframeMarkerOption, 0))
 
                 trials.append(moTrail)
                 cmds.select(moTrail, replace=True)
@@ -646,7 +623,7 @@ class MotionTrails(toolAbstractFactory):
             return list()
         return list(set(conns))
 
-    def rebuildMotionPath(self, sel=list(), existingCurves=list()):
+    def rebuildMotionPath(self, sel=list(), existingCurves=list(), *args):
         self.motionPathSelected(sel=sel)
         cmds.delete([str(x) for x in existingCurves])
 
@@ -686,7 +663,7 @@ class MotionTrails(toolAbstractFactory):
                 cmds.connectAttr(s + '.message', asset + '.control')
 
             tmp = str(self.funcs.tempControl(name=s, suffix='refMotion', drawType='cross',
-                                             scale=pm.optionVar.get(self.motionControlSizeOption, 0.5)))
+                                             scale=get_option_var(self.motionControlSizeOption, 0.5)))
             cmds.container(s + '_' + 'MotionPath', edit=True, addNode=tmp)
 
             cnst = cmds.pointConstraint(s, tmp)
@@ -698,7 +675,7 @@ class MotionTrails(toolAbstractFactory):
                          simulation=False,
                          bakeOnOverrideLayer=False,
                          sampleBy=1)
-        pm.delete(list(tempConstraints.values()))
+        cmds.delete(list(tempConstraints.values()))
 
         resultLayer = cmds.animLayer('motionPath', override=True)
         for s in sel:
@@ -713,14 +690,14 @@ class MotionTrails(toolAbstractFactory):
                 curveInfo.append([keyValues[i], keyValues[i + offset], keyValues[i + offset + offset]])
             divisions = int(endTime - startTime)
             curve = cmds.curve(name=s + '_path',
-                               bezier=pm.optionVar.get(self.bezierCurveOption, False),
+                               bezier=get_option_var(self.bezierCurveOption, False),
                                worldSpace=True,
                                p=curveInfo)
 
             cmds.addAttr(curve, ln="showMarkers", at='bool', dv=True)
             cmds.setAttr(curve + ".showMarkers", edit=True, keyable=True)
             cmds.addAttr(curve, ln='motionPath', at='message')
-            if not pm.optionVar.get(self.bezierCurveOption, False):
+            if not get_option_var(self.bezierCurveOption, False):
                 resampledCurve = cmds.rebuildCurve(curve,
                                                    ch=False,
                                                    replaceOriginal=True,
@@ -745,7 +722,7 @@ class MotionTrails(toolAbstractFactory):
 
             motionPaths.append(motionPath)
             cmds.connectAttr(motionPath + '.message', curve + '.motionPath')
-            pCurve = pm.PyNode(curve)
+
             cmds.container(s + '_' + 'MotionPath', edit=True, addNode=curve)
             cmds.connectAttr(curve + '.message', s + '_' + 'MotionPath' + '.' + self.mainCurveAttr, force=True)
             maxValue = len(curveInfo)
@@ -762,7 +739,7 @@ class MotionTrails(toolAbstractFactory):
             self.hidePositionMarkers(curve, s + '_' + 'MotionPath', "showMarkers")
 
             cmds.select(tempNodes[s], s, replace=True)
-            pm.parentConstraint(layer=resultLayer, skipRotate=('x', 'y', 'z'), weight=1)
+            cmds.parentConstraint(layer=resultLayer, skipRotate=('x', 'y', 'z'), weight=1)
             cmds.setAttr(motionPath + '.fractionMode', 1)
             cmds.delete(nearestPointOnCurve)
 
@@ -791,8 +768,8 @@ class MotionTrails(toolAbstractFactory):
             return
 
         seek = 0.5
-        trailPre = pm.optionVar.get(self.trailFadeFramesOption, 5)
-        trailPost = pm.optionVar.get(self.trailFadeFramesOption, 5)
+        trailPre = get_option_var(self.trailFadeFramesOption, 5)
+        trailPost = get_option_var(self.trailFadeFramesOption, 5)
         trailScale = 0.5
         markerScale = 0.5
         keyScale = 0.5
@@ -852,7 +829,7 @@ class MotionTrails(toolAbstractFactory):
             cmds.setAttr(curveParent + ".start", startTime)
             cmds.setAttr(curveParent + ".start", endTime)
 
-            pm.container(asset, edit=True,
+            cmds.container(asset, edit=True,
                          includeHierarchyBelow=True,
                          force=True,
                          addNode=[tmp, curveParent])
@@ -869,7 +846,7 @@ class MotionTrails(toolAbstractFactory):
                          simulation=False,
                          bakeOnOverrideLayer=False,
                          sampleBy=1)
-        pm.delete(list(tempConstraints.values()))
+        cmds.delete(list(tempConstraints.values()))
 
         for s in sel:
             keyValues = cmds.keyframe(tempNodes[s],
@@ -953,14 +930,14 @@ class MotionTrails(toolAbstractFactory):
             cmds.disconnectAttr(resampledCurve + '.worldSpace[0]', strokeShape + '.pathCurve[0].curve')
             cmds.parent(strokeShape, curveParents[s], relative=True, shape=True)
             cmds.delete(stroke)
-            pm.container(assetDict[s], edit=True,
+            cmds.container(assetDict[s], edit=True,
                          includeHierarchyBelow=True,
                          force=True,
                          addNode=[resampledCurve, nodeDict[s]])
         cmds.select(sel, replace=True)
         """
         tempControls = self.allTools.tools['BakeTools'].bake_to_locator(sel=sel, constrain=False, orientOnly=False, select=False, skipMotionTrails=True)
-        pm.select(tempControls)
+        cmds.bakeResults(tempControls)
         sel = cmds.ls(sl=True)
         camera = self.getCurrentCamera()
         if cameraSpace:
@@ -999,7 +976,7 @@ class MotionTrails(toolAbstractFactory):
 
         return stroke
 
-    def rebuildOfflinePath(self, control, path=None):
+    def rebuildOfflinePath(self, control, path=None, *args):
         # get the path camera space value
         cmds.delete(path)
         self.offlineMotionTrailSelected(sel=list(control), cameraSpace=False)
@@ -1017,14 +994,16 @@ class MotionTrails(toolAbstractFactory):
         cmds.pointConstraint(refNode, control)
 
     def hidePositionMarkers(self, path, asset, attr=None):
-        markers = pm.PyNode(path).getShape().listRelatives(type='positionMarker', allDescendents=True)
+        pathShape = self.funcs.getShape(path)
+        markers = cmds.listRelatives(pathShape, type='positionMarker', allDescendents=True)
+
         for m in markers:
             if attr:
                 cmds.connectAttr(path + '.' + attr, str(m) + '.visibility')
             else:
                 m.visibility.set(False)
         '''
-        pm.container(asset, edit=True,
+        cmds.container(asset, edit=True,
                      includeHierarchyBelow=True,
                      force=True,
                      addNode=markers)
@@ -1065,41 +1044,41 @@ class MotionTrails(toolAbstractFactory):
         return weightArray
 
     def getAssetMainCurve(self, asset):
-        # print('connections', pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False))
+        # print('connections', cmds.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False))
         if not asset:
             return None
-        return pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
+        return cmds.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
 
-    def lockCurveLength(self, curve):
-        pm.select(curve, replace=True)
+    def lockCurveLength(self, curve, *args):
+        cmds.select(curve, replace=True)
         mel.eval('LockCurveLength')
 
-    def unlockCurveLength(self, curve):
-        pm.select(curve, replace=True)
+    def unlockCurveLength(self, curve, *args):
+        cmds.select(curve, replace=True)
         mel.eval('UnlockCurveLength')
 
-    def selectFirstCV(self, asset):
-        mainCurve = pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
-        pm.select(mainCurve, replace=True)
+    def selectFirstCV(self, asset, *args):
+        mainCurve = cmds.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
+        cmds.select(mainCurve, replace=True)
         mel.eval('selectCurveCV first')
 
-    def selectLastCV(self, asset):
-        mainCurve = pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
-        pm.select(mainCurve, replace=True)
+    def selectLastCV(self, asset, *args):
+        mainCurve = cmds.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
+        cmds.select(mainCurve, replace=True)
         mel.eval('selectCurveCV last')
 
-    def editCV(self, asset):
-        mainCurve = pm.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
+    def editCV(self, asset, *args):
+        mainCurve = cmds.listConnections(asset + '.' + self.mainCurveAttr, source=True, destination=False)[0]
         mel.eval('doMenuNURBComponentSelection("%s", "controlVertex")' % mainCurve)
 
-    def toggleMarkers(self, attr):
+    def toggleMarkers(self, attr, *args):
         cmds.setAttr(attr, not cmds.getAttr(attr))
 
     def getMode(self, curve):
         motionPath = cmds.listConnections(curve + '.motionPath', source=True, destination=False)[0]
         return cmds.getAttr(motionPath + '.fractionMode')
 
-    def toggleMode(self, curve):
+    def toggleMode(self, curve, *args):
         motionPath = cmds.listConnections(curve + '.motionPath', source=True, destination=False)[0]
         cmds.setAttr(motionPath + '.fractionMode', not cmds.getAttr(motionPath + '.fractionMode'))
 

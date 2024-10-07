@@ -22,27 +22,12 @@
 
 *******************************************************************************
 '''
-import pymel.core as pm
-import maya.cmds as cmds
 
-from Abstract import *
-import maya
-import time
+from . import *
+
 maya.utils.loadStringResourcesForModule(__name__)
-qtVersion = pm.about(qtVersion=True)
-if int(qtVersion.split('.')[0]) < 5:
-    from PySide.QtGui import *
-    from PySide.QtCore import *
-    # from pysideuic import *
-    from shiboken import wrapInstance
-else:
-    from PySide2.QtWidgets import *
-    from PySide2.QtGui import *
-    from PySide2.QtCore import *
-    # from pyside2uic import *
-    from shiboken2 import wrapInstance
-__author__ = 'tom.bailey'
 
+__author__ = 'tom.bailey'
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -74,7 +59,7 @@ class isolator(toolAbstractFactory):
     __instance = None
     toolName = 'isolator'
     hotkeyClass = hotkeys()
-    funcs = functions()
+    funcs = Functions()
     start_time = 0
     last_time = 0
 
@@ -87,7 +72,7 @@ class isolator(toolAbstractFactory):
 
     def __init__(self):
         self.hotkeyClass = hotkeys()
-        self.funcs = functions()
+        self.funcs = Functions()
 
     """
     Declare an interface for operations that create abstract product
@@ -120,7 +105,7 @@ class isolator(toolAbstractFactory):
         state = cmds.isolateSelect(panel, query=True, state=True)
         if state:
             cmds.isolateSelect(panel, state=0)
-            pm.isolateSelect(panel, removeSelected=True)
+            cmds.isolateSelect(panel, removeSelected=True)
         else:
             cmds.isolateSelect(panel, state=1)
             cmds.isolateSelect(panel, addSelected=True)
@@ -159,6 +144,6 @@ class isolator(toolAbstractFactory):
         if not panels:
             return
         for p in panels:
-            state = pm.isolateSelect(p, query=True, state=True)
+            state = cmds.isolateSelect(p, query=True, state=True)
             if state:
                 cmds.isolateSelect(p, addSelected=True)
