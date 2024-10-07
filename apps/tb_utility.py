@@ -154,3 +154,6 @@ class Utility(toolAbstractFactory):
                            fade=False)
         cmds.optionVar(intValue=("inViewMessageEnable", message_state))
 
+        raiseOk('The tools have been redownloaded, please restart maya for the changes to take effect',
+                title='TbAnimTools Reinstallation')
+
