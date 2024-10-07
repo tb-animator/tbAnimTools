@@ -366,8 +366,8 @@ class SpaceSwitch(toolAbstractFactory):
                     }
 
         # TODO - change this so the event filter doesn't get rebuilt all the time
-        if not self.markingMenuWidget:
-            self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='SpaceSwitchDialog')
+        # if not self.markingMenuWidget:
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='SpaceSwitchDialog')
 
         sel = cmds.ls(sl=True)
         if not sel:
