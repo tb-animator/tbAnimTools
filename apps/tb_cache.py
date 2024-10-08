@@ -294,7 +294,7 @@ class CacheTool(toolAbstractFactory):
             cacheNode = cmds.createNode('gpuCache')
             cacheNodeParent = cmds.listRelatives(cacheNode, parent=True)[0]
             cacheNodeParent = cmds.rename(cacheNodeParent, str(os.path.basename(filename)).split('.')[0])
-            cmds.setAttr(cacheNode + ".cacheFileName", str(filename))
+            cmds.setAttr(cacheNode + ".cacheFileName", str(filename), asString=True)
         else:
             cacheNodeParent = self.funcs.tempControl(name=str(os.path.basename(filename)).split('.')[0],
                                                      suffix='Root',
