@@ -121,6 +121,8 @@ class WalkData(object):
                 self.destinations[key]._lastIndex = value.destinationAlt.index(node)
 
     def walk(self, namespace=str(), node=str(), direction=str()):
+        if not namespace.endswith(":"):
+            namespace = namespace+':'
         # do a check on walk for current object in any destination objects, set the appropriate index
         if node not in self.objectDict.keys():
             return None
