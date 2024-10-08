@@ -549,6 +549,7 @@ class Functions(object):
         :param control:
         :return:
         """
+
         if cmds.nodeType(node) == 'mesh':
             return [125, 125, 125]
         shape = self.getShape(node)

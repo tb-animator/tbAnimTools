@@ -438,22 +438,25 @@ class QuickSelectionTools(toolAbstractFactory):
         if any([self.is_set(s) for s in sel]):
             self.saveUberSet(name, sel)
             return
-        print ('sel', sel)
+
         if name:
             self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
 
         CharacterTool = self.allTools.tools['CharacterTool']
         refname, namespace = CharacterTool.getSelectedChar(sel=sel[0])
 
-        MirrorTools = self.allTools.tools['MirrorTools']
-        mirrorControls = MirrorTools.splitControls(sel)
-        opposites = [x[1] for x in mirrorControls]
-        mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
+        if mirror:
+            MirrorTools = self.allTools.tools['MirrorTools']
+            mirrorControls = MirrorTools.splitControls(sel)
+            opposites = [x[1] for x in mirrorControls]
 
-        if not opposites:
-            return
-        if self.lists_have_unique_items(sel, opposites):
-            self.save_qs(mirrorName, opposites, quick=quick, colour=self.funcs.getControlColour(opposites[-1]))
+            opposites = [x for x in opposites if cmds.objExists(x)]
+            if not opposites:
+                return
+            mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
+
+            if self.lists_have_unique_items(sel, opposites):
+                self.save_qs(mirrorName, opposites, quick=quick, colour=self.funcs.getControlColour(opposites[-1]))
 
     @staticmethod
     def lists_have_unique_items(list1, list2):
@@ -1075,7 +1078,7 @@ class QssSaveWidget(QWidget):
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
         layout.addWidget(self.qssCheckbox)
-        # layout.addWidget(self.mirrorCheckbox)
+        layout.addWidget(self.mirrorCheckbox)
         layout.addWidget(self.saveButton)
 
         if self.helpString:

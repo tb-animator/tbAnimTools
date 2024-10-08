@@ -375,7 +375,6 @@ class SpaceSwitch(toolAbstractFactory):
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
         # make this better...?
-        print ('self.markingMenuWidget', self.markingMenuWidget)
         if sel:
             menuDict['NW'].append(
                 ToolboxButton(label='switch to Local', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
@@ -813,8 +812,7 @@ class SpaceSwitch(toolAbstractFactory):
         for key, attr in spaceAttributes.items():
             spaceSwitchAttr = key
             spaceValue = values[key]
-            print ('spaceSwitchAttr', spaceSwitchAttr)
-            print ('spaceValue', spaceValue)
+
             if not isinstance(values[key], int) and not isinstance(values[key], float):
                 spaceEnums = dict((k.lower(), v) for k, v in self.funcs.get_enums(spaceSwitchAttr).items())
                 spaceValue = spaceEnums[spaceValue.lower()]
@@ -948,12 +946,10 @@ class SpaceSwitch(toolAbstractFactory):
         ordered_spaces [['Master', 'Master Offset', 'Lower Base', 'COG', 'Limb Root']]
         """
         for spaceValues in all_spaces:
-            print('\tSpace', spaceValues)
             ordered_sub_space = []
             for index in range(len(spaceValues)):
                 ordered_sub_space.append(list(spaceValues.keys())[list(spaceValues.values()).index(index)])
             ordered_spaces.append(ordered_sub_space)
-        print('ordered_spaces', ordered_spaces)
 
         if ordered_spaces:
             finalSpaceList = list(
@@ -1076,11 +1072,8 @@ class SpaceSwitch(toolAbstractFactory):
             spaceSwitchAttr = node + '.' + spaceAttribute
         else:
             spaceSwitchAttr = spaceAttribute
-        print ('node', node)
-        print ('spaceAttribute', spaceAttribute)
-        print ('spaceValue', spaceValue)
+
         if not isinstance(spaceValue, int) and not isinstance(spaceValue, float):
-            print ('spaceSwitchAttr', spaceSwitchAttr)
             spaceEnums = dict((k.lower(), v) for k, v in list(self.funcs.get_enums(spaceSwitchAttr).items()))
             spaceValue = spaceEnums[spaceValue.lower()]
 
