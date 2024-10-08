@@ -710,11 +710,14 @@ class Functions(object):
 
         if topObject and bottomObject:
             while j is not topObject and cmds.listRelatives(j, parent=True):
+                print ('current', j)
                 oobjectList.insert(0, j)
                 if j == topObject:
                     break
                 else:
-                    j = cmds.listRelatives(j, parent=True)
+                    j = cmds.listRelatives(j, parent=True)[0]
+                    if j == topObject:
+                        break
         return oobjectList
 
     def sortByParents(self, selection):
@@ -741,6 +744,13 @@ class Functions(object):
                     returnedList.insert(0, returnedList.pop(returnedList.index(key)))
 
         return returnedList
+
+    def getParent(self, object_name):
+        parent = cmds.listRelatives(object_name, parent=True)
+        if parent:
+            return parent[0]
+        else:
+            return None
 
     @staticmethod
     def get_all_parents(object_name):

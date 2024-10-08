@@ -198,26 +198,27 @@ def get_update_urls(previousCommits):
     shaList = list()
     urls = list()
     comments = list()
-    for commit in commits:
-        commit_sha = commit['sha']
+    if commits:
+        for commit in commits:
+            commit_sha = commit['sha']
 
-        for previous in previousCommits:
-            if previous.get('sha', None):
+            for previous in previousCommits:
+                if previous.get('sha', None):
 
-                return shaList, urls, comments
+                    return shaList, urls, comments
 
-        count += 1
-        if count > maxCommits:
-            break
-        url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
-                                                                                            repo_name=repo_name,
-                                                                                            commit_sha=commit_sha)
-        comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
-        shaList.append(commit_sha)
-        urls.append(url)
-        comments.append(comment)
+            count += 1
+            if count > maxCommits:
+                break
+            url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
+                                                                                                repo_name=repo_name,
+                                                                                                commit_sha=commit_sha)
+            comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
+            shaList.append(commit_sha)
+            urls.append(url)
+            comments.append(comment)
 
-        continue
+            continue
     return shaList, urls, comments
 
 
