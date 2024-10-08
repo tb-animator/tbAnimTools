@@ -1297,7 +1297,8 @@ class Pickwalk(toolAbstractFactory):
         returnedControls = list()
         walkObjectStripped = self.funcs.stripNamespace(walkObject)
         walkObjectNS = self.funcs.namespace(walkObject)
-
+        if not walkObjectNS.endswith(":"):
+            walkObjectNS = walkObjectNS + ":"
         userAttrs = cmds.listAttr(str(walkObject), userDefined=True)
         vaildObject = False
         if refName in self.walkDataLibrary._fileToMapDict.keys():
@@ -1311,7 +1312,7 @@ class Pickwalk(toolAbstractFactory):
                                                      node=walkObjectStripped,
                                                      direction=direction)
 
-            vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
+            vaildObject = cmds.objExists(walkObjectNS + str(result))
 
             if not vaildObject:
                 if direction == 'up' or direction == 'down':
@@ -1319,7 +1320,7 @@ class Pickwalk(toolAbstractFactory):
                                                          namespace=walkObjectNS,
                                                          offset=self.walkIncrementMap[direction])
 
-                    vaildObject = cmds.objExists(walkObjectNS + ':' + str(result))
+                    vaildObject = cmds.objExists(walkObjectNS + str(result))
 
                     if vaildObject:
                         mirrorStart = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[mapName],
@@ -1365,13 +1366,13 @@ class Pickwalk(toolAbstractFactory):
                     else:
                         self.createDestination(walkObject, existingEntry, direction)
 
-                    return [walkObjectNS + ':' + c for c in existingEntry.destination]
+                    return [walkObjectNS + c for c in existingEntry.destination]
                 else:
                     self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 return False
 
-            if cmds.objExists(walkObjectNS + ":" + result):
-                returnedControls.append(walkObjectNS + ":" + result)
+            if cmds.objExists(walkObjectNS + result):
+                returnedControls.append(walkObjectNS + result)
             else:
                 self.pickNewDestination(direction, walkObjectNS, walkObjectStripped)
                 if get_option_var(self.defaultToStandardAtDeadEndOption, True):
@@ -4092,8 +4093,9 @@ class pickwalkMainWindow(QMainWindow):
         self.overlay.show()
 
     def hideOverlay(self):
-        self.overlay.close()
-        self.overlayFlag = False
+        if self.overlay:
+            self.overlay.close()
+            self.overlayFlag = False
 
 
     def show(self):
