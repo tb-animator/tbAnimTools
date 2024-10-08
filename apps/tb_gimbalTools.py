@@ -1101,8 +1101,7 @@ class GimbalTool(toolAbstractFactory):
                     cmds.delete(tempLocName)
                 tempObj = cmds.duplicate(value, parentOnly=True)[0]
                 parentNode = cmds.listRelatives(value, parent=True)
-                if parentNode:
-                    cmds.parent(tempObj, parentNode[0])
+
                 self.tempLocators.append(tempObj)
                 cmds.setAttr(tempObj + '.rotateOrder', cmds.getAttr(value + '.rotateOrder'))
                 constraint = cmds.parentConstraint(value, tempObj)
