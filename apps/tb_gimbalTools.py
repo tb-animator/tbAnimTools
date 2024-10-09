@@ -1121,7 +1121,7 @@ class GimbalTool(toolAbstractFactory):
 
             if self.layerBakeMode or self.getLayerInclusion(self.nodeList):
                 self.newLayer = cmds.animLayer(override=True)
-                self.newLayer.rename(self.newLayerName)
+                self.newLayer = cmds.rename(self.newLayer, self.newLayerName)
 
             cmds.bakeResults(self.tempLocators,
                              time=(self.bakeStart, self.bakeEnd),

@@ -513,6 +513,7 @@ class GravityTools(toolAbstractFactory):
         """
         mainCapsuleNodes = cmds.ls('*:Capsules*')
         if not mainCapsuleNodes:
+            cmds.warning('Cannot update offsets as there are no capsules')
             return
         for node in mainCapsuleNodes:
             capsules = self.getCapsules(node)
@@ -577,22 +578,22 @@ class GravityTools(toolAbstractFactory):
         :return:
         """
 
-        namespace = self.funcs.namepace(sel)
+        namespace = self.funcs.namespace(sel)
         mainNode = self.mainCapsuleNode(sel)
         mainComNode = self.mainCoMNode(sel)
-        if not cmds.objExists(namespace + comNodeName):
-            com = cmds.spaceLocator(name=namespace + comNodeName)
+        if not cmds.objExists(namespace + ":" + comNodeName):
+            com = cmds.spaceLocator(name=namespace + ":" + comNodeName)
             cmds.setAttr(com[0] + '.overrideEnabled', 1)
             cmds.setAttr(com[0] + '.overrideColor', 17)
             cmds.setAttr(com[0] + '.localScaleY', 0.1)
             cmds.parent(com, mainComNode)
-        if not cmds.objExists(namespace + floorComNodeName):
-            floorCom = cmds.spaceLocator(name=namespace + floorComNodeName)
+        if not cmds.objExists(namespace + ":" + floorComNodeName):
+            floorCom = cmds.spaceLocator(name=namespace + ":" + floorComNodeName)
             cmds.parent(floorCom, mainComNode)
             cmds.setAttr(com[0] + '.overrideEnabled', 1)
             cmds.setAttr(com[0] + '.overrideColor', 18)
             cmds.pointConstraint(com[0], floorCom[0], skip=cmds.upAxis(query=True, axis=True))
-        return namespace + comNodeName, namespace + floorComNodeName
+        return namespace + ":" + comNodeName, namespace + ":" + floorComNodeName
 
 
     def mainCoMNode(self, sel):
@@ -610,14 +611,14 @@ class GravityTools(toolAbstractFactory):
 
         namespace = self.funcs.namespace(sel)
         mainComNode = self.mainCoMNode(sel)
-        if not cmds.objExists(namespace + capsuleNodeName):
-            node = cmds.createNode('transform', name=namespace + capsuleNodeName)
+        if not cmds.objExists(namespace + ":" + capsuleNodeName):
+            node = cmds.createNode('transform', name=namespace + ":" + capsuleNodeName)
             cmds.addAttr(node, ln='rig', at='message')
             topNode = self.getTopParent(str(sel))
             cmds.connectAttr(topNode + '.message', node + '.rig')
             cmds.parent(node, mainComNode)
             return node
-        return namespace + capsuleNodeName
+        return namespace + ":" + capsuleNodeName
 
     def createCapsuleAtSelection(self, sel=None, axis='x', *args):
         if not sel:
@@ -1182,8 +1183,8 @@ def createDebug_shader(name='capsuleShader', colour=[0.034, 1, 0]):
     if not cmds.objExists(name):
         shader = cmds.shadingNode('lambert', asShader=True, name=name)
         cmds.setAttr(shader + '.color', *colour)
-        cmds.setAttr(shader + '.ambientColor', (0.266, 0.266, 0.266))
-        cmds.setAttr(shader + '.transparency', (0.75, 0.75, 0.75))
+        cmds.setAttr(shader + '.ambientColor', 0.266, 0.266, 0.266)
+        cmds.setAttr(shader + '.transparency', 0.75, 0.75, 0.75)
         # shader.incandescence.set(colour)
     else:
         shader = name
