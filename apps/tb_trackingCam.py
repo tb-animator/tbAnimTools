@@ -24,6 +24,8 @@
 '''
 from . import *
 
+import maya.OpenMaya as OpenMaya
+import maya.OpenMayaUI as OpenMayaUI
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
