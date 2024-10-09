@@ -400,8 +400,8 @@ class SnapTools(toolAbstractFactory):
             else:
                 jointOrient = [0]
             if any(jointOrient) != 0:
-                cmds.xform(sel[0], relative=False, rotation=rot)
-                cmds.xform(sel[0], relative=False, translation=pos)
+                cmds.xform(sel[0], relative=False, rotation=rot, absolute=True, worldSpace=True)
+                cmds.xform(sel[0], relative=False, translation=pos, absolute=True, worldSpace=True)
                 continue
             else:
                 storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))

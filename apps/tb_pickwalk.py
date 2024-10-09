@@ -1137,10 +1137,12 @@ class Pickwalk(toolAbstractFactory):
                 return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
         return control
 
-    def checkDownstreamTempControls(self, control):
+    def checkDownstreamTempControls(self, control, found_controls=None):
         """
         This is used to look for temp controls, and walk to those if they exist
         """
+        if found_controls is None:
+            found_controls = []
         walkObject = None
         messageConnections = cmds.listConnections(control + '.message', source=False, destination=True, plugs=True)
 
@@ -1151,8 +1153,11 @@ class Pickwalk(toolAbstractFactory):
                 continue
             walkObject = self.recursiveLookDown(str(conn.split('.')[0]), 'constraintTarget', source=False, destination=True)
 
-            if walkObject:
-                return self.checkDownstreamTempControls(walkObject)
+            if not walkObject:
+                continue
+            elif walkObject not in found_controls:
+                found_controls.append(walkObject)
+                return self.checkDownstreamTempControls(walkObject, found_controls=found_controls)
             else:
                 continue
         return control

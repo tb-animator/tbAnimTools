@@ -720,9 +720,9 @@ class QuickSelectionTools(toolAbstractFactory):
             control = str(conn.split('.')[0])
             if not cmds.attributeQuery('constraintTarget', node=control, exists=True):
                 continue
-
-            found_controls.append(control)
-            found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
+            if control not in found_controls:
+                found_controls.append(control)
+                found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
         return found_controls
     def checkUpstreamTempControls(self, control, found_controls=None):
         """
