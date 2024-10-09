@@ -599,11 +599,12 @@ class Functions(object):
 
         if not cmds.getAttr(refObj + '.overrideRGBColors'):
             if cmds.getAttr(refObj + '.overrideColor') == 0:
-                rgbColour = [125, 125, 125]
+                rgbColour = [165, 125, 125]
             else:
-                rgbColour = [x * 255 for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
+                rgbColour = [(x * 255) for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
         else:
-            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')]
+            rgbColour = [(x * 255) for x in cmds.getAttr(refObj + '.overrideColorRGB')[0]]
+
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         cmds.setAttr(control + '.overrideColorRGB', *rgbColourOut)
