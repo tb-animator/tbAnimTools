@@ -387,7 +387,7 @@ class ToolboxButton(QPushButton):
         for x in range(1, 5):
             self.colourDark.append(rgb_to_hex(darken_color(colour, float(x) * 0.1)))
         self.lightColour = QColor(198, 198, 198)
-        self.darkColour = QColor(32, 32, 32)
+        self.darkColour = QColor(0.0, 0.0, 0.0)
         self.textColour, self.isLight = getColourBasedOnRGB(colour, self.lightColour, self.darkColour)
         self.executeOnHover = True
         self.subMenu = subMenu  # sub menu instance
@@ -552,9 +552,9 @@ class ToolboxButton(QPushButton):
         pen = QPen()
         brush = QBrush()
         font = defaultFont()
-
-        pen.setWidth(3.5)
         pen.setColor(lineColor)
+        pen.setWidth(3.5)
+
         brush.setColor(fillColor)
         qp.setFont(font)
         qp.setPen(pen)

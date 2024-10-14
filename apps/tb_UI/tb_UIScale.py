@@ -1,4 +1,7 @@
 from . import *
+import colorsys
+
+LIGHTTHRESHOLD = 128
 
 
 def dpiScale():
@@ -14,7 +17,7 @@ def dpiFontScale():
 
 
 def defaultFont():
-    font = QFont("Console", 10 / dpiFontScale(), 10 / dpiFontScale(), False)
+    font = QFont("Console", 10 / dpiFontScale(), 10 / dpiFontScale(), QFont.DemiBold)
     # font.setStrikeOut(True)
     font.setStyleHint(QFont.Courier, QFont.PreferAntialias)
     return font
@@ -50,7 +53,8 @@ def rgb_to_hex(colour=[0.5, 0.5, 0.5]):
     return "#%02x%02x%02x" % (int(colour[0]), int(colour[1]), int(colour[2]))
 
 def getColourBasedOnRGB(inputColour, lightColour, darkColour):
-    isLight = ((inputColour[0] * 0.299) + (inputColour[1] * 0.587) + (inputColour[2] * 0.114)) > 186
+    hls = colorsys.rgb_to_hls(inputColour[0], inputColour[1], inputColour[2])
+    isLight = hls[1] > LIGHTTHRESHOLD
     if isLight:
         return darkColour, False
     return lightColour, True
