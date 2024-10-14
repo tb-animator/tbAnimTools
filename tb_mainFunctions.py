@@ -171,7 +171,6 @@ class Functions(object):
             """
             # get MObject from root layer name
             sel = om2.MSelectionList()
-            # print ('layer', layer)
             sel.add(layer)
             self.layer = sel.getDependNode(0)
             self.mfnDepNode = om2.MFnDependencyNode(self.layer)
@@ -342,19 +341,12 @@ class Functions(object):
                             continue
 
                     # for testing purposes
-                    # print('Attribute: %s' % plug)
 
                     # benchmark_start = time.clock()
                     bestLayer = self.getBestLayerFromPlugAPI(plug)
                     if not bestLayer:
                         continue
-                    '''
-                    # test
-                    try:
-                        print('>> Best layer is {l}'.format(l=om.MFnDependencyNode(bestLayer).name()))
-                    except Exception as e:
-                        pass
-                    '''
+
                     curve = self.getCurvesFromLayerAPI(plug, bestLayer, animLayerCache, baseAnimLayer)
                     # animlayers.cache.benchmark += time.clock() - benchmark_start
                     if curve:
@@ -451,6 +443,7 @@ class Functions(object):
                     unlockScale=False, rotateOrder=3):
         mainControl = self.drawTempControl(name=name, suffix=suffix, scale=scale, color=color, drawType=drawType,
                                            unlockScale=False, rotateOrder=rotateOrder, blendshape=True)
+
         mainControlShape = self.getShape(mainControl)
 
         cmds.addAttr(mainControl, longName='LineWidth', attributeType='float', defaultValue=scale, minValue=-1,
@@ -462,20 +455,31 @@ class Functions(object):
         if int(cmds.about(majorVersion=True)) < 2024:
             return mainControl
 
-        dupeControl = cmds.duplicate(mainControl, inputConnections=True)
-        shape = self.getShape(dupeControl[0])
-        cmds.parent(shape, mainControl, r=True, s=True)
+        dupeControl = cmds.duplicate(mainControl, inputConnections=True, fullPath=True)
+        dupeShapes = cmds.listRelatives(dupeControl[0], shapes=True, fullPath=True)
+
+        cmds.addAttr(mainControl, longName='xRay', attributeType='float', defaultValue=scale, minValue=0.0,
+                     maxValue=1)
+        cmds.setAttr(mainControl + ".xRay", edit=True, keyable=False, channelBox=True)
+
+        for s in dupeShapes:
+            cmds.setAttr(s + ".alwaysDrawOnTop", 1)
+            cmds.connectAttr(mainControlShape + ".overrideColorR", s + '.overrideColorR')
+            cmds.connectAttr(mainControlShape + ".overrideColorG", s + '.overrideColorG')
+            cmds.connectAttr(mainControlShape + ".overrideColorB", s + '.overrideColorB')
+            cmds.connectAttr(mainControl + ".xRay", s + '.overrideColorA', force=True)
+            cmds.connectAttr(mainControl + '.LineWidth', s + '.lineWidth', force=True)
+
+        for index, s in enumerate(dupeShapes):
+            cmds.parent(s, mainControl, r=True, s=True)
+
         cmds.delete(dupeControl)
 
-        cmds.addAttr(mainControl, longName='xRay', attributeType='float', defaultValue=scale, minValue=0.0, maxValue=1)
-        cmds.setAttr(mainControl + ".xRay", edit=True, keyable=False, channelBox=True)
-        cmds.setAttr(shape + ".alwaysDrawOnTop", 1)
-        cmds.connectAttr(mainControlShape + ".overrideColorR", shape + '.overrideColorR')
-        cmds.connectAttr(mainControlShape + ".overrideColorG", shape + '.overrideColorG')
-        cmds.connectAttr(mainControlShape + ".overrideColorB", shape + '.overrideColorB')
-        cmds.connectAttr(mainControl + ".xRay", shape + '.overrideColorA')
+        for index, s in enumerate(self.getShapes(mainControl)):
+            cmds.rename(s, mainControl + 'Shape_' + str(index))
+
         cmds.setAttr(mainControl + ".xRay", get_option_var('xRayDefault', 0.3))
-        cmds.connectAttr(mainControl + '.LineWidth', shape + '.lineWidth')
+
 
         return mainControl
 
@@ -503,7 +507,10 @@ class Functions(object):
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control = cmds.rename(control, name + '_' + suffix)
+
         shape = self.getShape(control)
+        shape = cmds.rename(shape, control + 'Shape')
+
         blendControl = cmds.rename(blendControl, name + '_' + suffix + '_bs')
         rotOrder = {0: 1,
                     1: 2,
@@ -636,7 +643,6 @@ class Functions(object):
         return "#%02x%02x%02x" % (colour[0], colour[1], colour[2])
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
-        # print ('addPickwalk', control, direction)
         walkDirectionNames = {'up': ['pickUp', 'pickDown'],
                               'down': ['pickDown', 'pickUp'],
                               'left': ['pickLeft', 'pickRight'],
@@ -711,7 +717,6 @@ class Functions(object):
 
         if topObject and bottomObject:
             while j is not topObject and cmds.listRelatives(j, parent=True):
-                print ('current', j)
                 oobjectList.insert(0, j)
                 if j == topObject:
                     break
@@ -865,19 +870,7 @@ class Functions(object):
         if isHighlighted:
             minTime, maxTime = self.getTimelineHighlightedRange()
             keyRange = [minTime, maxTime]
-        '''
-        if not keyRange:
-            print ('keyRange', keyRange)
-            isHighlighted = self.funcs.isTimelineHighlighted()
-            if isHighlighted:
-                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
-                keyRange = [minTime, maxTime]
-            else:
-                keyRange = self.funcs.get_all_layer_key_times(sel)
-                if not keyRange or keyRange[0] == None:
-                    keyRange = timelineRange
-                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
-        '''
+
         return keyRange
 
     def get_keys_indexes_at_frame(self, node=None, time=None):
@@ -1631,7 +1624,6 @@ class Functions(object):
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if namespace.startswith(':'):
-            # print ('removing :')
             namespace = namespace[1:]
         return refName, refState, namespace
 
@@ -1765,7 +1757,6 @@ class Functions(object):
         """
         if not self.is_in_anim_layer(nodeAttr, animLayer):
             return None
-        # print 'getPlugsFromLayer', nodeAttr, animLayer
         plug = None
         basePlug = None
         layerPlug = None
@@ -1784,10 +1775,8 @@ class Functions(object):
             # For every layer other than the base animation layer, we can just use
             # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
             # broken in Python, so we have to use MEL.
-            # print ('getPlugsFromLayer', nodeAttr)
             cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
-            # print (blendNode, 'blendNode')
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
             history = cmds.listHistory(blendNode)
             firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
@@ -1935,7 +1924,7 @@ class Functions(object):
         curve = cmds.curve(degree=1,
                            knot=list(range(0, len(pointlist))),
                            point=[om2.MVector(x) * (scale / self.unit_conversion()) for x in pointlist])
-        shapes = cmds.listRelatives(curve, shapes=True)
+        shapes = cmds.listRelatives(curve, shapes=True, fullPath=True)
 
         return curve, shapes[0]
 
@@ -2190,16 +2179,13 @@ class Functions(object):
         if isinstance(sel, list):
             sel = sel[0]
         refName, refState, namespace = self.getRefNameAndState(sel)
-        # print (refName, refState, namespace)
         if not refState:
             # scene is not referenced, check the top node to see if it's a character
             refName = self.getRefNameFromTopParent(sel)
-            # print ('getRefNameFromTopParent', refName)
         if not refName:
             # not dealing with a character
             return None, None, None
         if namespace.startswith(':'):
-            # print ('removing :')
             namespace = namespace[1:]
         return refName, refState, namespace
 
@@ -2287,8 +2273,6 @@ class Functions(object):
         strippedMatches = [c.rsplit(':', 1)[-1] for c in matchingPrefix if st not in c]
         if st in strippedMatches:
             strippedMatches.remove(st)
-        # print ('matchingPrefix', matchingPrefix)
-        # print ('strippedMatches', strippedMatches)
         matches = get_close_matches(st, [x[:len(x) - tailLen] for x in strippedMatches], cutoff=0.5)
         opposites = [m for m in matches if m != st]
 

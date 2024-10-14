@@ -255,12 +255,12 @@ class LocomotionTools(toolAbstractFactory):
 
     def alignFeet(self):
         curveMains = cmds.ls('*:Strafe_Control')
-        print('curveMains', curveMains)
+
         # get the controls that are tagged as feet
         animControls = list()
         for c in curveMains:
             assetControls = cmds.container(c, query=True, nodeList=True)
-            print('assetControls', assetControls)
+
             for control in assetControls:
                 if not cmds.attributeQuery('animControl', node=control, exists=True):
                     continue
@@ -268,8 +268,7 @@ class LocomotionTools(toolAbstractFactory):
                 if not animControl:
                     continue
                 animControls.append(animControl[0])
-        print('animControls')
-        print(animControls)
+
 
         CharacterTool = self.allTools.tools['CharacterTool']
         characters = self.funcs.splitSelectionToCharacters(animControls)
@@ -279,7 +278,7 @@ class LocomotionTools(toolAbstractFactory):
         for ch, controls in characters.items():
             refname, namespace = CharacterTool.getSelectedChar(controls[0])
             feetControls = CharacterTool.allCharacters[refname].getFeetControl(namespace)
-            print(refname, feetControls)
+
             if not feetControls:
                 continue
             for f in feetControls:
@@ -394,10 +393,10 @@ class LocomotionTools(toolAbstractFactory):
         return turnControllerName
 
     def createGlobalStrafeController(self, namespace=str()):
-        turnControllerName = '{ns}:Strafe_Control'.format(ns=namespace)
+        turnControllerName = '{ns}:Strafe_ControlTemp'.format(ns=namespace)
         if not cmds.objExists(turnControllerName):
             turnControllerName = str(
-                self.funcs.tempControl(name='{ns}:Strafe'.format(ns=namespace), suffix='Control', scale=1.0,
+                self.funcs.tempControl(name='{ns}:Strafe'.format(ns=namespace), suffix='ControlTemp', scale=1.0,
                                        drawType='pin'))
         return turnControllerName
 
@@ -493,8 +492,6 @@ class LocomotionTools(toolAbstractFactory):
                 cmds.setAttr(controlData[cnt]['tempController'] + '.' + offsetAttrName, channelBox=True)
                 cmds.setAttr(controlData[cnt]['tempController'] + '.' + offsetAttrName, offset)
 
-            # print(globalControl, driverNode, offsetNode)
-
             circleExpression(turnControl=globalControl,
                              turnAttr=attrName,
                              circleCentreAttr=circleCentreAttr,
@@ -530,18 +527,25 @@ class LocomotionTools(toolAbstractFactory):
         rotateAnimOffsetNodes = dict()
         tempConstraints = list()
 
-        assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='arrow', scale=1.0)
         currentAssetName = sel[0].split(':')[0] + ':' + self.strafeAssetName
+        namespace = sel[0].split(':')[0]
+
+
+        # assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='arrow', scale=1.0)
         if not cmds.objExists(currentAssetName):
+            assetShapeControl = self.createGlobalStrafeController(namespace=namespace)
+
             strafeControl = self.createAsset(sel[0].split(':')[0] + ':' + self.strafeAssetName,
                                              transform=True,
                                              imageName='directKeySmall.png',
                                              assetCommandName=assetCommandName)
+            cmds.delete(assetShapeControl, ch=True)
+            cmds.parent(self.funcs.getShapes(assetShapeControl), strafeControl, r=True, s=True)
+            cmds.delete(assetShapeControl)
         else:
             strafeControl = currentAssetName
-        cmds.delete(assetShapeControl, ch=True)
-        cmds.parent(self.funcs.getShapes(assetShapeControl), strafeControl, r=True, s=True)
-        cmds.delete(assetShapeControl)
+
+
         # cache the strafe value
         rotateCache = cmds.getAttr(strafeControl + '.rotate')[0]
         cmds.setAttr(strafeControl + '.rotate', 0, 0, 0)
