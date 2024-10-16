@@ -178,7 +178,7 @@ def get_commit_comments_and_files(repo_owner, repo_name, commit_sha):
 
     except urllib.error.HTTPError as e:
         # Handle HTTPError specifically (e.g., 404, 500, etc.)
-        print(f"HTTPError: {e.code} - {e.reason}")
+        print("HTTPError: %s - %s}" % (e.code, e.reason))
         return None, None
 
     return comment, files_changed
