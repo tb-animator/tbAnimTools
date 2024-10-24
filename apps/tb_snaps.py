@@ -395,13 +395,13 @@ class SnapTools(toolAbstractFactory):
         for s in sel:
             pos = self.transformTranslateDict.get(s, self.transformTranslateDict.get('LASTUSED', None))
             rot = self.transformRotateDict.get(s, self.transformRotateDict.get('LASTUSED', None))
-            if cmds.attributeQuery('jointOrient', node=sel[0], exists=True):
-                jointOrient = cmds.getAttr(sel[0] + '.jointOrient')[0]
+            if cmds.attributeQuery('jointOrient', node=s, exists=True):
+                jointOrient = cmds.getAttr(s + '.jointOrient')[0]
             else:
                 jointOrient = [0]
             if any(jointOrient) != 0:
-                cmds.xform(sel[0], relative=False, rotation=rot, absolute=True, worldSpace=True)
-                cmds.xform(sel[0], relative=False, translation=pos, absolute=True, worldSpace=True)
+                cmds.xform(s, relative=False, rotation=rot, absolute=True, worldSpace=True)
+                cmds.xform(s, relative=False, translation=pos, absolute=True, worldSpace=True)
                 continue
             else:
                 storedMtx = om2.MMatrix(self.transformMatrixDict.get(s, self.transformMatrixDict.get('LASTUSED', None)))
@@ -409,14 +409,14 @@ class SnapTools(toolAbstractFactory):
                     #self.set_world_rotation(s, rot)
                     postMtx = self.funcs.getMatrix(s)
                     parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
-                    pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                    pos, rot = self.funcs.getMatrixOffset(s, storedMtx, postMtx, parentMtx)
                     cmds.xform(s, relative=True, rotation=rot)
 
                 if pos:
                     #self.set_world_translation(s, pos)
                     postMtx = self.funcs.getMatrix(s)
                     parentMtx = self.funcs.getMatrix(s, matrix='parentMatrix')
-                    pos, rot = self.funcs.getMatrixOffset(sel[0], storedMtx, postMtx, parentMtx)
+                    pos, rot = self.funcs.getMatrixOffset(s, storedMtx, postMtx, parentMtx)
                     cmds.xform(s, relative=True, translation=pos)
 
 
