@@ -26,7 +26,6 @@ from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
 
-
 assetCommandName = 'tempControlCommand'
 
 
@@ -193,7 +192,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='bakeToLocatorRotation',
                                      annotation='constrain to object to locator - rotate only',
                                      category=self.category,
-                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
+                                     command=['BakeTools.bake_to_locator_rotation(constrain=True)'],
                                      help=maya.stringTable['tbCommand.bakeToLocatorRotation']))
         self.addCommand(self.tb_hkey(name='worldOffsetSelection',
                                      annotation='worldOffsetSelection',
@@ -593,6 +592,98 @@ class BakeTools(toolAbstractFactory):
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
+    def bake_to_locator_rotation(self, sel=list(), constrain=False, select=True, skipMotionTrails=False):
+        if not sel:
+            sel = cmds.ls(sl=True)
+
+        # swap non transform nodes for their parent
+        for index, s in enumerate([str(s) for s in sel]):
+            if cmds.nodeType(str(s)) == 'transform':
+                continue
+            if cmds.nodeType(str(s)) == 'joint':
+                continue
+            if cmds.listRelatives(str(s), parent=True):
+                p = cmds.listRelatives(str(s), parent=True)
+                sel[index] = p
+            else:
+                sel[index] = None
+        sel = self.funcs.flattenList([s for s in sel if s])
+
+        locs = []
+        constraints = []
+        with self.funcs.suspendUpdate():
+            try:
+                if sel:
+                    for s in sel:
+                        # loc = self.funcs.tempLocator(name=s, suffix='baked')
+                        ns = self.funcs.namespace(s)
+                        if not cmds.objExists(ns + self.assetName):
+                            self.createAsset(ns + self.assetName, imageName=None)
+                        asset = ns + self.assetName
+                        loc = self.funcs.tempControl(name=s, suffix='baked', drawType='orb',
+                                                     scale=get_option_var(self.tbBakeLocatorSizeOption, 1))
+
+                        # TODO - set this to an actual value
+                        # cmds.setAttr(loc + '.rotateOrder')
+                        cmds.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                        cmds.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+
+                        const = cmds.parentConstraint(str(s), str(loc), skipTranslate=('x', 'y', 'z'))
+                        locs.append(loc)
+                        constraints.append(const[0])
+                        cmds.container(asset, edit=True,
+                                       includeHierarchyBelow=True,
+                                       force=True,
+                                       addNode=loc)
+
+                if locs:
+                    preContainers = set(cmds.ls(type='container'))
+                    keyRange = self.funcs.getBestTimelineRangeForBake()
+                    self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
+                                   simulation=True,
+                                   slow=False)
+
+                    self.removeContainersPostBake(preContainers)
+                    if constrain:
+                        for c in constraints:
+                            if cmds.objExists(c):
+                                cmds.delete(c)
+                        for cnt, loc in zip(sel, locs):
+                            skipR = self.funcs.getAvailableRotates(cnt)
+                            constraint = cmds.parentConstraint(loc, cnt, skipTranslate=('x', 'y', 'z'),
+                                                               skipRotate=[x.split('rotate')[-1] for x in skipR])
+
+                            pickMatrix = cmds.createNode('pickMatrix')
+                            cmds.setAttr(pickMatrix + '.useScale', False)
+                            cmds.setAttr(pickMatrix + '.useRotate', False)
+                            cmds.setAttr(pickMatrix + '.useShear', False)
+
+                            cmds.connectAttr(cnt + '.parentMatrix', pickMatrix + '.inputMatrix')
+                            cmds.connectAttr(pickMatrix + '.outputMatrix', loc + '.offsetParentMatrix')
+                            cmds.cutKey(loc + '.translate', clear=True)
+                            drawScale = cmds.getAttr(loc + '.drawScale')
+                            cmds.cutKey(loc + '.drawScale')
+                            cmds.setAttr(loc + '.drawScale', drawScale)
+                            cmds.setAttr(loc + '.translate', 0, 0, 0)
+
+
+                            cmds.container(asset, edit=True,
+                                           includeHierarchyBelow=True,
+                                           force=True,
+                                           addNode=constraint)
+
+                if get_option_var(self.tbTempControlMotionTrailOption, False):
+                    if not skipMotionTrails:
+                        for l in locs:
+                            cmds.select(str(l), replace=True)
+                            mel.eval('createMotionTrail')
+                if select:
+                    cmds.select(locs, replace=True)
+                return locs
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
+
     def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True,
                                skipMotionTrails=False):
         """
@@ -906,10 +997,10 @@ class BakeTools(toolAbstractFactory):
         colour = {True: self.overrideLayerColour, False: self.additiveLayerColour}
 
         newAnimLayer = cmds.animLayer(suffixStr,
-                                    override=override,
-                                    addSelectedObjects=True,
-                                    passthrough=True,
-                                    lock=False)
+                                      override=override,
+                                      addSelectedObjects=True,
+                                      passthrough=True,
+                                      lock=False)
 
         cmds.setAttr(newAnimLayer + '.ghostColor', colour[override])
         cmds.setAttr(newAnimLayer + '.scaleAccumulationMode', not override)
@@ -1512,7 +1603,7 @@ class BakeTools(toolAbstractFactory):
                                      time=(keyRange[0], keyRange[-1]),
                                      # destinationLayer=rootLayer,
                                      simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
-                                                                                    10),
+                                                                                10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1530,7 +1621,7 @@ class BakeTools(toolAbstractFactory):
                                      time=(keyRange[0], keyRange[-1]),
                                      destinationLayer=resultLayer,
                                      simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
-                                                                                    10),
+                                                                                10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1591,7 +1682,7 @@ class BakeTools(toolAbstractFactory):
                                                           suffix='localOffset',
                                                           drawType='diamond',
                                                           scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
-                                                                                   0.5))
+                                                                               0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
@@ -1649,7 +1740,15 @@ class BakeTools(toolAbstractFactory):
                                                  plugs=True)[0]
                     cmds.disconnectAttr(conns, o + '.translate' + a)
                     cmds.connectAttr(conns, composeMatrix + '.inputTranslate.inputTranslate' + a)
-                cmds.connectAttr(composeMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+
+                pickMatrix = cmds.createNode('pickMatrix')
+                cmds.setAttr(pickMatrix + '.useScale', False)
+                cmds.setAttr(pickMatrix + '.useRotate', False)
+                cmds.setAttr(pickMatrix + '.useShear', False)
+
+                cmds.connectAttr(o + '.parentMatrix', pickMatrix + '.inputMatrix')
+                cmds.connectAttr(pickMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+
                 cmds.setAttr(o + '.translate', 0, 0, 0)
 
         channels = self.funcs.getChannels()

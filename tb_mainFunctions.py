@@ -480,7 +480,6 @@ class Functions(object):
 
         cmds.setAttr(mainControl + ".xRay", get_option_var('xRayDefault', 0.3))
 
-
         return mainControl
 
     def getShape(self, control):
