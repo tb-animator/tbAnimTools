@@ -110,6 +110,24 @@ class hotkeys(hotKeyAbstractFactory):
                                      ctx='graphEditor',
                                      category=self.category, command=['KeyModifiers.shiftKeys(-360)']))
 
+        self.addCommand(self.tb_hkey(name='nudgeKeysLeft',
+                                     annotation='shift keys left 1 frame',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.nudgeKeys(offset=-1)']))
+        self.addCommand(self.tb_hkey(name='nudgeKeysRight',
+                                     annotation='shift keys up 360 units',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.nudgeKeys(offset=0.25)']))
+        self.addCommand(self.tb_hkey(name='offsetKeysLeft',
+                                     annotation='offset keys left 1 frame',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.offsetKeys(offset=-0.25)']))
+        self.addCommand(self.tb_hkey(name='offsetKeysRight',
+                                     annotation='offset keys right 1 frame',
+                                     ctx='graphEditor',
+                                     category=self.category, command=['KeyModifiers.offsetKeys(offset=1)']))
+
+
         self.addCommand(self.tb_hkey(name='autoTangent',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.autoTangentKey()']))
@@ -317,6 +335,20 @@ class KeyModifiers(toolAbstractFactory):
 
     def shiftKeys(self, offset):
         cmds.keyframe(animation='keys', relative=True, valueChange=offset)
+
+    def nudgeKeys(self, offset= 0):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        for x in range(len(sel) - 1):
+            cmds.keyframe(sel[x + 1:], relative=True, timeChange=offset)
+
+    def offsetKeys(self, offset= 0):
+        sel = cmds.ls(sl=True)
+        if not sel:
+            return
+        for x in range(len(sel)-1):
+            print (sel[x+1:])
 
     def quickCopyKeys(self, connect=False):
         cmds.copyKey()
