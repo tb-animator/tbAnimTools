@@ -8,7 +8,7 @@ import json
 import textwrap
 import shutil
 from functools import partial
-from maya import cmds, OpenMaya
+
 # maya module imports
 
 from tb_mainFunctions import Functions
