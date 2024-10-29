@@ -621,6 +621,8 @@ class MirrorTools(toolAbstractFactory):
 
     def saveCurrentMirrorData(self, character):
         dataFile = os.path.join(self.mirrorDataDir, character)
+        if character not in self.loadedMirrorTables.keys():
+            return cmds.warning('character not in mirror table dictionary')
         self.saveRigData(dataFile, self.loadedMirrorTables[character].toJson())
         print('Saving current mirror', character)
         print('dataFile', dataFile)

@@ -442,7 +442,8 @@ class QuickSelectionTools(toolAbstractFactory):
             return
 
         if name:
-            self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
+            scaledColour = [x/255.0 for x in self.funcs.getControlColour(sel[-1])]
+            self.save_qs(name, sel, quick=quick, colour=scaledColour)
 
         CharacterTool = self.allTools.tools['CharacterTool']
         refname, namespace = CharacterTool.getSelectedChar(sel=sel[0])
@@ -475,6 +476,7 @@ class QuickSelectionTools(toolAbstractFactory):
             return True
 
     def save_qs(self, qs_name, selection, quick=True, colour=DEFAULT_QSS_COLOUR):
+
         qs_name = qs_name.split(':')[-1]
         if not selection:
             return cmds.warning('Nothing selected')

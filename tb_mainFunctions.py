@@ -439,8 +439,43 @@ class Functions(object):
         cmds.setAttr(shape + '.overrideColorRGB', *color)
         return loc
 
+    def restoreTempControlSettings(self, control):
+        CharacterTool = getGlobalTools().tools['CharacterTool']
+        rigControl = self.getConstraintTargetControl(control)
+        refname, namespace = CharacterTool.getSelectedChar(rigControl)
+        CharacterTool.getTempControlData(refname, rigControl, control, 'drawScale')
+
+    def storeTempControlSettings(self, control):
+        print ('storeTempControlSettings')
+        CharacterTool = getGlobalTools().tools['CharacterTool']
+
+        rigControl = self.getConstraintTargetControl(control)
+
+        refname, namespace = CharacterTool.getSelectedChar(rigControl, referenceOnly=True)
+
+        CharacterTool.setTempControlData(refname, control, 'drawScale')
+
+    def getConstraintTargetControl(self, control):
+        if cmds.attributeQuery('constraintTarget', node=control, exists=True):
+            targets = cmds.listConnections(control + '.' + 'constraintTarget', source=True, destination=False)
+            if targets:
+                control = targets[0]
+        return control
+
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False, rotateOrder=3):
+
+        """
+
+        :param name:
+        :param suffix:
+        :param scale:
+        :param color:
+        :param drawType:
+        :param unlockScale:
+        :param rotateOrder:
+        :return:
+        """
         mainControl = self.drawTempControl(name=name, suffix=suffix, scale=scale, color=color, drawType=drawType,
                                            unlockScale=False, rotateOrder=rotateOrder, blendshape=True)
 
@@ -566,12 +601,16 @@ class Functions(object):
                 refObj = shape
 
         if not cmds.getAttr(refObj + '.overrideRGBColors'):
+
             if cmds.getAttr(refObj + '.overrideColor') == 0:
+
                 rgbColour = [125, 125, 125]
             else:
                 rgbColour = [x * 255 for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
+
         else:
             rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')]
+
         return rgbColour
 
     def boldControl(self, ref, control, offset=0):
@@ -2135,7 +2174,7 @@ class Functions(object):
         refName = CharacterTool.getCharFromTopNode(sel)
         return refName
 
-    def getCurrentRig(self, sel=None):
+    def getCurrentRig(self, sel=None, referenceOnly=False):
         """
         Used to determine the rig name/file, used when saving out rig data for tools
         :param sel:
@@ -2164,7 +2203,8 @@ class Functions(object):
                 if ':' in sel:
                     namespace = sel.split(':', 1)[0]
         else:
-            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+            if not referenceOnly:
+                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if namespace.startswith(':'):
             namespace = namespace[1:]
         return refName, namespace  # TODO - fix up data path etc

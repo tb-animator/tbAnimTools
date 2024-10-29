@@ -91,6 +91,7 @@ class CharacterDefinition(object):
         self.driverControl = str()
         self.exportControl = str()
         self.feetControls = str()
+        self.customAttributes = dict()
         self.UUID = str()
         self.topNode = str()
         self.char = char
@@ -119,6 +120,7 @@ class CharacterDefinition(object):
         self.driverControl = rawJsonData.get('driverControl', str())
         self.exportControl = rawJsonData.get('exportControl', str())
         self.feetControls = rawJsonData.get('feetControls', str())
+        self.customAttributes = rawJsonData.get('customAttributes', str())
         self.UUID = rawJsonData.get('UUID', str())
         self.topNode = rawJsonData.get('topNode', str())
 
@@ -137,6 +139,7 @@ class CharacterDefinition(object):
         returnDict['driverControl'] = self.driverControl
         returnDict['exportControl'] = self.exportControl
         returnDict['feetControls'] = self.feetControls
+        returnDict['customAttributes'] = self.customAttributes
         returnDict['UUID'] = self.UUID
         returnDict['topNode'] = self.topNode
         # print ('returnDict', returnDict)
@@ -432,7 +435,7 @@ class CharacterTool(toolAbstractFactory):
         else:
             return self.tempCharacter
 
-    def getSelectedChar(self, sel=None):
+    def getSelectedChar(self, sel=None, referenceOnly=False):
         if not sel:
             sel = cmds.ls(sl=True)
         if not sel:
@@ -440,7 +443,7 @@ class CharacterTool(toolAbstractFactory):
         if not isinstance(sel, list):
             sel = [sel]
         # print ('getSelectedChar', sel)
-        refname, namespace = self.funcs.getCurrentRig(sel)
+        refname, namespace = self.funcs.getCurrentRig(sel, referenceOnly=referenceOnly)
         # print ('refname', refname)
         # print ('namespace', namespace)
         # print ('sel', sel)
@@ -496,9 +499,9 @@ class CharacterTool(toolAbstractFactory):
     def loadCharacter(self, refname, node=None):
         # print ('loadCharacter', refname, node)
         if not refname:
-            return
-
+            return cmds.warning ('No name specified for loading character')
         dataFile = os.path.join(self.charTemplateDir, refname + '.json')
+        print ('dataFile', dataFile)
         isNew = False
         if not os.path.isfile(dataFile):
             isNew = True
@@ -1068,6 +1071,32 @@ class CharacterTool(toolAbstractFactory):
         self.toolboxWidget.setEnabled(False)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
+
+    def getTempControlData(self, character, rigControl, controlName, attribute):
+        self.currentChar = character
+        self.loadCharacter(self.currentChar)
+        self.currentNamespace = self.funcs.namespace(controlName)
+        self.currentCharData = self.allCharacters[character]
+
+        customData = self.currentCharData.customAttributes.get(self.funcs.stripNamespace(controlName), dict())
+
+        if attribute not in customData.keys():
+            return cmds.warning('No stored drawScale for %s' % controlName)
+        value = customData[attribute]
+        cmds.setAttr(controlName + '.' + attribute, value)
+
+    def setTempControlData(self, character, controlName, attribute):
+        self.currentChar = character
+        self.loadCharacter(self.currentChar)
+        self.currentNamespace = self.funcs.namespace(controlName)
+        self.currentCharData = self.allCharacters[character]
+
+        customData = self.currentCharData.customAttributes.get(controlName, dict())
+
+        value = cmds.getAttr(controlName + '.' + attribute)
+        customData[attribute] = value
+        self.currentCharData.customAttributes[self.funcs.stripNamespace(controlName)] = customData
+        self.saveCurrentCharacter()
 
 
 class CharacterWindow(MayaQWidgetDockableMixin, QMainWindow):

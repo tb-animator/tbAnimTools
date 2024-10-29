@@ -660,12 +660,7 @@ class BakeTools(toolAbstractFactory):
 
                             cmds.connectAttr(cnt + '.parentMatrix', pickMatrix + '.inputMatrix')
                             cmds.connectAttr(pickMatrix + '.outputMatrix', loc + '.offsetParentMatrix')
-                            cmds.cutKey(loc + '.translate', clear=True)
-                            drawScale = cmds.getAttr(loc + '.drawScale')
-                            cmds.cutKey(loc + '.drawScale')
-                            cmds.setAttr(loc + '.drawScale', drawScale)
-                            cmds.setAttr(loc + '.translate', 0, 0, 0)
-
+                            self.postCreateTempControl(loc)
 
                             cmds.container(asset, edit=True,
                                            includeHierarchyBelow=True,
@@ -683,6 +678,14 @@ class BakeTools(toolAbstractFactory):
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
+
+    def postCreateTempControl(self, loc):
+        cmds.cutKey(loc + '.translate', clear=True)
+        drawScale = cmds.getAttr(loc + '.drawScale')
+        cmds.cutKey(loc + '.drawScale')
+        cmds.setAttr(loc + '.drawScale', drawScale)
+        cmds.setAttr(loc + '.translate', 0, 0, 0)
+        self.restoreSelectedControls(None, loc)
 
     def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True,
                                skipMotionTrails=False):
@@ -783,6 +786,8 @@ class BakeTools(toolAbstractFactory):
                 '''
                 if select:
                     cmds.select(locs, replace=True)
+                for loc in locs:
+                    self.postCreateTempControl(loc)
                 return locs
 
             except Exception:
@@ -829,26 +834,6 @@ class BakeTools(toolAbstractFactory):
         asset = cmds.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-
-        cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label='Bake selected temp controls to layer',
-                      command=create_callback(self.bakeSelectedCommand, asset, sel))
-        cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label='Delete selected temp controls',
-                      command=create_callback(self.deleteSelectedControlsCommand, asset, sel))
-        cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
-        cmds.menuItem(divider=True)
-
-    def assetRmbCommand(self):
-        panel = cmds.getPanel(underPointer=True)
-        parentMMenu = panel + 'ObjectPop'
-        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = cmds.ls(sl=True)
-        asset = cmds.container(query=True, findContainer=sel[0])
-
-        # check asset message attribute
         # print ("asset", asset, sel)
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
@@ -856,6 +841,16 @@ class BakeTools(toolAbstractFactory):
         cmds.menuItem(label='Bake selected temp controls to layer',
                       command=create_callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
+        cmds.menuItem(divider=True)
+        # TODO - hook this up to store/restore
+        cmds.menuItem(label='Store DrawScale',
+                      command=create_callback(self.storeSelectedControls, asset, sel))
+        cmds.menuItem(label='Restore DrawScale',
+                      command=create_callback(self.restoreSelectedControls, asset, sel))
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Delete selected temp controls',
+                      command=create_callback(self.deleteSelectedControlsCommand, asset, sel))
+
         # cmds.menuItem(label='Bake out to layer', command=create_callback(self.bakeOutCommand, asset))
         cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
@@ -876,6 +871,19 @@ class BakeTools(toolAbstractFactory):
 
         return lockedTranslates, lockedRotates
 
+    def restoreSelectedControls(self, asset, sel, *args):
+        print ('restoreSelecteddControls', sel)
+        if not isinstance(sel, list):
+            sel = [sel]
+        for s in sel:
+            self.funcs.restoreTempControlSettings(s)
+
+    def storeSelectedControls(self, asset, sel, *args):
+        print ('storeSelecteddControls', sel)
+        if not isinstance(sel, list):
+            sel = [sel]
+        for s in sel:
+            self.funcs.storeTempControlSettings(s)
     def bakeSelectedCommand(self, asset, sel, *args):
         if not isinstance(asset, list):
             asset = [asset]

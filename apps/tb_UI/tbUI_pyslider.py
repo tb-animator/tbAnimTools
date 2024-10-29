@@ -5,7 +5,17 @@ import re
 
 
 from . import *
-
+"""
+# Traceback (most recent call last):
+#   File "C:\AnimationWork\tbAnimTools\apps\tb_UI\tbUI_pyslider.py", line 1687, in keyReleaseEvent
+#     self.button.keyReleaseEvent(event)
+#   File "C:\AnimationWork\tbAnimTools\apps\tb_UI\tbUI_pyslider.py", line 2447, in keyReleaseEvent
+#     self.setIcon(self.currentIcon)
+# TypeError: # 'PySide2.QtWidgets.QAbstractButton.setIcon' called with wrong argument types:
+#   PySide2.QtWidgets.QAbstractButton.setIcon(str)
+# Supported signatures:
+  PySide2.QtWidgets.QAbstractButton.setIcon(PySide2.QtGui.QIcon)
+"""
 sliderButtonStyleSheet = """QPushButton
 {{
     color: {_textColour};

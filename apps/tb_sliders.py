@@ -639,8 +639,9 @@ class LocalSpaceTween(tweenBase):
             self.cacheValues()
             self.filterAffectedChannels()
             self.updateDrag(value)
-        except:
+        except Exception as e:
             cmds.autoKeyframe(state=self.keyState)
+            return cmds.warning(e)
 
     def updateDrag(self, value):
         self.updateAlpha(value * 0.01, disableAutoKey=True)
@@ -710,6 +711,7 @@ class LocalSpaceTween(tweenBase):
 
         # print 'start times', self.startkeyTimes
         # print 'end times', self.endKeyTimes
+
         for obj in self.affectedObjects:
             MObj = getMObject(obj)
             # obj_dag_path = om2.MDagPath.getAPathTo(eachMob)
