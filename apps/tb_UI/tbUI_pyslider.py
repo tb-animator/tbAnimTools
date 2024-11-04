@@ -1564,8 +1564,8 @@ class SliderToolbarWidget(QWidget):
         textColour = str(sliderData.get('textColour', "#000000"))
         self.button = PopupSliderButton(icon=self.icon, altIcon=self.altIcon, width=self.defaultWidth,
                                         height=self.defaultWidth,
-                                        iconWidth=22,
-                                        iconHeight=22,
+                                        iconWidth=27,
+                                        iconHeight=27,
                                         parentWidget=self,
                                         text=buttonLabel,
                                         tint=textColour,
@@ -2402,8 +2402,9 @@ class PopupSliderButton(QPushButton):
         self.currentIcon = icon
         self.baseWidth = width
         self.baseHeight = height
-        self.iconWidth = iconWidth * dpiScale()
-        self.iconHeight = iconHeight * dpiScale()
+        self.iconWidth = iconWidth * dpiScale(optionName='tbCustomGeDpiScale')
+        self.iconHeight = iconHeight * dpiScale(optionName='tbCustomGeDpiScale')
+
         self.pixmap = QPixmap(os.path.join(IconPath, icon))
         self.altPixmap = QPixmap(os.path.join(IconPath, altIcon))
 

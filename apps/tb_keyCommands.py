@@ -374,11 +374,13 @@ class mainHotkeyWindow(QMainWindow):
     def itemClicked(self, index):
         index = self.treeView.selectedIndexes()[0]
         item = self.model.itemFromIndex(self.proxyModel.mapToSource(index))
-        print (item.text())
-        print (item.comnmandName)
+
+        if item.comnmandName is None:
+            return
         if item.comnmandName + 'NameCommand' in self.commandData.keys():
             commandWidget = CommandHelpWidget(item.text(), cls=self)
             self.optionUIScrollArea.setWidget(commandWidget)
+            print(item.comnmandName)
         # self.toolOptionStack.setCurrentIndex(index)
 
     def applyToSelected(self):

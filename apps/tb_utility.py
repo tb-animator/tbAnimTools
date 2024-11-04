@@ -113,6 +113,11 @@ class Utility(toolAbstractFactory):
                                        label='Custom Font scale factor',
                                        minimum=0.1, maximum=2.0, step=0.01)
 
+        geUIScaleOption = intFieldWidget(optionVar='tbCustomGeDpiScale',
+                                       defaultValue=1.0,
+                                       label='Custom Graph Editor UI scale factor',
+                                       minimum=0.1, maximum=2.0, step=0.01)
+
         self.layout.addWidget(copyButton)
         self.layout.addWidget(resetButton)
         self.layout.addWidget(self.dirWidget)
@@ -120,6 +125,7 @@ class Utility(toolAbstractFactory):
         self.layout.addWidget(uiScaleOption)
         self.layout.addWidget(useCustomFontScaleOption)
         self.layout.addWidget(uiScaleFontOption)
+        self.layout.addWidget(geUIScaleOption)
         self.layout.addStretch()
         return self.optionWidget
 

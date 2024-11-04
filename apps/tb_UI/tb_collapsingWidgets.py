@@ -5,15 +5,17 @@ class CollapsibleBox(QWidget):
     expandedIcon = QIcon(":closeBar.png")
     collapseSignal = Signal(bool)
 
-    def __init__(self, title="", parent=None, optionVar=str()):
+    def __init__(self, title="", parent=None, optionVar=str(), toolTip=None):
         super(CollapsibleBox, self).__init__(parent)
         self.optionVar = optionVar
-
+        if toolTip:
+            self.setToolTip(toolTip)
         self.toggleButton = QToolButton(
             text=title, checkable=True, checked=self.getState()
         )
         self.toggleButton.setStyleSheet("QToolButton { border: none; }")
         self.toggleButton.setFixedSize(12 * dpiScale(), 20 * dpiScale())
+        self.setFixedHeight(24 * dpiScale())
         self.toggleButton.setToolButtonStyle(
             Qt.ToolButtonTextBesideIcon
         )
@@ -35,6 +37,7 @@ class CollapsibleBox(QWidget):
         lay = QHBoxLayout(self)
         lay.setSpacing(0)
         lay.setContentsMargins(0, 0, 0, 0)
+        lay.setAlignment(Qt.AlignCenter | Qt.AlignTop)
         lay.addWidget(self.toggleButton)
         lay.addWidget(self.contentArea)
 
@@ -53,6 +56,7 @@ class CollapsibleBox(QWidget):
         self.toggleAnimation.addAnimation(
             anim
         )
+        self.setMouseTracking(True)
 
     def playAnimationByState(self, force=False, state=False):
         checked = self.getState()

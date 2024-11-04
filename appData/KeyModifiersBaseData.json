@@ -1,0 +1,60 @@
+{
+  "toolTips": {
+    "autoTangent": {
+      "text": "Adjust tangent softness\nUse the spin box to change the amount of levelling of the tangent.\\n\\nUse the mouse wheel to change the amount in the spin box.\nControl + mw : reduces the adjustment\nShift + mw : increases the adjustment\nAlt + mw: to reset\n\nRight click to open option window to save the default values",
+      "title": "AutoTangent",
+      "gif": ""
+    },
+    "offsetKeyLeft": {
+      "text": "Offset the key timing to the left. Select controls in the order you wish to adjust the timing.\nUse the spin box to change the amount of offset.\n\nUse the mouse wheel to change the offset amount in the spin box.\nControl + mw : reduces the adjustment\nShift + mw : increases the adjustment\nAlt + mw: to reset",
+
+      "title": "Offset keys left",
+      "gif": ""
+    },
+    "offsetKeyRight": {
+      "text": "Offset the key timing to the right. Select controls in the order you wish to adjust the timing.\nUse the spin box to change the amount of offset.\n\nUse the mouse wheel to change the offset amount in the spin box.\nControl + mw : reduces the adjustment\nShift + mw : increases the adjustment\nAlt + mw: to reset",
+      "title": "Offset keys Right",
+      "gif": ""
+    },
+    "nudgeKeyLeft": {
+      "text": "Shift selected keys to the left by the value in the float field. \nUse the spin box to change the amount of offset.\\n\\nUse the mouse wheel to change the offset amount in the spin box.\nControl + mw : reduces the adjustment\nShift + mw : increases the adjustment\nAlt + mw: to reset",
+      "title": "Nudge keys Left",
+      "gif": ""
+    },
+    "nudgeKeyRight": {
+      "text": "Shift selected keys to the right by the value in the float field. \nUse the spin box to change the amount of offset.\\n\\nUse the mouse wheel to change the offset amount in the spin box.\nControl + mw : reduces the adjustment\nShift + mw : increases the adjustment\nAlt + mw: to reset",
+      "title": "Nudge keys Right",
+      "gif": ""
+    },
+    "matchTangentStart": {
+      "text": "Match Tangents Start!",
+      "title": "Match Tangents Start",
+      "gif": ""
+    },
+    "matchTangentEnd": {
+      "text": "Match Tangents End!",
+      "title": "Match Tangents End",
+      "gif": ""
+    },
+    "plotKey": {
+      "text": "Uses the neighbouring tangents to try and place this key to match them.",
+      "title": "Guess Key Value from Tangents",
+      "gif": ""
+    },
+    "flipKeysStart": {
+      "text": "Flip curves based on the first selected key value.",
+      "title": "Flip Keys First",
+      "gif": ""
+    },
+    "flipKeys": {
+      "text": "Flip key values ",
+      "title": "Flip Keys",
+      "gif": ""
+    },
+    "flipKeysEnd": {
+      "text": "Flip curves based on the last selected key value.",
+      "title": "Flip Keys Last",
+      "gif": ""
+    }
+  }
+}

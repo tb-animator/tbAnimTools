@@ -4,10 +4,10 @@ import colorsys
 LIGHTTHRESHOLD = 128
 
 
-def dpiScale():
+def dpiScale(optionName='tbCustomDpiScale'):
     if not get_option_var('tbUseWindowsScale', True):
         return QApplication.primaryScreen().logicalDotsPerInch() / 96.0
-    return get_option_var('tbCustomDpiScale', 1)
+    return QApplication.primaryScreen().logicalDotsPerInch() / 96.0 * get_option_var(optionName, 1)
 
 
 def dpiFontScale():

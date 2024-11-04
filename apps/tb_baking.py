@@ -1765,6 +1765,10 @@ class BakeTools(toolAbstractFactory):
                                             orientOnly=rotationOnly,
                                             maintainOffset=False,
                                             channels=channels)
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimNodes.values())):
+            self.postCreateTempControl(root)
+            self.postCreateTempControl(anim)
+
         cmds.select(list(rotationRoots.values()), replace=True)
 
     def resampleSelectedLayer(self, sample=1):

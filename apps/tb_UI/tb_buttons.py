@@ -135,19 +135,99 @@ class GraphToolbarButton(QPushButton):
     subclass this and add to the _showMenu function, or just add menu items
     """
 
-    def __init__(self, icon='', toolTip='', width=24, height=24):
+    def __init__(self, icon='',
+                 toolTip=dict(),
+                 width=24,
+                 height=24,
+                 tint='#222936',
+                 tintStrength=0.5,):
         super(GraphToolbarButton, self).__init__()
-        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(24 * dpiScale(), 24 * dpiScale())
-
+        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(28 * dpiScale(optionName='tbCustomGeDpiScale'),
+                                                              28 * dpiScale(optionName='tbCustomGeDpiScale'))
         self.setIcon(pixmap)
-        self.setFixedSize(width * dpiScale(), height * dpiScale())
+        self.setFixedSize(width * dpiScale(optionName='tbCustomGeDpiScale'),
+                          height * dpiScale(optionName='tbCustomGeDpiScale'))
+        self.setToolTip(toolTip.get('title', 'toolTipText'))
         self.setFlat(True)
-        self.setToolTip(toolTip)
         self.setStyleSheet("background-color: transparent;border: 0px")
         self.setStyleSheet(getqss.getStyleSheet())
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showMenu)
         self.pop_up_window = None
+        self.tintStrength = tintStrength
+
+        if self.graphicsEffect() is None:
+            self.effect = QGraphicsColorizeEffect(self)
+            self.effect.setStrength(0.0)
+            self.setGraphicsEffect(self.effect)
+            # print ('tint', tint)
+            rgbColour = QColor(*hex_to_rgb(tint))
+            self.effect.setColor(rgbColour)
+            self.setGraphicsEffect(self.effect)
+
+        self.helpWidget = InfoPromptWidget(title=toolTip.get('title', 'toolTipText'),
+                                           buttonText='Ok',
+                                           imagePath='',
+                                           error=False,
+                                           image='',
+                                           gif=toolTip.get('gif', ''),
+                                           helpString=toolTip.get('text', 'toolTipText'),
+                                           showCloseButton=False,
+                                           show=False,
+                                           showButton=False)
+
+        self.setMouseTracking(True)
+        self.installEventFilter(self)
+
+    def raiseToolTip(self):
+        if not self.getTooltipState():
+            return
+        if not self.hoverState:
+            return
+        if self.tooltipRaised:
+            return
+        self.tooltipRaised = True
+        # + QPoint(0, self.height())
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0,0)), widgetSize=self.size())
+
+    def showRelativeToolTip(self):
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0,0)), widgetSize=self.size())
+
+    def hideToolTip(self):
+        if self.getTooltipState():
+            return
+        if not self.tooltipRaised:
+            return
+        self.tooltipRaised = False
+        self.helpWidget.hide()
+
+    def getTooltipState(self):
+        if self.altState and self.controlState:
+            return True
+        else:
+            return False
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ToolTip:
+            self.showRelativeToolTip()
+            return True
+        return super(GraphToolbarButton, self).eventFilter(obj, event)
+
+    def enterEvent(self, event):
+        # print (self, 'enterEvent')
+        self.hoverState = True
+
+        self.graphicsEffect().setStrength(self.tintStrength)
+        self.helpWidget.hide()
+        return super(GraphToolbarButton, self).enterEvent(event)
+
+    def leaveEvent(self, event):
+        # print(self, 'leaveEvent')
+        self.hoverState = False
+
+        self.graphicsEffect().setStrength(0.0)
+        self.helpWidget.hide()
+        return super(GraphToolbarButton, self).leaveEvent(event)
 
     def setPopupMenu(self, menuClass):
         self.pop_up_window = menuClass('name', self)

@@ -501,7 +501,6 @@ class CharacterTool(toolAbstractFactory):
         if not refname:
             return cmds.warning ('No name specified for loading character')
         dataFile = os.path.join(self.charTemplateDir, refname + '.json')
-        print ('dataFile', dataFile)
         isNew = False
         if not os.path.isfile(dataFile):
             isNew = True
@@ -519,7 +518,7 @@ class CharacterTool(toolAbstractFactory):
                 return cmds.warning('No selection when creating new character entry')
             if isinstance(sel, list):
                 sel = str(sel[0])
-            # print ('sel', sel)
+
             self.allCharacters[refname].setUUID(sel)
             self.allCharacters[refname].setTopNode(sel)
             self.saveJsonFile(dataFile, self.allCharacters[refname].toJson())

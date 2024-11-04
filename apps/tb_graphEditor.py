@@ -217,9 +217,6 @@ class GraphEditor(toolAbstractFactory):
 
             cBox.setContentLayout(cBoxLayout)
 
-            # layout.resize(layout.sizeHint())
-
-
         defaultLocation = self.allTools.tools['GraphEditor'].customUiLocation[0]
         currentLocation = get_option_var(self.allTools.tools['GraphEditor'].customUiLocationOption,
                                            defaultLocation)
@@ -245,9 +242,10 @@ class GraphEditor(toolAbstractFactory):
         # buttons = widgets[1:]
         for c in collapsedWidgets:
             dupeLayout.addWidget(c)
+
         # dupeLayout.addLayout(layout)
         blankLabel = QLabel('')
-        blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        blankLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         dupeLayout.addWidget(blankLabel)
         dupeLayout.addStretch(100)
 
@@ -288,9 +286,9 @@ class GraphEditor(toolAbstractFactory):
         sliderLayout.setAlignment(Qt.AlignLeft)
         # sliderLayout.addStretch()
         self.sliderParentWidget.setLayout(sliderLayout)
-        sliderLayout.setAlignment(Qt.AlignHCenter)
+
         sliderLayout.setContentsMargins(0, 0, 0, 0)
-        sliderLayout.setSpacing(2 * dpiScale())
+        sliderLayout.setSpacing(0)
         # sliderLayout.addWidget(graphEditKeyWidget)  # .setParent(phLayout)
         '''
         slider = PopupSlider(closeOnRelease=False, mode=fn_BREAKDOWN, icon=self.keyTweenIcons[fn_BREAKDOWN],
@@ -310,7 +308,7 @@ class GraphEditor(toolAbstractFactory):
         self.loadData()
         # force the slider tools to load just in case
 
-        sliderLayout.addStretch()
+        sliderLayout.addStretch(100)
         return sliderLayout
 
     def modifyGraphEditorToolbar_2024(self, graphEditor):
@@ -388,7 +386,7 @@ class GraphEditor(toolAbstractFactory):
                 dupeLayout.addWidget(b)
 
             blankLabel = QLabel('')
-            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
             dupeLayout.addWidget(blankLabel)
             dupeLayout.addStretch(100)
             customLayout = QHBoxLayout()
@@ -496,7 +494,7 @@ class GraphEditor(toolAbstractFactory):
                 # print ('dupeLayout', dupeLayout, b)
                 dupeLayout.addWidget(b)
             blankLabel = QLabel('')
-            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+            blankLabel.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
             dupeLayout.addWidget(blankLabel)
             dupeLayout.addStretch(100)
             customLayout = QHBoxLayout()

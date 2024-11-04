@@ -72,7 +72,10 @@ class hotKeyAbstractFactory(ABC):
         def collapse_command_list(self, command, help):
             lineCmds = list()
             for line in command:
-                tool, functionCalled = line.split('.')
+                if '.' not in line:
+                    cmds.warning('Bad command definition', line)
+                    continue
+                tool, functionCalled = line.split('.', 1)
                 lineCmds.append(('tbtoolCLS.tools["%s"].%s') % (tool, functionCalled))
 
             tryCmd = ['global tbtoolCLS',
