@@ -169,9 +169,23 @@ class toolAbstractFactory(ABC):
     def initData(self):
         baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         self.dataPath = os.path.join(baseDataPath, 'appData')
+        backupDataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
         if not os.path.isdir(self.dataPath):
             os.makedirs(self.dataPath)
         self.dataFile = os.path.join(self.dataPath, self.toolName + '.json')
+        self.baseDataFile = os.path.join(self.dataPath, self.toolName + 'BaseData.json')
+
+        defaultFile = os.path.join(backupDataPath, self.toolName + '.json')
+        defaultBaseFile = os.path.join(backupDataPath, self.toolName + 'BaseData.json')
+        if not os.path.isfile(self.dataFile):
+            if not os.path.isfile(self.dataFile):
+                if os.path.isfile(defaultFile):
+                    shutil.copyfile(defaultFile, self.dataFile)
+        if not os.path.isfile(self.baseDataFile):
+            if not os.path.isfile(self.baseDataFile):
+                if os.path.isfile(defaultBaseFile):
+                    shutil.copyfile(defaultBaseFile, self.baseDataFile)
+
 
     def toJson(self):
         jsonData = '''{}'''
