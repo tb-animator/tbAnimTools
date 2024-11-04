@@ -180,7 +180,7 @@ def set_option_var(var_name, value):
             for item in value:
                 cmds.optionVar(sva=(var_name, item))
     else:
-        raise ValueError("Unsupported value type: {}".format(type(value)))
+        cmds.optionVar(sv=(var_name, str(value)))
 
 
 def delete_option_var(var_name):
