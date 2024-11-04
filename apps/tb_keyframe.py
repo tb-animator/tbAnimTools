@@ -1046,7 +1046,7 @@ class NudgeSpinBox(QDoubleSpinBox):
         self.defaultStep = defaultStep
         self.setSingleStep(defaultStep)
 
-    def wheelEvent(self, event: QWheelEvent):
+    def wheelEvent(self, event):
         step = self.singleStep()  # Default step
         modifiers = event.modifiers()
 
