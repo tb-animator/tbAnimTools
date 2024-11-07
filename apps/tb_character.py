@@ -120,7 +120,9 @@ class CharacterDefinition(object):
         self.driverControl = rawJsonData.get('driverControl', str())
         self.exportControl = rawJsonData.get('exportControl', str())
         self.feetControls = rawJsonData.get('feetControls', str())
-        self.customAttributes = rawJsonData.get('customAttributes', str())
+        self.customAttributes = rawJsonData.get('customAttributes', dict())
+        if isinstance(self.customAttributes, str):
+            self.customAttributes = dict()
         self.UUID = rawJsonData.get('UUID', str())
         self.topNode = rawJsonData.get('topNode', str())
 
