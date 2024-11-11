@@ -343,7 +343,7 @@ class TempPivot(toolAbstractFactory):
             targetList = cmds.parentConstraint(constraints[0], query=True, targetList=True)
             cmds.parentConstraint(targetList, constraints[0], edit=True, maintainOffset=True)
 
-    def savePivotsForControl(self, asset, sel):
+    def savePivotsForControl(self, asset, sel, *args):
         if not sel:
             return
         sel = [str(s) for s in sel]
@@ -383,7 +383,7 @@ class TempPivot(toolAbstractFactory):
             self.saveRigData(refname, self.loadedPivotData[refname].toJson())
 
 
-    def loadPivotsForControl(self, sel=None):
+    def loadPivotsForControl(self, sel=None, *args):
         if not sel:
             sel = cmds.ls(sl=True, type='transform')
         if not sel:
@@ -421,7 +421,7 @@ class TempPivot(toolAbstractFactory):
                 newNodes.append(tempNode)
         return newNodes
 
-    def bakeTempPivotFromSel(self, worldspace=False):
+    def bakeTempPivotFromSel(self, worldspace=False, *args):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('no valid selection')
@@ -448,7 +448,7 @@ class TempPivot(toolAbstractFactory):
             self.bake(control, currentControl, frame, deletePoint=False, worldspace=worldspace)
 
 
-    def bakeSelectedCommand(self, asset, sel):
+    def bakeSelectedCommand(self, asset, sel, *args):
         print('sel', sel)
         targets = [x for x in sel if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = self.funcs.flattenList(
