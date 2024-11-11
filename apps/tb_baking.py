@@ -681,6 +681,8 @@ class BakeTools(toolAbstractFactory):
 
     def postCreateTempControl(self, loc):
         cmds.cutKey(loc + '.translate', clear=True)
+        if not cmds.attributeQuery('drawScale', node=loc, exists=True):
+            return
         drawScale = cmds.getAttr(loc + '.drawScale')
         cmds.cutKey(loc + '.drawScale')
         cmds.setAttr(loc + '.drawScale', drawScale)
