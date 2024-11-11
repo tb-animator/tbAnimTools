@@ -1743,7 +1743,7 @@ class BakeTools(toolAbstractFactory):
                              filter='euler')
         cmds.delete(tempConstraints)
         if int(cmds.about(majorVersion=True)) >= 2020:
-            for o in rotationRoots.values():
+            for key, o in rotationRoots.items():
                 composeMatrix = cmds.createNode('composeMatrix')
                 for a in ['X', 'Y', 'Z']:
                     conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
@@ -1756,7 +1756,7 @@ class BakeTools(toolAbstractFactory):
                 cmds.setAttr(pickMatrix + '.useRotate', False)
                 cmds.setAttr(pickMatrix + '.useShear', False)
 
-                cmds.connectAttr(o + '.parentMatrix', pickMatrix + '.inputMatrix')
+                cmds.connectAttr(key + '.parentMatrix', pickMatrix + '.inputMatrix')
                 cmds.connectAttr(pickMatrix + '.outputMatrix', o + '.offsetParentMatrix')
 
                 cmds.setAttr(o + '.translate', 0, 0, 0)
