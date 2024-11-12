@@ -261,6 +261,7 @@ class KeyModifiers(toolAbstractFactory):
         :return:
         """
         cmds.setKeyframe(id=True)
+        cmds.refresh()
 
     def select_all_curves(self):
         cmds.select(self.funcs.get_non_referenced_animation_curves())
@@ -522,19 +523,19 @@ class KeyModifiers(toolAbstractFactory):
         _flatZ = multiply(z_vector, _flat)
 
         if upAxis == 'x':
-            _crossX = _flatY.cross(_flatZ)
-            _crossZ = _crossX.cross(_flatY)
-            _crossY = _crossZ.cross(_crossX)
+            _crossX = _flatY ^ _flatZ
+            _crossZ = _crossX ^ _flatY
+            _crossY = _crossZ ^ _crossX
 
         elif upAxis == 'y':
-            _crossY = _flatZ.cross(_flatX)
-            _crossX = _crossY.cross(_flatZ)
-            _crossZ = _crossX.cross(_crossY)
+            _crossY = _flatZ ^ _flatX
+            _crossX = _crossY ^ _flatZ
+            _crossZ = _crossX ^ _crossY
 
         elif upAxis == 'z':
-            _crossZ = _flatY.cross(_flatX)
-            _crossX = _crossZ.cross(_flatY)
-            _crossY = _crossX.cross(_crossZ)
+            _crossZ = _flatY ^ _flatX
+            _crossX = _crossZ ^ _flatY
+            _crossY = _crossX ^ _crossZ
 
         _matrix = constructMatrix(_matrix, _crossX, _crossY, _crossZ)
         mTransformMtx = om2.MTransformationMatrix(_matrix)

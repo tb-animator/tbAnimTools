@@ -666,7 +666,7 @@ class MotionTrails(toolAbstractFactory):
                                              scale=get_option_var(self.motionControlSizeOption, 0.5)))
             cmds.container(s + '_' + 'MotionPath', edit=True, addNode=tmp)
 
-            cnst = cmds.pointConstraint(s, tmp)
+            cnst = cmds.pointConstraint(s, tmp)[0]
             tempNodes[s] = tmp
             tempConstraints[s] = cnst
 
