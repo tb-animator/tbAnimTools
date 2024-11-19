@@ -927,8 +927,8 @@ class GravityTools(toolAbstractFactory):
         self.saveJsonFile(dataFile, setData)
 
     def getToolboxWidget(self, widget):
-        buttonWidth = 108
-        buttonHeight = 40
+        buttonWidth = 108  * dpiScale()
+        buttonHeight = 40 * dpiScale()
         '''
         cmds.setParent()
         if cmds.menu(TOOLBOX_MENU, exists=True):

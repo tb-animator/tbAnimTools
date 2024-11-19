@@ -318,7 +318,7 @@ class ViewportSliderWidget(BaseDialog):
         self.slider.toggleOvershoot(overshootState, self.baseSliderWidth)
         currentPos = self.pos()
         if overshootState:
-            self.setFixedWidth(self.baseWidth * 2)
+            self.setFixedWidth(self.baseWidth * (2 * dpiScale()))
             currentPos.setX(currentPos.x() - (self.baseSliderWidth * 0.5))
         else:
 

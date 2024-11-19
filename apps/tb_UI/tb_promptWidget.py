@@ -14,7 +14,7 @@ class promptWidget(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.windowFlags()
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(300, 64)
+        self.setFixedSize(300 * dpiScale(), 64 * dpiScale())
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 

@@ -169,9 +169,9 @@ class MiniDestinationWidget(ToolTipWidget):
     def resizeList(self):
         if self.listwidget.count():
             self.listwidget.setFixedHeight(
-                self.listwidget.sizeHintForRow(0) * self.listwidget.count() + 2 * self.listwidget.frameWidth())
+                self.listwidget.sizeHintForRow(0) * self.listwidget.count() + 2 * self.listwidget.frameWidth() * dpiScale())
         else:
-            self.listwidget.setFixedHeight(22)
+            self.listwidget.setFixedHeight(22 * dpiScale())
 
 
 class PickwalkLabelledLineEdit(QWidget):
@@ -190,7 +190,7 @@ class PickwalkLabelledLineEdit(QWidget):
         self.lineEdit = QLineEdit()
         self.lineEdit.textChanged.connect(self.sendtextChangedSignal)
         self.button = StandardPickButton(label=buttonLabel, direction='left', icon='timeend.png', rotation=0)
-        self.button.setFixedWidth(80)
+        self.button.setFixedWidth(80 * dpiScale())
         if self.obj:
             self.button.clicked.connect(self.pickObject)
         else:
@@ -199,7 +199,7 @@ class PickwalkLabelledLineEdit(QWidget):
         self.layout.addWidget(self.lineEdit)
         if hasButton:
             self.layout.addWidget(self.button)
-        self.label.setFixedWidth(60)
+        self.label.setFixedWidth(60 * dpiScale())
         # elf.lineEdit.setFixedWidth(200)
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
@@ -246,7 +246,7 @@ class PickwalkLabelledDoubleSpinBox(ToolTipWidget):
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.spinBox)
 
-        self.label.setFixedWidth(labelWidth)
+        self.label.setFixedWidth(labelWidth * dpiScale())
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
                                  "border-radius: 0;"
@@ -297,7 +297,7 @@ class PickObjectLineEdit(QWidget):
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.lineEdit)
-        self.label.setFixedWidth(60)
+        self.label.setFixedWidth(60 * dpiScale())
 
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
@@ -344,7 +344,7 @@ class PickChannelLineEdit(ToolTipWidget):
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.lineEdit)
-        self.label.setFixedWidth(60)
+        self.label.setFixedWidth(60 * dpiScale())
 
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"
@@ -383,7 +383,7 @@ class StandardPickButton(QPushButton):
         self.setText(label)
         self.direction = direction
         if fixedWidth:
-            self.setFixedWidth(width)
+            self.setFixedWidth(width * dpiScale())
         upRotate = QTransform().rotate(rotation)
         pixmap = QPixmap(':/{}'.format(icon)).transformed(upRotate)
         icon = QIcon(pixmap)
@@ -419,7 +419,7 @@ class PickwalkDestinationWidget(QFrame):
         font = QFont()
         font.setBold(True)
         self.label.setFont(font)
-        self.label.setFixedWidth(64)
+        self.label.setFixedWidth(64 * dpiScale())
         self.label.setAlignment(Qt.AlignRight | Qt.AlignTop)
         self.mainLayout.setAlignment(Qt.AlignRight | Qt.AlignTop)
         self.lineEdit = QLineEdit()

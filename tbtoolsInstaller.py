@@ -116,6 +116,7 @@ QLabel
 def onMayaDroppedPythonFile(*args):
     module_maker().install()
     installer().install()
+    print ('done')
 
 class module_maker():
     def __init__(self):
@@ -356,7 +357,7 @@ class ResultWindow(BaseDialog):
         openHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
         openOptionsWindowLabel.setStyleSheet(labelStyleSheet)
         openCustomHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
-        self.setFixedSize(self.sizeHint().width()+36, self.sizeHint().height()+36)
+        self.setFixedSize(self.sizeHint().width()+(36* dpiScale()), self.sizeHint().height()+(36*dpiScale()))
 
 
     def openHotkeyWindow(self, *args):

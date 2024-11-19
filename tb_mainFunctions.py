@@ -2549,3 +2549,35 @@ class Functions(object):
         enums = {name: index for index, name in enumerate(enum_list)}
 
         return enums
+
+    def simplifyEnumKeys(self, control, attribute='rotateOrder'):
+        """
+        :param node:
+        :param attribute:
+        :return:
+        """
+        with self.keepSelection():
+            # make a list so we can send multiple objects in one go
+            if not isinstance(control, list):
+                control = [control]
+            attributes = [x + '.' + attribute for x in control]
+            for attr in attributes:
+                cmds.select(clear=True)
+
+                allSpaceAttrKeyTimes = sorted(list(set(cmds.keyframe(attr, query=True))))
+                duplicateSpaceKeyTimes = []
+                spaceAttrValues = cmds.keyframe(attr, query=True, valueChange=True)
+                for index in range(0, len(spaceAttrValues) - 1):
+                    if spaceAttrValues[index] != spaceAttrValues[index + 1]:
+                        continue
+                    duplicateSpaceKeyTimes.append(allSpaceAttrKeyTimes[index + 1])
+
+                # remove the duplicate values
+                for keyTime in duplicateSpaceKeyTimes:
+                    cmds.cutKey(attr, time=(keyTime,))
+
+                # put this as an option
+                cmds.keyframe(attr, tickDrawSpecial=True)
+
+                # set the tangents to stepped and flat
+                cmds.keyTangent(attr, outTangentType='step', inTangentType='linear')

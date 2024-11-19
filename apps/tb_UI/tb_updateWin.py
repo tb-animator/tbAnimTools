@@ -29,7 +29,7 @@ class UpdateWin(BaseDialog):
         # self.activateButton = QPushButton('Activate')
         # self.quitButton = QPushButton('Exit')
 
-        self.setFixedSize(400, 180)
+        self.setFixedSize(400 * dpiScale(), 180 * dpiScale())
         self.gridLayout = QGridLayout()
         self.titleText.setText(title)
         self.titleText.setStyleSheet("font-weight: bold; font-size: 14px;");

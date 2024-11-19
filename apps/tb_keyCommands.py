@@ -324,8 +324,8 @@ class mainHotkeyWindow(QMainWindow):
         self.toolTypeScrollArea.setWidgetResizable(True)
         self.toolTypeScrollArea.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.MinimumExpanding)
 
-        self.toolTypeScrollArea.setFixedWidth(320)
-        self.filterLineEdit.setFixedWidth(320)
+        self.toolTypeScrollArea.setFixedWidth(320 * dpiScale())
+        self.filterLineEdit.setFixedWidth(320 * dpiScale())
         self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.optionUIScrollArea = QScrollArea()

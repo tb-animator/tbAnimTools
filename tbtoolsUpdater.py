@@ -616,8 +616,8 @@ class UpdateWin(UpdateBaseDialog):
                  ):
         super(UpdateWin, self).__init__(parent=parent)
 
-        self.defaultWidth = 800
-        self.defaultHeight = 350
+        self.defaultWidth = 800 * dpiScale()
+        self.defaultHeight = 350 * dpiScale()
         self.setFixedSize(self.defaultWidth, self.defaultHeight)
         self.selectedUrl = defaultUrl
 
@@ -628,13 +628,13 @@ class UpdateWin(UpdateBaseDialog):
         # QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
         # self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox = QDialogButtonBox()
-        self.buttonBox.setFixedWidth(self.defaultWidth - 10)
+        self.buttonBox.setFixedWidth(self.defaultWidth - (10*dpiScale()))
         self.updateButton = QPushButton("Update To Latest")
         self.cancelButton = QPushButton("Cancel")
-        self.updateButton.setFixedWidth(self.defaultWidth - 90)
+        self.updateButton.setFixedWidth(self.defaultWidth - (90*dpiScale()))
         self.updateButton.setStyleSheet(
             'background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #52bf90, stop: 0.1 #49ab81, stop: 0.5 #419873, stop: 0.9 #398564, stop: 1 #317256);color: 	#3b2f2f;font-weight: bold; font-size: 14px;')
-        self.cancelButton.setFixedWidth(80)
+        self.cancelButton.setFixedWidth(80 * dpiScale())
         self.buttonBox.addButton(self.updateButton, QDialogButtonBox.AcceptRole)
         self.buttonBox.addButton(self.cancelButton, QDialogButtonBox.RejectRole)
         self.buttonBox.accepted.connect(self.accept)

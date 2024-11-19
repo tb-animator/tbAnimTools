@@ -86,7 +86,7 @@ class TranslucentWidget(QWidget):
             self.close_btn.setText("x")
             self.close_btn.setFont(font)
             self.close_btn.setStyleSheet("background-color: rgb(0, 0, 0, 0)")
-            self.close_btn.setFixedSize(30, 30)
+            self.close_btn.setFixedSize(30 * dpiScale(), 30 * dpiScale())
             self.close_btn.clicked.connect(self._onclose)
 
         self.SIGNALS = TranslucentWidgetSignals()

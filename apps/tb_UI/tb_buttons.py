@@ -368,9 +368,9 @@ class HotkeyToolButton(QPushButton):
         self.labelText = text
         self.sourceType = sourceType
         if width:
-            self.setFixedWidth(width)
+            self.setFixedWidth(width * dpiScale())
         if height:
-            self.setFixedHeight(height)
+            self.setFixedHeight(height * dpiScale())
         self.gridLayout = QGridLayout()
         self.gridLayout.setSpacing(0)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)

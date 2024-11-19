@@ -1580,8 +1580,8 @@ class SpaceSwitchSetupUI(QMainWindow):
             self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].mirrorValuesWidgets.stackWidget,
                                              count + 1, 5)
             self.controlsSubLayout.addWidget(self.controlWidgets[spaceAttribute].deleteButton, count + 1, 6)
-            self.controlWidgets[spaceAttribute].spaceAttributeWidget.lineEdit.setFixedWidth(300)
-            self.controlsSubLayout.setColumnMinimumWidth(0, 300)
+            self.controlWidgets[spaceAttribute].spaceAttributeWidget.lineEdit.setFixedWidth(300 * dpiScale())
+            self.controlsSubLayout.setColumnMinimumWidth(0, 300 * dpiScale())
 
         self.controlsLayout.setAlignment(Qt.AlignTop)
 
@@ -2205,7 +2205,7 @@ class PresetSaveWidget(QWidget):
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(
-            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28)  * dpiScale())
         self.setStyleSheet(
             "PresetSave { "
             "border-radius: 8;"

@@ -633,7 +633,7 @@ class Slider(QSlider):
         if self.overshootState:
             self.setMaximum(self.maxOvershootValue)
             self.setMinimum(self.minOvershootValue)
-            self.setFixedWidth(baseWidth * 2)
+            self.setFixedWidth(baseWidth * (2 * dpiScale()))
             # self.updateOvershootStyle()
         else:
             self.setMaximum(self.maxValue)
@@ -1780,7 +1780,7 @@ class PopupSlider(QWidget):
         self.setLayout(layout)
         self.margin = 2 * dpiScale()
         self.padding = 4 * dpiScale()
-        self.baseWidth = width
+        self.baseWidth = width  * dpiScale()
         layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
         layout.addWidget(self.button)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)

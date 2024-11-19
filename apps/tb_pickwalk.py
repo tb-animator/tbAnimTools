@@ -54,7 +54,7 @@ skipDirections = ['upSkip', 'downSkip', 'leftSkip', 'rightSkip']
 
 lockedIcon = 'nodeGrapherLocked.png'
 unlockedIcon = 'nodeGrapherUnlocked.png'
-btnWidth = 80
+btnWidth = 80  * dpiScale()
 
 
 class WalkData(object):
@@ -1991,7 +1991,7 @@ class lockButton(QPushButton):
         self.lockedIcon = QIcon(QPixmap(':/{}'.format(icon)))
         self.unlockedIcon = QIcon(QPixmap(':/{}'.format(icon2)))
         self.setText('Pick')
-        self.setFixedWidth(64)
+        self.setFixedWidth(64 * dpiScale())
         # self.setCheckable(True)
         # self.setIconType()
         self.clicked.connect(self.toggle)
@@ -2380,7 +2380,7 @@ class pickContextDirectionWidget(QFrame):
         ]
         for btn in self.allButtons:
             btn.pressedSignal.connect(self.inputSignal_pickDirection)
-            btn.setFixedWidth(32)
+            btn.setFixedWidth(32 * dpiScale())
 
     def stylesheetFix(self, widget):
         widget.setStyleSheet("QLabel {"
@@ -3243,7 +3243,7 @@ class PickwalkExistingConditionPopup(BaseDialog):
         self.leftBtn.pressedSignal.connect(self.addWalk)
         self.rightBtn.pressedSignal.connect(self.addWalk)
 
-        self.setFixedSize(self.sizeHint().width(), 320)
+        self.setFixedSize(self.sizeHint().width(), 320 * dpiScale())
 
         self.setStyleSheet(getqss.getStyleSheet())
         self.populate()
@@ -3650,7 +3650,7 @@ class mirrorPickwalkWidget(QFrame):
         # self.layout.addWidget(self.toInput)
         self.layout.addWidget(self.mirrorBtn)
 
-        self.fromLabel.setFixedWidth(48)
+        self.fromLabel.setFixedWidth(48 * dpiScale())
         # self.mainLayout.addStretch(1)
 
         # events

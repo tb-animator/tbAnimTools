@@ -813,8 +813,8 @@ class CharacterTool(toolAbstractFactory):
         MirrorTools.saveCurrentMirrorData(self.currentChar)
 
     def getToolboxWidget(self, widget, message=''):
-        buttonWidth = 124
-        buttonHeight = 18
+        buttonWidth = 124  * dpiScale()
+        buttonHeight = 18  * dpiScale()
         '''
         cmds.setParent()
         if cmds.menu(TOOLBOX_MENU, exists=True):

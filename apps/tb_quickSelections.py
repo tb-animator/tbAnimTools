@@ -1112,7 +1112,7 @@ class QssSaveWidget(QWidget):
         # self.move(getScreenCenter() - self.rect().center())
 
         # self.lineEdit.setFocus()
-        self.lineEdit.setFixedWidth(
+        self.lineEdit.setFixedWidth(dpiScale() *
             max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
         self.setStyleSheet(
             "QssSaveWidget { "

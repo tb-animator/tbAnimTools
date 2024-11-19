@@ -114,7 +114,7 @@ class ToolBoxWidget(QWidget):
         restoreLayout = QHBoxLayout()
         self.frequencySlider = SliderFloatField(label='Frequency')
         self.frequencySlider.slider.setOrientation(Qt.Horizontal)
-        self.frequencySlider.slider.setFixedWidth(200)
+        self.frequencySlider.slider.setFixedWidth(200 * dpiScale())
         self.frequencySlider.slider.setMinimum(-100)
         self.frequencySlider.slider.setMaximum(100)
         self.frequencySlider.slider.setValue(0)
@@ -122,7 +122,7 @@ class ToolBoxWidget(QWidget):
 
         self.amplitudeSlider = SliderFloatField(label='Amplitude')
         self.amplitudeSlider.slider.setOrientation(Qt.Horizontal)
-        self.amplitudeSlider.slider.setFixedWidth(200)
+        self.amplitudeSlider.slider.setFixedWidth(200 * dpiScale())
         self.amplitudeSlider.slider.setMinimum(-100)
         self.amplitudeSlider.slider.setMaximum(100)
         self.amplitudeSlider.slider.setValue(0)

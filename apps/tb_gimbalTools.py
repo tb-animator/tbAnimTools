@@ -1629,7 +1629,7 @@ class GimbalUI_pyside(BaseDialog):
         self.queueWidgets = dict()
 
         self.result = str()
-        self.setFixedSize(300, 160)
+        self.setFixedSize(300  * dpiScale(), 160  * dpiScale())
         self.layout.setSpacing(0)
         self.originalLabels = list()
         self.gimbalLabels = list()
@@ -1721,7 +1721,7 @@ class GimbalUI_pyside(BaseDialog):
         # changeCommand=self.updateBakeSampleInt,
         # #dragCommand=self.updateBakeSampleInt)
         self.bakeSampleIntField = QSpinBox()
-        self.bakeSampleIntField.setFixedWidth(40)
+        self.bakeSampleIntField.setFixedWidth(40  * dpiScale())
         self.bakeSampleIntField.setMinimum(1)
         self.bakeSampleIntField.setMaximum(10)
         self.bakeSampleIntField.setValue(self.bakeSample)
@@ -1746,7 +1746,7 @@ class GimbalUI_pyside(BaseDialog):
         self.modeLayout = QHBoxLayout()
         self.keyModeLabel = QLabel('Key Mode')
         self.keyModeCombo = QComboBox()
-        self.keyModeCombo.setFixedWidth(88)
+        self.keyModeCombo.setFixedWidth(88 * dpiScale())
         self.keyModeCombo.addItem(self.keyModeOptions[0])
         self.keyModeCombo.addItem(self.keyModeOptions[1])
 
@@ -1758,20 +1758,20 @@ class GimbalUI_pyside(BaseDialog):
         self.layerModeCombo.currentIndexChanged.connect(self.layerModeChanged)
 
         self.queueModeButton = QPushButton('Mode')
-        self.queueModeButton.setFixedHeight(24)
+        self.queueModeButton.setFixedHeight(24 * dpiScale())
         self.queueModeButton.clicked.connect(self.toggleQueueMode)
 
         self.queueFrame = QFrame()
 
         self.queueScrollArea = QScrollArea()
-        self.queueScrollArea.setFixedHeight(116)
+        self.queueScrollArea.setFixedHeight(116 * dpiScale())
         self.queueScrollArea.setWidget(self.queueFrame)
         self.queueScrollArea.setWidgetResizable(True)
         self.queueScrollArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.queueScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
         self.processButton = QPushButton('Process Queue')
-        self.processButton.setFixedHeight(24)
+        self.processButton.setFixedHeight(24 * dpiScale())
         self.queueFrame.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.queueLayout = QVBoxLayout()
         self.queueLayout.setSpacing(0)
@@ -1809,13 +1809,13 @@ class GimbalUI_pyside(BaseDialog):
         if self.quickMode:
             self.queueModeButton.setText(self.quickLabel)
             self.queueModeButton.setStyleSheet(defaultBackgroundSS)
-            self.setFixedHeight(160)
+            self.setFixedHeight(160 * dpiScale())
             self.queueScrollArea.setVisible(False)
             self.processButton.setVisible(False)
         else:
             self.queueModeButton.setText(self.queueLabel)
             self.queueModeButton.setStyleSheet(mainStyleSheet)
-            self.setFixedHeight(300)
+            self.setFixedHeight(300 * dpiScale())
             self.queueScrollArea.setVisible(True)
             self.processButton.setVisible(True)
 

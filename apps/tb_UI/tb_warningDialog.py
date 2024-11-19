@@ -6,7 +6,7 @@ class WarningDialog(BaseDialog):
 
     def __init__(self, parent=None, title='title!!!?', text='what  what?'):
         super(WarningDialog, self).__init__(parent=parent, title=title, text=text)
-        self.setFixedWidth(200)
+        self.setFixedWidth(200 * dpiScale())
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)

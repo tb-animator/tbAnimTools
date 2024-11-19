@@ -191,12 +191,12 @@ class ViewModeTool(toolAbstractFactory):
         layout.addWidget(allLabel)
         subLayout.addLayout(layout)
 
-        setControlButton.setFixedWidth(48)
-        setModelButton.setFixedWidth(48)
-        setAllButton.setFixedWidth(48)
-        removeControlButton.setFixedWidth(72)
-        removeModelButton.setFixedWidth(72)
-        removeAllButton.setFixedWidth(72)
+        setControlButton.setFixedWidth(48 * dpiScale())
+        setModelButton.setFixedWidth(48 * dpiScale())
+        setAllButton.setFixedWidth(48 * dpiScale())
+        removeControlButton.setFixedWidth(72 * dpiScale())
+        removeModelButton.setFixedWidth(72 * dpiScale())
+        removeAllButton.setFixedWidth(72 * dpiScale())
         self.layout.addStretch()
         return self.optionWidget
 

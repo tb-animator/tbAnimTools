@@ -1013,22 +1013,22 @@ class AimAxisWidget(QWidget):
         self.upComboBox = QComboBox()
         for item in itemList:
             self.upComboBox.addItem(item)
-        self.aimComboBox.setFixedWidth(32)
-        self.upComboBox.setFixedWidth(32)
+        self.aimComboBox.setFixedWidth(42 * dpiScale())
+        self.upComboBox.setFixedWidth(42 * dpiScale())
 
         self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
         self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
 
         self.scaleSpinBox = QDoubleSpinBox()
         scaleLabel = QLabel('Scale')
-        self.scaleSpinBox.setFixedWidth(80)
+        self.scaleSpinBox.setFixedWidth(80 * dpiScale())
         self.scaleSpinBox.setValue(scale)
         self.scaleSpinBox.setMinimum(0.01)
         self.scaleSpinBox.setSingleStep(0.1)
 
         self.distanceSpinBox = QDoubleSpinBox()
         distanceLabel = QLabel('Distance')
-        self.distanceSpinBox.setFixedWidth(80)
+        self.distanceSpinBox.setFixedWidth(80 * dpiScale())
         self.distanceSpinBox.setValue(distance)
         self.distanceSpinBox.setMaximum(1000.0)
         self.distanceSpinBox.setSingleStep(1)

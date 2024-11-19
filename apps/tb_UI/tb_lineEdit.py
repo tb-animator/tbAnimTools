@@ -28,7 +28,7 @@ class ObjectSelectLineEdit(QWidget):
         self.itemLabel = QLineEdit()
         self.itemLabel.setPlaceholderText(placeholderTest)
         if not self.lineEditStretches:
-            self.itemLabel.setFixedWidth(lineEditWidth)
+            self.itemLabel.setFixedWidth(lineEditWidth * dpiScale())
         self.cle_action_pick = self.itemLabel.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(hint)
         self.cle_action_pick.triggered.connect(self.pickObject)
@@ -195,7 +195,7 @@ class ChannelSelectLineEdit(QWidget):
         self.setLayout(self.mainLayout)
         self.label = QLabel(text)
         self.lineEdit = QLineEdit()
-        self.lineEdit.setFixedWidth(lineEditWidth)
+        self.lineEdit.setFixedWidth(lineEditWidth * dpiScale())
         self.cle_action_pick = self.lineEdit.addAction(QIcon(":/targetTransfoPlus.png"), QLineEdit.TrailingPosition)
         self.cle_action_pick.setToolTip(tooltip)
         self.cle_action_pick.triggered.connect(self.pickChannel)
@@ -207,7 +207,7 @@ class ChannelSelectLineEdit(QWidget):
         self.mainLayout.addWidget(self.lineEdit)
 
         if text:
-            self.label.setFixedWidth(60)
+            self.label.setFixedWidth(60 * dpiScale())
 
         self.label.setStyleSheet("QFrame {"
                                  "border-width: 0;"

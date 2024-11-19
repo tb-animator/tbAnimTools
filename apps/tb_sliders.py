@@ -2965,7 +2965,7 @@ class sliderBar(QLabel):
         QLabel.__init__(self)
         self.barWidth = width - 1
         self.uiParent = uiParent
-        self.setFixedSize(self.barWidth, 24)
+        self.setFixedSize(self.barWidth, 24 * dpiScale())
         self.setAlignment(Qt.AlignCenter)
         # self.setStyleSheet("QLabel {background-color: rgba(128, 128, 128, 128);}")
         shadow = QGraphicsDropShadowEffect()

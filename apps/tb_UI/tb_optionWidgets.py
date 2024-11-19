@@ -52,7 +52,7 @@ class optionVarBoolWidget(optionVarWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
         self.labelText = QLabel(label)
-        self.checkBox = AnimatedCheckBox(text='On', offText='Off', width=36, height=14)
+        self.checkBox = AnimatedCheckBox(text='On', offText='Off', width=42, height=18)
         self.checkBox.setChecked(get_option_var(self.optionVar, False))
         set_option_var(self.optionVar, get_option_var(self.optionVar, False))
         self.checkBox.clicked.connect(self.checkBoxEdited)
