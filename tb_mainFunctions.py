@@ -446,7 +446,7 @@ class Functions(object):
         CharacterTool.getTempControlData(refname, rigControl, control, 'drawScale')
 
     def storeTempControlSettings(self, control):
-        print ('storeTempControlSettings')
+        print('storeTempControlSettings')
         CharacterTool = getGlobalTools().tools['CharacterTool']
 
         rigControl = self.getConstraintTargetControl(control)
@@ -2581,3 +2581,76 @@ class Functions(object):
 
                 # set the tangents to stepped and flat
                 cmds.keyTangent(attr, outTangentType='step', inTangentType='linear')
+
+    def isTrackingEdits(self, node):
+        obj = om2.MSelectionList().add(node).getDependNode(0)
+        dependFn = om2.MFnDependencyNode(obj)
+        trackingEdits = dependFn.isTrackingEdits()
+        del obj
+        del dependFn
+
+        return trackingEdits
+
+    def isProxyAttrFromRefFile(self, plug):
+        isProxyAttribute = False
+        plug = om2.MSelectionList().add(plug).getPlug(0)
+        if not plug.isNull:
+            nodeFn = om2.MFnDependencyNode(plug.node())
+            attrFn = om2.MFnAttribute(plug.attribute())
+            isProxyAttribute = nodeFn.isFromReferencedFile and attrFn.isProxyAttribute
+
+        return isProxyAttribute
+
+    def cbDeleteConnection(self, attrName, source=True, destination=False):
+        node, attr = attrName.split('.')
+        if not cmds.attributeQuery(attr, node=node, exists=True):
+            return
+        connections = cmds.listConnections(attrName, source=source, destination=destination)
+        if not connections:
+            return
+        destination = cmds.connectionInfo(attrName, getExactDestination=True)
+        trackingEdits = self.isTrackingEdits(destination)
+        isProxyAttr = self.isProxyAttrFromRefFile(attrName)
+
+        if trackingEdits and not isProxyAttr:
+            src = cmds.connectionInfo(destination, sourceFromDestination=True)
+            cmds.disconnectAttr(src, destination)
+        else:
+            cmds.delete(destination, inputConnectionsAndNodes=True)
+
+
+"""
+global proc CBdeleteConnection( string $destName )
+//
+// If the specified name is the destination of a connection,
+// then delete that connection.
+//
+{
+	if ( `connectionInfo -isDestination $destName` ){
+		string $destination = `connectionInfo -getExactDestination $destName`;
+
+		// When deleting a src connection from a character, you must remove
+		// the item from the character set or the character will no longer
+		// work consistently: bug 127212
+		//
+		string $srcConn[] = `listConnections -s 1 -d 0 -type character $destination`;
+		if (size($srcConn)) {
+			string $warnMsg = (uiRes("m_channelBoxCommand.kRemovedWarn"));
+			string $warnDisplay = `format -s $destination -s $srcConn[0] $warnMsg`;
+			warning($warnDisplay);
+			character -e -rm $srcConn[0] $destination;
+		}
+		
+		// delete -icn doesn't work if destination attr is referenced or
+		// in an assembly except it's a proxy attr. So use disconnectAttr in this case.
+		//
+		int $trackingEdits = isTrackingEdits($destination);
+		int $isProxyAttr = isProxyAttrFromRefFile($destName);
+		if ( $trackingEdits && !$isProxyAttr ) {
+			string $src = `connectionInfo -sourceFromDestination $destination`;
+			disconnectAttr $src $destination;
+		} else {
+			delete -icn $destination;
+		}
+	}
+"""

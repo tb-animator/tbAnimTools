@@ -578,6 +578,7 @@ class BakeTools(toolAbstractFactory):
                                                                skipRotate=[x.split('rotate')[-1] for x in skipR])
                             # common cleanup functions for temp controls
                             self.clearUnneededAttributes(loc)
+                            self.postCreateTempControl(loc, minTime=keyRange[0])
                             self.funcs.simplifyEnumKeys(loc)
                             cmds.container(asset, edit=True,
                                            includeHierarchyBelow=True,
@@ -687,8 +688,9 @@ class BakeTools(toolAbstractFactory):
                                 cmds.disconnectAttr(conns, loc + '.translate' + a)
                                 cmds.connectAttr(conns, composeMatrixes[cnt] + '.inputTranslate.inputTranslate' + a)
                             cmds.setAttr(loc + '.translate', 0, 0, 0)
+
                             self.clearUnneededAttributes(loc)
-                            self.postCreateTempControl(loc, cutTranslate=True)
+                            self.postCreateTempControl(loc, cutTranslate=True, minTime=keyRange[0])
 
                             cmds.container(asset, edit=True,
                                            includeHierarchyBelow=True,
@@ -707,7 +709,7 @@ class BakeTools(toolAbstractFactory):
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
-    def postCreateTempControl(self, loc, cutTranslate=False):
+    def postCreateTempControl(self, loc, cutTranslate=False, minTime=None):
         if cutTranslate:
             cmds.cutKey(loc + '.translate', clear=True)
             cmds.setAttr(loc + '.translate', 0, 0, 0)
@@ -716,7 +718,8 @@ class BakeTools(toolAbstractFactory):
         drawScale = cmds.getAttr(loc + '.drawScale')
         cmds.cutKey(loc + '.drawScale')
         cmds.setAttr(loc + '.drawScale', drawScale)
-
+        if minTime is not None:
+            cmds.setKeyframe(loc + '.rotateOrder', time=minTime)
         self.restoreSelectedControls(None, loc)
 
     def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True,
@@ -850,7 +853,7 @@ class BakeTools(toolAbstractFactory):
                 if select:
                     cmds.select(locs, replace=True)
                 for loc in locs:
-                    self.postCreateTempControl(loc)
+                    self.postCreateTempControl(loc, minTime=keyRange[0])
                 return locs
 
             except Exception:
@@ -858,12 +861,11 @@ class BakeTools(toolAbstractFactory):
                 self.funcs.resumeSkinning()
 
     def clearUnneededAttributes(self, o):
-        mel.eval('CBdeleteConnection "%s.sx"' % o)
-        mel.eval('CBdeleteConnection "%s.sy"' % o)
-        mel.eval('CBdeleteConnection "%s.sz"' % o)
-        mel.eval('CBdeleteConnection "%s.v"' % o)
-        # mel.eval('CBdeleteConnection "%s.ro"' % o)
-        mel.eval('CBdeleteConnection "%s.drawScale"' % o)
+        self.funcs.cbDeleteConnection("%s.sx" % o)
+        self.funcs.cbDeleteConnection("%s.sy" % o)
+        self.funcs.cbDeleteConnection("%s.sz" % o)
+        self.funcs.cbDeleteConnection("%s.v" % o)
+        self.funcs.cbDeleteConnection("%s.drawScale" % o)
 
     def bakeSelectedHotkey(self):
         sel = cmds.ls(sl=True)
@@ -1851,9 +1853,11 @@ class BakeTools(toolAbstractFactory):
                                             maintainOffset=False,
                                             channels=channels)
 
-        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimNodes.values())):
-            self.postCreateTempControl(root)
-            self.postCreateTempControl(anim)
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
+            self.clearUnneededAttributes(root)
+            self.clearUnneededAttributes(anim)
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
 
         cmds.select(list(rotationRoots.values()), replace=True)
 
@@ -2002,8 +2006,8 @@ class BakeTools(toolAbstractFactory):
                                             channels=channels)
 
         for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
-            self.postCreateTempControl(root)
-            self.postCreateTempControl(anim)
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
 
         cmds.select(list(rotationRoots.values()), replace=True)
 
