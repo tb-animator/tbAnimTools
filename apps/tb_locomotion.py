@@ -452,7 +452,7 @@ class LocomotionTools(toolAbstractFactory):
         return self.max_difference_axis(startTranslation, endTranslation)
 
     def getTranslationAtFrame(self, endFrame, thisMob):
-        currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(endFrame, om2.MTime.uiUnit()))
+        currentMDG = om2.MDGContext(om2.MTime(endFrame, om2.MTime.uiUnit()))
         currentTransform = self.funcs.om_plug_worldMatrix_at_time('worldMatrix', thisMob, currentMDG)
         mfnTransform = om2.MTransformationMatrix(currentTransform)
         endTranslation = mfnTransform.translation(om2.MSpace.kWorld)

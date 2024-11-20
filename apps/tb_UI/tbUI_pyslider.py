@@ -633,7 +633,7 @@ class Slider(QSlider):
         if self.overshootState:
             self.setMaximum(self.maxOvershootValue)
             self.setMinimum(self.minOvershootValue)
-            self.setFixedWidth(baseWidth * (2 * dpiScale()))
+            self.setFixedWidth(baseWidth * 2)
             # self.updateOvershootStyle()
         else:
             self.setMaximum(self.maxValue)

@@ -4,6 +4,12 @@ import re
 import os
 import maya.cmds as cmds
 import maya.mel as mel
+
+import maya.OpenMayaUI as OpenMayaUI
+import maya.api.OpenMaya as om2
+import maya.api.OpenMayaAnim as oma2
+import maya.OpenMayaAnim as oma
+import maya.OpenMayaUI as omUI
 import json
 import textwrap
 import shutil

@@ -1,6 +1,6 @@
 import maya.utils as mutils
 import maya.cmds as cmds
-import maya.api.OpenMaya as OpenMaya
+import maya.api.OpenMaya as om2
 # '''
 hasSingleShot = False
 callback_id = None  # Variable to store the callback ID
@@ -21,13 +21,13 @@ def startupFunction(*args):
 def add_plugin_callback():
     global callback_id
     # Add the callback and store the ID
-    callback_id = OpenMaya.MSceneMessage.addStringArrayCallback(OpenMaya.MSceneMessage.kAfterPluginLoad, startupFunction)
+    callback_id = om2.MSceneMessage.addStringArrayCallback(om2.MSceneMessage.kAfterPluginLoad, startupFunction)
 
 def remove_plugin_callback():
     global callback_id
     # If the callback is active, remove it to clean up
     if callback_id is not None:
-        OpenMaya.MMessage.removeCallback(callback_id)
+        om2.MMessage.removeCallback(callback_id)
         callback_id = None
 
 

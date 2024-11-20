@@ -2107,7 +2107,7 @@ class Functions(object):
         :return: a list of values per frame.
         '''
 
-        objMfn = OpenMaya.MFnDependencyNode(dep_node)
+        objMfn = om2.MFnDependencyNode(dep_node)
         ## Get the plug of the node. (networkedplug = False, as it no longer profides a speed improvement)
         plug = objMfn.findPlug(matrix, False).elementByLogicalIndex(0)
 

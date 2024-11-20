@@ -23,26 +23,15 @@
 *******************************************************************************
 '''
 
-import maya.cmds as cmds
-import random
-import maya.mel as mel
-import maya.OpenMayaUI as omUI
-import maya.api.OpenMaya as om2
-import maya.api.OpenMayaAnim as oma2
-from maya.api import OpenMaya
-from copy import deepcopy
-
-# temp
-# from importlib import reload
-import tb_UI as tbui
-
-from apps.tb_UI import *
+from . import *
+maya.utils.loadStringResourcesForModule(__name__)
 
 
 '''
 blend to magnet (relative pose)
-
 '''
+
+
 fn_SMOOTH = 'Smooth'
 fn_SMOOTHGAUSS = 'SmoothGaussian'
 fn_SMOOTHBUTTER = 'SmoothButterworth'
@@ -77,13 +66,9 @@ tt_BREAKDOWNGROUP = 'TweenGrp'
 
 qtVersion = cmds.about(qtVersion=True)
 margin = 2
-from random import randint
-from Abstract import *
-import maya
 
-maya.utils.loadStringResourcesForModule(__name__)
 
-import sys, os
+
 
 scriptLocation = os.path.dirname(os.path.realpath(__file__))
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
@@ -110,7 +95,7 @@ curveTypeScalar = {
 
 
 def getFps():
-    return maya.OpenMaya.MTime(1, maya.OpenMaya.MTime.kSeconds).asUnits(maya.OpenMaya.MTime.uiUnit())
+    return om2.MTime(1, om2.MTime.kSeconds).asUnits(om2.MTime.uiUnit())
 
 
 def recursive_subdivide(pair, steps_remaining):
@@ -132,6 +117,10 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='showControlTweener', annotation='',
                                      help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
                                      category=self.category, command=['SlideTools.showXformInbetween()']))
+        self.addCommand(self.tb_hkey(name='showControlTweenerDouble', annotation='',
+                                     help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
+                                     category=self.category, command=['SlideTools.showXformInbetweenDouble()']))
+
         self.addCommand(self.tb_hkey(name='showKeyTweener', annotation='',
                                      help=maya.stringTable['tbCommand.inbetweenSliderRelease'],
                                      category=self.category, command=['SlideTools.showKeyInbetween()']))
@@ -260,7 +249,7 @@ class tweenBase(object):
         :return: a list of values per frame.
         '''
 
-        objMfn = OpenMaya.MFnDependencyNode(dep_node)
+        objMfn = om2.MFnDependencyNode(dep_node)
         ## Get the plug of the node. (networkedplug = False, as it no longer profides a speed improvement)
         value = objMfn.findPlug(plug, False).asDouble(mdg)
 
@@ -277,7 +266,7 @@ class tweenBase(object):
         :return: a list of values per frame.
         '''
 
-        objMfn = OpenMaya.MFnDependencyNode(dep_node)
+        objMfn = om2.MFnDependencyNode(dep_node)
         ## Get the plug of the node. (networkedplug = False, as it no longer profides a speed improvement)
         plug = objMfn.findPlug(matrix, False).elementByLogicalIndex(0)
 
@@ -413,22 +402,22 @@ class WorldSpaceTween(tweenBase):
         for obj in self.affectedObjects:
             eachMob = getMObject(obj)
             obj_dag_path = om2.MDagPath.getAPathTo(eachMob)
-            objMfn = OpenMaya.MFnDependencyNode(eachMob)
+            objMfn = om2.MFnDependencyNode(eachMob)
             obj = str(obj_dag_path)
             self.mfnDepNodes[str(obj_dag_path)] = objMfn
             # print objMfn
-            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, om2.MTime.uiUnit()))
+            currentMDG = om2.MDGContext(om2.MTime(thisTime, om2.MTime.uiUnit()))
             currentTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, currentMDG)
             self.currentMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(currentTransform)
             currentParentInverseTransform = self.om_plug_worldMatrix_at_time('parentInverseMatrix', eachMob, currentMDG)
             self.currentParentInverseMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(
                 currentParentInverseTransform)
 
-            prevMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
+            prevMDG = om2.MDGContext(om2.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
             previousTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, prevMDG)
             self.prevMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(previousTransform)
 
-            nextMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
+            nextMDG = om2.MDGContext(om2.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
             nextTransform = self.om_plug_worldMatrix_at_time('worldMatrix', eachMob, nextMDG)
             self.nextMTransformationMatrix[str(obj_dag_path)] = om2.MTransformationMatrix(nextTransform)
 
@@ -439,11 +428,11 @@ class WorldSpaceTween(tweenBase):
                 self.attrPlugs[obj][attribute] = objMfn.findPlug(attribute, False)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
+                currentMDG = om2.MDGContext(om2.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
                 self.prevAttrData[obj].attributes[attribute] = self.om_plug_at_time(eachMob, attribute, currentMDG)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
+                currentMDG = om2.MDGContext(om2.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
                 self.nextAttrData[obj].attributes[attribute] = self.om_plug_at_time(eachMob, attribute,
                                                                                     currentMDG)
 
@@ -717,12 +706,12 @@ class LocalSpaceTween(tweenBase):
             # obj_dag_path = om2.MDagPath.getAPathTo(eachMob)
             # print ('obj_dag_path', str(obj_dag_path))
             # obj = str(obj_dag_path)
-            objMfn = OpenMaya.MFnDependencyNode(MObj)
+            objMfn = om2.MFnDependencyNode(MObj)
 
             self.mfnDepNodes[obj] = objMfn
 
             # print objMfn
-            currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(thisTime, om2.MTime.uiUnit()))
+            currentMDG = om2.MDGContext(om2.MTime(thisTime, om2.MTime.uiUnit()))
             # get all attribute values at prev, current and next
 
             for attribute, value in self.currentAttrData[obj].attributes.items():
@@ -730,11 +719,11 @@ class LocalSpaceTween(tweenBase):
                 self.attrPlugs[obj][attribute] = objMfn.findPlug(attribute, False)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
+                currentMDG = om2.MDGContext(om2.MTime(self.startkeyTimes[obj], om2.MTime.uiUnit()))
                 self.prevAttrData[obj].attributes[attribute] = self.om_plug_at_time(MObj, attribute, currentMDG)
 
             for attribute, value in self.prevAttrData[obj].attributes.items():
-                currentMDG = OpenMaya.MDGContext(OpenMaya.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
+                currentMDG = om2.MDGContext(om2.MTime(self.endKeyTimes[obj], om2.MTime.uiUnit()))
                 self.nextAttrData[obj].attributes[attribute] = self.om_plug_at_time(MObj, attribute,
                                                                                     currentMDG)
 
@@ -934,6 +923,7 @@ class SlideTools(toolAbstractFactory):
                         ]
     keyTweenMethods = {}
     xformWidget = None
+    xformDoubleWidget = None
     keyWidget = None
     graphEditKeyWidget = None
 
@@ -1001,8 +991,11 @@ class SlideTools(toolAbstractFactory):
 
     def optionUI(self):
         super(SlideTools, self).optionUI()
+        closeOnEscapeWidget = optionVarBoolWidget('Close Slider when escape is pressed',
+                                                      'tbSliderCloseOnEscape')
+        self.layout.addWidget(closeOnEscapeWidget)
 
-        return None
+        return self.optionWidget
 
     def showUI(self):
         return
@@ -1013,7 +1006,7 @@ class SlideTools(toolAbstractFactory):
         layout = QHBoxLayout()
         widget.setLayout(layout)
         layout.setSpacing(0)
-        layout.setContentsMargins(0,0,0,0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         for valueDict in self.rawJsonBaseData['toolbarSliders']:
             xformWidget = SliderToolbarWidget(**valueDict)
@@ -1045,6 +1038,7 @@ class SlideTools(toolAbstractFactory):
             layout.addWidget(xformWidget)  # .setParent(phLayout)
             # sliderLayout.addWidget(QPushButton('hello'))  # .setParent(phLayout)
         return widget
+
     def drawMenuBar(self, parentMenu):
         return None
 
@@ -1086,6 +1080,30 @@ class SlideTools(toolAbstractFactory):
         self.app.installEventFilter(self.keyPressHandler)
         self.keyPressHandler.addUI(self.xformWidget)
 
+    def showXformInbetweenDouble(self):
+        # check tween classes
+        for key, value in self.xformTweenDict.items():
+            if not self.xformTweenClasses[key]:
+                self.xformTweenClasses[key] = value()
+            if not self.xformTweenClasses[key].instance:
+                self.xformTweenClasses[key].instance = value()
+
+        if not self.xformDoubleWidget:
+            self.xformDoubleWidget = XformSliderWidgetDouble()
+
+            self.xformDoubleWidget.sliderBeginSignal.connect(self.xformSliderBeginSignal)
+            self.xformDoubleWidget.sliderUpdateSignal.connect(self.xformSliderUpdateSignal)
+            self.xformDoubleWidget.sliderEndedSignal.connect(self.xformSliderEndSignal)
+            self.xformDoubleWidget.modeChangedSignal.connect(self.xformSliderModeChangeSignal)
+
+        # move to mouse if unlocked
+        if not self.xformDoubleWidget.lockState:
+            self.xformDoubleWidget.moveToCursor()
+        self.xformDoubleWidget.show()
+        self.xformDoubleWidget.raise_()
+        self.app.installEventFilter(self.keyPressHandler)
+        self.keyPressHandler.addUI(self.xformDoubleWidget)
+
     def xformSliderBeginSignal(self, key, value):
         self.xformTweenClasses[key].startDrag(value)
 
@@ -1104,7 +1122,6 @@ class SlideTools(toolAbstractFactory):
         self.xformWidget.altLabel = self.xformTweenClasses[key].altLabel
 
     # graphed key tween
-
 
     def graphEditKeySliderModeChangeSignal(self, key):
         return
@@ -1163,7 +1180,6 @@ class SlideTools(toolAbstractFactory):
             cmds.tbKeyTween(alpha=value, alphaB=value2, blendMode=str(key), clearCache=False)
         finally:
             cmds.undoInfo(stateWithoutFlush=True)
-
 
     def keySliderEndSignal(self, key, value, value2):
         try:
@@ -2664,7 +2680,6 @@ def lerpFloat(a, b, alpha):
     return a * alpha + b * (1.0 - alpha)
 
 
-
 class DragButton(QLabel):
     label = str()
     xMin = 0
@@ -3212,7 +3227,8 @@ class sliderWidget(QWidget):
         self.currentFillColourBottom = self.fillColourBaseBottom
 
     def createSelectionChangedScriptJob(self):
-        self.selectionChangedCallback = cmds.scriptJob(event=("SelectionChanged", pm.Callback(self.updateTweenClass)))
+        self.selectionChangedCallback = cmds.scriptJob(
+            event=("SelectionChanged", create_callback(self.updateTweenClass)))
         return self.selectionChangedCallback
 
     def setWidgetVisibilityDuringDrag(self):
@@ -3757,6 +3773,7 @@ class sliderButton(QPushButton):
         # self.setStyleSheet(adjust_style)
         self.setFixedSize(20 * dpiScale(), 20 * dpiScale())
 
+
 class SliderBaseDialog(QDialog):
     widgetClosed = Signal()
     oldPos = None
@@ -3850,7 +3867,8 @@ class SliderBaseDialog(QDialog):
     def keyPressEvent(self, event):
         # print ('slider base dialog keyPressEvent', event)
         if event.key() == Qt.Key_Escape:
-            self.close()
+            if get_option_var('tbSliderCloseOnEscape', False):
+                self.close()
         if event.key() == Qt.Key_Control:
             self.controlKeyPressed = True
         return super(SliderBaseDialog, self).keyPressEvent(event)
@@ -4039,7 +4057,7 @@ class ViewportSliderWidget(SliderBaseDialog):
         # emit the mode change signal to load the labels
         self.modeChangedSignal.emit(self.currentMode)
         self.overlayLabel.move(20, self.height() - 20)
-        self.setFixedSize(self.baseWidth, self.sizeHint().height())
+        self.setFixedSize(self.baseWidth, self.sizeHint().height() + (2 * dpiScale()))
 
     def show(self):
         super(ViewportSliderWidget, self).show()
@@ -4051,8 +4069,9 @@ class ViewportSliderWidget(SliderBaseDialog):
 
     def moveToCursor(self):
         pos = QCursor.pos()
-        xOffset = 10  # border?
-        self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - (16 * dpiScale()))
+        caretPositionX = self.slider.width() * 0.5
+        caretPositionY = (self.slider.height() * 0.5) + self.slider.pos().y()
+        self.move(pos.x() - caretPositionX, pos.y() - caretPositionY)
 
     def paintEvent(self, event):
         qp = QPainter()
@@ -4065,9 +4084,9 @@ class ViewportSliderWidget(SliderBaseDialog):
 
         qp.setPen(QPen(QBrush(lineColor), 2))
         grad = QLinearGradient(200, 0, 200, 32)
-        grad.setColorAt(0, "#323232")
-        grad.setColorAt(0.1, "#373737")
-        grad.setColorAt(1, "#323232")
+        grad.setColorAt(0, QColor(50, 50, 50, 50))
+        grad.setColorAt(0.1, QColor(55, 55, 55, 50))
+        grad.setColorAt(1, QColor(50, 50, 50, 50))
         qp.setBrush(QBrush(grad))
         qp.drawRoundedRect(self.rect(), 8, 8)
         qp.end()
@@ -4219,6 +4238,413 @@ class ViewportSliderWidget(SliderBaseDialog):
             currentPos.setX(currentPos.x() + (self.baseSliderWidth * 0.5))
         self.move(currentPos)
 
+class DoubleViewportSliderWidget(SliderBaseDialog):
+    __instance = None
+    # call the tween classes by name, send value
+    sliderUpdateSignal = Signal(str, float, float)
+    sliderEndedSignal = Signal(str, float, float)
+    sliderBeginSignal = Signal(str, float, float)
+    modeChangedSignal = Signal(str)
+    sliderCancelSignal = Signal()
+
+    minValue = -101
+    minOvershootValue = -201
+    maxValue = 101
+    maxOvershootValue = 201
+    baseSliderWidth = 350 * dpiScale()
+    baseWidth = baseSliderWidth + (8 * dpiScale())
+
+    baseLabel = 'baseLabel'
+    shiftLabel = 'shiftLabel'
+    controlLabel = 'controlLabel'
+    controlShiftLabel = 'controlShiftLabel'
+    altLabel = 'altLabel'
+
+    localUsedLast = True
+    currentMode = 'Local'
+    '''
+    def __new__(cls):
+        if SliderWidget.__instance is None:
+            if cmds.about(version=True) == '2022':
+                SliderWidget.__instance = BaseDialog.__new__(cls)
+            else:
+                if QTVERSION < 5:
+                    SliderWidget.__instance = BaseDialog.__new__(cls)
+                else:
+                    SliderWidget.__instance = object.__new__(cls)
+
+        SliderWidget.__instance.val = 'SliderWidget'
+        SliderWidget.__instance.app = QApplication.instance()
+        return SliderWidget.__instance
+    '''
+
+    def __init__(self,
+                 parent=getMainWindow(),
+                 showLockButton=True, showCloseButton=False,
+                 title='inbetween',
+                 text='test',
+                 modeList=list(),
+                 baseLabel='baseLabel',
+                 shiftLabel='shiftLabel',
+                 controlLabel='controlLabel',
+                 controlShiftLabel='controlShiftLabel',
+                 altLabel='altLabel',
+                 showInfo=True,
+                 ):
+        super(DoubleViewportSliderWidget, self).__init__(parent=parent,
+                                                   title=title,
+                                                   text=text,
+                                                   showLockButton=showLockButton, showCloseButton=showCloseButton)
+
+        self.isCancelled = False
+        self.recentlyOpened = False
+        self.invokedKey = None
+        self.modeList = modeList
+        self.regularWidth = 500 * dpiScale()
+        self.setFixedSize(self.baseWidth, 60 * dpiScale())
+        self.setWindowOpacity(0.9)
+        #
+        if not showInfo:
+            self.infoText.hide()
+        # labels
+        self.baseLabel = baseLabel
+        self.shiftLabel = shiftLabel
+        self.controlLabel = controlLabel
+        self.controlShiftLabel = controlShiftLabel
+        self.altLabel = altLabel
+
+        # self.setWindowFlags(Qt.PopupFocusReason | Qt.Tool | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.autoFillBackground = True
+        self.windowFlags()
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        self.isDragging = False
+
+        self.container = QFrame()
+        self.container.setStyleSheet("QFrame {{ background-color: #343b48; color: #8a95aa; }}")
+        slider_height = 28
+        self.localSlider = Slider(
+            margin=0,
+            bg_height=slider_height,
+            bg_radius=6,
+            handle_width=slider_height,
+            bg_color="#373E4C",
+            bg_color_hover="#4c566b",
+            handle_height=slider_height,
+            handle_radius=4,
+            handle_color="#373E4C",
+            handle_color_hover="#435270",
+            handle_color_pressed="#435270",
+            icon=os.path.join(IconPath, 'iceCream.png').replace('\\', '//'))
+
+        self.localSlider.setOrientation(Qt.Horizontal)
+        self.localSlider.setMinimumWidth(self.baseSliderWidth)
+        # self.slider_2.setFixedWidth(300*dpiScale())
+        self.localSlider.setValue(0)
+        self.localSlider.setTickInterval(1)
+
+        self.localSlider.sliderPressed.connect(self.localSliderPressed)
+        self.localSlider.sliderMoved.connect(self.localSliderValueChanged)
+        self.localSlider.sliderMoved.connect(self.localSlider.sliderMovedEvent)
+        self.localSlider.wheelSignal.connect(self.localSliderWheelUpdate)
+        self.localSlider.sliderReleased.connect(self.localSliderReleased)
+        self.localSlider.sliderReleased.connect(self.localSlider.sliderReleasedEvent)
+
+        self.worldSlider = Slider(
+            margin=0,
+            bg_height=slider_height,
+            bg_radius=6,
+            handle_width=slider_height,
+            bg_color="#373E4C",
+            bg_color_hover="#4c566b",
+            handle_height=slider_height,
+            handle_radius=4,
+            handle_color="#373E4C",
+            handle_color_hover="#435270",
+            handle_color_pressed="#435270",
+            icon=os.path.join(IconPath, 'iceCream.png').replace('\\', '//'))
+
+        self.worldSlider.setOrientation(Qt.Horizontal)
+        self.worldSlider.setMinimumWidth(self.baseSliderWidth)
+        # self.slider_2.setFixedWidth(300*dpiScale())
+        self.worldSlider.setValue(0)
+        self.worldSlider.setTickInterval(1)
+
+        self.worldSlider.sliderPressed.connect(self.worldSliderPressed)
+        self.worldSlider.sliderMoved.connect(self.worldSliderValueChanged)
+        self.worldSlider.sliderMoved.connect(self.worldSlider.sliderMovedEvent)
+        self.worldSlider.wheelSignal.connect(self.worldSliderWheelUpdate)
+        self.worldSlider.sliderReleased.connect(self.worldSliderReleased)
+        self.worldSlider.sliderReleased.connect(self.worldSlider.sliderReleasedEvent)
+
+        self.setLayout(self.layout)
+
+        self.layout.addWidget(QLabel('Local Slider'))
+        self.layout.addWidget(self.localSlider)
+        self.layout.addWidget(QLabel('World Slider'))
+        self.layout.addWidget(self.worldSlider)
+        self.layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+
+        self.overlayLabel = QLabel('', self)
+        self.overlayLabel.setStyleSheet("background: rgba(255, 0, 0, 0); color : rgba(255, 255, 255, 168)")
+        self.overlayLabel.setEnabled(False)
+        self.overlayLabel.setFixedWidth(60 * dpiScale())
+        self.overlayLabel.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+        self.overshootButton = LockButton('', self, icon='overshootOn.png',
+                                          unlockIcon='overshoot.png', )
+        self.overshootButton.lockSignal.connect(self.toggleOvershoot)
+        self.titleLayout.insertWidget(3, self.overshootButton)
+
+        # self.resize(self.sizeHint())
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.infoText.setText(self.baseLabel)
+        # self.infoText.setAlignment(Qt.AlignCenter)
+        # self.infoText.setFixedWidth(self.infoText.sizeHint().width())
+
+        # emit the mode change signal to load the labels
+        #self.modeChangedSignal.emit(self.currentMode)
+        self.overlayLabel.move(20, self.height() - 20)
+        self.setFixedSize(self.baseWidth, self.sizeHint().height())
+
+
+    def show(self):
+        super(DoubleViewportSliderWidget, self).show()
+        # print('showing')
+        self.resetValues()
+        self.setEnabled(True)
+        self.setFocus()
+        self.recentlyOpened = True
+
+    def moveToCursor(self):
+        pos = QCursor.pos()
+        caretPositionX = self.localSlider.width() * 0.5
+        if self.currentMode == self.modeList[0]:
+            caretPositionY = (self.localSlider.height() * 0.5) + self.localSlider.pos().y()
+        else:
+            caretPositionY = (self.localSlider.height() * 0.5) + self.worldSlider.pos().y()
+
+        #self.move(pos.x() - (self.width() * 0.5), pos.y() - (self.height() * 0.5) - (16 * dpiScale()))
+        self.move(pos.x() - caretPositionX, pos.y() - caretPositionY)
+
+    def paintEvent(self, event):
+        qp = QPainter()
+        qp.begin(self)
+
+        lineColor = QColor(68, 68, 68, 128)
+
+        qp.setCompositionMode(QPainter.CompositionMode_Source)
+        qp.setRenderHint(QPainter.Antialiasing)
+
+        qp.setPen(QPen(QBrush(lineColor), 2))
+        grad = QLinearGradient(200, 0, 200, 32)
+        grad.setColorAt(0, QColor(50, 50, 50, 50))
+        grad.setColorAt(0.1, QColor(55, 55, 55, 50))
+        grad.setColorAt(1, QColor(50, 50, 50, 50))
+        qp.setBrush(QBrush(grad))
+        qp.drawRoundedRect(self.rect(), 8, 8)
+        qp.end()
+
+    def keyPressEvent(self, event):
+        if event.type() == QEvent.KeyPress:
+            if self.recentlyOpened:
+                if event.key() is not None:
+                    self.invokedKey = event.key()
+                    self.recentlyOpened = False
+            modifiers = QApplication.keyboardModifiers()
+
+            if not event.isAutoRepeat():
+                if event.key() == Qt.Key_Alt:
+                    self.altPressed()
+                    return
+                if event.key() == Qt.Key_Control:
+                    if modifiers == Qt.ShiftModifier:
+                        self.controlShiftPressed()
+                    else:
+                        self.controlPressed()
+                elif event.key() == Qt.Key_Shift:
+                    if modifiers == Qt.ControlModifier:
+                        self.controlShiftPressed()
+                    else:
+                        self.shiftPressed()
+        if not self.invokedKey or self.invokedKey == event.key():
+            return
+        super(DoubleViewportSliderWidget, self).keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
+            if not self.lockState:
+                if not self.invokedKey or self.invokedKey == event.key():
+                    SlideTools().removeKeyPressHandlers()
+                    self.hide()
+        if event.type() == QEvent.KeyRelease:
+            modifiers = QApplication.keyboardModifiers()
+
+            if event.key() == Qt.Key_Alt:
+                self.modifierReleased()
+            if event.key() == Qt.Key_Control:
+                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
+                    self.shiftPressed()
+                else:
+                    self.modifierReleased()
+            elif event.key() == Qt.Key_Shift:
+                if modifiers == (Qt.ShiftModifier | Qt.ControlModifier):
+                    self.controlPressed()
+                else:
+                    self.modifierReleased()
+
+    def modifierReleased(self):
+        self.infoText.setText(self.baseLabel)
+
+    def controlReleased(self):
+        self.infoText.setText(self.baseLabel)
+
+    def controlPressed(self):
+        self.infoText.setText(self.controlLabel)
+
+    def controlShiftPressed(self):
+        self.infoText.setText(self.controlShiftLabel)
+
+    def shiftPressed(self):
+        self.infoText.setText(self.shiftLabel)
+
+    def altPressed(self):
+        self.infoText.setText(self.altLabel)
+
+    def mousePressEvent(self, event):
+        # print ("Mouse Clicked", event.buttons(), event.button() == Qt.RightButton)
+        if event.button() == Qt.RightButton:
+            self.localSliderReleased(cancel=True)
+        if event.button() == Qt.LeftButton:
+            self.restoreSlider()
+        super(DoubleViewportSliderWidget, self).mousePressEvent(event)
+
+    def localSliderValueChanged(self):
+        self.currentMode = self.modeList[0]
+        if self.localSlider.value() > self.localSlider.maximum() * 0.6:
+            self.overlayLabel.move(10, self.height() - 20)
+            self.overlayLabel.setAlignment(Qt.AlignLeft)
+        elif self.localSlider.value() < self.localSlider.minimum() * 0.6:
+            self.overlayLabel.move(self.width() - self.overlayLabel.width() - 10, self.height() - 20)
+            self.overlayLabel.setAlignment(Qt.AlignRight)
+        self.overlayLabel.setText(str(self.localSlider.value() * 0.01))
+        self.sliderUpdateSignal.emit(self.currentMode, self.localSlider.getOutputValue(), 0.0)
+        # print (self.currentMode, self.slider_2.value())
+        # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
+
+    def localSliderPressed(self):
+        self.currentMode = self.modeList[0]
+        self.sliderBeginSignal.emit(self.currentMode, self.localSlider.getOutputValue(), 0.0)
+        self.isDragging = True
+
+    def localSliderReleased(self, cancel=False):
+        # print ('sliderReleased', cancel)
+        if cancel:
+            self.isCancelled = True
+            self.sliderCancelSignal.emit()
+            click_pos = QPoint(0, 0)
+            event = QMouseEvent(QEvent.MouseButtonPress,
+                                click_pos,
+                                Qt.MouseButton.LeftButton,
+                                Qt.MouseButton.LeftButton,
+                                Qt.NoModifier)
+            QApplication.instance().sendEvent(self, event)
+            self.localSlider.setEnabled(False)
+            # self.slider_2.clearFocus()
+            # self.setFocus()
+            # self.update()
+            self.localSlider.setSliderDown(False)
+            # self.slider_2.setEnabled(True)
+        else:
+            self.sliderEndedSignal.emit(self.currentMode, self.localSlider.lastValue, 0.0)
+        self.isDragging = False
+        self.localSlider.resetStyle()
+        self.resetValues()
+
+    def worldSliderValueChanged(self):
+        self.currentMode = self.modeList[1]
+        if self.worldSlider.value() > self.worldSlider.maximum() * 0.6:
+            self.overlayLabel.move(10, self.height() - 20)
+            self.overlayLabel.setAlignment(Qt.AlignLeft)
+        elif self.worldSlider.value() < self.worldSlider.minimum() * 0.6:
+            self.overlayLabel.move(self.width() - self.overlayLabel.width() - 10, self.height() - 20)
+            self.overlayLabel.setAlignment(Qt.AlignRight)
+        self.overlayLabel.setText(str(self.worldSlider.value() * 0.01))
+        self.sliderUpdateSignal.emit(self.currentMode, self.worldSlider.getOutputValue(), 0.0)
+        # print (self.currentMode, self.slider_2.value())
+        # self.slider_2.setStyleSheet(overShootSliderStyleSheet.format(stop=self.slider_2.value() * 0.1))
+
+    def worldSliderPressed(self):
+        self.currentMode = self.modeList[1]
+        self.sliderBeginSignal.emit(self.currentMode, self.worldSlider.getOutputValue(), 0.0)
+        self.isDragging = True
+
+    def worldSliderReleased(self, cancel=False):
+        # print ('sliderReleased', cancel)
+        if cancel:
+            self.isCancelled = True
+            self.sliderCancelSignal.emit()
+            click_pos = QPoint(0, 0)
+            event = QMouseEvent(QEvent.MouseButtonPress,
+                                click_pos,
+                                Qt.MouseButton.LeftButton,
+                                Qt.MouseButton.LeftButton,
+                                Qt.NoModifier)
+            QApplication.instance().sendEvent(self, event)
+            self.worldSlider.setEnabled(False)
+            # self.slider_2.clearFocus()
+            # self.setFocus()
+            # self.update()
+            self.worldSlider.setSliderDown(False)
+            # self.slider_2.setEnabled(True)
+        else:
+            self.sliderEndedSignal.emit(self.currentMode, self.worldSlider.lastValue, 0.0)
+        self.isDragging = False
+        self.worldSlider.resetStyle()
+        self.resetValues()
+
+    def restoreSlider(self):
+        self.localSlider.setEnabled(True)
+        self.worldSlider.setEnabled(True)
+        self.isCancelled = False
+
+    def resetValues(self):
+        # self.overlayLabel.setText('')
+        self.localSlider.blockSignals(True)
+        self.localSlider.setValue(0)
+        self.localSlider.blockSignals(False)
+        self.worldSlider.blockSignals(True)
+        self.worldSlider.setValue(0)
+        self.worldSlider.blockSignals(False)
+        self.overlayLabel.hide()
+
+    def localSliderWheelUpdate(self):
+        if not self.isDragging:
+            self.sliderUpdateSignal.emit(self.currentMode, self.localSlider.value())
+            self.localSliderValueChanged()
+    def worldSliderWheelUpdate(self):
+        if not self.isDragging:
+            self.sliderUpdateSignal.emit(self.currentMode, self.worldSlider.value())
+            self.localSliderValueChanged()
+
+    def modeChanged(self, *args):
+        self.currentMode = self.comboBox.currentText()
+        self.modeChangedSignal.emit(self.currentMode)
+
+    def toggleOvershoot(self, overshootState):
+        self.localSlider.toggleOvershoot(overshootState, self.baseSliderWidth)
+        self.worldSlider.toggleOvershoot(overshootState, self.baseSliderWidth)
+        currentPos = self.pos()
+        if overshootState:
+            self.setFixedWidth(self.baseWidth * 2)
+            currentPos.setX(currentPos.x() - (self.baseSliderWidth * 0.5))
+        else:
+
+            self.setFixedWidth(self.baseWidth)
+
+            currentPos.setX(currentPos.x() + (self.baseSliderWidth * 0.5))
+        self.move(currentPos)
 
 class XformSliderWidget(ViewportSliderWidget):
     __instance = None
@@ -4259,7 +4685,79 @@ class XformSliderWidget(ViewportSliderWidget):
                                                 altLabel='ChannelBox Only'
                                                 )
         self.recentlyOpened = False
+        self.setStyleSheet(" {"
+                                     "border-width: 9;"
+                                     "border-radius: 50;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "}"
+                                     )
 
+        self.setStyleSheet("font-weight: lighter; font-size: 16;")
+        self.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        self.setStyleSheet("border-width: 0;"
+                                     "border-radius: 4;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "font-weight: bold; font-size: 12;"
+
+                                     )
+class XformSliderWidgetDouble(DoubleViewportSliderWidget):
+    __instance = None
+    recentlyOpened = False
+
+    '''
+    def __new__(cls):
+        if XformSliderWidget.__instance is None:
+            if cmds.about(version=True) == '2022':
+                XformSliderWidget.__instance = BaseDialog.__new__(cls)
+            else:
+                if QTVERSION < 5:
+                    XformSliderWidget.__instance = BaseDialog.__new__(cls)
+                else:
+                    XformSliderWidget.__instance = object.__new__(cls)
+
+        XformSliderWidget.__instance.val = 'XformSliderWidget'
+        XformSliderWidget.__instance.app = QApplication.instance()
+        return XformSliderWidget.__instance
+    '''
+
+    def __init__(self, parent=getMainWindow(),
+                 title='Object Inbetween',
+                 text='test',
+                 showLockButton=True, showCloseButton=False,
+                 modeList=['Local', 'World'],
+
+                 ):
+        super(XformSliderWidgetDouble, self).__init__(parent=parent,
+                                                title=title,
+                                                text=title,
+                                                showLockButton=showLockButton, showCloseButton=showCloseButton,
+                                                modeList=modeList,
+                                                baseLabel='All attributes',
+                                                shiftLabel='Translate Only',
+                                                controlLabel='Rotate Only',
+                                                controlShiftLabel='Translate And Rotate Only',
+                                                altLabel='ChannelBox Only'
+                                                )
+        self.recentlyOpened = False
+        self.setStyleSheet(" {"
+                                     "border-width: 9;"
+                                     "border-radius: 50;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "}"
+                                     )
+
+        self.setStyleSheet("font-weight: lighter; font-size: 16;")
+        self.setStyleSheet("background-color: rgba(255, 0, 0, 0);")
+        self.setStyleSheet("border-width: 0;"
+                                     "border-radius: 4;"
+                                     "border-style: solid;"
+                                     "border-color: #222222;"
+                                     "font-weight: bold; font-size: 12;"
+
+                                     )
 
 class KeySliderWidget(ViewportSliderWidget):
     __instance = None
@@ -4301,9 +4799,6 @@ class KeySliderWidget(ViewportSliderWidget):
                                               )
         self.recentlyOpened = False
         # self.setFixedSize(self.baseSliderWidth, 46)
-
-
-
 
 
 class SliderButtonPopup(ButtonPopup):
@@ -4371,6 +4866,3 @@ class SliderButtonContextMenu(ButtonPopup):
         tbAdjustmentBlendLabel = QLabel(self.__dict__.get('menuLabel', 'Tween placeholder'))
         self.layout.addRow(tbAdjustmentBlendLabel)
         self.layout.addRow(self.toggleStateButton)
-
-
-

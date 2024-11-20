@@ -1,7 +1,7 @@
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 import maya.cmds as cmds
-from tb_sliders import SlideTools
+from apps.tb_sliders import SlideTools
 
 
 def maya_useNewAPI():
