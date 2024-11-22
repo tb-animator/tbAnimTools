@@ -230,7 +230,11 @@ class CharacterDefinition(object):
         return None
 
     def setFeetControls(self, value):
-        self.feetControls = value
+        if not self.feetControls:
+            self.feetControls = list()
+        if not isinstance(value, list):
+            value = [value]
+        self.feetControls = list(set(self.feetControls.extend(value)))
 
     def getFeetControl(self, namespace):
         feet = [namespace + ':' + f for f in self.feetControls]

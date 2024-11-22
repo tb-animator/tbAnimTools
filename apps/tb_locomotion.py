@@ -23,6 +23,7 @@
 *******************************************************************************
 '''
 from . import *
+
 maya.utils.loadStringResourcesForModule(__name__)
 
 __author__ = 'tom.bailey'
@@ -101,11 +102,11 @@ class LocomotionTools(toolAbstractFactory):
 
     def drawMenuBar(self, parentMenu):
         cmds.menuItem(label='Curved Locomotion Tool', image='redirectSelected.png', command='tbOpenCircleWalkUI',
-                    sourceType='mel',
-                    parent=parentMenu)
+                      sourceType='mel',
+                      parent=parentMenu)
         cmds.menuItem(label='Strafe Locomotion Tool', image='directKeySmall.png', command='tbOpenStrafeUI',
-                    sourceType='mel',
-                    parent=parentMenu)
+                      sourceType='mel',
+                      parent=parentMenu)
 
     def strafeToolBoxUI(self):
         if self.strafeToolbox:
@@ -245,7 +246,7 @@ class LocomotionTools(toolAbstractFactory):
             return raiseError('Please select a control to tag as a foot', title='Failed to tag as foot')
         CharacterTool = self.allTools.tools['CharacterTool']
         characters = self.funcs.splitSelectionToCharacters(sel)
-
+        print ('characters', characters)
         for ch, controls in characters.items():
             refname, namespace = CharacterTool.getSelectedChar(controls[0])
             strippedControls = [c.rsplit(':')[-1] for c in controls]
@@ -269,7 +270,6 @@ class LocomotionTools(toolAbstractFactory):
                     continue
                 animControls.append(animControl[0])
 
-
         CharacterTool = self.allTools.tools['CharacterTool']
         characters = self.funcs.splitSelectionToCharacters(animControls)
 
@@ -278,11 +278,14 @@ class LocomotionTools(toolAbstractFactory):
         for ch, controls in characters.items():
             refname, namespace = CharacterTool.getSelectedChar(controls[0])
             feetControls = CharacterTool.allCharacters[refname].getFeetControl(namespace)
-
+            print ('feetControls to align', feetControls)
             if not feetControls:
                 continue
             for f in feetControls:
-                cmds.xform(f + '_TiltDirection', rotation=mainCurveRotation, worldSpace=True)
+                cmds.xform(f + '_TiltDirection',
+                           rotation=mainCurveRotation,
+                           absolute=True,
+                           worldSpace=True)
 
     def resetStrafe(self):
         curveMains = cmds.ls('*:Strafe_Control')
@@ -530,7 +533,6 @@ class LocomotionTools(toolAbstractFactory):
         currentAssetName = sel[0].split(':')[0] + ':' + self.strafeAssetName
         namespace = sel[0].split(':')[0]
 
-
         # assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='arrow', scale=1.0)
         if not cmds.objExists(currentAssetName):
             assetShapeControl = self.createGlobalStrafeController(namespace=namespace)
@@ -544,7 +546,6 @@ class LocomotionTools(toolAbstractFactory):
             cmds.delete(assetShapeControl)
         else:
             strafeControl = currentAssetName
-
 
         # cache the strafe value
         rotateCache = cmds.getAttr(strafeControl + '.rotate')[0]
@@ -624,9 +625,9 @@ class LocomotionTools(toolAbstractFactory):
             tempConstraints.append(cmds.parentConstraint(s, rotationRoot, skipRotate=('x', 'y', 'z'))[0])
             # cmds.pointConstraint(worldOffsetControl, rotationRoot)
 
-            bakeAttrs.extend([str(rotationRoot) + '.translate' + x for x in ['X','Y','Z']])
-            bakeAttrs.extend([str(rotateAnimNode) + '.rotate' + x for x in ['X','Y','Z']])
-            bakeAttrs.extend([str(rotateAnimNode) + '.translate' + x for x in ['X','Y','Z']])
+            bakeAttrs.extend([str(rotationRoot) + '.translate' + x for x in ['X', 'Y', 'Z']])
+            bakeAttrs.extend([str(rotateAnimNode) + '.rotate' + x for x in ['X', 'Y', 'Z']])
+            bakeAttrs.extend([str(rotateAnimNode) + '.translate' + x for x in ['X', 'Y', 'Z']])
             rotationRoots[s] = rotationRoot
             rotateAnimNodes[s] = rotateAnimNode
             # translateAnimOffsetNodes[s] = worldOffsetControl
@@ -644,34 +645,67 @@ class LocomotionTools(toolAbstractFactory):
         keyRange = self.funcs.getBestTimelineRangeForBake()
         with self.funcs.suspendUpdate():
             cmds.bakeResults(bakeAttrs,
-                           time=(keyRange[0], keyRange[1]),
-                           simulation=True,
-                           sampleBy=1,
-                           oversamplingRate=1,
-                           disableImplicitControl=True,
-                           preserveOutsideKeys=False,
-                           sparseAnimCurveBake=True,
-                           removeBakedAttributeFromLayer=False,
-                           removeBakedAnimFromLayer=False,
-                           bakeOnOverrideLayer=False,
-                           minimizeRotation=True,
-                           controlPoints=False,
-                           shape=False)
+                             time=(keyRange[0], keyRange[1]),
+                             simulation=True,
+                             sampleBy=1,
+                             oversamplingRate=1,
+                             disableImplicitControl=True,
+                             preserveOutsideKeys=False,
+                             sparseAnimCurveBake=True,
+                             removeBakedAttributeFromLayer=False,
+                             removeBakedAnimFromLayer=False,
+                             bakeOnOverrideLayer=False,
+                             minimizeRotation=True,
+                             controlPoints=False,
+                             shape=False)
         cmds.delete(tempConstraints)
+
+        # take the strafe control matrix, connect it to a rotate pickMatrix
+        strafeControlRotatePickMatrix = cmds.createNode('pickMatrix',
+                                                        name="strafeControlRotatePickMatrix")
+        cmds.setAttr(strafeControlRotatePickMatrix + '.useTranslate', False)
+        cmds.setAttr(strafeControlRotatePickMatrix + '.useScale', False)
+        cmds.setAttr(strafeControlRotatePickMatrix + '.useRotate', True)
+        cmds.setAttr(strafeControlRotatePickMatrix + '.useShear', False)
+        cmds.connectAttr(strafeControl + '.matrix', strafeControlRotatePickMatrix + '.inputMatrix')
+        strafeControlTranslatePickMatrix = cmds.createNode('pickMatrix',
+                                                           name="strafeControlTranslatePickMatrix")
+        cmds.setAttr(strafeControlTranslatePickMatrix + '.useTranslate', True)
+        cmds.setAttr(strafeControlTranslatePickMatrix + '.useScale', True)
+        cmds.setAttr(strafeControlTranslatePickMatrix + '.useRotate', False)
+        cmds.setAttr(strafeControlTranslatePickMatrix + '.useShear', False)
+        cmds.connectAttr(strafeControl + '.matrix', strafeControlTranslatePickMatrix + '.inputMatrix')
+        strafeControlTranslateInverse = cmds.createNode('inverseMatrix',
+                                                        name='strafeControlTranslateInverse')
+        cmds.connectAttr(strafeControlTranslatePickMatrix + '.outputMatrix',
+                         strafeControlTranslateInverse + '.inputMatrix')
 
         if int(cmds.about(majorVersion=True)) >= 2020:
             for o in rotationRoots.values():
                 o = str(o)
                 composeMatrix = cmds.createNode('composeMatrix')
                 multMatrix = cmds.createNode('multMatrix')
+                offsetMultMatrix = cmds.createNode('multMatrix')
+                combinedMultMatrix = cmds.createNode('multMatrix')
                 pickMatrix = cmds.createNode('pickMatrix')
+                finalPickMatrix = cmds.createNode('pickMatrix')
                 cmds.setAttr(pickMatrix + '.useScale', False)
                 cmds.setAttr(pickMatrix + '.useRotate', False)
                 cmds.setAttr(pickMatrix + '.useShear', False)
-                cmds.connectAttr(multMatrix + '.matrixSum', pickMatrix + '.inputMatrix')
+                cmds.setAttr(finalPickMatrix + '.useScale', False)
+                cmds.setAttr(finalPickMatrix + '.useRotate', False)
+                cmds.setAttr(finalPickMatrix + '.useShear', False)
+
                 cmds.connectAttr(composeMatrix + '.outputMatrix', multMatrix + '.matrixIn[0]')
-                cmds.connectAttr(strafeControl + '.worldMatrix[0]', multMatrix + '.matrixIn[1]')
-                cmds.connectAttr(pickMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+                cmds.connectAttr(strafeControlTranslateInverse + '.outputMatrix', multMatrix + '.matrixIn[1]')
+                cmds.connectAttr(multMatrix + '.matrixSum', pickMatrix + '.inputMatrix')
+                cmds.connectAttr(pickMatrix + '.outputMatrix', offsetMultMatrix + '.matrixIn[0]')
+                cmds.connectAttr(strafeControlRotatePickMatrix + '.outputMatrix', offsetMultMatrix + '.matrixIn[1]')
+                cmds.connectAttr(offsetMultMatrix + '.matrixSum', combinedMultMatrix + '.matrixIn[0]')
+                cmds.connectAttr(strafeControlTranslatePickMatrix + '.outputMatrix',
+                                 combinedMultMatrix + '.matrixIn[1]')
+                cmds.connectAttr(combinedMultMatrix + '.matrixSum', finalPickMatrix + '.inputMatrix')
+                cmds.connectAttr(finalPickMatrix + '.outputMatrix', o + '.offsetParentMatrix')
                 for a in ['X', 'Y', 'Z']:
                     conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
                                                  plugs=True)
