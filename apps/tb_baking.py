@@ -204,6 +204,13 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['BakeTools.worldOffsetSelectionRotation()'],
                                      help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+        self.addCommand(self.tb_hkey(name='worldOffsetSelectionAtObject',
+                                     annotation='worldOffsetSelection',
+                                     category=self.category,
+                                     command=['BakeTools.worldOffsetSelectionAtObject()'],
+                                     help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+
+
         self.addCommand(self.tb_hkey(name='resampleSelectedLayer',
                                      annotation='worldOffsetSelection',
                                      category=self.category,
@@ -1849,6 +1856,156 @@ class BakeTools(toolAbstractFactory):
         channels = self.funcs.getChannels()
         for s in sel:
             self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s,
+                                            orientOnly=False,
+                                            maintainOffset=False,
+                                            channels=channels)
+
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
+            self.clearUnneededAttributes(root)
+            self.clearUnneededAttributes(anim)
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
+
+        cmds.select(list(rotationRoots.values()), replace=True)
+
+    def worldOffsetSelectionAtObject(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('Select at least 2 controls')
+        if not len(sel) > 1:
+            return cmds.warning('Select at least 2 controls')
+        with self.funcs.suspendUpdate():
+            try:
+                self.worldOffsetAtObject(sel)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
+
+    def worldOffsetAtObject(self, sel):
+        """
+                :return:
+                """
+        if not sel:
+            return list()
+        if not len(sel) > 1:
+            return cmds.warning('Select at least 2 controls')
+        print('hey hey look at me')
+
+        pivotControl = sel[-1]
+        constrainedConstrols = sel[:-1]
+
+        rotationRoots = dict()
+        rotateAnimNodes = dict()
+        rotateAnimOffsetNodes = dict()
+
+        tempConstraints = list()
+
+        rotationRoot = self.funcs.tempControl(name=pivotControl,
+                                              suffix='worldOffset',
+                                              drawType='orb',
+                                              scale=get_option_var(self.tbBakeWorldOffsetSizeOption, 0.5))
+        rotateAnimNode = self.funcs.tempNull(name=pivotControl, suffix='RotateBaked')
+        rotateAnimOffsetNode = self.funcs.tempControl(name=pivotControl,
+                                                      suffix='localOffset',
+                                                      drawType='diamond',
+                                                      scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
+                                                                           0.5))
+
+        self.funcs.getSetColour(pivotControl, rotationRoot, brightnessOffset=-0.5)
+        self.funcs.getSetColour(pivotControl, rotateAnimOffsetNode, brightnessOffset=0.5)
+
+        cmds.parent(rotateAnimNode, rotationRoot)
+        cmds.parent(rotateAnimOffsetNode, rotateAnimNode)
+
+        tempConstraints.append(cmds.pointConstraint(pivotControl, rotationRoot)[0])
+        tempConstraints.append(cmds.parentConstraint(pivotControl, rotateAnimNode)[0])
+
+        rotationRoots[pivotControl] = rotationRoot
+        rotateAnimNodes[pivotControl] = rotateAnimNode
+        rotateAnimOffsetNodes[pivotControl] = rotateAnimOffsetNode
+        ns = pivotControl.rsplit(':', 1)[0]
+
+        if not cmds.objExists(ns + self.worldOffsetAssetName):
+            self.createAsset(ns + self.worldOffsetAssetName, imageName=None)
+
+        asset = ns + self.worldOffsetAssetName
+
+        cmds.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
+        cmds.connectAttr(pivotControl + '.message', rotationRoot + '.' + self.constraintTargetAttr)
+        cmds.connectAttr(pivotControl + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
+        cmds.connectAttr(pivotControl + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
+
+
+        constrainedNulls = dict()
+
+        for s in constrainedConstrols:
+            constrainedNull = self.funcs.tempNull(name=s, suffix='constrained')
+            constrainedNulls[s] = constrainedNull
+            cmds.parentConstraint(s, constrainedNull)
+            cmds.parent(constrainedNull, rotateAnimOffsetNode)
+
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=rotationRoot)
+        bakeTargets = list(rotationRoots.values()) + \
+                      list(rotateAnimNodes.values()) + \
+                      list(constrainedNulls.values())
+
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+        cmds.bakeResults(bakeTargets,
+                         time=(keyRange[0], keyRange[1]),
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=False,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+        for c in bakeTargets:
+            cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
+                             filter='euler')
+        # disconnect anim curves and connect them to the offset parent matrix
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            rotationRoot = rotationRoots[pivotControl]
+            rotateRoot = rotateAnimNodes[pivotControl]
+            rotateOffset = rotateAnimOffsetNodes[pivotControl]
+
+            composeMatrix = cmds.createNode('composeMatrix')
+            cmds.connectAttr(composeMatrix + '.outputMatrix', rotateOffset + '.offsetParentMatrix')
+
+            for attr in ['Translate', 'Rotate']:
+                for a in ['X', 'Y', 'Z']:
+                    print(rotateOffset + '.' + attr.lower() + a)
+
+                    conns = cmds.listConnections(rotateRoot + '.' + attr.lower() + a,
+                                                 source=True,
+                                                 destination=False,
+                                                 plugs=True)[0]
+                    cmds.disconnectAttr(conns, rotateRoot + '.' + attr.lower() + a)
+                    cmds.connectAttr(conns,
+                                     composeMatrix + '.input%s.input%s' % (attr, attr) + a)
+
+            cmds.setAttr(composeMatrix + '.inputRotateOrder', cmds.getAttr(rotateRoot + '.rotateOrder'))
+            cmds.parent(rotateOffset, rotationRoot)
+            cmds.delete(rotateRoot)
+            cmds.setAttr(rotateOffset + '.rotate', 0, 0, 0)
+            cmds.setAttr(rotateOffset + '.translate', 0, 0, 0)
+        for x in tempConstraints:
+            if not cmds.objExists(x):
+                continue
+            cmds.delete(x)
+
+        channels = self.funcs.getChannels()
+        for s in constrainedConstrols:
+            self.funcs.safeParentConstraint(constrainedNulls[s], s,
                                             orientOnly=False,
                                             maintainOffset=False,
                                             channels=channels)
