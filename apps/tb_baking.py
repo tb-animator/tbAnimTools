@@ -210,7 +210,6 @@ class hotkeys(hotKeyAbstractFactory):
                                      command=['BakeTools.worldOffsetSelectionAtObject()'],
                                      help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
 
-
         self.addCommand(self.tb_hkey(name='resampleSelectedLayer',
                                      annotation='worldOffsetSelection',
                                      category=self.category,
@@ -577,20 +576,23 @@ class BakeTools(toolAbstractFactory):
                         for cnt, loc in zip(sel, locs):
                             skipT = self.funcs.getAvailableTranslates(cnt)
                             skipR = self.funcs.getAvailableRotates(cnt)
-                            constraint = cmds.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                                        False: [x.split('translate')[-1]
-                                                                                                for x in
-                                                                                                skipT]}[
-                                orientOnly],
-                                                               skipRotate=[x.split('rotate')[-1] for x in skipR])
+                            skipTranslate = {True: ('x', 'y', 'z'),
+                                             False: [x.split('translate')[-1]
+                                                     for x in
+                                                     skipT]}[orientOnly]
+                            skipRotate = [x.split('rotate')[-1] for x in skipR]
+                            constraint = cmds.parentConstraint(loc,
+                                                               cnt,
+                                                               skipTranslate=skipTranslate,
+                                                               skipRotate=skipRotate)
                             # common cleanup functions for temp controls
                             self.clearUnneededAttributes(loc)
                             self.postCreateTempControl(loc, minTime=keyRange[0])
                             self.funcs.simplifyEnumKeys(loc)
-                            cmds.container(asset, edit=True,
-                                           includeHierarchyBelow=True,
-                                           force=True,
-                                           addNode=constraint)
+                            # cmds.container(asset, edit=True,
+                            #                includeHierarchyBelow=True,
+                            #                force=True,
+                            #                addNode=constraint)
                 if get_option_var(self.tbTempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
@@ -1883,13 +1885,12 @@ class BakeTools(toolAbstractFactory):
 
     def worldOffsetAtObject(self, sel):
         """
-                :return:
-                """
+        :return:
+        """
         if not sel:
             return list()
         if not len(sel) > 1:
             return cmds.warning('Select at least 2 controls')
-        print('hey hey look at me')
 
         pivotControl = sel[-1]
         constrainedConstrols = sel[:-1]
@@ -1933,10 +1934,6 @@ class BakeTools(toolAbstractFactory):
         cmds.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
         cmds.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
         cmds.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
-        cmds.connectAttr(pivotControl + '.message', rotationRoot + '.' + self.constraintTargetAttr)
-        cmds.connectAttr(pivotControl + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
-        cmds.connectAttr(pivotControl + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
-
 
         constrainedNulls = dict()
 
@@ -1945,6 +1942,8 @@ class BakeTools(toolAbstractFactory):
             constrainedNulls[s] = constrainedNull
             cmds.parentConstraint(s, constrainedNull)
             cmds.parent(constrainedNull, rotateAnimOffsetNode)
+            cmds.addAttr(s, ln=self.constraintTargetAttr, at='message')
+            cmds.connectAttr(rotationRoot + '.' + self.constraintTargetAttr, s + '.' + self.constraintTargetAttr)
 
         cmds.container(asset, edit=True,
                        includeHierarchyBelow=True,
