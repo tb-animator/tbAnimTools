@@ -33,6 +33,7 @@ str_spaceControlKey = 'spaceControl'
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
 
+illegalNames = ['viewMode', 'ghosting']
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -940,6 +941,9 @@ class SpaceSwitch(toolAbstractFactory):
                             continue
                         if cmds.attributeQuery(attrName, node=s, attributeType=True) == 'message':
                             continue
+                        userAttrs = cmds.listAttr(s, userDefined=True)
+                        if attrName not in userAttrs:
+                            continue
                         # print('adding attribute', attrName, s)
                         self.loadedSpaceData[rigName].addControlsWithMatchingAttribute(namespace, [control], attrName)
                         # self.loadedSpaceData[rigName].setupInitialSpaceValues(control, attrName)
@@ -953,6 +957,8 @@ class SpaceSwitch(toolAbstractFactory):
                 if control in values:
                     attr = attrs[values.index(control)]
                     attrName = attr.split('.')[-1]
+                    if attrName in illegalNames:
+                        continue
                     p_attr = s + '.' + attrName
                     if not cmds.attributeQuery(attrName, node=s, attributeType=True) == 'enum':
                         continue

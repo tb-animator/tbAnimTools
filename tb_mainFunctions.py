@@ -609,7 +609,7 @@ class Functions(object):
                 rgbColour = [x * 255 for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
 
         else:
-            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')]
+            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')[0]]
 
         return rgbColour
 
