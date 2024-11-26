@@ -647,7 +647,7 @@ class ToolboxButton(QPushButton):
 
         path.addText(textPos.x(), pixelsHigh, font, self.labelText)
 
-        pen = QPen(lineColor, 6.5, Qt.SolidLine, Qt.RoundCap)
+        pen = QPen(lineColor, 5.5, Qt.SolidLine, Qt.RoundCap)
         pen2 = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.textColour)
 
