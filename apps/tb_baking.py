@@ -1942,7 +1942,8 @@ class BakeTools(toolAbstractFactory):
             constrainedNulls[s] = constrainedNull
             cmds.parentConstraint(s, constrainedNull)
             cmds.parent(constrainedNull, rotateAnimOffsetNode)
-            cmds.addAttr(s, ln=self.constraintTargetAttr, at='message')
+            if not cmds.attributeQuery(self.constraintTargetAttr, node=s, exists=True):
+                cmds.addAttr(s, ln=self.constraintTargetAttr, at='message')
             cmds.connectAttr(rotationRoot + '.' + self.constraintTargetAttr, s + '.' + self.constraintTargetAttr)
 
         cmds.container(asset, edit=True,
