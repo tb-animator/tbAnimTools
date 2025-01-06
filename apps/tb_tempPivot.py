@@ -717,7 +717,7 @@ class TempPivot(toolAbstractFactory):
         print('transformControl', transformControl)
 
         tempNull = self.funcs.tempNull(name=tempPivotNodeName, suffix='')
-        tempNull.displayHandle.set(True)
+        cmds.setAttr(tempNull + "." + "displayHandle", True)
 
         self.funcs.getSetColour(control, tempNull, brightnessOffset=0.05)
         # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
@@ -751,7 +751,7 @@ class TempPivot(toolAbstractFactory):
             mainTarget = targets[-1]
             constraints = list()
             tempNull = self.funcs.tempNull(name=mainTarget, suffix='piv')
-            tempNull.displayHandle.set(True)
+            cmds.setAttr(tempNull + "." + "displayHandle")
 
             self.funcs.getSetColour(mainTarget, tempNull, brightnessOffset=0.05)
             # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
