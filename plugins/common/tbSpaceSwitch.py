@@ -13,42 +13,41 @@ def maya_useNewAPI():
 
 
 """
-# examples
-# add the current selected controls as space switched controls
-# space attribute is defined, case-insenstive
+examples
+add the current selected controls as space switched controls. Space switch attribute is defined. The attribute value is case-insenstive, it will find the matching one from a partial name - here the value should be "space" but it will work with the bad input.
 cmds.spaceSwitch(edit=True, attribute='SPace')
 
-# add the current selected controls as space switched controls
+Add the current selected controls as space switched controls:
+space attribute is NOT defined, the tool will find currently used attribute from existing data
 cmds.spaceSwitch(edit=True)
-# space attribute is NOT defined, the tool will find currently used attribute names and match those
-# specify the controls
+Add specific controls - not the current selection, let it determine the space attrbute automatically
 cmds.spaceSwitch(selection='bill:CTRL_l_hand_IK, bill:CTRL_r_hand_IK', edit=True)
 
-# use the current selection, may not find the correct attribute
-cmds.spaceSwitch(edit=True)
-# so if in doubt, specify it
+If in doubt, specify the attribute
 cmds.spaceSwitch(edit=True, attribute='worldOrient')
 
-# save the currently selected objects and their space values as a preset
+Save the currently selected objects and their space values as a preset (in their current state)
 cmds.spaceSwitch(edit=True, presetName='customLoco')
 
-# use a preset to space switch (requires part of the rig to be selected, or specified)
-# switch
+Use a preset to space switch (requires part of the rig to be selected, or specified)
+Switch the current frame
 cmds.spaceSwitch(switch=True, presetName='customLoco')
-# switch the timeline
+Switch the timeline
 cmds.spaceSwitch(switch=True, timeline=True,  presetName='customLoco')
-# bake
+Bake
 cmds.spaceSwitch(bake=True, presetName='customLoco')
 
-# Switch the selected controls to the value on the layer below the current one (good for swapping after pasting a pose etc)
+Switch the selected controls to "Master" space
+cmds.spaceSwitch(switch=True, value="Master")
+Bake the selected controls to 0 space
+cmds.spaceSwitch(bake=True, value=0)
+Switch the selected controls to the value on the layer below the current one (good for swapping after pasting a pose etc)
 cmds.spaceSwitch(switch=True, getLowerLayer=True)
-# or bake to the lower layer
+or bake to the lower layer
 cmds.spaceSwitch(bake=True, getLowerLayer=True)
 
-# Override the value for the preset, instead of getting the current value - only one value can be set
-cmds.spaceSwitch(edit=True, presetName='GlobalAlt', attribute='space', value='Master Offset')
-
-cmds.repeatLast(ac=cmds.spaceSwitch(switch=True, presetName='customLoco'), addCommandLabel='SpaceSwitch')
+Override the value for the preset, instead of getting the current value - only one value can be set
+cmds.spaceSwitch(edit=True, presetName='GlobalAlt', attribute='space', value='Master Offset') 
 """
 
 
