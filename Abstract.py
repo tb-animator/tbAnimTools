@@ -339,6 +339,9 @@ class toolAbstractFactory(ABC):
     def animLayerTabUI(self):
         return list()
 
+    def toolBarUI(self):
+        return list()
+
     def deferredLoad(self):
         pass
 

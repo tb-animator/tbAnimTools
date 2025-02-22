@@ -466,7 +466,7 @@ class ToolboxButton(QPushButton):
         self.colourDark = list()
         for x in range(1, 5):
             self.colourDark.append(rgb_to_hex(darken_color(colour, float(x) * 0.1)))
-        self.lightColour = QColor(198, 198, 198)
+        self.lightColour = QColor(255, 255, 255)
         self.darkColour = QColor(0.0, 0.0, 0.0)
         self.textColour, self.isLight = getColourBasedOnRGB(colour, self.lightColour, self.darkColour)
         self.executeOnHover = True
@@ -592,6 +592,7 @@ class ToolboxButton(QPushButton):
         if self.command:
             if not self.executed:
                 self.command()
+                addRepeatLast(self.command)
                 self.commandExecutedSignal.emit()
             if self.closeOnPress:
                 self.executed = True
@@ -747,12 +748,17 @@ class ToolbarButton(QLabel):
     middleClicked = Signal()
     rightClicked = Signal()
 
-    def __init__(self, icon=str(), altIcon=str(),
+    def __init__(self,
+                 icon=str(),
+                 altIcon=str(),
                  width=30,
                  height=30,
                  iconHeight=30,
-                 iconWidth=30):
+                 iconWidth=30,
+                 text='hello'):
         super(ToolbarButton, self).__init__()
+        if text:
+            self.setText(text)
         self.tooltipState = False
         self.tooltipRaised = False
         self.icon = icon

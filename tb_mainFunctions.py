@@ -610,7 +610,7 @@ class Functions(object):
 
         else:
             rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')[0]]
-
+        print ('rgbColour', rgbColour)
         return rgbColour
 
     def boldControl(self, ref, control, offset=0):

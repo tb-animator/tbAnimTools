@@ -1,7 +1,7 @@
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
 import maya.cmds as cmds
-from tb_sliders import SlideTools
+from apps.tb_spaceSwitch import SpaceSwitch
 
 
 def maya_useNewAPI():
@@ -11,34 +11,96 @@ def maya_useNewAPI():
     """
     pass
 
+
 """
-use space switch to switch a lot of objects to world/local/default at once
-use it to query the current spaces for all objects
-use it to set spaces, give attribute, space name + value
-make it easy to insert into other non tbAnimTools functions
+# examples
+# add the current selected controls as space switched controls
+# space attribute is defined, case-insenstive
+cmds.spaceSwitch(edit=True, attribute='SPace')
+
+# add the current selected controls as space switched controls
+cmds.spaceSwitch(edit=True)
+# space attribute is NOT defined, the tool will find currently used attribute names and match those
+# specify the controls
+cmds.spaceSwitch(selection='bill:CTRL_l_hand_IK, bill:CTRL_r_hand_IK', edit=True)
+
+# use the current selection, may not find the correct attribute
+cmds.spaceSwitch(edit=True)
+# so if in doubt, specify it
+cmds.spaceSwitch(edit=True, attribute='worldOrient')
+
+# save the currently selected objects and their space values as a preset
+cmds.spaceSwitch(edit=True, presetName='customLoco')
+
+# use a preset to space switch (requires part of the rig to be selected, or specified)
+# switch
+cmds.spaceSwitch(switch=True, presetName='customLoco')
+# switch the timeline
+cmds.spaceSwitch(switch=True, timeline=True,  presetName='customLoco')
+# bake
+cmds.spaceSwitch(bake=True, presetName='customLoco')
+
+# Switch the selected controls to the value on the layer below the current one (good for swapping after pasting a pose etc)
+cmds.spaceSwitch(switch=True, getLowerLayer=True)
+# or bake to the lower layer
+cmds.spaceSwitch(bake=True, getLowerLayer=True)
+
+# Override the value for the preset, instead of getting the current value - only one value can be set
+cmds.spaceSwitch(edit=True, presetName='GlobalAlt', attribute='space', value='Master Offset')
+
+cmds.repeatLast(ac=cmds.spaceSwitch(switch=True, presetName='customLoco'), addCommandLabel='SpaceSwitch')
 """
+
 
 class SpaceSwitchCommand(om.MPxCommand):
     COMMAND_NAME = "spaceSwitch"
 
     QUERY_FLAG = ["-q", "-query"]
+    EDIT_FLAG = ["-e", "-edit"]
+    SELECTION = ["-s", "-selection"]
     SPACEATTR_FLAG = ["-a", "-attribute"]
-    STRINGVALUE_FLAG = ["-sv", "-stringValue"]
-    FLOATVALUE_FLAG = ["-fv", "-floatValue"]
-    SPACEMODE_FLAG = ["-s", "-spacedMode"]
-    CLEARCACHE_FLAG = ["-c", "-clearCache"]
+    SPACEVALUE_STRING = ["-v", "-value"]
+    SPACEQUICKVALUE_STRING = ["-sqv", "-spaceQuickValue"]
+    SPACEPRESETVALUE_STRING = ["-pr", "-presetName"]
 
-    spaceMode = None
-    id = 'default'
-    clearCache = True
-    animCurveChange = None
+    SWITCH_FLAG = ["-sw", "-switch"]
+    BAKE_FLAG = ["-b", "-bake"]
+    TIMELINE_FLAG = ["-tl", "-timeline"]
+
+    GETLOWERLAYER_BOOL = ["-gll", "-getLowerLayer"]
+
+    query = False
+    getLowerLayer = False
+    edit = False
+    spaceAttribute = None
+    switch = False
+    bake = False
+    timeline = False
+    switchMode = None
+    spaceValue = None
+    spacePreset = ""
+    allowedSwitchModes = ['bake', 'switch', 'switchtimeline']
+    omSelection = ""
+    selection = list()
+    spaceTool = SpaceSwitch()
+
+    defaultPresetNames = [spaceTool.str_spaceDefault,
+                          spaceTool.str_spaceMirror,
+                          spaceTool.str_spaceLocal,
+                          spaceTool.str_spaceGlobal]
+
+    # avoiding repetition, just put bake/switch methods in a dictionary and call it based on the switch/bake input
+    bakeMethods = {'bake': spaceTool.bake,
+                   'switch': spaceTool.switch,
+                   'switchtimeline': spaceTool.switch}
+    bakePresetMethods = {'bake': spaceTool.bakePreset,
+                         'switch': spaceTool.switchPreset,
+                         'switchtimeline': spaceTool.switchPreset}
 
     def __init__(self):
         super(SpaceSwitchCommand, self).__init__()
 
         self.undoable = True
-        self.keyframeData = None
-        self.keyframeRefData = None
 
     def doIt(self, arg_list):
         try:
@@ -49,34 +111,117 @@ class SpaceSwitchCommand(om.MPxCommand):
         if arg_db.numberOfFlagsUsed == 0:
             self.displayError('No flags used')
             return
-        if arg_db.isFlagSet(SpaceSwitchCommand.ALPHA_FLAG[0]):
-            self.alpha = arg_db.flagArgumentDouble(SpaceSwitchCommand.ALPHA_FLAG[0], 0)
 
-        if arg_db.isFlagSet(SpaceSwitchCommand.SPACEMODE_FLAG[0]):
-            self.spaceMode = arg_db.flagArgumentString(SpaceSwitchCommand.SPACEMODE_FLAG[0], 0)
-        if arg_db.isFlagSet(SpaceSwitchCommand.ID_FLAG[0]):
-            self.id = arg_db.flagArgumentString(SpaceSwitchCommand.ID_FLAG[0], 0)
-        if arg_db.isFlagSet(SpaceSwitchCommand.CLEARCACHE_FLAG[0]):
-            self.clearCache = arg_db.flagArgumentBool(SpaceSwitchCommand.CLEARCACHE_FLAG[0], 0)
+        # space attribute
+        if arg_db.isFlagSet(SpaceSwitchCommand.SPACEATTR_FLAG[0]):
+            self.spaceAttribute = arg_db.flagArgumentString(SpaceSwitchCommand.SPACEATTR_FLAG[0], 0)
 
-        slideTool = SlideTools()
+        if arg_db.isFlagSet(SpaceSwitchCommand.GETLOWERLAYER_BOOL[0]):
+            self.getLowerLayer = arg_db.flagArgumentString(SpaceSwitchCommand.GETLOWERLAYER_BOOL[0], 0)
 
-        if self.clearCache:
-            self.displayInfo('clearCache')
-            cmds.undoInfo(stateWithoutFlush=False)
-            self.animCurveChange = oma.MAnimCurveChange()
-            slideTool.animCurveChange = self.animCurveChange
-            slideTool.cacheKeyData()
-            cmds.undoInfo(stateWithoutFlush=True)
+        # space preset value
+        if arg_db.isFlagSet(SpaceSwitchCommand.SPACEPRESETVALUE_STRING[0]):
+            self.spacePreset = arg_db.flagArgumentString(SpaceSwitchCommand.SPACEPRESETVALUE_STRING[0], 0).lower()
+
+        if arg_db.isFlagSet(SpaceSwitchCommand.SPACEVALUE_STRING[0]):
+            self.spaceValue = arg_db.flagArgumentString(SpaceSwitchCommand.SPACEVALUE_STRING[0], 0)
+
+        # get selection first
+        if arg_db.isFlagSet(SpaceSwitchCommand.SELECTION[0]):
+            raw_string = arg_db.flagArgumentString(SpaceSwitchCommand.SELECTION[0], 0)
+            self.selection = [s.strip() for s in raw_string.split(",")]  # Parse comma-separated values
         else:
-            self.animCurveChange = slideTool.animCurveChange
-        slideTool.doKeyTween(self.alpha, self.alphaB, self.spaceMode, self.animCurveChange)
+            # Use current selection if no string array is provided
+            self.selection = cmds.ls(sl=True, type='transform')
+
+        # edit
+        if arg_db.isFlagSet(SpaceSwitchCommand.EDIT_FLAG[0]):
+            # edit - add objects with this attribute
+            self.edit = arg_db.flagArgumentBool(SpaceSwitchCommand.EDIT_FLAG[0], 0)
+
+        # query
+        if arg_db.isFlagSet(SpaceSwitchCommand.QUERY_FLAG[0]):
+            self.query = arg_db.flagArgumentBool(SpaceSwitchCommand.QUERY_FLAG[0], 0)
+
+        if arg_db.isFlagSet(SpaceSwitchCommand.SWITCH_FLAG[0]):
+            self.switch = arg_db.flagArgumentString(SpaceSwitchCommand.SWITCH_FLAG[0], 0)
+
+        if arg_db.isFlagSet(SpaceSwitchCommand.BAKE_FLAG[0]):
+            self.bake = arg_db.flagArgumentString(SpaceSwitchCommand.BAKE_FLAG[0], 0)
+
+        if arg_db.isFlagSet(SpaceSwitchCommand.TIMELINE_FLAG[0]):
+            self.timeline = arg_db.flagArgumentString(SpaceSwitchCommand.TIMELINE_FLAG[0], 0)
+
+        if self.bake and self.switch:
+            self.displayError('Cannot bake AND switch at the same time, specify one or the other')
+
+        if self.bake:
+            self.switchMode = self.allowedSwitchModes[0]
+        elif self.switch:
+            if self.timeline:
+                self.switchMode = self.allowedSwitchModes[2]
+            else:
+                self.switchMode = self.allowedSwitchModes[1]
+        self.redoIt()
 
     def undoIt(self):
-        self.animCurveChange.undoIt()
+        cmds.undo()
 
     def redoIt(self):
-        self.animCurveChange.redoIt()
+        # Open the chunk
+        if self.edit:
+            self.displayInfo('edit')
+            if self.spacePreset:
+                if self.spaceValue:
+                    self.displayInfo('adding spacePreset with specific value')
+                    self.spaceTool.captureData(selection=self.selection,
+                                               presetName=self.spacePreset,
+                                               valueOverride=self.spaceValue)
+                else:
+                    self.displayInfo(self.spacePreset)
+                    if self.spaceValue:
+                        self.spaceTool.captureData(selection=self.selection,
+                                                   presetName=self.spacePreset,
+                                                   valueOverride=self.spaceValue)
+                    else:
+                        self.spaceTool.captureData(selection=self.selection,
+                                                   presetName=self.spacePreset)
+            else:
+                # add the current object(s) as a space switch object
+                self.displayInfo('adding space object')
+                self.spaceTool.addControlsWithMatchingAttribute(selection=self.selection,
+                                                                attribute=self.spaceAttribute)
+
+        elif self.query:
+            if self.getLowerLayer:
+                self.displayInfo('Get lower layer values')
+            if self.spaceAttribute: self.displayInfo(self.spaceAttribute)
+            if self.spaceValue: self.displayInfo(self.spaceValue)
+            if self.switchMode: self.displayInfo(self.switchMode)
+            for s in self.selection:
+                self.displayInfo(str(s))
+        elif self.spacePreset:
+            """
+            Baking / switching using a preset
+            """
+            self.displayInfo(str(self.spacePreset))
+            cmds.undoInfo(openChunk=True)
+            self.bakePresetMethods[self.switchMode](selection=self.selection,
+                                                    presetName=self.spacePreset,
+                                                    forceTimeline=self.switchMode == 'SwitchTimeline')
+            cmds.undoInfo(closeChunk=True)
+        else:
+            """
+            Baking / switching using a value
+            """
+            cmds.undoInfo(openChunk=True)
+            self.bakeMethods[self.switchMode](selection=self.selection,
+                                              attribute=self.spaceAttribute,
+                                              spaceValue=safe_int_cast(self.spaceValue),
+                                              fromLowerLayer=self.getLowerLayer,
+                                              forceTimeline=self.switchMode == 'SwitchTimeline')
+
+            cmds.undoInfo(closeChunk=True)
 
     def isUndoable(self):
         # self.displayInfo("Info: isUndoable() method called")
@@ -90,14 +235,23 @@ class SpaceSwitchCommand(om.MPxCommand):
     def create_syntax(cls):
         syntax = om.MSyntax()
 
-        # add all the flags
-        # blend alpha amount
-        syntax.addFlag(SpaceSwitchCommand.ALPHA_FLAG[0], SpaceSwitchCommand.ALPHA_FLAG[1], om.MSyntax.kDouble)
-        syntax.addFlag(SpaceSwitchCommand.ALPHA2_FLAG[0], SpaceSwitchCommand.ALPHA2_FLAG[1], om.MSyntax.kDouble)
-        # blend method
-        syntax.addFlag(SpaceSwitchCommand.SPACEMODE_FLAG[0], SpaceSwitchCommand.SPACEMODE_FLAG[1], om.MSyntax.kString)
-        # recache base values
-        syntax.addFlag(SpaceSwitchCommand.CLEARCACHE_FLAG[0], SpaceSwitchCommand.CLEARCACHE_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.QUERY_FLAG[0], SpaceSwitchCommand.QUERY_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.EDIT_FLAG[0], SpaceSwitchCommand.EDIT_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.SWITCH_FLAG[0], SpaceSwitchCommand.SWITCH_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.BAKE_FLAG[0], SpaceSwitchCommand.BAKE_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.TIMELINE_FLAG[0], SpaceSwitchCommand.TIMELINE_FLAG[1], om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.SELECTION[0], SpaceSwitchCommand.SELECTION[1], om.MSyntax.kString)
+        #
+        syntax.addFlag(SpaceSwitchCommand.SPACEATTR_FLAG[0], SpaceSwitchCommand.SPACEATTR_FLAG[1], om.MSyntax.kString)
+        syntax.addFlag(SpaceSwitchCommand.GETLOWERLAYER_BOOL[0], SpaceSwitchCommand.GETLOWERLAYER_BOOL[1],
+                       om.MSyntax.kBoolean)
+        syntax.addFlag(SpaceSwitchCommand.SPACEVALUE_STRING[0], SpaceSwitchCommand.SPACEVALUE_STRING[1],
+                       om.MSyntax.kString)
+        # syntax.addFlag(SpaceSwitchCommand.SWITCHMODE_FLAG[0], SpaceSwitchCommand.SWITCHMODE_FLAG[1], om.MSyntax.kString)
+        syntax.addFlag(SpaceSwitchCommand.SPACEQUICKVALUE_STRING[0], SpaceSwitchCommand.SPACEQUICKVALUE_STRING[1],
+                       om.MSyntax.kString)
+        syntax.addFlag(SpaceSwitchCommand.SPACEPRESETVALUE_STRING[0], SpaceSwitchCommand.SPACEPRESETVALUE_STRING[1],
+                       om.MSyntax.kString)
 
         return syntax
 
@@ -110,7 +264,8 @@ def initializePlugin(plugin):
 
     plugin_fn = om.MFnPlugin(plugin, vendor, version)
     try:
-        plugin_fn.registerCommand(SpaceSwitchCommand.COMMAND_NAME, SpaceSwitchCommand.creator, SpaceSwitchCommand.create_syntax)
+        plugin_fn.registerCommand(SpaceSwitchCommand.COMMAND_NAME, SpaceSwitchCommand.creator,
+                                  SpaceSwitchCommand.create_syntax)
     except:
         om.MGlobal.displayError("Failed to register command: {0}".format(SpaceSwitchCommand.COMMAND_NAME))
 
@@ -123,6 +278,25 @@ def uninitializePlugin(plugin):
         plugin_fn.deregisterCommand(SpaceSwitchCommand.COMMAND_NAME)
     except:
         om.MGlobal.displayError("Failed to deregister command: {0}".format(SpaceSwitchCommand.COMMAND_NAME))
+
+
+def iterSelection():
+    """
+    generator style iterator over current Maya active selection
+    :return: [MObject) an MObject for each item in the selection
+    """
+    sel = om.MGlobal.getActiveSelectionList()
+    for i in range(sel.length()):
+        yield sel.getDependNode(i)
+
+
+def safe_int_cast(value):
+    if value is None:
+        return value
+    try:
+        return int(value)
+    except ValueError:
+        return value
 
 
 if __name__ == "__main__":

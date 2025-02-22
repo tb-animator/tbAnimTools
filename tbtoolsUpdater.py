@@ -145,7 +145,7 @@ def set_option_var(var_name, value):
             for item in value:
                 cmds.optionVar(sva=(var_name, item))
     else:
-        raise ValueError("Unsupported value type: {}".format(type(value)))
+        raise ValueError("Unsupported optionVar value type: {}".format(type(value)))
 
 def dpiScale():
     if not get_option_var('tbUseWindowsScale', True):

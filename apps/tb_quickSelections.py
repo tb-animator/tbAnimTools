@@ -173,6 +173,78 @@ class QuickSelectionTools(toolAbstractFactory):
         if not os.path.isdir(self.quickSelectFolderDefault):
             os.mkdir(self.quickSelectFolderDefault)
 
+    def toolBarUI(self):
+        print('toolBarUI')
+        print ('buttons')
+        # altButton = ToolboxColourButton(label='test', parent=None, cls=None,
+        #                                 # command=create_callback(self.selectQuickSelectionSet, mset, add=False),
+        #                                 closeOnPress=False,
+        #                                 isSmall=False,
+        #                                 # colour=setColour,
+        #                                 # fixedWidth=fontWidth,
+        #                                 colouredBackground=True,
+        #                                 )
+        # Create the main vertical layout
+        main_layout = QVBoxLayout()
+
+        # Create two horizontal layouts for the rows
+        row_1_layout = QHBoxLayout()
+        row_2_layout = QHBoxLayout()
+
+        # Initialize widths
+        row_1_width = 0
+        row_2_width = 0
+        returnWidget = QWidget()
+        returnWidget.setLayout(main_layout)
+
+        allSets = self.get_sets(forceAll=True)
+        n_columns = -(-len(allSets) // 2)
+
+        def add_to_row(label, row_layout, current_width):
+            row_layout.addWidget(label)
+            label_width = label.sizeHint().width() + 10  # Add padding
+            return current_width + label_width
+
+            # Distribute labels
+
+        labels = list()
+        totalWidth = 0
+        for set in allSets:
+            widget = ToolbarButton(text=set.split(':')[-1],
+                                   width=60,
+                                   height=20,
+                                   iconHeight=30,
+                                   iconWidth=30)
+            print ('ooo booo')
+            widget.setStyleSheet(
+                "border-radius: 8;"
+            )
+            widget.setStyleSheet(getqss.getStyleSheet())
+            labels.append(widget)
+            totalWidth += widget.sizeHint().width()
+
+        for label in labels:
+            label.setAlignment(Qt.AlignCenter)
+            label_width = label.sizeHint().width() + 10  # Estimate label width with padding
+            print (row_1_width, row_2_width)
+            # Add to the first row if it has space, otherwise the second row
+            if row_1_width < row_2_width:
+                row_1_width = add_to_row(label, row_1_layout, row_1_width)
+            else:
+                row_2_width = add_to_row(label, row_2_layout, row_2_width)
+
+            # Add the rows to the main layout
+        main_layout.addLayout(row_1_layout)
+        main_layout.addLayout(row_2_layout)
+
+
+        # clicked = Signal()
+        # middleClicked = Signal()
+        # rightClicked = Signal()
+
+        # returnWidget.setStyleSheet(getqss.getStyleSheet())
+        return [returnWidget]
+
     def create_main_set(self, sel=None):
         if not sel:
             sel = cmds.ls(sl=True)
@@ -442,7 +514,7 @@ class QuickSelectionTools(toolAbstractFactory):
             return
 
         if name:
-            scaledColour = [x/255.0 for x in self.funcs.getControlColour(sel[-1])]
+            scaledColour = [x / 255.0 for x in self.funcs.getControlColour(sel[-1])]
             self.save_qs(name, sel, quick=quick, colour=scaledColour)
 
         CharacterTool = self.allTools.tools['CharacterTool']
@@ -1113,7 +1185,8 @@ class QssSaveWidget(QWidget):
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(dpiScale() *
-            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+                                    max(120,
+                                        self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
         self.setStyleSheet(
             "QssSaveWidget { "
             "border-radius: 8;"

@@ -28,9 +28,8 @@ tbGimbalQuickBakeNewLayerOptionVar = 'tbGimbalQuickBakeNewLayer'
 tbGimbalQuickBakeOptionVar = 'tbGimbalQuickBake'
 
 from . import *
+
 maya.utils.loadStringResourcesForModule(__name__)
-
-
 
 kRotateOrderMapping = {
     'xyz': om.MEulerRotation.kXYZ,
@@ -294,7 +293,7 @@ class GimbalTool(toolAbstractFactory):
         iconDict = {0: 'tbGimbalGreen.png',
                     30: 'tbGimbalOrange.png',
                     60: 'tbGimbalRed.png'}
-        bakeClass = GimbalTool.bakeOrderClass(self)
+        bakeClass = BakeOrderClass(self)
 
         quickBake = get_option_var(tbGimbalQuickBakeOptionVar, True)
         quickBakeNewLayer = get_option_var(tbGimbalQuickBakeNewLayerOptionVar, True)
@@ -379,6 +378,72 @@ class GimbalTool(toolAbstractFactory):
                       sourceType="mel",
                       command="gimbalToolUI")
 
+
+
+    def quickBake(self, order, newLayer, keepKeys, *args):
+        sel = cmds.ls(sl=True, type='transform')
+        if order not in rotateOrderList:
+            return error(position="botRight",
+                         prefix="Error",
+                         message='No objects selected', fadeStayTime=3.0, fadeOutTime=4.0)
+        self.updateDisabled = True
+        bakeClass = BakeOrderClass(nodeList=sel,
+                                   orderList=[order] * len(sel),
+                                   keepCurrentKeys=keepKeys,
+                                   bakeSample=1,
+                                   bakeToNewLayer=newLayer)
+        bakeClass.bakeOrder()
+        self.updateDisabled = False
+
+    def quickBakeToLowestGimbal(self, sel):
+        quickBake = get_option_var(tbGimbalQuickBakeOptionVar, True)
+        quickBakeNewLayer = get_option_var(tbGimbalQuickBakeNewLayerOptionVar, True)
+        if not sel:
+            return
+        orderList = list()  # synched list of orders with selection
+        for s in sel:
+            lowest = self.getLowestGimbalOrder(s)
+            orderList.append(rotateOrderList[lowest])
+        bakeClass = BakeOrderClass(nodeList=sel,
+                                   orderList=orderList,
+                                   keepCurrentKeys=quickBakeNewLayer,
+                                   bakeSample=1,
+                                   bakeToNewLayer=not quickBake)
+        bakeClass.bakeOrder()
+
+    def get_current_gimbal_amount(self, r):
+        d = r * (180.0 / math.pi)
+        return 100.0 * (abs(((d + 90.0) % 180.0) - 90.0) / 90.0)
+
+    def getAllAnimCurves(self, inputData):
+        historyNodes = cmds.listHistory(inputData, pruneDagObjects=True, leaf=False)
+        animCurves = cmds.ls(historyNodes, type='animCurve')
+        return animCurves
+
+    def hasAnimCurves(self, inputData):
+        animCurves = self.getAllAnimCurves(inputData)
+        if animCurves:
+            return True
+
+    def get_all_gimbal_values(self, inputData):
+        returnDict = {}
+        node = om2.MSelectionList().add(str(inputData)).getDependNode(0)
+        nodeRotation = om2.MFnTransform(node).rotation(asQuaternion=False)
+        nodeRotationOrder = om2.MFnTransform(node).rotationOrder()
+        for rotationOrder in rotateOrderDict.keys():
+            newRotation = nodeRotation.reorder(rotationOrder)
+            returnDict[rotationOrder] = self.get_current_gimbal_amount(
+                newRotation[rotateOrderDict[rotationOrder]['middleAxis']])
+        return returnDict
+
+    def getLowestGimbalOrder(self, inputData):
+        allValues = self.get_all_gimbal_values(inputData)
+        lowest = min(allValues, key=allValues.get)
+        return lowest
+
+    def eulerFilter(self):
+        EulerFilter().filter()
+
     class gimbalUI(object):
         def __init__(self, parentCLS=None):
             if cmds.window('GimbalTools', query=True, exists=True):
@@ -436,10 +501,10 @@ class GimbalTool(toolAbstractFactory):
             cmds.setParent(self.mainLayout)
             self.outliner = cmds.outlinerEditor(allowMultiSelection=False)
             self.subLayout = cmds.columnLayout('subLayout',
-                                             columnAlign="center",
-                                             columnAttach=("both", 0),
-                                             adjustableColumn=True,
-                                             parent=self.mainLayout)
+                                               columnAlign="center",
+                                               columnAttach=("both", 0),
+                                               adjustableColumn=True,
+                                               parent=self.mainLayout)
             cmds.setParent(self.subLayout)
 
             cmds.setParent(self.subLayout)
@@ -477,17 +542,17 @@ class GimbalTool(toolAbstractFactory):
             cmds.setParent(self.subLayout)
             for index, order in enumerate(rotateOrderList):
                 self.originalLabels.append(cmds.text(label='',
-                                                   parent=self.defaultOrderLayout,
-                                                   backgroundColor=green,
-                                                   width=self.rotateOrderButtonWidth,
-                                                   enableBackground=False,
-                                                   font='boldLabelFont'))
+                                                     parent=self.defaultOrderLayout,
+                                                     backgroundColor=green,
+                                                     width=self.rotateOrderButtonWidth,
+                                                     enableBackground=False,
+                                                     font='boldLabelFont'))
             for index, order in enumerate(rotateOrderList):
                 self.gimbalLabels.append(cmds.text(label='',
-                                                 parent=self.currentGimbalLayout,
-                                                 width=self.rotateOrderButtonWidth,
-                                                 backgroundColor=orange,
-                                                 font='boldLabelFont'))
+                                                   parent=self.currentGimbalLayout,
+                                                   width=self.rotateOrderButtonWidth,
+                                                   backgroundColor=orange,
+                                                   font='boldLabelFont'))
 
             for index, order in enumerate(rotateOrderList):
                 self.gimbalButtons.append(cmds.button(label=order,
@@ -549,10 +614,10 @@ class GimbalTool(toolAbstractFactory):
                                                   adjustableColumn=2)
             cmds.text(label='Inbetween key reduction', annotation=ann_bakeTolerance)
             self.toleranceSlider = cmds.floatSlider(min=0.00, max=1.0, width=2 * self.rotateOrderButtonWidth,
-                                                  annotation=ann_bakeTolerance,
-                                                  value=self.tolerance,
-                                                  step=0.01,
-                                                  )
+                                                    annotation=ann_bakeTolerance,
+                                                    value=self.tolerance,
+                                                    step=0.01,
+                                                    )
             self.keepKeysButton = cmds.button(label='Keep current', command=self.setKeepCurrent)
             cmds.setParent(self.subLayout)
             self.bakeSampleLayout = cmds.rowLayout('bakeSampleLayout', numberOfColumns=4,
@@ -563,30 +628,30 @@ class GimbalTool(toolAbstractFactory):
                                                        1.5 * self.rotateOrderButtonWidth),
                                                    adjustableColumn=4)
             cmds.text(label='Bake Sample ', width=1.5 * self.rotateOrderButtonWidth,
-                    annotation=ann_bakeSample)
+                      annotation=ann_bakeSample)
             self.bakeSampleSlider = cmds.intSlider(min=1, max=10, value=self.bakeSample,
 
-                                                 annotation=ann_bakeSample,
-                                                 width=(2 * self.rotateOrderButtonWidth),
-                                                 changeCommand=self.updateBakeSampleInt,
-                                                 dragCommand=self.updateBakeSampleInt)
+                                                   annotation=ann_bakeSample,
+                                                   width=(2 * self.rotateOrderButtonWidth),
+                                                   changeCommand=self.updateBakeSampleInt,
+                                                   dragCommand=self.updateBakeSampleInt)
             self.bakeSampleIntField = cmds.intField(min=1, max=10, value=self.bakeSample,
-                                                  step=1,
-                                                  width=intFieldWidth,
-                                                  changeCommand=self.updateBakeSampleSlider,
-                                                  visibleChangeCommand=self.updateBakeSampleSlider)
+                                                    step=1,
+                                                    width=intFieldWidth,
+                                                    changeCommand=self.updateBakeSampleSlider,
+                                                    visibleChangeCommand=self.updateBakeSampleSlider)
             self.layerOptions = ['New Layer', 'Base Layer']
             self.layerOptionVar = 'gimbalLayerBakeMode'
             self.layerBakeMode = get_option_var(self.layerOptionVar, self.layerOptions[0])
             cmds.optionVar(stringValue=(self.layerOptionVar, self.layerBakeMode))
             self.layerMenu = cmds.optionMenu(label='To:',
-                                           width=1.5 * self.rotateOrderButtonWidth,
-                                           changeCommand=self.changeLayerMode)
+                                             width=1.5 * self.rotateOrderButtonWidth,
+                                             changeCommand=self.changeLayerMode)
             layerList = [cmds.menuItem(key, label=key, parent=self.layerMenu) for key in self.layerOptions]
             self.toleranceSliderDragged(cmds.floatSlider(self.toleranceSlider, query=True, value=True))
             cmds.floatSlider(self.toleranceSlider, edit=True,
-                           value=self.tolerance,
-                           dragCommand=self.toleranceSliderDragged)
+                             value=self.tolerance,
+                             dragCommand=self.toleranceSliderDragged)
 
             # set the initial state of the options ui elements
             self.addAnnotations()
@@ -623,10 +688,10 @@ class GimbalTool(toolAbstractFactory):
                 cmds.setParent(self.parent.queueLayout)
                 self.rowLayout = cmds.rowLayout(numberOfColumns=3, columnWidth3=(80, 80, 80))
                 self.deleteButton = cmds.iconTextButton(style='iconOnly',
-                                                      image='deleteActive.png',
-                                                      width=self.parent.rotateOrderButtonWidth,
-                                                      label='delete',
-                                                      command=self.deletePressed)
+                                                        image='deleteActive.png',
+                                                        width=self.parent.rotateOrderButtonWidth,
+                                                        label='delete',
+                                                        command=self.deletePressed)
                 self.nameLabel = cmds.text(width=self.parent.rotateOrderButtonWidth, label=str(self.obj))
                 self.orderLabel = cmds.text(width=self.parent.rotateOrderButtonWidth, label=str(self.order))
 
@@ -662,14 +727,13 @@ class GimbalTool(toolAbstractFactory):
 
         def processQueue(self, *args):
             self.removeMissingObjectsFromQueue()
-            bakeOrderClass = self.parentCLS.bakeOrderClass(self.parentCLS,
-                                                           nodeList=list(self.objectQueue.keys()),
-                                                           orderList=list(self.objectQueue.values()),
-                                                           keepCurrentKeys=self.keyMode,
-                                                           bakeSample=self.bakeSample,
-                                                           tolerance=self.tolerance,
-                                                           bakeToNewLayer=self.layerBakeMode == self.layerOptions[
-                                                               0])
+            bakeOrderClass = BakeOrderClass(nodeList=list(self.objectQueue.keys()),
+                                            orderList=list(self.objectQueue.values()),
+                                            keepCurrentKeys=self.keyMode,
+                                            bakeSample=self.bakeSample,
+                                            tolerance=self.tolerance,
+                                            bakeToNewLayer=self.layerBakeMode == self.layerOptions[
+                                                0])
             bakeOrderClass.bakeOrder()
 
         def updateProcessButtonColour(self):
@@ -735,15 +799,14 @@ class GimbalTool(toolAbstractFactory):
                           message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
                     return cmds.warning('No object selected to process')
                 if self.hasAnimCurves(self.node):
-                    bakeOrderClass = self.parentCLS.bakeOrderClass(self.parentCLS,
-                                                                   nodeList=[self.node],
-                                                                   orderList=[data],
-                                                                   keepCurrentKeys=self.keyMode,
-                                                                   bakeSample=self.bakeSample,
-                                                                   tolerance=self.tolerance,
-                                                                   bakeToNewLayer=self.layerBakeMode ==
-                                                                                  self.layerOptions[
-                                                                                      0])
+                    bakeOrderClass = BakeOrderClass(nodeList=[self.node],
+                                                    orderList=[data],
+                                                    keepCurrentKeys=self.keyMode,
+                                                    bakeSample=self.bakeSample,
+                                                    tolerance=self.tolerance,
+                                                    bakeToNewLayer=self.layerBakeMode ==
+                                                                   self.layerOptions[
+                                                                       0])
                     bakeOrderClass.bakeOrder()
                 else:
                     self.staticSwapOrder(self.node, data)
@@ -787,16 +850,16 @@ class GimbalTool(toolAbstractFactory):
                 for index, order in enumerate(rotateOrderList):
                     gimbalVal = self.gimbalInfo[index]
                     cmds.text(self.originalLabels[index],
-                            edit=True,
-                            label='',
-                            annotation=ann_blank,
-                            enableBackground=False)
+                              edit=True,
+                              label='',
+                              annotation=ann_blank,
+                              enableBackground=False)
 
                     cmds.text(self.gimbalLabels[index],
-                            edit=True,
-                            label='',
-                            annotation=ann_blank,
-                            enableBackground=True)
+                              edit=True,
+                              label='',
+                              annotation=ann_blank,
+                              enableBackground=True)
                     cmds.button(self.gimbalButtons[index],
                                 edit=True,
                                 backgroundColor=defaultGrey,
@@ -807,16 +870,16 @@ class GimbalTool(toolAbstractFactory):
             for index, order in enumerate(rotateOrderList):
                 gimbalVal = self.gimbalInfo[index]
                 cmds.text(self.originalLabels[index],
-                        edit=True,
-                        label={True: 'Default', False: ''}[order == defaultRotateOrder],
-                        annotation={True: ann_defaultRot, False: ann_blank}[order == defaultRotateOrder],
-                        enableBackground=order == defaultRotateOrder)
+                          edit=True,
+                          label={True: 'Default', False: ''}[order == defaultRotateOrder],
+                          annotation={True: ann_defaultRot, False: ann_blank}[order == defaultRotateOrder],
+                          enableBackground=order == defaultRotateOrder)
 
                 cmds.text(self.gimbalLabels[index],
-                        edit=True,
-                        label=str("{} %".format("%.2f" % gimbalVal)),
-                        annotation={True: ann_currentRot, False: ann_currentGimbal}[order == rotateOrder],
-                        enableBackground=order == rotateOrder)
+                          edit=True,
+                          label=str("{} %".format("%.2f" % gimbalVal)),
+                          annotation={True: ann_currentRot, False: ann_currentGimbal}[order == rotateOrder],
+                          enableBackground=order == rotateOrder)
                 cmds.button(self.gimbalButtons[index],
                             edit=True,
                             backgroundColor=getGimbalColour(gimbalVal),
@@ -846,9 +909,9 @@ class GimbalTool(toolAbstractFactory):
 
         def removeScriptJob(self):
             self.cleanUpLocators()
-            if self.timeChangeScriptJob is not -1:
+            if self.timeChangeScriptJob != -1:
                 cmds.scriptJob(kill=self.timeChangeScriptJob, force=True)
-            if self.DragReleaseScriptJob is not -1:
+            if self.DragReleaseScriptJob != -1:
                 cmds.scriptJob(kill=self.DragReleaseScriptJob, force=True)
 
         def cleanUpLocators(self):
@@ -981,431 +1044,375 @@ class GimbalTool(toolAbstractFactory):
                     newRotation[rotateOrderDict[rotationOrder]['middleAxis']])
             return returnDict
 
-    class bakeOrderClass(object):
-        def __init__(self, baseCLS,
-                     nodeList=[],
-                     orderList=[],
-                     bakeSample=1,
-                     tolerance=1,
-                     keepCurrentKeys=False,
-                     bakeToNewLayer=False):
-            self.baseCLS = baseCLS
-            self.funcs = self.baseCLS.funcs
-            self.tempLocators = []
-            self.tempNulls = []
-            self.tempConstraints = []
-            self.allKeyInfo = []
-            self.firstKeys = []
-            self.lastKeys = []
-            self.originalOrders = []
+class BakeOrderClass(object):
+    def __init__(self,
+                 nodeList=[],
+                 orderList=[],
+                 bakeSample=1,
+                 tolerance=1,
+                 keepCurrentKeys=False,
+                 bakeToNewLayer=False):
 
-            self.nodeList = nodeList
-            self.orderList = orderList
-            self.bakeSample = bakeSample
-            self.tolerance = tolerance
-            self.layerBakeMode = bakeToNewLayer  # true means bake to a new layer
-            self.keepCurrentKeys = keepCurrentKeys
-            self.newLayer = None
-            self.newLayerName = None
-            self.staticNodes = []
-            self.staticNodeOrders = []
+        self.funcs = GimbalTool.funcs
+        self.tempLocators = []
+        self.tempNulls = []
+        self.tempConstraints = []
+        self.allKeyInfo = []
+        self.firstKeys = []
+        self.lastKeys = []
+        self.originalOrders = []
 
-        def get_rotate_order_list(self, input):
-            rotateOrders = cmds.attributeQuery('rotateOrder', node=input, listEnum=True)
-            rotateOrders = rotateOrders[0].split(':')
-            return rotateOrders
+        self.nodeList = nodeList
+        self.orderList = orderList
+        self.bakeSample = bakeSample
+        self.tolerance = tolerance
+        self.layerBakeMode = bakeToNewLayer  # true means bake to a new layer
+        self.keepCurrentKeys = keepCurrentKeys
+        self.newLayer = None
+        self.newLayerName = None
+        self.staticNodes = []
+        self.staticNodeOrders = []
 
-        def get_original_rotation_order(self, input):
-            if not cmds.attributeQuery(defaultRoAttribute, node=input, exists=True):
-                self.tag_original_rotation_order(input)
-            stringValue = cmds.getAttr(input + '.' + defaultRoAttribute, asString=True)
-            rotateOrders = self.get_rotate_order_list(input)
-            intValue = rotateOrders.index(cmds.getAttr(input + '.' + defaultRoAttribute))
-            return stringValue, intValue
+    def get_rotate_order_list(self, input):
+        rotateOrders = cmds.attributeQuery('rotateOrder', node=input, listEnum=True)
+        rotateOrders = rotateOrders[0].split(':')
+        return rotateOrders
 
-        def tag_original_rotation_order(self, input):
-            if not cmds.attributeQuery(defaultRoAttribute, node=input, exists=True):
-                cmds.addAttr(input, ln=defaultRoAttribute, dt='string')
-            currentRO = cmds.getAttr(input + '.rotateOrder', asString=True)
-            cmds.setAttr(input + '.' + defaultRoAttribute, currentRO, type='string')
+    def get_original_rotation_order(self, input):
+        if not cmds.attributeQuery(defaultRoAttribute, node=input, exists=True):
+            self.tag_original_rotation_order(input)
+        stringValue = cmds.getAttr(input + '.' + defaultRoAttribute, asString=True)
+        rotateOrders = self.get_rotate_order_list(input)
+        intValue = rotateOrders.index(cmds.getAttr(input + '.' + defaultRoAttribute))
+        return stringValue, intValue
 
-        def staticSwapOrder(self, node, order):
-            self.swap_rotate_order(node, order)
-            self.updateGimbalLabels()
+    def tag_original_rotation_order(self, input):
+        if not cmds.attributeQuery(defaultRoAttribute, node=input, exists=True):
+            cmds.addAttr(input, ln=defaultRoAttribute, dt='string')
+        currentRO = cmds.getAttr(input + '.rotateOrder', asString=True)
+        cmds.setAttr(input + '.' + defaultRoAttribute, currentRO, type='string')
 
-        def swap_rotate_order(self, input, rotateOrder):
-            if isinstance(rotateOrder, int):
-                rotateOrder = self.get_rotate_order_list(input)[rotateOrder]
-            self.get_original_rotation_order(input)
-            cmds.xform(input,
-                       preserve=True,
-                       rotateOrder=rotateOrder
-                       )
+    def staticSwapOrder(self, node, order):
+        self.swap_rotate_order(node, order)
+        self.updateGimbalLabels()
 
-        @decorator.timer
-        def bakeOrder(self):
-            for index, value in enumerate(self.nodeList):
-                if not self.hasAnimCurves(value):
-                    self.staticNodes.append(self.nodeList[index])
-                    self.staticNodeOrders.append(self.orderList[index])
-                    self.swap_rotate_order(value, self.orderList[index])
-            for index, value in enumerate(self.nodeList):
-                if value in self.staticNodes:
-                    self.nodeList.pop(index)
-                    self.orderList.pop(index)
+    def swap_rotate_order(self, input, rotateOrder):
+        if isinstance(rotateOrder, int):
+            rotateOrder = self.get_rotate_order_list(input)[rotateOrder]
+        self.get_original_rotation_order(input)
+        cmds.xform(input,
+                   preserve=True,
+                   rotateOrder=rotateOrder
+                   )
 
-            preSel = cmds.ls(sl=True)
+    @decorator.timer
+    def bakeOrder(self):
+        for index, value in enumerate(self.nodeList):
+            if not self.hasAnimCurves(value):
+                self.staticNodes.append(self.nodeList[index])
+                self.staticNodeOrders.append(self.orderList[index])
+                self.swap_rotate_order(value, self.orderList[index])
+        for index, value in enumerate(self.nodeList):
+            if value in self.staticNodes:
+                self.nodeList.pop(index)
+                self.orderList.pop(index)
 
-            if self.layerBakeMode:
-                for s in preSel:
-                    try:
-                        cmds.setAttr(s + ".rotateOrder", lock=False)
-                    except Exception as e:
-                        cmds.warning(e)
+        preSel = cmds.ls(sl=True)
 
-                layerOkState = self.funcs.checkKeyableState(self.nodeList)
-                if not layerOkState:
-                    msg = 'Rotate orders on some objects are not keyable, aborting\nSee script window for information'
-                    error(position="botRight",
-                          prefix="Error",
-                          message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
-                    cmds.select(preSel, replace=True)
-                    return
+        if self.layerBakeMode:
+            for s in preSel:
+                try:
+                    cmds.setAttr(s + ".rotateOrder", lock=False)
+                except Exception as e:
+                    cmds.warning(e)
 
-            startTime = cmds.timerX()
-            self.cleanUpLocators()
-            self.tempLocators = []
-            self.tempConstraints = []
-            self.allKeyInfo = []
-            self.firstKeys = []
-            self.lastKeys = []
-            self.originalOrders = []
-            if not isinstance(self.nodeList, list):
-                self.nodeList = [self.nodeList]
-            if not isinstance(self.orderList, list):
-                self.orderList = [self.orderList]
+            layerOkState = self.funcs.checkKeyableState(self.nodeList)
+            if not layerOkState:
+                msg = 'Rotate orders on some objects are not keyable, aborting\nSee script window for information'
+                error(position="botRight",
+                      prefix="Error",
+                      message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
+                cmds.select(preSel, replace=True)
+                return
 
-            if not self.nodeList:
-                return cmds.warning('No objects to bake, exiting')
-            if not self.orderList:
-                return cmds.warning('No rotation orders specified, exiting')
+        startTime = cmds.timerX()
+        self.cleanUpLocators()
+        self.tempLocators = []
+        self.tempConstraints = []
+        self.allKeyInfo = []
+        self.firstKeys = []
+        self.lastKeys = []
+        self.originalOrders = []
+        if not isinstance(self.nodeList, list):
+            self.nodeList = [self.nodeList]
+        if not isinstance(self.orderList, list):
+            self.orderList = [self.orderList]
 
-            for index, value in enumerate(self.nodeList):
-                self.originalOrders.append(self.get_original_rotation_order(value)[1])
-                self.allKeyInfo.append(self.get_all_key_times(value))
-                self.firstKeys.append(self.allKeyInfo[index][0])
-                self.lastKeys.append(self.allKeyInfo[index][-1])
+        if not self.nodeList:
+            return cmds.warning('No objects to bake, exiting')
+        if not self.orderList:
+            return cmds.warning('No rotation orders specified, exiting')
 
-                tempLocName = str("{}_roBake".format(str(value)))
-                if cmds.objExists(tempLocName):
-                    cmds.delete(tempLocName)
-                tempObj = cmds.duplicate(value, parentOnly=True)[0]
-                parentNode = cmds.listRelatives(value, parent=True)
+        for index, value in enumerate(self.nodeList):
+            self.originalOrders.append(self.get_original_rotation_order(value)[1])
+            self.allKeyInfo.append(self.get_all_key_times(value))
+            self.firstKeys.append(self.allKeyInfo[index][0])
+            self.lastKeys.append(self.allKeyInfo[index][-1])
 
-                self.tempLocators.append(tempObj)
-                cmds.setAttr(tempObj + '.rotateOrder', cmds.getAttr(value + '.rotateOrder'))
-                constraint = cmds.parentConstraint(value, tempObj)
-                self.tempConstraints.append(constraint)
-                cmds.setAttr(tempObj + '.rotateOrder', rotateOrderList.index(self.orderList[index]))
+            tempLocName = str("{}_roBake".format(str(value)))
+            if cmds.objExists(tempLocName):
+                cmds.delete(tempLocName)
+            tempObj = cmds.duplicate(value, parentOnly=True)[0]
+            parentNode = cmds.listRelatives(value, parent=True)
 
-            self.bakeStart = min(self.firstKeys)
-            self.bakeEnd = max(self.lastKeys)
+            if cmds.listConnections(value + '.offsetParentMatrix'):
+                offsetParentMatrixConnection = cmds.listConnections(value + '.offsetParentMatrix',
+                                                                    source=True,
+                                                                    plugs=True)
+                # using offset parent matrix but not inheriting transform
+                cmds.connectAttr(offsetParentMatrixConnection[0], tempObj + '.offsetParentMatrix')
 
-            if self.keepCurrentKeys:
-                sampleRate = 1
-            else:
-                sampleRate = self.bakeSample
+            self.tempLocators.append(tempObj)
+            cmds.setAttr(tempObj + '.rotateOrder', cmds.getAttr(value + '.rotateOrder'))
+            constraint = cmds.parentConstraint(value, tempObj)
+            self.tempConstraints.append(constraint)
+            cmds.setAttr(tempObj + '.rotateOrder', rotateOrderList.index(self.orderList[index]))
 
-            self.newLayerName = self.nodeList[0].split(':')[-1] + '_' + self.orderList[0]
-            self.newLayer = None
+        self.bakeStart = min(self.firstKeys)
+        self.bakeEnd = max(self.lastKeys)
 
-            if self.layerBakeMode or self.getLayerInclusion(self.nodeList):
-                self.newLayer = cmds.animLayer(override=True)
-                self.newLayer = cmds.rename(self.newLayer, self.newLayerName)
+        if self.keepCurrentKeys:
+            sampleRate = 1
+        else:
+            sampleRate = self.bakeSample
 
-            cmds.bakeResults(self.tempLocators,
-                             time=(self.bakeStart, self.bakeEnd),
-                             simulation=False,
-                             attribute=('rotateX', 'rotateY', 'rotateZ'),
-                             sampleBy=sampleRate,
-                             # oversamplingRate=1,
-                             disableImplicitControl=False,
-                             preserveOutsideKeys=False,
-                             sparseAnimCurveBake=False,
-                             removeBakedAttributeFromLayer=False,
-                             removeBakedAnimFromLayer=False,
-                             bakeOnOverrideLayer=False,
-                             minimizeRotation=False,
-                             controlPoints=False,
-                             shape=False)
-            # filter the bake result
-            self.filterNode(self.tempLocators)
-            # remove constraints
-            for x in self.tempConstraints:
-                cmds.delete(x)
-            self.tempConstraints = []
+        self.newLayerName = self.nodeList[0].split(':')[-1] + '_' + self.orderList[0]
+        self.newLayer = None
 
-            if self.keepCurrentKeys:
-                if self.tolerance >= small:
-                    # if we aren't just baking to specific key sample
-                    for index, value in enumerate(self.tempLocators):
-                        self.trimStartKeys(value, self.bakeStart, self.firstKeys[index])
-                        self.trimEndKeys(value, self.lastKeys[index], self.bakeEnd)
-                        # self.filterNode(value)
-                        for curve in self.getAllAnimCurves(value):
-                            self.set_curve_tangents(curve)
+        if self.layerBakeMode or self.getLayerInclusion(self.nodeList):
+            self.newLayer = cmds.animLayer(override=True)
+            self.newLayer = cmds.rename(self.newLayer, self.newLayerName)
 
-                        if self.tolerance < large:
-                            for x in range(0, len(self.allKeyInfo[index]) - 1):
-                                self.simplifyRange(value, self.allKeyInfo[index][x], self.allKeyInfo[index][x + 1])
-                                # self.filterNode(value)
-                        else:
-                            for x in range(0, len(self.allKeyInfo[index]) - 1):
-                                self.trimKeyRange(value, self.allKeyInfo[index][x], self.allKeyInfo[index][x + 1])
-                                # self.filterNode(value)
+        cmds.bakeResults(self.tempLocators,
+                         time=(self.bakeStart, self.bakeEnd),
+                         simulation=False,
+                         attribute=('rotateX', 'rotateY', 'rotateZ'),
+                         sampleBy=sampleRate,
+                         # oversamplingRate=1,
+                         disableImplicitControl=False,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=False,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=False,
+                         minimizeRotation=False,
+                         controlPoints=False,
+                         shape=False)
+        cmds.select(self.tempLocators)
 
-            for index, node in enumerate(self.nodeList):
-                cmds.copyKey(self.tempLocators[index],
-                             attribute=['rotateX', 'rotateY', 'rotateZ'],
-                             time=(self.firstKeys[index], self.lastKeys[index]))
-                if self.newLayer:
-                    attrs = ['rotateOrder', 'rotateX', 'rotateY', 'rotateZ']
+        # filter the bake result
+        self.filterNode(self.tempLocators)
+        # remove constraints
+        for x in self.tempConstraints:
+            cmds.delete(x)
+        self.tempConstraints = []
 
-                    for at in attrs:
-                        cmds.animLayer(str(self.newLayer), edit=True, attribute=node + '.' + at)
+        if self.keepCurrentKeys:
+            if self.tolerance >= small:
+                # if we aren't just baking to specific key sample
+                for index, value in enumerate(self.tempLocators):
+                    self.trimStartKeys(value, self.bakeStart, self.firstKeys[index])
+                    self.trimEndKeys(value, self.lastKeys[index], self.bakeEnd)
+                    # self.filterNode(value)
+                    for curve in self.getAllAnimCurves(value):
+                        self.set_curve_tangents(curve)
 
-                    cmds.pasteKey(node,
-                                  attribute=['rotateX', 'rotateY', 'rotateZ'],
-                                  animLayer=str(self.newLayer),
-                                  option='replace',
-                                  time=(self.firstKeys[index], self.lastKeys[index]))
-                    cmds.setKeyframe(node,
-                                     time=[self.firstKeys[index]],
-                                     attribute='rotateOrder',
-                                     insert=True,
-                                     # value=self.originalOrders[index],
-                                     animLayer='BaseAnimation')
-                    cmds.setKeyframe(node,
-                                     time=[self.firstKeys[index]],
-                                     attribute='rotateOrder',
-                                     value=rotateOrderList.index(self.orderList[index]),
-                                     animLayer=str(self.newLayer))
-                else:
-                    cmds.pasteKey(node,
-                                  attribute=['rotateX', 'rotateY', 'rotateZ'],
-                                  option='replace',
-                                  time=(self.firstKeys[index], self.lastKeys[index]))
-                    cmds.setKeyframe(node,
-                                     time=[self.firstKeys[index]],
-                                     attribute='rotateOrder',
-                                     value=rotateOrderList.index(self.orderList[index]))
+                    if self.tolerance < large:
+                        for x in range(0, len(self.allKeyInfo[index]) - 1):
+                            self.simplifyRange(value, self.allKeyInfo[index][x], self.allKeyInfo[index][x + 1])
+                            # self.filterNode(value)
+                    else:
+                        for x in range(0, len(self.allKeyInfo[index]) - 1):
+                            self.trimKeyRange(value, self.allKeyInfo[index][x], self.allKeyInfo[index][x + 1])
+                            # self.filterNode(value)
 
-            self.cleanUpLocators()
-            cmds.refresh()
-            cmds.select(preSel, replace=True)
-            cmds.currentTime(cmds.currentTime(query=True))
+        for index, node in enumerate(self.nodeList):
+            cmds.copyKey(self.tempLocators[index],
+                         attribute=['rotateX', 'rotateY', 'rotateZ'],
+                         time=(self.firstKeys[index], self.lastKeys[index]))
             if self.newLayer:
-                self.selectNewAnimLayer()
-            endTime = cmds.timerX() - startTime
-            msg = 'Rotate order swapped in %s seconds' % endTime
-            info(position="botRight",
-                 prefix="Bake Complete",
-                 message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
+                attrs = ['rotateOrder', 'rotateX', 'rotateY', 'rotateZ']
 
-        def set_curve_tangents(self, curve):
-            for key in cmds.keyframe(curve, query=True, tc=True):
-                inTangent = cmds.keyTangent(curve, query=True, time=(key, key), inAngle=True)
-                outTangent = cmds.keyTangent(curve, query=True, time=(key, key), outAngle=True)
-                cmds.keyTangent(curve, edit=True, time=(key, key), inAngle=inTangent[0])
-                cmds.keyTangent(curve, edit=True, time=(key, key), outAngle=outTangent[0])
+                for at in attrs:
+                    cmds.animLayer(str(self.newLayer), edit=True, attribute=node + '.' + at)
 
-        def getLayerInclusion(self, input):
-            if not input:
-                return False
-            if not isinstance(input, list):
-                input = [input]
-            inLayer = False
-            for obj in input:
-                if cmds.listConnections(obj, type='animLayer'):
-                    return True
+                cmds.pasteKey(node,
+                              attribute=['rotateX', 'rotateY', 'rotateZ'],
+                              animLayer=str(self.newLayer),
+                              option='replace',
+                              time=(self.firstKeys[index], self.lastKeys[index]))
+                cmds.setKeyframe(node,
+                                 time=[self.firstKeys[index]],
+                                 attribute='rotateOrder',
+                                 insert=True,
+                                 value=self.originalOrders[index],
+                                 animLayer='BaseAnimation')
+                cmds.setKeyframe(node,
+                                 time=[self.firstKeys[index]],
+                                 attribute='rotateOrder',
+                                 value=rotateOrderList.index(self.orderList[index]),
+                                 animLayer=str(self.newLayer))
+            else:
+                cmds.pasteKey(node,
+                              attribute=['rotateX', 'rotateY', 'rotateZ'],
+                              option='replace',
+                              time=(self.firstKeys[index], self.lastKeys[index]))
+                cmds.setKeyframe(node,
+                                 time=[self.firstKeys[index]],
+                                 attribute='rotateOrder',
+                                 value=rotateOrderList.index(self.orderList[index]))
+
+        self.cleanUpLocators()
+        cmds.refresh()
+        cmds.select(preSel, replace=True)
+        cmds.currentTime(cmds.currentTime(query=True))
+        if self.newLayer:
+            self.selectNewAnimLayer()
+        endTime = cmds.timerX() - startTime
+        msg = 'Rotate order swapped in %s seconds' % endTime
+        info(position="botRight",
+             prefix="Bake Complete",
+             message=msg, fadeStayTime=3.0, fadeOutTime=4.0)
+
+    def set_curve_tangents(self, curve):
+        for key in cmds.keyframe(curve, query=True, tc=True):
+            inTangent = cmds.keyTangent(curve, query=True, time=(key, key), inAngle=True)
+            outTangent = cmds.keyTangent(curve, query=True, time=(key, key), outAngle=True)
+            cmds.keyTangent(curve, edit=True, time=(key, key), inAngle=inTangent[0])
+            cmds.keyTangent(curve, edit=True, time=(key, key), outAngle=outTangent[0])
+
+    def getLayerInclusion(self, input):
+        if not input:
             return False
-
-        def getAllAnimCurves(self, input):
-            historyNodes = cmds.listHistory(input, pruneDagObjects=True, leaf=False)
-            animCurves = cmds.ls(historyNodes, type='animCurve')
-            return animCurves
-
-        def hasAnimCurves(self, input):
-            animCurves = self.getAllAnimCurves(input)
-            if animCurves:
+        if not isinstance(input, list):
+            input = [input]
+        inLayer = False
+        for obj in input:
+            if cmds.listConnections(obj, type='animLayer'):
                 return True
+        return False
 
-        def get_all_key_times(self, input):
-            historyNodes = cmds.listHistory(input, pruneDagObjects=True, leaf=False)
-            animCurves = cmds.ls(historyNodes, type='animCurve')
-            all_keys = cmds.keyframe(animCurves, query=True,
-                                     timeChange=True)
-            if all_keys:
-                return sorted(list(set(all_keys)))
-
-        def selectNewAnimLayer(self):
-            for layer in cmds.ls(type='animLayer'):
-                cmds.animLayer(layer, edit=True, selected=False)
-            cmds.animLayer(str(self.newLayer), edit=True, selected=True)
-            cmds.animLayer(str(self.newLayer), edit=True, preferred=True)
-
-        def filterNode(self, node):
-            cmds.filterCurve(node, filter='euler')
-
-        def trimStartKeys(self, node, start, end):
-            cmds.cutKey(node,
-                        time=(start - 2, end - 1),
-                        option="keys",
-                        attribute=('rotate'),
-                        clear=True)
-
-        def trimEndKeys(self, node, start, end):
-            cmds.cutKey(node,
-                        time=(start + 1, end + 2),
-                        attribute=('rotate'),
-                        option="keys",
-                        clear=True)
-
-        def trimKeyRange(self, node, start, end):
-            if end - start > 1:
-                cmds.cutKey(node,
-                            time=(start + 1, end - 1),
-                            attribute=('rotate'),
-                            option="keys",
-                            clear=True)
-
-        def simplifyRange(self, node, start, end):
-            cmds.filterCurve(node,
-                             filter='simplify',
-                             startTime=start,
-                             endTime=end,
-                             timeTolerance=self.tolerance)
-
-        def cleanUpLocators(self):
-            if self.tempConstraints:
-                for x in self.tempConstraints:
-                    if cmds.objExists(x):
-                        cmds.delete(x)
-            return
-            if self.tempLocators:
-                for x in self.tempLocators:
-                    if cmds.objExists(x):
-                        cmds.delete(x)
-
-    def quickBake(self, order, newLayer, keepKeys, *args):
-        sel = cmds.ls(sl=True, type='transform')
-        if order not in rotateOrderList:
-            return error(position="botRight",
-                         prefix="Error",
-                         message='No objects selected', fadeStayTime=3.0, fadeOutTime=4.0)
-        self.updateDisabled = True
-        bakeClass = self.bakeOrderClass(self,
-                                        nodeList=sel,
-                                        orderList=[order] * len(sel),
-                                        keepCurrentKeys=keepKeys,
-                                        bakeSample=1,
-                                        bakeToNewLayer=newLayer)
-        bakeClass.bakeOrder()
-        self.updateDisabled = False
-
-    def quickBakeToLowestGimbal(self, sel):
-        quickBake = get_option_var(tbGimbalQuickBakeOptionVar, True)
-        quickBakeNewLayer = get_option_var(tbGimbalQuickBakeNewLayerOptionVar, True)
-        if not sel:
-            return
-        orderList = list()  # synched list of orders with selection
-        for s in sel:
-            lowest = self.getLowestGimbalOrder(s)
-            orderList.append(rotateOrderList[lowest])
-        bakeClass = self.bakeOrderClass(self,
-                                        nodeList=sel,
-                                        orderList=orderList,
-                                        keepCurrentKeys=quickBakeNewLayer,
-                                        bakeSample=1,
-                                        bakeToNewLayer=not quickBake)
-        bakeClass.bakeOrder()
-
-    def get_current_gimbal_amount(self, r):
-        d = r * (180.0 / math.pi)
-        return 100.0 * (abs(((d + 90.0) % 180.0) - 90.0) / 90.0)
-
-    def getAllAnimCurves(self, inputData):
-        historyNodes = cmds.listHistory(inputData, pruneDagObjects=True, leaf=False)
+    def getAllAnimCurves(self, input):
+        historyNodes = cmds.listHistory(input, pruneDagObjects=True, leaf=False)
         animCurves = cmds.ls(historyNodes, type='animCurve')
         return animCurves
 
-    def hasAnimCurves(self, inputData):
-        animCurves = self.getAllAnimCurves(inputData)
+    def hasAnimCurves(self, input):
+        animCurves = self.getAllAnimCurves(input)
         if animCurves:
             return True
 
-    def get_all_gimbal_values(self, inputData):
-        returnDict = {}
-        node = om2.MSelectionList().add(str(inputData)).getDependNode(0)
-        nodeRotation = om2.MFnTransform(node).rotation(asQuaternion=False)
-        nodeRotationOrder = om2.MFnTransform(node).rotationOrder()
-        for rotationOrder in rotateOrderDict.keys():
-            newRotation = nodeRotation.reorder(rotationOrder)
-            returnDict[rotationOrder] = self.get_current_gimbal_amount(
-                newRotation[rotateOrderDict[rotationOrder]['middleAxis']])
-        return returnDict
+    def get_all_key_times(self, input):
+        historyNodes = cmds.listHistory(input, pruneDagObjects=True, leaf=False)
+        animCurves = cmds.ls(historyNodes, type='animCurve')
+        all_keys = cmds.keyframe(animCurves, query=True,
+                                 timeChange=True)
+        if all_keys:
+            return sorted(list(set(all_keys)))
 
-    def getLowestGimbalOrder(self, inputData):
-        allValues = self.get_all_gimbal_values(inputData)
-        lowest = min(allValues, key=allValues.get)
-        return lowest
+    def selectNewAnimLayer(self):
+        for layer in cmds.ls(type='animLayer'):
+            cmds.animLayer(layer, edit=True, selected=False)
+        cmds.animLayer(str(self.newLayer), edit=True, selected=True)
+        cmds.animLayer(str(self.newLayer), edit=True, preferred=True)
 
-    class EulerFilter(object):
-        def __init__(self):
-            self.objects = cmds.ls(selection=True)
-            self.selected = False
-            # get the min and max times from our keyframe selection
+    def filterNode(self, node):
+        cmds.filterCurve(node, filter='euler')
+
+    def trimStartKeys(self, node, start, end):
+        cmds.cutKey(node,
+                    time=(start - 2, end - 1),
+                    option="keys",
+                    attribute=('rotate'),
+                    clear=True)
+
+    def trimEndKeys(self, node, start, end):
+        cmds.cutKey(node,
+                    time=(start + 1, end + 2),
+                    attribute=('rotate'),
+                    option="keys",
+                    clear=True)
+
+    def trimKeyRange(self, node, start, end):
+        if end - start > 1:
+            cmds.cutKey(node,
+                        time=(start + 1, end - 1),
+                        attribute=('rotate'),
+                        option="keys",
+                        clear=True)
+
+    def simplifyRange(self, node, start, end):
+        cmds.filterCurve(node,
+                         filter='simplify',
+                         startTime=start,
+                         endTime=end,
+                         timeTolerance=self.tolerance)
+
+    def cleanUpLocators(self):
+        if self.tempConstraints:
+            for x in self.tempConstraints:
+                if cmds.objExists(x):
+                    cmds.delete(x)
+        return
+        if self.tempLocators:
+            for x in self.tempLocators:
+                if cmds.objExists(x):
+                    cmds.delete(x)
+
+
+class EulerFilter(object):
+    def __init__(self):
+        self.objects = cmds.ls(selection=True)
+        self.selected = False
+        # get the min and max times from our keyframe selection
+        if cmds.keyframe(query=True, selected=True):
+            self.firstTime = min(min(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
+            self.lastTime = min(max(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
+            self.selected = True
+
+    def filter(self):
+        for obj in self.objects:
+            cmds.select(obj, replace=True)
             if cmds.keyframe(query=True, selected=True):
                 self.firstTime = min(min(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
                 self.lastTime = min(max(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
                 self.selected = True
+            if self.selected:
+                cmds.selectKey(clear=True)
+                # copy keys to buffer
+                cmds.selectKey(obj, replace=True, time=(self.firstTime, self.lastTime))
+                cmds.bufferCurve(animation='keys', overwrite=True)
+                # delete surrounding keys
+                cmds.cutKey(obj, clear=True, time=(-9999999, self.firstTime - 0.01))
+                cmds.cutKey(obj, clear=True,
+                            time=(self.lastTime + 0.01, 999999))
+                # euler filter
+                cmds.filterCurve()
+                # copy keys
+                cmds.selectKey(obj, replace=True, time=(self.firstTime, self.lastTime))
 
-        def filter(self):
-            for obj in self.objects:
-                cmds.select(obj, replace=True)
-                if cmds.keyframe(query=True, selected=True):
-                    self.firstTime = min(min(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
-                    self.lastTime = min(max(cmds.keyframe(query=True, selected=True, timeChange=True)), 99999999)
-                    self.selected = True
-                if self.selected:
-                    cmds.selectKey(clear=True)
-                    # copy keys to buffer
-                    cmds.selectKey(obj, replace=True, time=(self.firstTime, self.lastTime))
-                    cmds.bufferCurve(animation='keys', overwrite=True)
-                    # delete surrounding keys
-                    cmds.cutKey(obj, clear=True, time=(-9999999, self.firstTime - 0.01))
-                    cmds.cutKey(obj, clear=True,
-                                time=(self.lastTime + 0.01, 999999))
-                    # euler filter
-                    cmds.filterCurve()
-                    # copy keys
-                    cmds.selectKey(obj, replace=True, time=(self.firstTime, self.lastTime))
+                cmds.copyKey(obj, time=(self.firstTime, self.lastTime), attribute=['rotateX', 'rotateY', 'rotateZ'])
 
-                    cmds.copyKey(obj, time=(self.firstTime, self.lastTime), attribute=['rotateX', 'rotateY', 'rotateZ'])
+                # swap buffer to original
+                cmds.bufferCurve(animation='keys', overwrite=False, swap=True)
 
-                    # swap buffer to original
-                    cmds.bufferCurve(animation='keys', overwrite=False, swap=True)
-
-                    cmds.bufferCurve(animation='keys', overwrite=False)
-                    # paste keys back
-                    cmds.pasteKey(obj, time=(self.firstTime,), attribute=['rotateX', 'rotateY', 'rotateZ'],
-                                  option='merge')
-                else:
-                    cmds.filterCurve()
-            cmds.select(self.objects, replace=True)
-
-    def eulerFilter(self):
-        self.EulerFilter().filter()
+                cmds.bufferCurve(animation='keys', overwrite=False)
+                # paste keys back
+                cmds.pasteKey(obj, time=(self.firstTime,), attribute=['rotateX', 'rotateY', 'rotateZ'],
+                              option='merge')
+            else:
+                cmds.filterCurve()
+        cmds.select(self.objects, replace=True)
 
 
 def getGimbalColour(input):
@@ -1513,10 +1520,10 @@ class info(Message):
         prefix = '<hl>%s</hl>' % prefix
         Message().enable_messages()
         cmds.inViewMessage(amg='%s :: %s' % (prefix, message),
-                         pos=position,
-                         # fadeStayTime=fadeStayTime,
-                         fadeOutTime=fadeOutTime,
-                         fade=fade)
+                           pos=position,
+                           # fadeStayTime=fadeStayTime,
+                           fadeOutTime=fadeOutTime,
+                           fade=fade)
         Message().disable_messages()
 
 
@@ -1526,10 +1533,10 @@ class error(Message):
         prefix = '<span %s>%s</span>' % (Message().colours['red'], prefix)
         Message().enable_messages()
         cmds.inViewMessage(amg='%s :: %s' % (prefix, message),
-                         pos=position,
-                         fadeOutTime=fadeOutTime,
-                         dragKill=True,
-                         fade=fade)
+                           pos=position,
+                           fadeOutTime=fadeOutTime,
+                           dragKill=True,
+                           fade=fade)
         Message().disable_messages()
 
 
@@ -1629,7 +1636,7 @@ class GimbalUI_pyside(BaseDialog):
         self.queueWidgets = dict()
 
         self.result = str()
-        self.setFixedSize(300  * dpiScale(), 160  * dpiScale())
+        self.setFixedSize(300 * dpiScale(), 160 * dpiScale())
         self.layout.setSpacing(0)
         self.originalLabels = list()
         self.gimbalLabels = list()
@@ -1683,6 +1690,7 @@ class GimbalUI_pyside(BaseDialog):
             gimbalValueLabel = QLabel('%')
             gimbalValueLabel.setAlignment(Qt.AlignCenter)
             gimbalSetButton = QPushButton(order)
+            gimbalSetButton.setFixedHeight(22*dpiScale())
             self.originalLabels.append(orderLabel)
             self.gimbalLabels.append(gimbalValueLabel)
             self.gimbalButtons.append(gimbalSetButton)
@@ -1721,7 +1729,7 @@ class GimbalUI_pyside(BaseDialog):
         # changeCommand=self.updateBakeSampleInt,
         # #dragCommand=self.updateBakeSampleInt)
         self.bakeSampleIntField = QSpinBox()
-        self.bakeSampleIntField.setFixedWidth(40  * dpiScale())
+        self.bakeSampleIntField.setFixedWidth(40 * dpiScale())
         self.bakeSampleIntField.setMinimum(1)
         self.bakeSampleIntField.setMaximum(10)
         self.bakeSampleIntField.setValue(self.bakeSample)
@@ -1781,13 +1789,12 @@ class GimbalUI_pyside(BaseDialog):
     def processQueue(self, *args):
         self.removeMissingObjectsFromQueue()
         self.bakeSample = self.bakeSampleSlider.value()
-        bakeOrderClass = self.parentCLS.bakeOrderClass(self.parentCLS,
-                                                       nodeList=self.objectQueue.keys(),
-                                                       orderList=self.objectQueue.values(),
-                                                       keepCurrentKeys=self.keyMode == self.keyModeOptions[0],
-                                                       bakeSample=self.bakeSample,
-                                                       tolerance=self.tolerance * 0.01,
-                                                       bakeToNewLayer=self.layerBakeMode == self.layerOptions[0])
+        bakeOrderClass = BakeOrderClass(nodeList=self.objectQueue.keys(),
+                                        orderList=self.objectQueue.values(),
+                                        keepCurrentKeys=self.keyMode == self.keyModeOptions[0],
+                                        bakeSample=self.bakeSample,
+                                        tolerance=self.tolerance * 0.01,
+                                        bakeToNewLayer=self.layerBakeMode == self.layerOptions[0])
         bakeOrderClass.bakeOrder()
         self.clearQueueWidgets()
 
@@ -1809,13 +1816,13 @@ class GimbalUI_pyside(BaseDialog):
         if self.quickMode:
             self.queueModeButton.setText(self.quickLabel)
             self.queueModeButton.setStyleSheet(defaultBackgroundSS)
-            self.setFixedHeight(160 * dpiScale())
+            self.setFixedHeight(174 * dpiScale())
             self.queueScrollArea.setVisible(False)
             self.processButton.setVisible(False)
         else:
             self.queueModeButton.setText(self.queueLabel)
             self.queueModeButton.setStyleSheet(mainStyleSheet)
-            self.setFixedHeight(300 * dpiScale())
+            self.setFixedHeight(340 * dpiScale())
             self.queueScrollArea.setVisible(True)
             self.processButton.setVisible(True)
 
@@ -1832,14 +1839,13 @@ class GimbalUI_pyside(BaseDialog):
                 return cmds.warning('No object selected to process')
             if self.hasAnimCurves(self.node):
                 self.bakeSample = self.bakeSampleSlider.value()
-                bakeOrderClass = self.parentCLS.bakeOrderClass(self.parentCLS,
-                                                               nodeList=[self.node],
-                                                               orderList=[data],
-                                                               keepCurrentKeys=self.keyMode != self.keyModeOptions[0],
-                                                               bakeSample=self.bakeSample,
-                                                               tolerance=self.tolerance * 0.01,
-                                                               bakeToNewLayer=self.layerBakeMode == self.layerOptions[
-                                                                   0])
+                bakeOrderClass = BakeOrderClass(nodeList=[self.node],
+                                                orderList=[data],
+                                                keepCurrentKeys=self.keyMode != self.keyModeOptions[0],
+                                                bakeSample=self.bakeSample,
+                                                tolerance=self.tolerance * 0.01,
+                                                bakeToNewLayer=self.layerBakeMode == self.layerOptions[
+                                                    0])
 
                 bakeOrderClass.bakeOrder()
             else:
@@ -1941,13 +1947,13 @@ class GimbalUI_pyside(BaseDialog):
 
     def removeScriptJob(self):
         self.cleanUpLocators()
-        if self.timeChangeScriptJob is not -1:
+        if self.timeChangeScriptJob != -1:
             cmds.scriptJob(kill=self.timeChangeScriptJob, force=True)
             self.timeChangeScriptJob = -1
-        if self.dragReleaseScriptJob is not -1:
+        if self.dragReleaseScriptJob != -1:
             cmds.scriptJob(kill=self.dragReleaseScriptJob, force=True)
             self.dragReleaseScriptJob = -1
-        if self.selectionChangedScriptJob is not -1:
+        if self.selectionChangedScriptJob != -1:
             cmds.scriptJob(kill=self.selectionChangedScriptJob, force=True)
             self.selectionChangedScriptJob = -1
 
@@ -2050,7 +2056,6 @@ class GimbalUI_pyside(BaseDialog):
 
         '''
 
-
     def setNotKeepCurrent(self):
         self.keepKeysButton.setStyleSheet(getqss.getStyleSheet())
 
@@ -2082,13 +2087,11 @@ class GimbalUI_pyside(BaseDialog):
         self.bakeSampleSlider.setValue(data)
         self.bakeSampleSlider.blockSignals(False)
 
-
     def updateBakeSampleInt(self, data):
         self.bakeSampleIntField.blockSignals(True)
         self.bakeSampleIntField.setValue(data)
         self.bakeSampleIntField.blockSignals(False)
         self.bakeSample = data
-
 
     def setupUIConnections(self):
         self.keysButton.clicked.connect(self.setToKeyMode)

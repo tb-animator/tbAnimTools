@@ -123,7 +123,7 @@ class DockableUI(QDialog):
 
     @classmethod
     def get_ui_script(cls):
-        print ('get_ui_script')
+        print('get_ui_script')
         module_name = cls.__module__
         if module_name == "__main__":
             module_name = cls.module_name_override
@@ -275,14 +275,15 @@ class DockableUI(QDialog):
             else:
                 pass
                 # print ('horizontal docked')
-
+        print('self.workspace_control_instance.getOrientation()', self.workspace_control_instance.getOrientation())
         if 'Horizontal' in str(self.workspace_control_instance.getOrientation()):
             layout = QHBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(1)
             self.setLayout(layout)
             for w in self.widgets:
-                pass
-                # print('reparenting widget horizontalLayout', w)
-                # layout.addWidget(w)
+                print('reparenting widget horizontalLayout', w)
+                layout.addWidget(w)
             self.resize(self.sizeHint().width(), 60)
         else:
             self.parent().resize(60, self.sizeHint().height())
@@ -291,11 +292,13 @@ class DockableUI(QDialog):
 
             self.workspace_control_instance.setWidth(100)
             layout = QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(1)
+
             self.setLayout(layout)
             for w in self.widgets:
-                pass
-                # print('reparenting widget verticalLayout', w)
-                # layout.addWidget(w)
+                print('reparenting widget verticalLayout', w)
+                layout.addWidget(w)
 
     def closeEvent(self, event):
         """

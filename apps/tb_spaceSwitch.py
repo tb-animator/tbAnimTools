@@ -29,11 +29,43 @@ str_spaceDefaultValues = 'spaceDefaultValues'
 str_spaceMirrorValues = 'spaceMirrorValues'
 str_spaceLocalValues = 'spaceLocalValues'
 str_spaceGlobalValues = 'spaceGlobalValues'
+
+str_spaceDefault = 'default'
+str_spaceMirror = 'mirror'
+str_spaceLocal = 'local'
+str_spaceGlobal = 'global'
+
 str_spaceControlKey = 'spaceControl'
 
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Icons'))
 
 illegalNames = ['viewMode', 'ghosting']
+
+def repeatable(function):
+    '''A decorator that will make commands repeatable in maya'''
+
+    def decoratorCode(*args, **kwargs):
+        functionReturn = None
+        argString = ''
+        if args:
+            for each in args:
+                argString += str(each) + ', '
+
+        if kwargs:
+            for key, item in kwargs.items():
+                argString += str(key) + '=' + str(item) + ', '
+
+        commandToRepeat = function
+
+        functionReturn = function(*args, **kwargs)
+        try:
+            cmds.repeatLast(ac=commandToRepeat, acl='SpaceSwitch')
+        except:
+            pass
+
+        return functionReturn
+
+    return decoratorCode
 
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
@@ -213,7 +245,7 @@ class SpaceSwitch(toolAbstractFactory):
     toolName = 'SpaceSwitch'
     hotkeyClass = hotkeys()
     funcs = Functions()
-
+    dependentPlugins = ["tbSpaceSwitch.py"]
     markingMenuWidget = None
 
     culledUserAttributes = ['blendParent', 'blendOrient', 'blendPoint']
@@ -232,6 +264,21 @@ class SpaceSwitch(toolAbstractFactory):
 
     subPath = None
     allCharacters = dict()
+
+    defaultPresetNames = [str_spaceDefaultValues,
+                          str_spaceMirrorValues,
+                          str_spaceLocalValues,
+                          str_spaceGlobalValues]
+
+    str_spaceDefault = 'default'
+    str_spaceMirror = 'mirror'
+    str_spaceLocal = 'local'
+    str_spaceGlobal = 'global'
+
+    defaultNicePresetNames = {str_spaceDefault: str_spaceDefaultValues,
+                              str_spaceMirror: str_spaceMirrorValues,
+                              str_spaceLocal: str_spaceLocalValues,
+                              str_spaceGlobal: str_spaceGlobalValues}
 
     def __new__(cls):
         if SpaceSwitch.__instance is None:
@@ -500,7 +547,8 @@ class SpaceSwitch(toolAbstractFactory):
             for space in enumNames:
                 valueDict = {k: space for k in attrDict.keys()}
                 button = ToolboxButton(label='Switch', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
-                                       command=create_callback(self.switchFromData, attrDict, valueDict),
+                                       #command=create_callback(self.switchFromData, attrDict, valueDict),
+                                       command=create_callback(cmds.spaceSwitch, switch=True, value=space),
                                        closeOnPress=True)
                 altButton = ToolboxButton(label='Bake', parent=self.markingMenuWidget, cls=self.markingMenuWidget,
                                           command=create_callback(self.bakeFromData, attrDict, valueDict),
@@ -693,21 +741,25 @@ class SpaceSwitch(toolAbstractFactory):
         self.loadDataForCharacters(characters)
         self.bakeTo(sel, mode=mode)
 
+
     def bakeTo(self, selection, mode=str_spaceGlobalValues):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.bakeFromData(attributes, values)
         cmds.select(selection, replace=True)
+
 
     def switchTo(self, selection, mode=str_spaceGlobalValues):
         attributes, values = self.makeSwitchData(selection=selection, mode=mode)
         self.switchFromData(attributes, values)
         cmds.select(selection, replace=True)
 
-    def captureData(self, mode=str_spaceGlobalValues, presetName=None):
-        selection = cmds.ls(sl=True)
-
+    def captureData(self, selection=list(), presetName=None, valueOverride=None):
+        if not selection:
+            selection = cmds.ls(sl=True, type='transform')
         if not selection:
             return
+        if valueOverride is not None:
+            print('Hey look at me, the value override', valueOverride)
         characters = self.funcs.splitSelectionToCharacters(selection)
         self.loadDataForCharacters(characters)
 
@@ -734,8 +786,15 @@ class SpaceSwitch(toolAbstractFactory):
             else:
                 value = cmds.getAttr(namespace + ':' + attribute)
 
-            if presetName is None:
-                self.loadedSpaceData[rigName].__dict__[mode][control + '.' + attr] = value
+            if valueOverride is not None:
+                value = valueOverride
+
+            # are we using the long winded space name?
+            if presetName in self.defaultPresetNames:
+                self.loadedSpaceData[rigName].__dict__[presetName][control + '.' + attr] = value
+            elif presetName in self.defaultNicePresetNames.keys():
+                self.loadedSpaceData[rigName].__dict__[self.defaultNicePresetNames[presetName]][
+                    control + '.' + attr] = value
             else:
                 if not self.loadedSpaceData[rigName].spacePresets.get(presetName):
                     self.loadedSpaceData[rigName].spacePresets[presetName] = dict()
@@ -895,8 +954,11 @@ class SpaceSwitch(toolAbstractFactory):
             allAttributes.extend([c + '.' + a for a in attributes])
         return allAttributes
 
-    def getSpaceDataForSelection(self):
-        sel = cmds.ls(sl=True)
+    def getSpaceDataForSelection(self, sel=list(), forceLowerLayer=False):
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning('No selection')
 
         characters = self.funcs.splitSelectionToCharacters(sel)
         self.loadDataForCharacters(characters)
@@ -970,7 +1032,6 @@ class SpaceSwitch(toolAbstractFactory):
                     dataValues[namespace + ':' + attr] = spaceValues
                     dataControls[namespace + ':' + attr] = namespace + ':' + control
 
-
         allAttrNames = set(allAttrNames)
         for c in unknownControls:
             if not ':' in c:
@@ -1026,7 +1087,66 @@ class SpaceSwitch(toolAbstractFactory):
         cmds.setAttr(newAnimLayer + ".scaleAccumulationMode", 0)
         return newAnimLayer
 
-    def switchFromPreset(self, preset, rigName, namespace, *args):
+    def bake(self, selection=list(), attribute='Space', spaceValue=0, fromLowerLayer=False):
+        attrDict, enumNames, rigName, namespace = self.getSpaceDataForSelection(sel=selection)
+        # print ('attrDict')
+        # print(attrDict)
+        # print(spaceValue)
+        # print(type(spaceValue))
+        # print ()
+        valueDict = dict()
+        if spaceValue in enumNames:
+            valueDict = {k: spaceValue for k in attrDict.keys()}
+            # print ('valueDict')
+            # print (valueDict)
+        elif isinstance(spaceValue, int):
+            valueDict = {k: spaceValue for k in attrDict.keys()}
+        if not valueDict:
+            return cmds.warning('No valid data to switch')
+        self.bakeFromData(attrDict, valueDict)
+
+    def switch(self, selection=list(), attribute='Space', spaceValue=0, fromLowerLayer=False, forceTimeline=False):
+        attrDict, enumNames, rigName, namespace = self.getSpaceDataForSelection(sel=selection,
+                                                                                forceLowerLayer=fromLowerLayer)
+        #
+        # print ('attrDict')
+        # print(attrDict)
+        # print(spaceValue)
+        # print(type(spaceValue))
+        # print ()
+        valueDict = dict()
+        if spaceValue in enumNames:
+            valueDict = {k: spaceValue for k in attrDict.keys()}
+            # print ('valueDict')
+            # print (valueDict)
+            #
+            # print ('new valueDict')
+            # print (valueDict)
+        elif isinstance(spaceValue, int):
+            valueDict = {k: spaceValue for k in attrDict.keys()}
+        elif fromLowerLayer:
+            valueDict = dict()
+            for k in attrDict.keys():
+                preferredLayer = self.funcs.get_preferred_layers(k.split('.')[0])
+                plug = self.funcs.getLowerLayerPlugs(k, preferredLayer)[0]
+                valueDict[k] = cmds.getAttr(plug)
+
+        # print ('final values')
+        # print(valueDict)
+        if not valueDict:
+            return cmds.warning('No valid data to switch')
+        self.switchFromData(attrDict, valueDict, forceTimeline=forceTimeline)
+
+
+    def switchPreset(self, selection=list(), presetName='Global', forceTimeline=False):
+        attrDict, enumNames, rigName, namespace = self.getSpaceDataForSelection(sel=selection)
+        presets = self.loadedSpaceData[rigName].__dict__[str_spacePresets]
+        if presetName not in presets.keys():
+            return cmds.warning('Preset not found')
+        self.switchFromPreset(presetName, rigName, namespace, forceTimeline=forceTimeline)
+
+
+    def switchFromPreset(self, preset, rigName, namespace, forceTimeline=False, *args):
         presetData = self.loadedSpaceData[rigName].spacePresets[preset]
         values = dict()
         attributes = dict()
@@ -1036,6 +1156,13 @@ class SpaceSwitch(toolAbstractFactory):
             values[namespace + ':' + key] = value
 
         self.switchFromData(attributes, values)
+
+    def bakePreset(self, selection=list(), presetName='Global', forceTimeline=False):
+        attrDict, enumNames, rigName, namespace = self.getSpaceDataForSelection(sel=selection)
+        presets = self.loadedSpaceData[rigName].__dict__[str_spacePresets]
+        if presetName not in presets.keys():
+            return cmds.warning('Preset not found')
+        self.bakeFromPreset(presetName, rigName, namespace)
 
     def bakeFromPreset(self, preset, rigName, namespace, *args):
         presetData = self.loadedSpaceData[rigName].spacePresets[preset]
@@ -1048,12 +1175,13 @@ class SpaceSwitch(toolAbstractFactory):
             values[namespace + ':' + key] = value
         self.bakeFromData(attributes, values)
 
-    def switchFromData(self, attributes, values):
+
+    def switchFromData(self, attributes, values, forceTimeline=False):
         timeDict = dict()
         selection = list(attributes.values())
         attributeKeyList = list(attributes.keys())
         for s in selection:
-            timeDict[s] = self.getMatchRange(s, timeline=False)
+            timeDict[s] = self.getMatchRange(s, timeline=forceTimeline)
 
         combinedTimeList = sorted({x for v in list(timeDict.values()) for x in v})
 
@@ -1218,6 +1346,51 @@ class SpaceSwitch(toolAbstractFactory):
             SpaceSwitch().saveRigData(character, self.loadedSpaceData[character].toJson())
         self.loadDataForCharacters(characters)
 
+    def addControlsWithMatchingAttribute(self, selection=list(), attribute=None):
+        # print('addControlsWithMatchingAttribute')
+        characters = self.funcs.splitSelectionToCharacters(selection)
+        self.loadDataForCharacters(characters)
+        unknownControls = list()
+        for s in selection:
+            print ('new space control', s)
+            if ':' not in s:
+                namespace = ''
+                control = s
+            else:
+                namespace, control = s.split(':', 1)
+            rigName = self.namespaceToCharDict.get(namespace, None)
+            # print(s, rigName)
+            if not rigName:
+                # print('No rig name')
+                unknownControls.append(s)
+                continue
+
+            if rigName not in self.loadedSpaceData.keys():
+                unknownControls.append(s)
+                # print('rig not known')
+                continue
+            # print ('here')
+            values = list(self.loadedSpaceData[rigName].spaceControl.values())
+            if attribute is None:
+                # print('Not specifying attribtue name, looking at existing attributes')
+                userAttrs = cmds.listAttr(s, userDefined=True)
+                for attr in self.allSpaceAttributes:
+                    if attr not in userAttrs:
+                        # print (attr, 'attribute not found, skipping')
+                        continue
+                    if not cmds.attributeQuery(attr, node=s, exists=True):
+                        # print (attr, 'attribute not found, skipping')
+                        continue
+                    if cmds.attributeQuery(attr, node=s, attributeType=True) == 'message':
+                        # print ('attribute is message, skipping')
+                        continue
+                    attribute = attr
+                    # print('adding attribute', attribute, s)
+
+                    self.loadedSpaceData[rigName].addControlsWithMatchingAttribute(namespace, [control], attribute)
+                    self.saveRigData(rigName, self.loadedSpaceData[rigName].toJson())
+                    continue
+
     def getSavePresetSignal(self, name=str()):
         self.captureData(presetName=name)
 
@@ -1289,19 +1462,22 @@ class SaveCurrentStateWidget(ViewportDialog):
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
 
-        self.addButton(quad='SW', button=ToolboxButton(label='Store as Global', parent=self, cls=self,
-                                                       command=lambda: SpaceSwitch().captureData(
-                                                           mode=str_spaceGlobalValues, presetName=None),
-                                                       closeOnPress=True))
-        self.addButton(quad='SW', button=ToolboxButton(label='Store as local', parent=self, cls=self,
-                                                       command=lambda: SpaceSwitch().captureData(
-                                                           mode=str_spaceLocalValues, presetName=None),
-                                                       closeOnPress=True))
+        self.addButton(quad='SW',
+                       button=ToolboxButton(label='Store as Global', parent=self, cls=self,
+                                            command=lambda: SpaceSwitch().captureData(
+                                                presetName=str_spaceGlobalValues),
+                                            closeOnPress=True))
+        self.addButton(quad='SW',
+                       button=ToolboxButton(label='Store as local', parent=self, cls=self,
+                                            command=lambda: SpaceSwitch().captureData(
+                                                presetName=str_spaceLocalValues),
+                                            closeOnPress=True))
 
-        self.addButton(quad='SW', button=ToolboxButton(label='Store as Default', parent=self, cls=self,
-                                                       command=lambda: SpaceSwitch().captureData(
-                                                           mode=str_spaceDefaultValues, presetName=None),
-                                                       closeOnPress=True))
+        self.addButton(quad='SW',
+                       button=ToolboxButton(label='Store as Default', parent=self, cls=self,
+                                            command=lambda: SpaceSwitch().captureData(
+                                                presetName=str_spaceDefaultValues),
+                                            closeOnPress=True))
         '''
         self.addButton(quad='SW', button=ToolboxButton(label='SubMENU SW', parent=self, cls=self, command=None,
                                                        closeOnPress=True,
@@ -1441,13 +1617,14 @@ class SpaceSwitchSetupUI(QMainWindow):
         self.limbUpdateWidget.dialog.setEnabled(True)
 
     @Slot()
-    def addNewControls(self):
+    def addNewControls(self, sel=list()):
         if not self.spaceData:
             self.getCurrentRig()
         if not self.spaceData:
             return cmds.error('No current rig loaded')
         self.pendingControls = None
-        sel = cmds.ls(sl=True)
+        if not sel:
+            sel = cmds.ls(sl=True)
 
         if not sel:
             return cmds.warning('nothing selected')
@@ -2211,7 +2388,7 @@ class PresetSaveWidget(QWidget):
 
         # self.lineEdit.setFocus()
         self.lineEdit.setFixedWidth(
-            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28)  * dpiScale())
+            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28) * dpiScale())
         self.setStyleSheet(
             "PresetSave { "
             "border-radius: 8;"

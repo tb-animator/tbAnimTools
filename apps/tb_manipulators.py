@@ -257,7 +257,7 @@ class Manipulators(toolAbstractFactory):
         cmds.selectType(allObjects=not _mode)
 
         if _mode:
-            cmds.selectType(joint=_mode, nurbsCurve=_mode)
+            cmds.selectType(joint=_mode, nurbsCurve=_mode, selectHandle=_mode, handle=_mode, locator=_mode)
         cmds.selectMode(object=True)
 
         self.funcs.infoMessage(prefix='masking',

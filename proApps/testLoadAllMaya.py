@@ -89,12 +89,14 @@ def collateZipFiles(key):
     add_to_zip(zipPath, initPyFile, 'python3\\__init__.py')
     add_to_zip(zipPath, initPyFile, 'python39\\__init__.py')
     add_to_zip(zipPath, initPyFile, 'python310\\__init__.py')
+    add_to_zip(zipPath, initPyFile, 'python311\\__init__.py')
 
     print ('fileData')
     print (fileData['py27'])
     print (fileData['py37'])
     print (fileData['py39'])
     print (fileData['py310'])
+    print (fileData['py311'])
     print (fileData['baseName'])
 
     for index, fileName in enumerate(fileData["baseName"]):
@@ -102,6 +104,7 @@ def collateZipFiles(key):
         add_to_zip(zipPath, fileData['py37'][index], f'python3\\{fileData["baseName"][index]}')
         add_to_zip(zipPath, fileData['py39'][index], f'python39\\{fileData["baseName"][index]}')
         add_to_zip(zipPath, fileData['py310'][index], f'python310\\{fileData["baseName"][index]}')
+        add_to_zip(zipPath, fileData['py311'][index], f'python311\\{fileData["baseName"][index]}')
 
     add_to_zip(zipPath, initPyFile, '\\__init__.py')
 
@@ -112,6 +115,7 @@ def collateZipFiles(key):
         add_to_zip(zipPath, res_file, f'python3\\{res_file_base}')
         add_to_zip(zipPath, res_file, f'python39\\{res_file_base}')
         add_to_zip(zipPath, res_file, f'python310\\{res_file_base}')
+        add_to_zip(zipPath, res_file, f'python311\\{res_file_base}')
 
 
 def getCompiledPyFiles(fileNames):
@@ -125,6 +129,7 @@ def getCompiledPyFiles(fileNames):
     py37 = list()
     py39 = list()
     py310 = list()
+    py311 = list()
 
     for fileName in fileNames:
         basePath = os.path.dirname(fileName)
@@ -160,6 +165,7 @@ def getCompiledPyFiles(fileNames):
         py37.append(os.path.join(basePath, '__pycache__\\' + baseFile + '.cpython-37.pyc'))
         py39.append(os.path.join(basePath, '__pycache__\\' + baseFile + '.cpython-39.pyc'))
         py310.append(os.path.join(basePath, '__pycache__\\' + baseFile + '.cpython-310.pyc'))
+        py311.append(os.path.join(basePath, '__pycache__\\' + baseFile + '.cpython-311.pyc'))
 
     return {'version': version,
             'baseName': baseNames,
@@ -167,6 +173,7 @@ def getCompiledPyFiles(fileNames):
             'py37': py37,
             'py39': py39,
             'py310': py310,
+            'py311': py311,
             }
 
 
