@@ -1472,10 +1472,10 @@ class BakeTools(toolAbstractFactory):
         :return:
         """
         overrideLayer = cmds.animLayer('AdditiveBase', override=True)
-        keyRange = self.funcs.getBestTimelineRangeForBake()
+        timelineKeyRange = self.funcs.getBestTimelineRangeForBake()
 
         cmds.bakeResults(nodes,
-                         time=(keyRange[0], keyRange[-1]),
+                         time=(timelineKeyRange[0], timelineKeyRange[-1]),
                          destinationLayer=overrideLayer,
                          simulation=False,
                          sampleBy=1,
@@ -1568,13 +1568,13 @@ class BakeTools(toolAbstractFactory):
 
             adjustedCurve.addKeys(overrideMTimeArray,
                                   overrideValues[key],
-                                  oma2.MFnAnimCurve.kTangentGlobal,
-                                  oma2.MFnAnimCurve.kTangentGlobal)
+                                  oma2.MFnAnimCurve.kTangentLinear,
+                                  oma2.MFnAnimCurve.kTangentLinear)
             dg.doIt()
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
-        self.funcs.bookEndLayerWeight(str(additiveLayer), keyRange[0], keyRange[-1])
+        self.funcs.bookEndLayerWeight(str(additiveLayer), timelineKeyRange[0], timelineKeyRange[-1])
 
     def getLayerNodesAndConstraints(self):
         allLayers = cmds.ls(type='animLayer')
