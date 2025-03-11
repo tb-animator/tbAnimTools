@@ -320,7 +320,7 @@ class TimeEditorTool(toolAbstractFactory):
         assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='redirectRoot', scale=1.5)
 
         cmds.delete(assetShapeControl, ch=True)
-        cmds.parent(assetShapeControl.getShapes(), relocator, r=True, s=True)
+        cmds.parent(self.funcs.getShapes(assetShapeControl), relocator, r=True, s=True)
         cmds.delete(assetShapeControl)
         return relocator
 
