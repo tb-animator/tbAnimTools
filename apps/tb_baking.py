@@ -1574,7 +1574,7 @@ class BakeTools(toolAbstractFactory):
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
-        self.funcs.bookEndLayerWeight(str(additiveLayer), timelineKeyRange[0], timelineKeyRange[-1])
+        self.funcs.bookEndLayerWeight(str(overrideLayer), timelineKeyRange[0], timelineKeyRange[-1])
 
     def getLayerNodesAndConstraints(self):
         allLayers = cmds.ls(type='animLayer')

@@ -117,7 +117,7 @@ def get_option_var(var_name, default=None):
         return cmds.optionVar(q=var_name)
     return default
 
-def set_option_var(var_name, value):
+def set_option_var(var_name, value, *args):
     """
     Set the value of an option variable.
 

@@ -1199,7 +1199,7 @@ class Functions(object):
             return timeRange[0], timeRange[1] - 1
 
     def isTimelineHighlighted(self):
-        return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 1
+        return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 0
 
     def setPlaybackLoop(self):
         oma2.MAnimControl.setPlaybackMode(oma2.MAnimControl.kPlaybackLoop)
@@ -2618,7 +2618,28 @@ class Functions(object):
         else:
             cmds.delete(destination, inputConnectionsAndNodes=True)
 
+    def getBestTimelineRangeForBake(self, sel=list(), keyRange=None):
 
+        timelineRange = self.getTimelineRange()
+        isHighlighted = self.isTimelineHighlighted()
+        keyRange = [timelineRange[0], timelineRange[1]]
+        if isHighlighted:
+            minTime, maxTime = self.getTimelineHighlightedRange()
+            keyRange = [minTime, maxTime]
+        '''
+        if not keyRange:
+            print ('keyRange', keyRange)
+            isHighlighted = self.funcs.isTimelineHighlighted()
+            if isHighlighted:
+                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+                keyRange = [minTime, maxTime]
+            else:
+                keyRange = self.funcs.get_all_layer_key_times(sel)
+                if not keyRange or keyRange[0] == None:
+                    keyRange = timelineRange
+                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
+        '''
+        return keyRange
 """
 global proc CBdeleteConnection( string $destName )
 //

@@ -174,6 +174,9 @@ class toolAbstractFactory(ABC):
 
     def initData(self):
         baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        if not os.path.exists(baseDataPath):
+            delete_option_var(self.mainDataOption)
+            baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         self.dataPath = os.path.join(baseDataPath, 'appData')
         backupDataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
         if not os.path.isdir(self.dataPath):
