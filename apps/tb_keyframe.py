@@ -144,9 +144,14 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.cleanupTimeEditorNodes()']))
 
+
         self.addCommand(self.tb_hkey(name='setZeroKey',
                                      annotation='Sets the identity pose (zero key) for selected layer',
                                      category=self.category, command=['KeyModifiers.setZeroKey()']))
+
+        self.addCommand(self.tb_hkey(name='reduceKeysToSelected',
+                                     annotation='Reduces the keys on the selected controls to match the key times of the last selected control.',
+                                     category=self.category, command=['KeyModifiers.reduceKeysToSelected()']))
 
         return self.commandList
 
@@ -821,6 +826,32 @@ class KeyModifiers(toolAbstractFactory):
                 # values = cubic_bezier([previousTime,previousValue], [nextTime, nextValue], inAngle, outAngle, int(nextTime-previousTime + 1))
                 cmds.keyframe(crv, index=((keyIndex),), edit=True, valueChange=value)
         self.autoTangentKey()
+
+    def reduceKeysToSelected(self, sel=list()):
+        """
+        Reduces the keys on the first selected controls, so the key times match the
+        last selected control
+        :param sel:
+        :return:
+        """
+        if not sel:
+            sel = cmds.ls(sl=True)
+        if not sel:
+            return cmds.warning("no objects selected, select at least 2")
+        if not len(sel) > 1:
+            return cmds.warning("Select at least 2 controls")
+        last = sel[-1]
+        controls = sel[:-1]
+
+        print('last', last)
+        print('controls', controls)
+
+        keyTimes = sorted(list(set(cmds.keyframe(last, query=True, timeChange=True))))
+        print('keyTimes', keyTimes)
+
+        for index in range(len(keyTimes) - 1):
+            print(keyTimes[index] + 0.01, keyTimes[index + 1] - 0.01)
+            cmds.cutKey(controls, clear=True, time=(keyTimes[index] + 0.01, keyTimes[index + 1] - 0.01))
 
 
 class KeyButtonWidgetLayout(QHBoxLayout):
