@@ -461,8 +461,14 @@ class TempPivot(toolAbstractFactory):
         keyRange = self.funcs.getBestTimelineRangeForBake(sel)
         print('bakeAllCommand', 'keyRange', keyRange)
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
-        cmds.delete(targets)
-        cmds.select(filteredTargets, replace=True)
+        for t in targets:
+            if not cmds.objExists(t): continue
+            cmds.delete(t)
+        finalTargets = list()
+        for t in filteredTargets:
+            if not cmds.objExists(t): continue
+            finalTargets.append(t)
+        cmds.select(finalTargets, replace=True)
 
     def bakeAllCommand(self, asset, sel, *args):
         """
