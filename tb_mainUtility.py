@@ -195,17 +195,30 @@ def delete_option_var(var_name):
 
 def format_arg(val):
     """Encapsulate strings in quotes, leave other types as-is."""
-    return f"'{val}'" if isinstance(val, str) else str(val)
+    return "'{}'".format(val) if isinstance(val, str) else str(val)
+    # return f"'{val}'" if isinstance(val, str) else str(val)
+
 def decodePartial(partial_func):
+    # original_func = partial_func.func.__name__
+    # args = ", ".join(format_arg(arg) for arg in partial_func.args)
+    # kwargs = ", ".join(f"{k}={format_arg(v)}" for k, v in partial_func.keywords.items())
+    #
+    # # Reconstruct the function call as a string
+    # command_string = f"cmds.{original_func}({args}{', ' if args and kwargs else ''}{kwargs})"
+    #
+    # # Wrap it in MEL syntax
+    # mel_command = 'python("{command_string}");'.format(command_string=command_string)
     original_func = partial_func.func.__name__
     args = ", ".join(format_arg(arg) for arg in partial_func.args)
-    kwargs = ", ".join(f"{k}={format_arg(v)}" for k, v in partial_func.keywords.items())
+    kwargs = ", ".join("{}={}".format(k, format_arg(v)) for k, v in partial_func.keywords.items())
 
     # Reconstruct the function call as a string
-    command_string = f"cmds.{original_func}({args}{', ' if args and kwargs else ''}{kwargs})"
-
-    # Wrap it in MEL syntax
-    mel_command = f'python("{command_string}");'
+    if args and kwargs:
+        mel_command = "cmds.{}({}, {})".format(original_func, args, kwargs)
+    elif args:
+        mel_command = "cmds.{}({})".format(original_func, args)
+    else:
+        mel_command = "cmds.{}({})".format(original_func, kwargs)
     return mel_command
 
 def addRepeatLast(partial_func):

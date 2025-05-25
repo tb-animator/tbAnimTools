@@ -157,7 +157,7 @@ class Functions(object):
                       }
 
     lastPanel = None
-
+    pointLists = json.load(open(dataPath))
     """
     API Classes - layers
     """
