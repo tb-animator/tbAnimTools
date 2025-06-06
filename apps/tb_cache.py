@@ -242,8 +242,9 @@ class CacheTool(toolAbstractFactory):
             self.loadReferenceFromCache(s)
 
     def getSkinCLustersForNamespace(self, ns):
-        skinClusters = cmds.ls(ns + ':*', type='skinCluster')
-        meshes = [str(a) for b in [cmds.listConnections(n + '.outputGeometry') for n in skinClusters] for a in b if a]
+        skinClusters = cmds.ls(ns + ':*', type='skinCluster', long=True)
+        meshes = [str(a) for b in [cmds.listConnections(n + '.outputGeometry', fullNodeName=True) for n in skinClusters] for a in b if a]
+        print ('meshes', meshes)
         visibleMeshes = [m for m in meshes if self.isNodeVisible(m)]
         return visibleMeshes
 
@@ -330,7 +331,7 @@ class CacheTool(toolAbstractFactory):
         visible = cmds.getAttr(node + '.visibility')
         if not visible:
             return False
-        parents = cmds.listRelatives(node, parent=True)
+        parents = cmds.listRelatives(node, parent=True, fullPath=True)
         if parents:
             visible = self.isNodeVisible(parents[0])
         return visible

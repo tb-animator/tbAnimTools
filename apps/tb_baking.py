@@ -987,7 +987,10 @@ class BakeTools(toolAbstractFactory):
         # print ('filteredTargets', filteredTargets)
 
         self.bake_to_override(sel=filteredTargets)
-        cmds.delete(tempControls)
+        cmds.refresh()
+        for t in tempControls:
+            if not cmds.objExists(t): continue
+            cmds.delete(t)
 
     def bakeAllCommand(self, asset, sel, *args):
         nodes = cmds.ls(cmds.container(asset, query=True, nodeList=True), transforms=True)
