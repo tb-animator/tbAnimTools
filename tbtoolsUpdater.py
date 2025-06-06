@@ -296,7 +296,7 @@ class updater():
             cmds.warning('Github rejected query, probably too many attempts in a short amount of time')
             return False
 
-        self.getPreviousCommits()
+        #self.getPreviousCommits()
 
         # the most recent github push date
         self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
@@ -381,9 +381,9 @@ class updater():
                               oldVersion=currentVersionDay + ' ' + currentVersionTime,
                               updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
                               unstable=True,
-                              defaultUrl=self.latestZip,
-                              previousCommits=self.jsonProjectData.get('previousCommits', list()),
-                              )
+                              defaultUrl=self.latestZip)
+                              # previousCommits=self.jsonProjectData.get('previousCommits', list()),
+                              # )
         if updateWin.exec_() != 1:
             return
         self.download_project_files(updateWin.selectedUrl)
@@ -435,8 +435,8 @@ class updater():
                                       oldVersion=currentVersionDay + ' ' + currentVersionTime,
                                       updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
                                       unstable=True,
-                                      defaultUrl=self.latestZip,
-                                      previousCommits=self.jsonProjectData.get('previousCommits', list()),)
+                                      defaultUrl=self.latestZip)
+                                      # previousCommits=self.jsonProjectData.get('previousCommits', list()),)
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(updateWin.selectedUrl)
@@ -457,7 +457,7 @@ class updater():
                 cmds.warning('Github rejected request')
                 return data
         data = json.load(response)
-
+        print (data)
         return data
 
     def getLatestReleaseVersion(self):
@@ -674,8 +674,8 @@ class UpdateWin(UpdateBaseDialog):
         label = QLabel('- Previous Commits -')
         label.setStyleSheet("font-weight: bold; font-size: 14px;");
         label.setAlignment(Qt.AlignCenter | Qt.AlignTop)
-        self.mainLayout.addWidget(label1)
-        self.mainLayout.addWidget(label)
+        # self.mainLayout.addWidget(label1)
+        # self.mainLayout.addWidget(label)
         self.mainLayout.addLayout(self.formLayout)
 
         if previousCommits:
