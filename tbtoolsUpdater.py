@@ -66,6 +66,7 @@ import getStyleSheet as getqss
 import os
 from functools import partial
 from apps.tb_optionVars import *
+from apps.tb_UI import *
 IconPath = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Icons'))
 baseIconFile = 'checkBox.png'
 
@@ -116,7 +117,7 @@ def get_option_var(var_name, default=None):
         return cmds.optionVar(q=var_name)
     return default
 
-def set_option_var(var_name, value):
+def set_option_var(var_name, value, *args):
     """
     Set the value of an option variable.
 
@@ -144,7 +145,7 @@ def set_option_var(var_name, value):
             for item in value:
                 cmds.optionVar(sva=(var_name, item))
     else:
-        raise ValueError("Unsupported value type: {}".format(type(value)))
+        raise ValueError("Unsupported optionVar value type: {}".format(type(value)))
 
 def dpiScale():
     if not get_option_var('tbUseWindowsScale', True):
@@ -168,11 +169,18 @@ def get_commit_comments_and_files(repo_owner, repo_name, commit_sha):
                                                                                               repo_name=repo_name,
                                                                                               commit_sha=commit_sha)
     # url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits/{commit_sha}"
-    with urlopen(url) as response:
-        data = response.read().decode('utf-8')
-        commit_details = json.loads(data)
-    comment = commit_details['commit']['message']
-    files_changed = [file['filename'] for file in commit_details['files']]
+    try:
+        with urlopen(url) as response:
+            data = response.read().decode('utf-8')
+            commit_details = json.loads(data)
+        comment = commit_details['commit']['message']
+        files_changed = [file['filename'] for file in commit_details['files']]
+
+    except urllib.error.HTTPError as e:
+        # Handle HTTPError specifically (e.g., 404, 500, etc.)
+        print("HTTPError: %s - %s}" % (e.code, e.reason))
+        return None, None
+
     return comment, files_changed
 
 
@@ -198,26 +206,28 @@ def get_update_urls(previousCommits):
     shaList = list()
     urls = list()
     comments = list()
-    for commit in commits:
-        commit_sha = commit['sha']
+    if commits:
+        for commit in commits:
+            commit_sha = commit['sha']
 
-        for previous in previousCommits:
-            if previous.get('sha', None):
+            for previous in previousCommits:
+                if previous.get('sha', None):
 
-                return shaList, urls, comments
+                    return shaList, urls, comments
 
-        count += 1
-        if count > maxCommits:
-            break
-        url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
-                                                                                            repo_name=repo_name,
-                                                                                            commit_sha=commit_sha)
-        comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
-        shaList.append(commit_sha)
-        urls.append(url)
-        comments.append(comment)
+            count += 1
+            if count > maxCommits:
+                break
 
-        continue
+            url = "https://github.com/{repo_owner}/{repo_name}/archive/{commit_sha}.zip".format(repo_owner=repo_owner,
+                                                                                                repo_name=repo_name,
+                                                                                                commit_sha=commit_sha)
+            comment, files_changed = get_commit_comments_and_files(repo_owner, repo_name, commit_sha)
+            shaList.append(commit_sha)
+            urls.append(url)
+            comments.append(comment)
+
+            continue
     return shaList, urls, comments
 
 
@@ -251,18 +261,10 @@ class updater():
         if not os.path.isfile(self.versionDataFile):
             self.save(self.lastPush, self.latestRelease)
         # get the project data as a json
+
         self.jsonProjectData = json.load(open(self.versionDataFile))
-
-        self.data = self.getGithubData()
-
-        self.getPreviousCommits()
-
-        # the most recent github push date
-        self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
-
-        # the most recent of the published/released versions
-        self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
-
+        # what updates is the user subscribed to
+        self.updateType = get_option_var('tbUpdateType', -1)
 
         # convert the time format to the version format
         self.currentVersion = self.convertDateFromString(self.jsonProjectData.get('version', self.lastPush))
@@ -272,8 +274,6 @@ class updater():
         # was the last update an untested or a release version
         self.lastUpdateType = self.jsonProjectData.get('lastUpdateType', 'release')
 
-        # what updates is the user subscribed to
-        self.updateType = get_option_var('tbUpdateType', -1)
         # set that as an option variable for fun
         set_option_var('tbUpdateType', self.updateType)
 
@@ -290,16 +290,38 @@ class updater():
             else:
                 pass
 
+    def queryGithub(self):
+        self.data = self.getGithubData()
+        if not self.data:
+            cmds.warning('Github rejected query, probably too many attempts in a short amount of time')
+            return False
+
+        #self.getPreviousCommits()
+
+        # the most recent github push date
+        self.lastPush = datetime.datetime.strptime(self.data.get('pushed_at')[0:16], self.dateFormat)
+
+        # the most recent of the published/released versions
+        self.latestRelease, self.latestTag, self.releaseZip = self.getLatestReleaseVersion()
+
+        return True
+
     def getPreviousCommits(self):
-        shaList, urlList, commentList = get_update_urls(self.jsonProjectData.get('previousCommits', list()))
         newCommits = list()
+        shaList, urlList, commentList = get_update_urls(self.jsonProjectData.get('previousCommits', list()))
+
         if not shaList:
             return False
         for sha, url, comment in zip(shaList, urlList, commentList):
             commitData = {'sha': sha,'url': url,'comment': comment}
             newCommits.append(commitData)
-        for commit in newCommits.reversed():
-            self.jsonProjectData['previousCommits'].insert(0, commit)
+        if newCommits:
+            newCommits.reverse()
+            if 'previousCommits' not in self.jsonProjectData.keys():
+                self.jsonProjectData['previousCommits'] = list()
+            for commit in newCommits:
+                self.jsonProjectData['previousCommits'].insert(0, commit)
+
         self.saveNewCommitInfo()
 
     def downloadHelpImages(self):
@@ -359,9 +381,9 @@ class updater():
                               oldVersion=currentVersionDay + ' ' + currentVersionTime,
                               updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
                               unstable=True,
-                              defaultUrl=self.latestZip,
-                              previousCommits=self.jsonProjectData.get('previousCommits', list()),
-                              )
+                              defaultUrl=self.latestZip)
+                              # previousCommits=self.jsonProjectData.get('previousCommits', list()),
+                              # )
         if updateWin.exec_() != 1:
             return
         self.download_project_files(updateWin.selectedUrl)
@@ -369,6 +391,11 @@ class updater():
         self.save(self.lastPush, self.latestRelease)
 
     def check_version(self):
+        if self.updateType == 2:
+            return cmds.warning('Update is set to None, change it from the main menu')
+
+        self.queryGithub()
+
         if self.updateType == 0:
             # print('Check for latest stable version')
             # print('lastPush', self.lastPush)
@@ -408,8 +435,8 @@ class updater():
                                       oldVersion=currentVersionDay + ' ' + currentVersionTime,
                                       updateText='Looks like there is a newer version of tbAnimTools available. Would you like to download the latest scripts?',
                                       unstable=True,
-                                      defaultUrl=self.latestZip,
-                                      previousCommits=self.jsonProjectData.get('previousCommits', list()),)
+                                      defaultUrl=self.latestZip)
+                                      # previousCommits=self.jsonProjectData.get('previousCommits', list()),)
                 if updateWin.exec_() != 1:
                     return
                 self.download_project_files(updateWin.selectedUrl)
@@ -417,13 +444,20 @@ class updater():
                 self.save(self.lastPush, self.latestRelease)
 
     def getGithubData(self):
+        data = dict()
         try:
             gcontext = ssl.SSLContext()
             response = urlopen(self.datUrl, context=gcontext)
         except:
-            response = urlopen(self.datUrl)
+            try:
+                response = urlopen(self.datUrl)
+            except Exception as e:
+                # Handle HTTPError specifically (e.g., 404, 500, etc.)
+                cmds.warning(e)
+                cmds.warning('Github rejected request')
+                return data
         data = json.load(response)
-
+        print (data)
         return data
 
     def getLatestReleaseVersion(self):
@@ -571,7 +605,7 @@ class UpdateWin(UpdateBaseDialog):
     leftClick = False
     oldPos = None
 
-    def __init__(self, parent=None,
+    def __init__(self, parent=getMainWindow(),
                  title='tbAnimTools Update Found',
                  newVersion=str(),
                  oldVersion=str(),
@@ -582,8 +616,8 @@ class UpdateWin(UpdateBaseDialog):
                  ):
         super(UpdateWin, self).__init__(parent=parent)
 
-        self.defaultWidth = 800
-        self.defaultHeight = 350
+        self.defaultWidth = 800 * dpiScale()
+        self.defaultHeight = 350 * dpiScale()
         self.setFixedSize(self.defaultWidth, self.defaultHeight)
         self.selectedUrl = defaultUrl
 
@@ -594,13 +628,13 @@ class UpdateWin(UpdateBaseDialog):
         # QBtn.button(QDialogButtonBox.Cancel).setText("Cancel")
         # self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox = QDialogButtonBox()
-        self.buttonBox.setFixedWidth(self.defaultWidth - 10)
+        self.buttonBox.setFixedWidth(self.defaultWidth - (10*dpiScale()))
         self.updateButton = QPushButton("Update To Latest")
         self.cancelButton = QPushButton("Cancel")
-        self.updateButton.setFixedWidth(self.defaultWidth - 90)
+        self.updateButton.setFixedWidth(self.defaultWidth - (90*dpiScale()))
         self.updateButton.setStyleSheet(
             'background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #52bf90, stop: 0.1 #49ab81, stop: 0.5 #419873, stop: 0.9 #398564, stop: 1 #317256);color: 	#3b2f2f;font-weight: bold; font-size: 14px;')
-        self.cancelButton.setFixedWidth(80)
+        self.cancelButton.setFixedWidth(80 * dpiScale())
         self.buttonBox.addButton(self.updateButton, QDialogButtonBox.AcceptRole)
         self.buttonBox.addButton(self.cancelButton, QDialogButtonBox.RejectRole)
         self.buttonBox.accepted.connect(self.accept)
@@ -640,8 +674,8 @@ class UpdateWin(UpdateBaseDialog):
         label = QLabel('- Previous Commits -')
         label.setStyleSheet("font-weight: bold; font-size: 14px;");
         label.setAlignment(Qt.AlignCenter | Qt.AlignTop)
-        self.mainLayout.addWidget(label1)
-        self.mainLayout.addWidget(label)
+        # self.mainLayout.addWidget(label1)
+        # self.mainLayout.addWidget(label)
         self.mainLayout.addLayout(self.formLayout)
 
         if previousCommits:

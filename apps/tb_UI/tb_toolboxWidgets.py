@@ -40,6 +40,7 @@ class ToolboxDoubleButton(QWidget):
                  buttonsOnRight=False, hideLabel=False):
         super(ToolboxDoubleButton, self).__init__(parent)
         self.hideLabel = hideLabel
+        self.popupSubMenu = False
         self.colour = colour
         self.colourDark = colourDark
         self.setFixedHeight(22 * dpiScale())
@@ -51,7 +52,7 @@ class ToolboxDoubleButton(QWidget):
         self.label = DropShadowLabel(label)
         self.label.setStyleSheet("background-color:transparent")
         font = defaultFont()
-        self.label.setFixedWidth(QFontMetrics(font).boundingRect(self.label.text()).width() + 8)
+        self.label.setFixedWidth(QFontMetrics(font).boundingRect(self.label.text()).width() + (8 * dpiScale()))
         self.buttons = buttons
 
         if not hideLabel: self.mainLayout.addWidget(self.label)

@@ -135,19 +135,99 @@ class GraphToolbarButton(QPushButton):
     subclass this and add to the _showMenu function, or just add menu items
     """
 
-    def __init__(self, icon='', toolTip='', width=24, height=24):
+    def __init__(self, icon='',
+                 toolTip=dict(),
+                 width=24,
+                 height=24,
+                 tint='#222936',
+                 tintStrength=0.5,):
         super(GraphToolbarButton, self).__init__()
-        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(24 * dpiScale(), 24 * dpiScale())
-
+        pixmap = QPixmap(os.path.join(IconPath, icon)).scaled(28 * dpiScale(optionName='tbCustomGeDpiScale'),
+                                                              28 * dpiScale(optionName='tbCustomGeDpiScale'))
         self.setIcon(pixmap)
-        self.setFixedSize(width * dpiScale(), height * dpiScale())
+        self.setFixedSize(width * dpiScale(optionName='tbCustomGeDpiScale'),
+                          height * dpiScale(optionName='tbCustomGeDpiScale'))
+        self.setToolTip(toolTip.get('title', 'toolTipText'))
         self.setFlat(True)
-        self.setToolTip(toolTip)
         self.setStyleSheet("background-color: transparent;border: 0px")
         self.setStyleSheet(getqss.getStyleSheet())
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showMenu)
         self.pop_up_window = None
+        self.tintStrength = tintStrength
+
+        if self.graphicsEffect() is None:
+            self.effect = QGraphicsColorizeEffect(self)
+            self.effect.setStrength(0.0)
+            self.setGraphicsEffect(self.effect)
+            # print ('tint', tint)
+            rgbColour = QColor(*hex_to_rgb(tint))
+            self.effect.setColor(rgbColour)
+            self.setGraphicsEffect(self.effect)
+
+        self.helpWidget = InfoPromptWidget(title=toolTip.get('title', 'toolTipText'),
+                                           buttonText='Ok',
+                                           imagePath='',
+                                           error=False,
+                                           image='',
+                                           gif=toolTip.get('gif', ''),
+                                           helpString=toolTip.get('text', 'toolTipText'),
+                                           showCloseButton=False,
+                                           show=False,
+                                           showButton=False)
+
+        self.setMouseTracking(True)
+        self.installEventFilter(self)
+
+    def raiseToolTip(self):
+        if not self.getTooltipState():
+            return
+        if not self.hoverState:
+            return
+        if self.tooltipRaised:
+            return
+        self.tooltipRaised = True
+        # + QPoint(0, self.height())
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0,0)), widgetSize=self.size())
+
+    def showRelativeToolTip(self):
+        self.helpWidget.showRelative(screenPos=self.mapToGlobal(QPoint(0,0)), widgetSize=self.size())
+
+    def hideToolTip(self):
+        if self.getTooltipState():
+            return
+        if not self.tooltipRaised:
+            return
+        self.tooltipRaised = False
+        self.helpWidget.hide()
+
+    def getTooltipState(self):
+        if self.altState and self.controlState:
+            return True
+        else:
+            return False
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ToolTip:
+            self.showRelativeToolTip()
+            return True
+        return super(GraphToolbarButton, self).eventFilter(obj, event)
+
+    def enterEvent(self, event):
+        # print (self, 'enterEvent')
+        self.hoverState = True
+
+        self.graphicsEffect().setStrength(self.tintStrength)
+        self.helpWidget.hide()
+        return super(GraphToolbarButton, self).enterEvent(event)
+
+    def leaveEvent(self, event):
+        # print(self, 'leaveEvent')
+        self.hoverState = False
+
+        self.graphicsEffect().setStrength(0.0)
+        self.helpWidget.hide()
+        return super(GraphToolbarButton, self).leaveEvent(event)
 
     def setPopupMenu(self, menuClass):
         self.pop_up_window = menuClass('name', self)
@@ -258,7 +338,7 @@ class ToolButton(QPushButton):
             cmds.shelfButton(shelfButton, e=True, command=self.command, sourceType=self.sourceType)
             return
         elif modifiers == Qt.AltModifier:
-            print('assign hotkey')
+            # print('assign hotkey')
             return
         return super(ToolButton, self).mousePressEvent(event)
 
@@ -288,9 +368,9 @@ class HotkeyToolButton(QPushButton):
         self.labelText = text
         self.sourceType = sourceType
         if width:
-            self.setFixedWidth(width)
+            self.setFixedWidth(width * dpiScale())
         if height:
-            self.setFixedHeight(height)
+            self.setFixedHeight(height * dpiScale())
         self.gridLayout = QGridLayout()
         self.gridLayout.setSpacing(0)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
@@ -386,9 +466,38 @@ class ToolboxButton(QPushButton):
         self.colourDark = list()
         for x in range(1, 5):
             self.colourDark.append(rgb_to_hex(darken_color(colour, float(x) * 0.1)))
-        self.lightColour = QColor(198, 198, 198)
-        self.darkColour = QColor(32, 32, 32)
+        self.lightColour = QColor(255, 255, 255)
+        self.darkColour = QColor(0.0, 0.0, 0.0)
         self.textColour, self.isLight = getColourBasedOnRGB(colour, self.lightColour, self.darkColour)
+        self.dpi = dpiScale()
+        # hover state is only restyled when it changes - setStyleSheet is expensive
+        self.hovered = None
+        self.hoverTextColour = getColourBasedOnRGB(hex_to_rgb('#222936'), self.lightColour, self.darkColour)
+        self.nonHoverTextColour = (self.textColour, self.isLight)
+        self.hoverStyleSheet = ("ToolboxButton {"
+                                "text-align:left;"
+                                "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #222936, stop: 0.1 #222936, stop: 0.5 #222936, stop: 0.9 #222936, stop: 1 #222936);"
+                                "border-color: #ffa02f}"
+                                )
+        self.nonHoverStyleSheet = ("ToolboxButton {"
+                                   "color: #b1b1b1;"
+                                   "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 %s, stop: 0.1 %s, stop: 0.5 %s, stop: 0.9 %s, stop: 1 %s);"
+                                   "border-width: 1px;"
+                                   "border-color: #1e1e1e;"
+                                   "border-style: solid;"
+                                   "border-radius: 6;"
+                                   "padding: 3px;"
+                                   "font-size: 12px;"
+                                   "text-align:left;"
+                                   "padding-left: 5px;"
+                                   "padding-right: 5px;"
+                                   "}" % (self.colour,
+                                          self.colourDark[0],
+                                          self.colourDark[1],
+                                          self.colourDark[2],
+                                          self.colourDark[3],
+                                          )
+                                   )
         self.executeOnHover = True
         self.subMenu = subMenu  # sub menu instance
         self.subMenuClass = subMenuClass  # sub menu class for button
@@ -467,38 +576,22 @@ class ToolboxButton(QPushButton):
         return bb.contains(pos)
 
     def setHoverSS(self):
+        if self.hovered is True:
+            return
+        self.hovered = True
         self.borderColour = QColor(255, 160, 47)
-        self.borderWidth = 1 * dpiScale()
-        self.setStyleSheet("ToolboxButton {"
-                           "text-align:left;"
-                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #222936, stop: 0.1 #222936, stop: 0.5 #222936, stop: 0.9 #222936, stop: 1 #222936);"
-                           "border-color: #ffa02f}"
-                           )
-        self.textColour, self.isLight = getColourBasedOnRGB(hex_to_rgb('#222936'), self.lightColour, self.darkColour)
+        self.borderWidth = 1 * self.dpi
+        self.setStyleSheet(self.hoverStyleSheet)
+        self.textColour, self.isLight = self.hoverTextColour
 
     def setNonHoverSS(self):
+        if self.hovered is False:
+            return
+        self.hovered = False
         self.borderColour = QColor(30, 30, 30)
-        self.borderWidth = 1 * dpiScale()
-        self.setStyleSheet("ToolboxButton {"
-                           "color: #b1b1b1;"
-                           "background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 %s, stop: 0.1 %s, stop: 0.5 %s, stop: 0.9 %s, stop: 1 %s);"
-                           "border-width: 1px;"
-                           "border-color: #1e1e1e;"
-                           "border-style: solid;"
-                           "border-radius: 6;"
-                           "padding: 3px;"
-                           "font-size: 12px;"
-                           "text-align:left;"
-                           "padding-left: 5px;"
-                           "padding-right: 5px;"
-                           "}" % (self.colour,
-                                  self.colourDark[0],
-                                  self.colourDark[1],
-                                  self.colourDark[2],
-                                  self.colourDark[3],
-                                  )
-                           )
-        self.textColour, self.isLight = getColourBasedOnRGB(self.colourRGB, self.lightColour, self.darkColour)
+        self.borderWidth = 1 * self.dpi
+        self.setStyleSheet(self.nonHoverStyleSheet)
+        self.textColour, self.isLight = self.nonHoverTextColour
 
     def mouseMoveEvent(self, event):
         self.setHoverSS()
@@ -512,6 +605,7 @@ class ToolboxButton(QPushButton):
         if self.command:
             if not self.executed:
                 self.command()
+                addRepeatLast(self.command)
                 self.commandExecutedSignal.emit()
             if self.closeOnPress:
                 self.executed = True
@@ -525,9 +619,6 @@ class ToolboxButton(QPushButton):
         qp.setRenderHint(QPainter.Antialiasing, True)
         qp.setRenderHint(QPainter.SmoothPixmapTransform, True)
         lineColor = QColor(32, 32, 32, 32)
-
-        lineColorFull = QColor(32, 32, 32)
-        fillColor = QColor(198, 198, 198)
         # qp.setCompositionMode(QPainter.CompositionMode_Source)
         if self.isSmall:
             pos_x = 0.5 * (self.width() - self.pixmap.width())  # hardcoded horizontal margin
@@ -548,26 +639,9 @@ class ToolboxButton(QPushButton):
             qp.setPen(QPen(QBrush(self.borderColour), self.borderWidth))
             qp.drawRoundedRect(-1, -1, self.width()+1, self.height()+1, 6, 6)
         '''
-        path = QPainterPath()
-        pen = QPen()
-        brush = QBrush()
-        font = defaultFont()
+        path = self.getTextPath()
 
-        pen.setWidth(3.5)
-        pen.setColor(lineColor)
-        brush.setColor(fillColor)
-        qp.setFont(font)
-        qp.setPen(pen)
-        textPos = QPoint(8, 0)
-        if self.pixmap:
-            textPos.setX(self.pixmap.width() + textPos.x())
-        fontMetrics = QFontMetrics(font)
-        pixelsWide = fontMetrics.boundingRect(self.labelText).width()
-        pixelsHigh = fontMetrics.height()
-
-        path.addText(textPos.x(), pixelsHigh, font, self.labelText)
-
-        pen = QPen(lineColor, 6.5, Qt.SolidLine, Qt.RoundCap)
+        pen = QPen(lineColor, 5.5, Qt.SolidLine, Qt.RoundCap)
         pen2 = QPen(lineColor, 3.5, Qt.SolidLine, Qt.RoundCap)
         brush = QBrush(self.textColour)
 
@@ -579,12 +653,22 @@ class ToolboxButton(QPushButton):
         qp.strokePath(path, pen2)
         qp.setCompositionMode(QPainter.CompositionMode_Source)
         qp.fillPath(path, brush)
-
-        font = qp.font()
-        font.setBold(True)
-        qp.setFont(font)
         # qp.drawText(textPos.x(), 16, self.labelText)  # fifth option
         qp.end()
+
+    def getTextPath(self):
+        # label text path only depends on the label and icon width, so build it once
+        textX = 8
+        if self.pixmap:
+            textX += self.pixmap.width()
+        key = (self.labelText, textX)
+        if getattr(self, '_textPathKey', None) != key:
+            font = defaultFont()
+            path = QPainterPath()
+            path.addText(textX, QFontMetrics(font).height(), font, self.labelText)
+            self._textPath = path
+            self._textPathKey = key
+        return self._textPath
 
     @Slot()
     def hidePopup(self):
@@ -667,12 +751,17 @@ class ToolbarButton(QLabel):
     middleClicked = Signal()
     rightClicked = Signal()
 
-    def __init__(self, icon=str(), altIcon=str(),
+    def __init__(self,
+                 icon=str(),
+                 altIcon=str(),
                  width=30,
                  height=30,
                  iconHeight=30,
-                 iconWidth=30):
+                 iconWidth=30,
+                 text='hello'):
         super(ToolbarButton, self).__init__()
+        if text:
+            self.setText(text)
         self.tooltipState = False
         self.tooltipRaised = False
         self.icon = icon

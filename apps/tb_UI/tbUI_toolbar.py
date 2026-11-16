@@ -3,8 +3,6 @@ import sys
 
 toolbarName = 'WorkspaceControl'
 
-
-
 sheet = """
 QTabBar::tab {
     background-color: transparent;
@@ -18,6 +16,7 @@ QTabBar::tab:selected {
 }
 """
 
+
 def getWorkspaceControlWidget(workspace_control):
     """
     Returns the QWidget of a workspaceControl by its name
@@ -26,6 +25,7 @@ def getWorkspaceControlWidget(workspace_control):
     control_widget = wrapInstance(int(control_widget_ptr), QWidget)
     return control_widget
 
+
 class WorkspaceControl(object):
 
     def __init__(self, name):
@@ -33,10 +33,10 @@ class WorkspaceControl(object):
         self.widget = None
 
     def create(self, label, widget, ui_script=None):
-        print('create', ui_script)
+        # print('create', ui_script)
         workspace = cmds.workspaceControl(self.name, label=label,
-                              #dockToPanel=['modelPanel4', 'bottom', True],
-                              )
+                                          # dockToPanel=['modelPanel4', 'bottom', True],
+                                          )
 
         # workspace_widget  = getWorkspaceControlWidget(workspace)
         # workspace_widget.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -103,8 +103,8 @@ class WorkspaceControl(object):
             return splitterParent.orientation()
         return Qt.Orientation.Horizontal
 
-class DockableUI(QDialog):
 
+class DockableUI(QDialog):
     WINDOW_TITLE = "tbToolbar"
 
     ui_instance = None
@@ -114,7 +114,7 @@ class DockableUI(QDialog):
         if cls.ui_instance:
             cls.ui_instance.show_workspace_control()
         else:
-            print ('creating new workspace control')
+            # print ('creating new workspace control')
             cls.ui_instance = cls()
 
     @classmethod
@@ -123,11 +123,12 @@ class DockableUI(QDialog):
 
     @classmethod
     def get_ui_script(cls):
+        print('get_ui_script')
         module_name = cls.__module__
         if module_name == "__main__":
             module_name = cls.module_name_override
 
-        ui_script = "from {0} import {1}\n{1}.display()".format(module_name, toolbarName)
+        ui_script = "maya.mel.eval('createToolbar')"
         return ui_script
 
     def __init__(self):
@@ -181,7 +182,7 @@ class DockableUI(QDialog):
             self.workspace_control_instance.restore(self)
         else:
             self.workspace_control_instance.create(self.WINDOW_TITLE, self, ui_script=self.get_ui_script())
-        print ('self.workspace_control_instance', self.workspace_control_instance)
+        # print ('self.workspace_control_instance', self.workspace_control_instance)
 
         p = self.parent()
         pp = p.parent()
@@ -192,8 +193,8 @@ class DockableUI(QDialog):
         self.tabBar = self.tabWidget.children()[1]
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
         # self.tabBar.setAttribute(QStyle.SH_TabBar_PreferNoArrows,True)
-        print (self.tabBar)
-        print (self.tabBar.children())
+        # print (self.tabBar)
+        # print (self.tabBar.children())
         # TabWidget.setVisible(True)
         # TabWidget.children()[1].setVisible(False)
         self.tabWidget.children()[1].setTabText(0, '')
@@ -204,8 +205,8 @@ class DockableUI(QDialog):
         self.tabBar.children()[0].setFixedSize(0, 0)
         self.tabBar.setStyleSheet(sheet)
 
-        print (self.tabBar.children())
-        self.parent().parent().resize(200,100)
+        # print (self.tabBar.children())
+        self.parent().parent().resize(200, 100)
 
     def show_workspace_control(self):
         self.workspace_control_instance.set_visible(True)
@@ -269,16 +270,20 @@ class DockableUI(QDialog):
             self.setMaximumHeight(60)
         else:
             if self.parent().height() > self.parent().width():
-                print ('side docked?')
+                pass
+                # print ('side docked?')
             else:
-                print ('horizontal docked')
-
+                pass
+                # print ('horizontal docked')
+        print('self.workspace_control_instance.getOrientation()', self.workspace_control_instance.getOrientation())
         if 'Horizontal' in str(self.workspace_control_instance.getOrientation()):
             layout = QHBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(1)
             self.setLayout(layout)
             for w in self.widgets:
                 print('reparenting widget horizontalLayout', w)
-                #layout.addWidget(w)
+                layout.addWidget(w)
             self.resize(self.sizeHint().width(), 60)
         else:
             self.parent().resize(60, self.sizeHint().height())
@@ -287,10 +292,13 @@ class DockableUI(QDialog):
 
             self.workspace_control_instance.setWidth(100)
             layout = QVBoxLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(1)
+
             self.setLayout(layout)
             for w in self.widgets:
                 print('reparenting widget verticalLayout', w)
-                #layout.addWidget(w)
+                layout.addWidget(w)
 
     def closeEvent(self, event):
         """
@@ -311,5 +319,3 @@ if __name__ == "__main__":
 
     DockableUI.module_name_override = "workspace_control"
     test_dialog = DockableUI()
-
-

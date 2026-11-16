@@ -475,7 +475,7 @@ class TimeDragDialog(QDialog):
     shiftDownTime = None
     isUpdating = False
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
         super(TimeDragDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
@@ -523,7 +523,7 @@ class TimeDragDialog(QDialog):
             # print ('returnButton', delta)
             self.returnButton.move(delta[0] * 200 + self.cursorPos.x(), delta[1] * 200 + self.cursorPos.y())
         else:
-            self.keyPressHandler = getMarkingMenuFilter(UI=self)
+            self.keyPressHandler = getMarkingMenuFilter(UI=self, name='TimeDragger')
             self.app.installEventFilter(self.keyPressHandler)
 
     def show(self):

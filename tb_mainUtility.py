@@ -125,7 +125,6 @@ def set_default_values():
             set_option_var(translate_optionVar, modes)
 
         default_rotations = ['Local', 'World', 'Gimbal']
-        set_option_var(rotate_optionVar)
         set_option_var(rotate_optionVar, default_rotations)
 
         default_keys = ['spline', 'linear', 'step']
@@ -153,7 +152,7 @@ def get_option_var(var_name, default=None):
     return default
 
 
-def set_option_var(var_name, value):
+def set_option_var(var_name, value, *args):
     """
     Set the value of an option variable.
 
@@ -181,7 +180,7 @@ def set_option_var(var_name, value):
             for item in value:
                 cmds.optionVar(sva=(var_name, item))
     else:
-        raise ValueError("Unsupported value type: {}".format(type(value)))
+        cmds.optionVar(sv=(var_name, str(value)))
 
 
 def delete_option_var(var_name):
@@ -194,3 +193,55 @@ def delete_option_var(var_name):
     if cmds.optionVar(exists=var_name):
         cmds.optionVar(remove=var_name)
 
+def format_arg(val):
+    """Encapsulate strings in quotes, leave other types as-is."""
+    return "'{}'".format(val) if isinstance(val, str) else str(val)
+    # return f"'{val}'" if isinstance(val, str) else str(val)
+
+def decodePartial(partial_func):
+    # original_func = partial_func.func.__name__
+    # args = ", ".join(format_arg(arg) for arg in partial_func.args)
+    # kwargs = ", ".join(f"{k}={format_arg(v)}" for k, v in partial_func.keywords.items())
+    #
+    # # Reconstruct the function call as a string
+    # command_string = f"cmds.{original_func}({args}{', ' if args and kwargs else ''}{kwargs})"
+    #
+    # # Wrap it in MEL syntax
+    # mel_command = 'python("{command_string}");'.format(command_string=command_string)
+    original_func = partial_func.func.__name__
+    args = ", ".join(format_arg(arg) for arg in partial_func.args)
+    kwargs = ", ".join("{}={}".format(k, format_arg(v)) for k, v in partial_func.keywords.items())
+
+    # Reconstruct the function call as a string
+    if args and kwargs:
+        mel_command = "cmds.{}({}, {})".format(original_func, args, kwargs)
+    elif args:
+        mel_command = "cmds.{}({})".format(original_func, args)
+    else:
+        mel_command = "cmds.{}({})".format(original_func, kwargs)
+    return mel_command
+
+_repeatLastCommand = None
+
+
+def runRepeatLast():
+    if _repeatLastCommand is not None:
+        _repeatLastCommand()
+
+
+def getCommandLabel(command):
+    try:
+        if hasattr(command, 'func') and hasattr(command, 'args'):
+            # functools.partial
+            return decodePartial(command)
+        return command.__name__
+    except Exception:
+        return str(command)
+
+
+def addRepeatLast(command):
+    """Register any callable (partial, function, lambda, bound method) with Maya's repeat last"""
+    global _repeatLastCommand
+    _repeatLastCommand = command
+    commandString = 'python("import {0}; {0}.runRepeatLast()")'.format(__name__)
+    cmds.repeatLast(addCommand=commandString, addCommandLabel=getCommandLabel(command))

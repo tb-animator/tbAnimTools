@@ -22,10 +22,13 @@
 
 *******************************************************************************
 '''
+DEFAULT_QSS_COLOUR = [0.878, 0.306, 0.358]
 
 QSS_Suffix = '_qss'
 
 from . import *
+import stat
+
 _repeat_function = None
 _args = None
 _kwargs = None
@@ -168,7 +171,83 @@ class QuickSelectionTools(toolAbstractFactory):
         super(QuickSelectionTools, self).initData()
         self.quickSelectFolderDefault = os.path.join(self.dataPath, self.quickSelectFolder)
         if not os.path.isdir(self.quickSelectFolderDefault):
-            os.mkdir(self.quickSelectFolderDefault)
+            try:
+                os.makedirs(self.quickSelectFolderDefault)
+            except Exception as e:
+                cmds.warning('Unable to create quick selection folder %s :: %s' % (
+                    self.quickSelectFolderDefault, e))
+
+    def toolBarUI(self):
+        print('toolBarUI')
+        print ('buttons')
+        # altButton = ToolboxColourButton(label='test', parent=None, cls=None,
+        #                                 # command=create_callback(self.selectQuickSelectionSet, mset, add=False),
+        #                                 closeOnPress=False,
+        #                                 isSmall=False,
+        #                                 # colour=setColour,
+        #                                 # fixedWidth=fontWidth,
+        #                                 colouredBackground=True,
+        #                                 )
+        # Create the main vertical layout
+        main_layout = QVBoxLayout()
+
+        # Create two horizontal layouts for the rows
+        row_1_layout = QHBoxLayout()
+        row_2_layout = QHBoxLayout()
+
+        # Initialize widths
+        row_1_width = 0
+        row_2_width = 0
+        returnWidget = QWidget()
+        returnWidget.setLayout(main_layout)
+
+        allSets = self.get_sets(forceAll=True)
+        n_columns = -(-len(allSets) // 2)
+
+        def add_to_row(label, row_layout, current_width):
+            row_layout.addWidget(label)
+            label_width = label.sizeHint().width() + 10  # Add padding
+            return current_width + label_width
+
+            # Distribute labels
+
+        labels = list()
+        totalWidth = 0
+        for set in allSets:
+            widget = ToolbarButton(text=set.split(':')[-1],
+                                   width=60,
+                                   height=20,
+                                   iconHeight=30,
+                                   iconWidth=30)
+            print ('ooo booo')
+            widget.setStyleSheet(
+                "border-radius: 8;"
+            )
+            widget.setStyleSheet(getqss.getStyleSheet())
+            labels.append(widget)
+            totalWidth += widget.sizeHint().width()
+
+        for label in labels:
+            label.setAlignment(Qt.AlignCenter)
+            label_width = label.sizeHint().width() + 10  # Estimate label width with padding
+            print (row_1_width, row_2_width)
+            # Add to the first row if it has space, otherwise the second row
+            if row_1_width < row_2_width:
+                row_1_width = add_to_row(label, row_1_layout, row_1_width)
+            else:
+                row_2_width = add_to_row(label, row_2_layout, row_2_width)
+
+            # Add the rows to the main layout
+        main_layout.addLayout(row_1_layout)
+        main_layout.addLayout(row_2_layout)
+
+
+        # clicked = Signal()
+        # middleClicked = Signal()
+        # rightClicked = Signal()
+
+        # returnWidget.setStyleSheet(getqss.getStyleSheet())
+        return [returnWidget]
 
     def create_main_set(self, sel=None):
         if not sel:
@@ -243,8 +322,13 @@ class QuickSelectionTools(toolAbstractFactory):
                 unmatchedSets.append(s)
         return matchedSets, unmatchedSets
 
-    def selectQuickSelectionSet(self, name, *args, add=True):
-        cmds.select(self.get_set_contents(name), add=add, replace=not add)
+    def selectQuickSelectionSet(self, name, add=True, *args):
+        if not cmds.objExists(name):
+            return cmds.warning('Selection set %s no longer exists in the scene' % name)
+        contents = self.get_set_contents(name)
+        if not contents:
+            return cmds.warning('Selection set %s is empty' % name)
+        cmds.select(contents, add=add, replace=not add)
 
     def addColourAttribute(self, name):
         if not cmds.attributeQuery('Colour', node=name, exists=True):
@@ -262,11 +346,15 @@ class QuickSelectionTools(toolAbstractFactory):
         self.addColourAttribute(name)
         return cmds.getAttr(name + '.Colour')[0]
 
+    def warningMessage(self, message, fadeStayTime=5.0, fadeOutTime=4.0, fade=False):
+        self.funcs.infoMessage(position="botRight", prefix="Warning", message=message, fadeStayTime=fadeStayTime,
+                               fadeOutTime=fadeOutTime, fade=fade)
+
     @repeatable
     def qs_select(self, *args, **kwargs):
         sel = cmds.ls(sl=True)
         if not sel:
-            return
+            return self.warningMessage('nothing selected, select a control to quick select its set')
         returned_objects = []
         all_sets = self.get_sets()
         all_selection = list()
@@ -275,42 +363,44 @@ class QuickSelectionTools(toolAbstractFactory):
         all_selection = list(set(all_selection))
         all_selection.extend(sel)
 
-        if all_sets:
-            for a_set in all_sets:
-                qs_result = self.check_set_membership(all_selection, a_set)
-                if qs_result:
-                    returned_objects.extend(self.get_set_contents(a_set))
-            for s in all_selection:
-                # skip non object sets
-                if cmds.nodeType(s) == 'objectSet':
-                    returned_objects.extend(self.get_set_contents(s))
-        else:
-            msg = 'no quick selects found for selection'
-            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=5.0,
-                                   fadeOutTime=4.0, fade=False)
+        if not all_sets:
+            return self.warningMessage('no quick selects found in the scene')
+
+        for a_set in all_sets:
+            qs_result = self.check_set_membership(all_selection, a_set)
+            if qs_result:
+                returned_objects.extend(self.get_set_contents(a_set))
+        for s in all_selection:
+            # skip non object sets
+            if cmds.nodeType(s) == 'objectSet':
+                returned_objects.extend(self.get_set_contents(s))
+
+        if not returned_objects:
+            return self.warningMessage('no quick selects found for selection')
+
         temp_controls = list()
         for s in returned_objects:
             found_objects = self.checkDownstreamTempControls(s)
             if found_objects:
                 temp_controls.extend(found_objects)
         cmds.select(returned_objects, add=True)
-        cmds.select(temp_controls, add=True)
+        if temp_controls:
+            cmds.select(temp_controls, add=True)
 
     @repeatable
     def uber_qs_select(self, *args, **kwargs):
         sel = cmds.ls(sl=True)
         if not sel:
-            return
+            return self.warningMessage('nothing selected, select a control to quick select its set')
 
         all_sets = self.get_sets()
         uber_sets = self.get_uber_sets()
         final_uber_sets = list()
         active_sets = list()
         if not all_sets:
-            msg = 'no quick selects found for selection'
-            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=5.0,
-                                   fadeOutTime=4.0, fade=False)
-            return
+            return self.warningMessage('no quick selects found in the scene')
+        if not uber_sets:
+            return self.warningMessage('no uber sets found in the scene')
 
         # look at all sets, check membership
         for a_set in all_sets:
@@ -323,19 +413,21 @@ class QuickSelectionTools(toolAbstractFactory):
             if cmds.nodeType(s) == 'objectSet':
                 active_sets.append(s)
         if not active_sets:
-            return
+            return self.warningMessage('no quick selects found for selection')
         for set in active_sets:
             for uber_set in uber_sets:
                 qs_result = self.is_member_of_set(set, uber_set)
                 if qs_result:
                     final_uber_sets.append(uber_set)
         if not final_uber_sets:
-            return
+            return self.warningMessage('none of the matched sets belong to an uber set')
+
+        selectedObjects = list()
         for set in final_uber_sets:
-            cmds.select(self.get_set_contents(set), add=True)
-        # cmds.select(self.get_set_contents(a_set), add=True)
-
-
+            selectedObjects.extend(self.get_set_contents(set))
+        if not selectedObjects:
+            return self.warningMessage('the matched uber sets are empty')
+        cmds.select(selectedObjects, add=True)
 
     @staticmethod
     def existing_obj_in_list(sel):
@@ -361,25 +453,25 @@ class QuickSelectionTools(toolAbstractFactory):
                 resultObjects.append(self.get_set_contents(s))
                 continue
             resultObjects.append(s)
+        if not resultObjects:
+            return None, None
         return self.funcs.getCurrentRig(resultObjects[-1])
 
     def check_set_membership(self, selection, sel_set):
         sel_set_members = cmds.sets(sel_set, query=True)
 
-        if sel_set_members:
-            if [i for i in selection if i in sel_set_members]:
-                return sel_set
-            else:
-                return None
-        else:
-            msg = 'no quick selects found in scene'
-            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
-                                   fadeOutTime=4.0)
+        if not sel_set_members:
+            # this is called in a loop over every set, so keep it out of the viewport
+            cmds.warning('Quick selection set %s is empty' % sel_set)
+            return None
+        if [i for i in selection if i in sel_set_members]:
+            return sel_set
+        return None
 
     def create_qs_set(self):
         sel = cmds.ls(sl=True)
         if not sel:
-            return
+            return self.warningMessage("can't save a quick selection set with nothing selected!")
 
         result = cmds.promptDialog(
             title='Quick selection name',
@@ -389,27 +481,34 @@ class QuickSelectionTools(toolAbstractFactory):
             cancelButton='Cancel',
             dismissString='Cancel')
 
-        if result == 'OK':
-            qs_name = cmds.promptDialog(query=True, text=True)
-            save = True
-            print ('qs_name', qs_name)
-            print (self.all_sets)
-            if qs_name in self.all_sets:
-                if not cmds.confirmDialog(
-                        title='Overwrite existing set?',
-                        message='Are you sure?',
-                        button=['Yes', 'No'],
-                        defaultButton='Yes',
-                        cancelButton='No',
-                        dismissString='No'):
-                    save = False
-            if save:
-                self.save_qs(qs_name, sel)
+        if result != 'OK':
+            return
 
-        else:
-            msg = "can't save a quick selection set with nothing selected!"
-            self.funcs.infoMessage(position="botRight", prefix="Warning", message=msg, fadeStayTime=3.0,
-                                   fadeOutTime=4.0)
+        qs_name = cmds.promptDialog(query=True, text=True)
+        if not qs_name:
+            return cmds.warning('No name entered, nothing saved')
+
+        if qs_name in self.all_sets:
+            # confirmDialog returns the button label, both of which are truthy
+            if cmds.confirmDialog(
+                    title='Overwrite existing set?',
+                    message='Are you sure?',
+                    button=['Yes', 'No'],
+                    defaultButton='Yes',
+                    cancelButton='No',
+                    dismissString='No') != 'Yes':
+                return
+
+        savedSet = self.save_qs(qs_name, sel)
+        if not savedSet:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='failed to save selection set %s' % qs_name,
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message='saved %s controls to %s' % (len(sel), savedSet),
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
 
     @repeatable
     def saveQssDialog(self, quick=False):
@@ -434,26 +533,52 @@ class QuickSelectionTools(toolAbstractFactory):
         sel = cmds.ls(sl=True)
         if not sel:
             return cmds.warning('Nothing selected')
+        if not name:
+            return cmds.warning('No name entered, nothing saved')
         # check if all our selection is actually sets
         if any([self.is_set(s) for s in sel]):
             self.saveUberSet(name, sel)
             return
-        print ('sel', sel)
-        if name:
-            self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
+
+        scaledColour = [x / 255.0 for x in self.funcs.getControlColour(sel[-1])]
+        savedSet = self.save_qs(name, sel, quick=quick, colour=scaledColour)
+        if not savedSet:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='failed to save selection set %s' % name,
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message='saved %s controls to %s' % (len(sel), savedSet),
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
 
         CharacterTool = self.allTools.tools['CharacterTool']
         refname, namespace = CharacterTool.getSelectedChar(sel=sel[0])
 
-        MirrorTools = self.allTools.tools['MirrorTools']
-        mirrorControls = MirrorTools.splitControls(sel)
-        opposites = [x[1] for x in mirrorControls]
-        mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
+        if mirror:
+            MirrorTools = self.allTools.tools['MirrorTools']
+            mirrorControls = MirrorTools.splitControls(sel)
+            opposites = [x[1] for x in mirrorControls]
 
-        if not opposites:
-            return
-        if self.lists_have_unique_items(sel, opposites):
-            self.save_qs(mirrorName, opposites, quick=quick, colour=self.funcs.getControlColour(opposites[-1]))
+            opposites = [x for x in opposites if cmds.objExists(x)]
+            if not opposites:
+                return cmds.warning('No mirrored controls found for %s, mirrored set not saved' % name)
+            mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
+
+            if not self.lists_have_unique_items(sel, opposites):
+                return cmds.warning('Mirrored controls match the original selection, mirrored set not saved')
+
+            mirrorColour = [x / 255.0 for x in self.funcs.getControlColour(opposites[-1])]
+            mirrorSet = self.save_qs(mirrorName, opposites, quick=quick, colour=mirrorColour)
+            if not mirrorSet:
+                return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                               message='failed to save mirrored set %s' % mirrorName,
+                                               fadeStayTime=5,
+                                               fadeOutTime=4.0)
+            self.funcs.infoMessage(position="botRight", prefix="info",
+                                   message='saved %s controls to %s' % (len(opposites), mirrorSet),
+                                   fadeStayTime=5,
+                                   fadeOutTime=4.0)
 
     @staticmethod
     def lists_have_unique_items(list1, list2):
@@ -469,45 +594,54 @@ class QuickSelectionTools(toolAbstractFactory):
         else:
             return True
 
-    def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
+    def save_qs(self, qs_name, selection, quick=True, colour=DEFAULT_QSS_COLOUR):
+
         qs_name = qs_name.split(':')[-1]
         if not selection:
-            return cmds.warning('Nothing selected')
+            cmds.warning('Nothing selected')
+            return False
         pre_sel = cmds.ls(selection=True)
         # make sure we have the main set
         self.create_main_set()
         # only select existing objects
         existing_obj = self.existing_obj_in_list(selection)
-        if existing_obj:
-            cmds.select(existing_obj, replace=True)
-            newSetNamespace = self.funcs.namespace(existing_obj[0])
-            if newSetNamespace:
-                qs_name = newSetNamespace + ':' + qs_name
-            if qs_name.startswith(':'):
-                qs_name = qs_name[1:]
 
-            if quick:
-                if not qs_name.endswith(QSS_Suffix):
-                    qs_name += QSS_Suffix
+        if not existing_obj:
+            self.create_main_set()
+            return False
 
-            if cmds.objExists(qs_name):
-                if cmds.nodeType(qs_name) == 'objectSet':
-                    # TODO - maybe add a query to replace here?
-                    cmds.delete(qs_name)
+        cmds.select(existing_obj, replace=True, noExpand=True)
+        newSetNamespace = self.funcs.namespace(existing_obj[0])
+        if newSetNamespace:
+            qs_name = newSetNamespace + ':' + qs_name
+        if qs_name.startswith(':'):
+            qs_name = qs_name[1:]
 
-            qs = cmds.sets(name=qs_name, text="gCharacterSet")
-            self.getSetColour(qs)
+        if quick:
+            if not qs_name.endswith(QSS_Suffix):
+                qs_name += QSS_Suffix
 
-            self.setSetColourFromUI(qs, colour[0] / 255.0, colour[1] / 255.0, colour[2] / 255.0)
-            cmds.select(qs, replace=True)
-            cmds.sets(qs, addElement=self.create_main_set())
-            cmds.select(pre_sel, replace=True)
+        if cmds.objExists(qs_name):
+            if cmds.nodeType(qs_name) == 'objectSet':
+                # TODO - maybe add a query to replace here?
+                cmds.delete(qs_name)
+
+        qs = cmds.sets(name=qs_name, text="gCharacterSet")
+        self.getSetColour(qs)
+
+        self.setSetColourFromUI(qs, colour[0], colour[1], colour[2])
+        cmds.select(qs, replace=True)
+        cmds.sets(qs, addElement=self.create_main_set())
+        cmds.select(pre_sel, replace=True)
         self.create_main_set()
+        # the returned name is the final set name, after namespace/suffix have been applied
+        return qs
 
-    def saveUberSet(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
+    def saveUberSet(self, qs_name, selection, quick=True, colour=DEFAULT_QSS_COLOUR):
         qs_name = qs_name.split(':')[-1]
         if not selection:
-            return cmds.warning('Nothing selected')
+            cmds.warning('Nothing selected')
+            return False
         pre_sel = cmds.ls(selection=True)
         qs_name = 'uber_' + qs_name
         if qs_name.endswith('qss'):
@@ -516,45 +650,59 @@ class QuickSelectionTools(toolAbstractFactory):
         self.create_main_set()
         # only select existing objects
         existing_obj = self.existing_obj_in_list(selection)
-        if existing_obj:
-            newSetNamespace = self.funcs.namespace(existing_obj[0])
-            if newSetNamespace:
-                qs_name = newSetNamespace + ':' + qs_name
-            if qs_name.startswith(':'):
-                qs_name = qs_name[1:]
+        if not existing_obj:
+            self.funcs.errorMessage(position="botRight", prefix="Error",
+                                    message='none of the selected sets exist, %s not saved' % qs_name,
+                                    fadeStayTime=5,
+                                    fadeOutTime=4.0)
+            return False
 
-            if cmds.objExists(qs_name):
-                if cmds.nodeType(qs_name) == 'objectSet':
-                    # TODO - maybe add a query to replace here?
-                    cmds.delete(qs_name)
+        newSetNamespace = self.funcs.namespace(existing_obj[0])
+        if newSetNamespace:
+            qs_name = newSetNamespace + ':' + qs_name
+        if qs_name.startswith(':'):
+            qs_name = qs_name[1:]
 
-            qs = cmds.sets(name=qs_name, text="gCharacterSet")
+        if cmds.objExists(qs_name):
+            if cmds.nodeType(qs_name) == 'objectSet':
+                # TODO - maybe add a query to replace here?
+                cmds.delete(qs_name)
 
-            # cmds.select(qs, replace=True)
-            cmds.sets(qs, addElement=self.create_main_set())
-            # cmds.select(pre_sel, replace=True)
+        qs = cmds.sets(name=qs_name, text="gCharacterSet")
 
-    def save_qs_from_file(self, qs_name, selection):
-        namespace_override = None
+        # cmds.select(qs, replace=True)
+        cmds.sets(qs, addElement=self.create_main_set())
+        # cmds.select(pre_sel, replace=True)
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message='saved %s sets to %s' % (len(existing_obj), qs),
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
+        return qs
 
+    def save_qs_from_file(self, qs_name, selection, colour=DEFAULT_QSS_COLOUR):
+        """
+        Recreate a single set from file data.
+        Reports nothing itself, the caller collects the results and gives one summary message
+        :return: True if the set was created
+        """
+        if not selection:
+            cmds.warning('No objects stored in file for set %s' % qs_name)
+            return False
+
+        namespace_override = selection[0].split(":")[0]
         processed_list = []
         sel = cmds.ls(selection=True)
-        namespace_override = self.funcs.namespace(sel[0])
-        for sel in selection:
-            processed_list.append(namespace_override + sel.split(":")[-1])
+        if sel:
+            namespace_override = self.funcs.namespace(sel[0])
 
-        if processed_list:
-            self.save_qs(qs_name, processed_list)
-            self.funcs.infoMessage(position="botRight", prefix="info",
-                                   message='quick selects created for %s' % qs_name,
-                                   fadeStayTime=10,
-                                   fadeOutTime=10.0)
-        else:
-            # process failed, make error
-            self.funcs.infoMessage(position="botRight", prefix="Error",
-                                   message='quick selects created for %s' % qs_name,
-                                   fadeStayTime=10,
-                                   fadeOutTime=10.0)
+        for s in selection:
+            processed_list.append(namespace_override + ":" + s.split(":")[-1])
+
+        if not self.save_qs(qs_name, processed_list, colour=colour):
+            cmds.warning('None of the objects for set %s exist in the scene, '
+                         'check the namespace/selection' % qs_name)
+            return False
+        return True
 
     def save_qs_to_file(self):
         allSets = self.get_sets()
@@ -572,74 +720,147 @@ class QuickSelectionTools(toolAbstractFactory):
         for s in final_sets:
             # uber sets don't look up the rig nicely, so won't save from the anim file correctly
             refname, namespace = self.get_rig_from_set(s)
+            if not refname:
+                continue
             if refname not in charDict.keys():
                 charDict[refname] = list()
             charDict[refname].append(s)
 
+        if not charDict:
+            return cmds.warning('Unable to match any of the %s quick selection sets in the scene to a rig, '
+                                'sets can only be saved for referenced characters' % len(final_sets))
 
         dialog = SaveQssToFileWidget(title='Save Quick Selection Sets To File',
                                      label='Enter FileName',
                                      buttonText="Save",
                                      charDict=charDict,
-                                     default=refname)
+                                     default=list(charDict.keys())[0])
         dialog.acceptedSignal.connect(self.getSaveFileSignal)
 
-    @Slot()
+    @Slot(str, list)
     def getSaveFileSignal(self, fileName, setList):
         """
         For some reason all the logic for saving is here, go figure
-        :param fileName:
+        :param fileName: name of the json file to write
+        :param setList: the set names ticked for saving in the dialog
         :return:
         """
 
-        if fileName:
-            save_file = os.path.join(self.quickSelectSavePath, fileName + ".qss")
-            jsonFile = os.path.join(self.quickSelectSavePath, fileName + ".json")
-            if not os.path.isdir(self.quickSelectSavePath):
-                os.mkdir(self.quickSelectSavePath)
-            else:
-                os.chmod(self.quickSelectSavePath, stat.S_IWRITE)
-            out_data = []
+        if not fileName:
+            return cmds.warning('No file name entered, nothing saved')
+        if not setList:
+            return cmds.warning('No quick selection sets were enabled for saving, nothing saved')
 
-            jsonData = '''{}'''
-            setData = json.loads(jsonData)
-            setData['setNames'] = dict()
-            for qset in setList:
-                data = qss_data_obj(qs_name=str(qset),
-                                    qs_objects=self.get_set_contents(qset),
-                                    colour=self.getSetColour(qset))
+        jsonFile = os.path.join(self.quickSelectSavePath, fileName + ".json")
+        if not os.path.isdir(self.quickSelectSavePath):
+            os.mkdir(self.quickSelectSavePath)
+        else:
+            os.chmod(self.quickSelectSavePath, stat.S_IWRITE)
 
-                setData['setNames'][str(qset)] = data.toJson()
-            # pickle.dump(out_data, open(save_file, "wb"))
+        jsonData = '''{}'''
+        setData = json.loads(jsonData)
+        setData['setNames'] = dict()
+        for qset in setList:
+            data = qss_data_obj(qs_name=str(qset),
+                                qs_objects=self.get_set_contents(qset),
+                                colour=self.getSetColour(qset))
+
+            setData['setNames'][str(qset)] = data.toJson()
+        try:
             self.saveJsonFile(jsonFile, setData)
+        except Exception as e:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='failed to save %s :: %s' % (jsonFile, e),
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
 
-    def load_qss_file(self, qss_name):
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message='saved %s quick selection sets to %s' % (len(setList), fileName),
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
+
+    def load_qss_file(self, qss_name, quiet=False):
         """
         :param qss_name:
+        :param quiet: don't warn if there is simply no file for this rig, used by the auto load on menu open
         :return:
         """
         if not qss_name:
-            return
+            if quiet:
+                return
+            return cmds.warning('No quick selection file specified')
         if not qss_name.endswith('.json'):
             qss_name = qss_name.split('.')[0] + '.json'
 
         file_name = os.path.join(self.quickSelectSavePath, qss_name)
         if not os.path.isfile(file_name):
-            return
-        rawJsonData = json.load(open(file_name))
+            if quiet:
+                return
+            return cmds.warning('Unable to find quick selection file %s' % file_name)
+        try:
+            rawJsonData = json.load(open(file_name))
+        except Exception as e:
+            return cmds.warning('Unable to read quick selection file %s :: %s' % (file_name, e))
+
+        loaded = list()
+        failed = list()
+
         if 'setNames' not in rawJsonData.keys():
             cmds.warning('Loading legacy set')
-            for qs_name, qs_objects in rawJsonData.items():
-                self.save_qs_from_file(qs_name, qs_objects)
+            for qs_name, qs_data in rawJsonData.items():
+                result = self.save_qs_from_file(qs_name, qs_data)
+                (loaded if result else failed).append(qs_name)
+            self.reportLoadResult(qss_name, loaded, failed)
             return
-        for qs_name, qs_objects in rawJsonData['setNames'].items():
-            self.save_qs_from_file(qs_name, qs_objects.get('qs_objects', list()))
+
+        for qs_name, qs_data in rawJsonData['setNames'].items():
+            if 'uber_' in qs_name:
+                continue
+            result = self.save_qs_from_file(qs_name, qs_data.get('qs_objects', list()),
+                                            colour=qs_data.get('qs_colour', DEFAULT_QSS_COLOUR))
+            (loaded if result else failed).append(qs_name)
+
+        # second loop so the uber sets get created last
+        for qs_name, qs_data in rawJsonData['setNames'].items():
+            if 'uber_' in qs_name:
+                result = self.save_qs_from_file(qs_name, qs_data.get('qs_objects', list()),
+                                                colour=qs_data.get('qs_colour', DEFAULT_QSS_COLOUR))
+                (loaded if result else failed).append(qs_name)
+
+        self.reportLoadResult(qss_name, loaded, failed)
+
+    def reportLoadResult(self, qss_name, loaded, failed):
+        """
+        Single summary message for a file load, rather than one message per set
+        """
+        fileLabel = qss_name.split('.')[0]
+        if not loaded and not failed:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='%s contains no quick selection sets' % fileLabel,
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
+        if not loaded:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='failed to load any of the %s sets in %s' % (
+                                               len(failed), fileLabel),
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
+        message = 'loaded %s quick selection sets from %s' % (len(loaded), fileLabel)
+        if failed:
+            message += ' (%s skipped :: %s)' % (len(failed), ', '.join(failed))
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message=message,
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
 
     def restore_qs_from_dir(self):
-        qss_files = list()
-        for qss_files in os.listdir(self.quickSelectSavePath):
-            if qss_files.endswith(".json"):
-                self.qss_files.append(qss_files)
+        self.qss_files = list()
+        if not self.quickSelectSavePath or not os.path.isdir(self.quickSelectSavePath):
+            cmds.warning('Quick selection save folder does not exist :: %s' % self.quickSelectSavePath)
+            return
+        for qss_file in os.listdir(self.quickSelectSavePath):
+            if qss_file.endswith(".json"):
+                self.qss_files.append(qss_file)
 
     def openQssLoadWindow(self):
         win = LoadQuickSelectWindow()
@@ -647,20 +868,48 @@ class QuickSelectionTools(toolAbstractFactory):
 
     def restore_legacy_files_from_dir(self):
         all_qss_files = list()
-        for qss_files in os.listdir(self.quickSelectSavePath):
-            if qss_files.endswith(".qss"):
-                all_qss_files.append(qss_files)
+        if not self.quickSelectSavePath or not os.path.isdir(self.quickSelectSavePath):
+            cmds.warning('Quick selection save folder does not exist :: %s' % self.quickSelectSavePath)
+            return all_qss_files
+        for qss_file in os.listdir(self.quickSelectSavePath):
+            if qss_file.endswith(".qss"):
+                all_qss_files.append(qss_file)
         return all_qss_files
 
     def convertPickleToJson(self):
         all_qss_files = self.restore_legacy_files_from_dir()
+        if not all_qss_files:
+            return self.warningMessage('no legacy .qss files found in %s' % self.quickSelectSavePath)
+
+        converted = list()
+        failed = list()
         for qss in all_qss_files:
-            loaded_data = pickle.load(open(os.path.join(self.quickSelectFolderDefault, qss), "rb"))
-            jsonData = '''{}'''
-            setData = json.loads(jsonData)
-            for qs in loaded_data:
-                setData[str(qs.qs_name)] = qs.qs_objects
-            self.saveJsonFile(os.path.join(self.quickSelectFolderDefault, (qss.split('.')[0] + '.json')), setData)
+            # read and write from the same folder we listed, not the default one
+            try:
+                loaded_data = pickle.load(open(os.path.join(self.quickSelectSavePath, qss), "rb"))
+                jsonData = '''{}'''
+                setData = json.loads(jsonData)
+                for qs in loaded_data:
+                    setData[str(qs.qs_name)] = qs.qs_objects
+                self.saveJsonFile(os.path.join(self.quickSelectSavePath, (qss.split('.')[0] + '.json')), setData)
+            except Exception as e:
+                cmds.warning('Unable to convert %s :: %s' % (qss, e))
+                failed.append(qss)
+                continue
+            converted.append(qss)
+
+        if not converted:
+            return self.funcs.errorMessage(position="botRight", prefix="Error",
+                                           message='failed to convert any of the %s legacy files' % len(failed),
+                                           fadeStayTime=5,
+                                           fadeOutTime=4.0)
+        message = 'converted %s legacy files to json' % len(converted)
+        if failed:
+            message += ' (%s failed :: %s)' % (len(failed), ', '.join(failed))
+        self.funcs.infoMessage(position="botRight", prefix="info",
+                               message=message,
+                               fadeStayTime=5,
+                               fadeOutTime=4.0)
 
     def loadDataForCharacters(self, characters):
         namespaceToCharDict = dict()
@@ -689,6 +938,7 @@ class QuickSelectionTools(toolAbstractFactory):
 
         # Check if the child set is a member of the parent set
         return cmds.sets(child_set_name, isMember=parent_set_name)
+
     def autoLoadSetData(self):
         sel = cmds.ls(sl=True)
         if not sel:
@@ -699,7 +949,7 @@ class QuickSelectionTools(toolAbstractFactory):
                 continue
             refname, namespace = self.funcs.getCurrentRig(sel=s)
             if not cmds.objExists(namespace + ':' + 'QuickSelects'):
-                self.load_qss_file(refname)
+                self.load_qss_file(refname, quiet=True)
                 return
 
     def checkDownstreamTempControls(self, control, found_controls=None):
@@ -717,10 +967,11 @@ class QuickSelectionTools(toolAbstractFactory):
             control = str(conn.split('.')[0])
             if not cmds.attributeQuery('constraintTarget', node=control, exists=True):
                 continue
-
-            found_controls.append(control)
-            found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
+            if control not in found_controls:
+                found_controls.append(control)
+                found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
         return found_controls
+
     def checkUpstreamTempControls(self, control, found_controls=None):
         """
         copied from the pickwalk tool
@@ -733,7 +984,8 @@ class QuickSelectionTools(toolAbstractFactory):
         if not cmds.attributeQuery('constraintTarget', node=str(control), exists=True):
             return found_controls
 
-        messageConnections = cmds.listConnections(control + '.constraintTarget', source=True, destination=False, plugs=True)
+        messageConnections = cmds.listConnections(control + '.constraintTarget', source=True, destination=False,
+                                                  plugs=True)
 
         if not messageConnections:
             return found_controls
@@ -752,7 +1004,6 @@ class QuickSelectionTools(toolAbstractFactory):
             if targetConnections:
                 return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
         return control
-
 
     def doubleTap(self):
         self.uber_qs_select()
@@ -797,7 +1048,7 @@ class QuickSelectionTools(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='QuickSelectDialog')
 
         sel = cmds.ls(sl=True)
         allSets = self.get_sets(forceAll=True)
@@ -962,9 +1213,9 @@ class AdjustmentButtonPopup(ButtonPopup):
 
 
 class SaveCurrentStateWidget(ViewportDialog):
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
-                 parentMenu=None):
-        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu)
+    def __init__(self, parent=getMainWindow(),
+                 parentMenu=None, name='SaveCurrentStateWidget'):
+        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -1017,7 +1268,7 @@ class QssSaveWidget(QWidget):
                  helpString=None,
                  parentWidget=None,
                  qss=False,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+                 parent=getMainWindow()):
         super(QssSaveWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
         self.parentWidget = parentWidget
@@ -1075,7 +1326,7 @@ class QssSaveWidget(QWidget):
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
         layout.addWidget(self.qssCheckbox)
-        # layout.addWidget(self.mirrorCheckbox)
+        layout.addWidget(self.mirrorCheckbox)
         layout.addWidget(self.saveButton)
 
         if self.helpString:
@@ -1088,8 +1339,9 @@ class QssSaveWidget(QWidget):
         # self.move(getScreenCenter() - self.rect().center())
 
         # self.lineEdit.setFocus()
-        self.lineEdit.setFixedWidth(
-            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+        self.lineEdit.setFixedWidth(dpiScale() *
+                                    max(120,
+                                        self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
         self.setStyleSheet(
             "QssSaveWidget { "
             "border-radius: 8;"
@@ -1169,11 +1421,14 @@ class QssSaveWidget(QWidget):
 
 class QssFileWidget(QWidget):
     loadSignal = Signal(str)
+    deletedSignal = Signal(str)
 
-    def __init__(self, name=str, filename=str):
+    def __init__(self, name=str, filename=str, folder=str()):
         super(QssFileWidget, self).__init__()
         self.name = name
+        # filename stays as the base name, load_qss_file joins it to the save folder itself
         self.filename = filename
+        self.folder = folder
         self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.mainLayout)
@@ -1190,11 +1445,31 @@ class QssFileWidget(QWidget):
     def loadClicked(self):
         self.loadSignal.emit(self.filename)
 
+    @property
+    def filePath(self):
+        if self.folder:
+            return os.path.join(self.folder, self.filename)
+        return self.filename
+
     def deleteFile(self):
+        filePath = self.filePath
+        if not os.path.isfile(filePath):
+            return cmds.warning('Cannot delete, file not found :: %s' % filePath)
+
+        result = cmds.confirmDialog(title='Delete quick selection file?',
+                                    message='Delete %s?\nThis cannot be undone.' % self.name,
+                                    button=['Delete', 'Cancel'],
+                                    defaultButton='Cancel',
+                                    cancelButton='Cancel',
+                                    dismissString='Cancel')
+        if result != 'Delete':
+            return
+
         try:
-            os.remove(self.filename)
-        except:
-            cmds.warning("Cannot delete file")
+            os.remove(filePath)
+        except Exception as e:
+            return cmds.warning('Cannot delete file %s :: %s' % (filePath, e))
+        self.deletedSignal.emit(self.filename)
 
 
 class DeleteButton(QPushButton):
@@ -1234,7 +1509,7 @@ class NamespaceWidget(QWidget):
 
 class LoadQuickSelectWindow(QMainWindow):
     def __init__(self):
-        super(LoadQuickSelectWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(LoadQuickSelectWindow, self).__init__(parent=getMainWindow())
         # DATA
         self.setMinimumWidth(300)
         # self.setMinimumHeight(400)
@@ -1289,11 +1564,40 @@ class LoadQuickSelectWindow(QMainWindow):
         self.QuickSelectionTools.namespace_mode = self.namespaceWidget.namespaceModeOption.currentIndex()
         self.QuickSelectionTools.load_qss_file(name)
 
+    def fileDeleted(self, filename):
+        self.QuickSelectionTools.funcs.infoMessage(position="botRight", prefix="info",
+                                                   message='deleted %s' % filename,
+                                                   fadeStayTime=5,
+                                                   fadeOutTime=4.0)
+        self.updateUI()
+
+    @staticmethod
+    def clearLayout(layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+
     def updateUI(self):
+        # rebuilt on delete, so clear out the previous widgets first
+        self.clearLayout(self.qssLayout)
         self.QuickSelectionTools.restore_qs_from_dir()
+        if not self.QuickSelectionTools.qss_files:
+            emptyLabel = QLabel('No saved quick selection files found in\n%s'
+                                % self.QuickSelectionTools.quickSelectSavePath)
+            emptyLabel.setWordWrap(True)
+            emptyLabel.setAlignment(Qt.AlignCenter)
+            self.qssLayout.addWidget(emptyLabel)
+            self.qssLayout.addStretch()
+            return
         for item in self.QuickSelectionTools.qss_files:
-            widget = QssFileWidget(name=item.split('.')[0], filename=item)
+            widget = QssFileWidget(name=item.split('.')[0],
+                                   filename=item,
+                                   folder=self.QuickSelectionTools.quickSelectSavePath)
             widget.loadSignal.connect(self.loadQss)
+            widget.deletedSignal.connect(self.fileDeleted)
             self.qssLayout.addWidget(widget)
         self.qssLayout.addStretch()
 
@@ -1302,7 +1606,8 @@ class SaveQssToFileWidget(QWidget):
     """
     Simple prompt with text input
     """
-    acceptedSignal = Signal(str, dict)
+    # getSaveStateList returns a list of set names, the second arg must match or the emit raises
+    acceptedSignal = Signal(str, list)
     acceptedComboSignal = Signal(str, str)
     acceptedKeyComboSignal = Signal(str, str, str)
     acceptedKeySubComboSignal = Signal(str, str, str)
@@ -1425,7 +1730,7 @@ class SaveQssToFileWidget(QWidget):
         # self.setFixedSize(400, 64)
 
     def getSaveStateList(self):
-        setDict = self.setSaveStates[self.currentRigComboBox.currentText()]
+        setDict = self.setSaveStates.get(self.currentRigComboBox.currentText(), dict())
         return [x for x in setDict.keys() if setDict[x] == True]
 
     def setDefaults(self):
@@ -1449,10 +1754,21 @@ class SaveQssToFileWidget(QWidget):
                 wd = QssSaveStateWidget(setName=set)
                 wd.loadButton.clicked.connect(
                     create_callback(self.toggleExportSetState, char, set, wd.loadButton.isChecked))
+                wd.deletedSignal.connect(create_callback(self.setDeleted, char, wd))
                 setLayout.addWidget(wd)
             setWidget.setLayout(setLayout)
             self.setsStack.addWidget(setWidget)
         self.currentRigChanged()
+
+    def setDeleted(self, char, widget, *args):
+        """
+        Drop a deleted set from the save list and remove its row
+        """
+        self.setSaveStates.get(char, dict()).pop(widget.setName, None)
+        if widget.setName in self.charDict.get(char, list()):
+            self.charDict[char].remove(widget.setName)
+        widget.setParent(None)
+        widget.deleteLater()
 
     def toggleExportSetState(self, char, setName, state, *args):
         self.setSaveStates[char][setName] = state()
@@ -1522,6 +1838,7 @@ class SaveQssToFileWidget(QWidget):
 
 class QssSaveStateWidget(QWidget):
     loadSignal = Signal()
+    deletedSignal = Signal(str)
 
     def __init__(self, setName=str):
         super(QssSaveStateWidget, self).__init__()
@@ -1545,10 +1862,26 @@ class QssSaveStateWidget(QWidget):
         self.loadSignal.emit()
 
     def deleteSet(self):
+        if not cmds.objExists(self.setName):
+            cmds.warning('Set %s no longer exists in the scene' % self.setName)
+            self.deletedSignal.emit(self.setName)
+            return
+
+        result = cmds.confirmDialog(title='Delete selection set?',
+                                    message='Delete the set %s from the scene?\n'
+                                            'This cannot be undone.' % self.setName,
+                                    button=['Delete', 'Cancel'],
+                                    defaultButton='Cancel',
+                                    cancelButton='Cancel',
+                                    dismissString='Cancel')
+        if result != 'Delete':
+            return
+
         try:
             cmds.delete(self.setName)
-        except:
-            pass
+        except Exception as e:
+            return cmds.warning('Unable to delete set %s :: %s' % (self.setName, e))
+        self.deletedSignal.emit(self.setName)
 
 
 class CheckableButton(QPushButton):
@@ -1578,4 +1911,3 @@ class CheckableButton(QPushButton):
                      border-color: #ffaa00;
                 }  
                 """)
-

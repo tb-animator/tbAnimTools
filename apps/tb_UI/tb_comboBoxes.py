@@ -37,7 +37,7 @@ class comboBoxWidget(QWidget):
             self.comboBox.setCurrentIndex(self.values.index(self.defaultValue))
         self.comboBox.setFixedWidth(self.comboBox.sizeHint().width())
         view = self.comboBox.view()
-        view.setFixedWidth(self.comboBox.sizeHint().width() + 32)
+        view.setFixedWidth(self.comboBox.sizeHint().width() + (32 * dpiScale()))
         self.mainLayout.addWidget(label)
         self.mainLayout.addWidget(self.comboBox)
         self.comboBox.currentIndexChanged.connect(self.interactivechange)

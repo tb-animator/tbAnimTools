@@ -91,6 +91,7 @@ class CharacterDefinition(object):
         self.driverControl = str()
         self.exportControl = str()
         self.feetControls = str()
+        self.customAttributes = dict()
         self.UUID = str()
         self.topNode = str()
         self.char = char
@@ -119,6 +120,9 @@ class CharacterDefinition(object):
         self.driverControl = rawJsonData.get('driverControl', str())
         self.exportControl = rawJsonData.get('exportControl', str())
         self.feetControls = rawJsonData.get('feetControls', str())
+        self.customAttributes = rawJsonData.get('customAttributes', dict())
+        if isinstance(self.customAttributes, str):
+            self.customAttributes = dict()
         self.UUID = rawJsonData.get('UUID', str())
         self.topNode = rawJsonData.get('topNode', str())
 
@@ -137,6 +141,7 @@ class CharacterDefinition(object):
         returnDict['driverControl'] = self.driverControl
         returnDict['exportControl'] = self.exportControl
         returnDict['feetControls'] = self.feetControls
+        returnDict['customAttributes'] = self.customAttributes
         returnDict['UUID'] = self.UUID
         returnDict['topNode'] = self.topNode
         # print ('returnDict', returnDict)
@@ -225,7 +230,11 @@ class CharacterDefinition(object):
         return None
 
     def setFeetControls(self, value):
-        self.feetControls = value
+        if not self.feetControls:
+            self.feetControls = list()
+        if not isinstance(value, list):
+            value = [value]
+        self.feetControls = list(set(self.feetControls.extend(value)))
 
     def getFeetControl(self, namespace):
         feet = [namespace + ':' + f for f in self.feetControls]
@@ -368,7 +377,7 @@ class CharacterTool(toolAbstractFactory):
 
     def getCharacterByName(self, char, openUI=False):
         if char not in self.allCharacters.keys():
-            print('Loacing character {}'.format(char))
+            print('Loading character {}'.format(char))
             self.loadCharacterIfNotLoaded(char, node=None)
             if openUI:
                 self.toolBoxUI(
@@ -403,7 +412,6 @@ class CharacterTool(toolAbstractFactory):
         :param node:
         :return:
         """
-        print('tagTopNodeAsCharacter', node, character)
         topNode = self.funcs.getTopParent(node)
         if not cmds.attributeQuery(characterAttribute, node=str(topNode), exists=True):
             cmds.addAttr(str(topNode), ln=characterAttribute, dt='string')
@@ -433,18 +441,25 @@ class CharacterTool(toolAbstractFactory):
         else:
             return self.tempCharacter
 
-    def getSelectedChar(self, sel=None):
+    def getSelectedChar(self, sel=None, referenceOnly=False):
+        print ('current sel', sel)
+        print ('reference only', referenceOnly)
+        cmds.refresh()
+
         if not sel:
-            sel = cmds.ls(sl=True)
+            sel = cmds.ls(sl=True, type='transform')
+            print ('selection from scene', sel)
         if not sel:
+            print ('sel is None')
             return None, None
         if not isinstance(sel, list):
             sel = [sel]
-        # print ('getSelectedChar', sel)
-        refname, namespace = self.funcs.getCurrentRig(sel)
-        # print ('refname', refname)
-        # print ('namespace', namespace)
-        # print ('sel', sel)
+        print ('getSelectedChar', sel)
+
+        refname, namespace = self.funcs.getCurrentRig(sel, referenceOnly=referenceOnly)
+        print ('refname', refname)
+        print ('namespace', namespace)
+        print ('sel', sel)
 
         if not refname:
             refname = self.getCharFromTopNode(sel[0])
@@ -452,18 +467,18 @@ class CharacterTool(toolAbstractFactory):
             if not refname:
                 return None, None
         if refname not in self.allCharacters.keys():
-            # print ('loading character for %s' % refname)
+            print ('loading character for %s' % refname)
             self.createNewCharacter(sel)
-            # self.loadCharacter(refname)
+            self.loadCharacter(refname)
         return refname, namespace
 
     def update(self):
         refname, namespace = self.getSelectedChar()
-        # print (refname, namespace)
-        # print ('self.currentNamespace', self.currentNamespace)
+        print (refname, namespace)
+        print ('self.currentNamespace', self.currentNamespace)
         if namespace:
             self.currentNamespace = namespace
-            # print ('update', self.currentNamespace)
+            print ('update', self.currentNamespace)
         if refname:
             # open up the ui for editing
             self.toolboxWidget.setEnabled(True)
@@ -473,14 +488,13 @@ class CharacterTool(toolAbstractFactory):
             self.currentChar = refname
             self.currentNamespace = namespace
             self.currentCharData = self.allCharacters[refname]
-            # print ('refname', refname)
+            print ('refname', refname)
 
             leftSide = self.currentCharData.getSide('left')
             rightSide = self.currentCharData.getSide('right')
 
             self.leftSideLineEdit.setText(leftSide)
             self.rightSideLineEdit.setText(rightSide)
-            print ('getting control labels', self.currentCharData.globalControl)
             self.globalControlLabel.setText(self.currentCharData.globalControl)
             self.driverControlLabel.setText(self.currentCharData.driverControl)
             self.exportControlLabel.setText(self.currentCharData.exportControl)
@@ -498,8 +512,7 @@ class CharacterTool(toolAbstractFactory):
     def loadCharacter(self, refname, node=None):
         # print ('loadCharacter', refname, node)
         if not refname:
-            return
-
+            return cmds.warning ('No name specified for loading character')
         dataFile = os.path.join(self.charTemplateDir, refname + '.json')
         isNew = False
         if not os.path.isfile(dataFile):
@@ -518,7 +531,7 @@ class CharacterTool(toolAbstractFactory):
                 return cmds.warning('No selection when creating new character entry')
             if isinstance(sel, list):
                 sel = str(sel[0])
-            # print ('sel', sel)
+
             self.allCharacters[refname].setUUID(sel)
             self.allCharacters[refname].setTopNode(sel)
             self.saveJsonFile(dataFile, self.allCharacters[refname].toJson())
@@ -811,8 +824,8 @@ class CharacterTool(toolAbstractFactory):
         MirrorTools.saveCurrentMirrorData(self.currentChar)
 
     def getToolboxWidget(self, widget, message=''):
-        buttonWidth = 124
-        buttonHeight = 18
+        buttonWidth = 124  * dpiScale()
+        buttonHeight = 18  * dpiScale()
         '''
         cmds.setParent()
         if cmds.menu(TOOLBOX_MENU, exists=True):
@@ -1031,13 +1044,22 @@ class CharacterTool(toolAbstractFactory):
 
     def _calculateMirrorAxis(self):
         refname, namespace = self.getSelectedChar()
+
         MirrorTools = self.allTools.tools['MirrorTools']
-        # print MirrorTools
+        self.currentNamespace = namespace
+
+        # Flush the in-memory character definition (including current side values) to
+        # disk before calculating, so that splitControls (which loads from disk via
+        # loadCharacterIfNotLoaded) uses the same side tokens as calculateAllCharacter.
+        self.saveJsonFile(self.currentCharData.getJsonFile(), self.currentCharData.toJson())
+        self.loadCharacter(refname)
+
         controls = self.getAllControls()
-        MirrorTools = self.allTools.tools['MirrorTools']
-        # print (refname, namespace)
-        # print (controls)
-        MirrorTools.calculateAllCharacter(refname=refname, character=self.currentCharData, controls=controls)
+        print ('refname', refname)
+        print ('namespace', namespace)
+        print (controls)
+
+        MirrorTools.calculateAllCharacter(refname=refname, character=self.allCharacters[refname], controls=controls)
         pass
 
     def _testSwap(self):
@@ -1070,6 +1092,32 @@ class CharacterTool(toolAbstractFactory):
         self.toolboxWidget.setEnabled(False)
         self.selectionChangedScriptJob = cmds.scriptJob(event=["SelectionChanged", self.update], protected=False)
         self.update()
+
+    def getTempControlData(self, character, rigControl, controlName, attribute):
+        self.currentChar = character
+        self.loadCharacter(self.currentChar)
+        self.currentNamespace = self.funcs.namespace(controlName)
+        self.currentCharData = self.allCharacters[character]
+
+        customData = self.currentCharData.customAttributes.get(self.funcs.stripNamespace(controlName), dict())
+
+        if attribute not in customData.keys():
+            return cmds.warning('No stored drawScale for %s' % controlName)
+        value = customData[attribute]
+        cmds.setAttr(controlName + '.' + attribute, value)
+
+    def setTempControlData(self, character, controlName, attribute):
+        self.currentChar = character
+        self.loadCharacter(self.currentChar)
+        self.currentNamespace = self.funcs.namespace(controlName)
+        self.currentCharData = self.allCharacters[character]
+
+        customData = self.currentCharData.customAttributes.get(controlName, dict())
+
+        value = cmds.getAttr(controlName + '.' + attribute)
+        customData[attribute] = value
+        self.currentCharData.customAttributes[self.funcs.stripNamespace(controlName)] = customData
+        self.saveCurrentCharacter()
 
 
 class CharacterWindow(MayaQWidgetDockableMixin, QMainWindow):

@@ -68,6 +68,15 @@ class TBToolBar(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = Functions()
 
+    def initData(self):
+        super(TBToolBar, self).initData()
+        self.baseDataFile = os.path.join(self.dataPath, self.toolName + 'BaseData.json')
+
+    def loadData(self):
+        super(TBToolBar, self).loadData()
+        self.rawJsonBaseData = json.load(open(self.baseDataFile))
+
+        print(self.rawJsonBaseData)
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -91,7 +100,16 @@ class TBToolBar(toolAbstractFactory):
 
         DockableUI.module_name_override = "workspace_control"
         self.toolbar = DockableUI()
+        widgets = self.collectToolbarWidgets()
+        self.toolbar.widgets.extend(widgets)
 
+    def collectToolbarWidgets(self):
+        widgets = list()
+        for tool, cls in self.allTools.tools.items():
+            if not cls:
+                continue
+            widgets.extend(cls.toolBarUI())
+        return widgets
 
 class TbToolBarDialog(QDialog):
     def __init__(self, parent):

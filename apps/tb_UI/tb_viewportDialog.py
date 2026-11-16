@@ -5,7 +5,7 @@ class ViewportDialog(QDialog):
     closeSignal = Signal()
     keyReleasedSignal = Signal()
 
-    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(),
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(), name='ViewportDialog',
                  *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
@@ -19,7 +19,8 @@ class ViewportDialog(QDialog):
 
         self.recentlyOpened = False
         self.activeButton = None
-        self.centralRadius = 16 * dpiScale()
+        self.dpi = dpiScale()  # cached - dpiScale queries optionVars, too slow for paint/mouse events
+        self.centralRadius = 16 * self.dpi
         self.scalar = math.cos(math.radians(45)) * self.centralRadius
         self.allButtons = list()
         self.widgets = {'NE': list(),
@@ -61,12 +62,14 @@ class ViewportDialog(QDialog):
                                    self.parentMenu.cursorPos.y() - (self.returnButton.height() * 0.5))
 
         else:
-            self.keyPressHandler = getMarkingMenuFilter(UI=self)
+            if not self.keyPressHandler:
+                self.keyPressHandler = getMarkingMenuFilter(UI=self, name=name)
             self.app.installEventFilter(self.keyPressHandler)
         self.tooltipEnabled = True
 
     def returnButtonHovered(self):
-        print('returnButtonHovered')
+        pass
+        # print('returnButtonHovered')
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -145,8 +148,11 @@ class ViewportDialog(QDialog):
             c.move(c.pos().x() - offset.x(), c.pos().y() - offset.y())
             c.absPos = c.pos()
         self.cursorPos = QCursor.pos()
+        self.update()
 
     def buttonHovered(self, widget):
+        if widget is self.activeButton:
+            return
         for w in self.allButtons:
             if w is not widget:
                 w.setNonHoverSS()
@@ -155,7 +161,6 @@ class ViewportDialog(QDialog):
         # print ('buttonHovered', widget)
 
     def show(self):
-        t = cmds.timerX()
         self.cursorPos = QCursor.pos()
         self.currentCursorPos = QCursor.pos()
         screens = QApplication.screens()
@@ -171,11 +176,9 @@ class ViewportDialog(QDialog):
         # self.grabKeyboard()
         self.setFocus()
         self.addAllButtons()
-        self.repaint()
         if self.parentMenu:
             self.parentMenu.scaleOpacity()
         super(ViewportDialog, self).show()
-        # print (cmds.timerX() - t)
 
     def hide(self):
         # print ('being hidden', self)
@@ -249,7 +252,7 @@ class ViewportDialog(QDialog):
         centralColourMid = QColor(68, 68, 68, 32)
         centralColourFade = QColor(68, 68, 68, 0)
 
-        qp.setPen(QPen(QBrush(lineColor), 2 * dpiScale()))
+        qp.setPen(QPen(QBrush(lineColor), 2 * self.dpi))
         grad = QLinearGradient(200, 0, 200, 32)
         grad.setColorAt(0, "#323232")
         grad.setColorAt(0.1, "#373737")
@@ -262,7 +265,7 @@ class ViewportDialog(QDialog):
         qp.setRenderHint(QPainter.Antialiasing)
 
         qp.setBrush(QBrush(blank))
-        qp.drawRoundedRect(self.rect(), 8 * dpiScale(), 8 * dpiScale())
+        qp.drawRoundedRect(self.rect(), 8 * self.dpi, 8 * self.dpi)
 
         # subtle central shadow
         shadowGrad = QRadialGradient(self.cursorPos, 200)
@@ -271,10 +274,10 @@ class ViewportDialog(QDialog):
         shadowGrad.setColorAt(1, centralColourFade)
         qp.setPen(QPen(QBrush(empty), 0))
         qp.setBrush(QBrush(shadowGrad))
-        qp.drawEllipse(self.cursorPos.x() - (300 * dpiScale()),
-                       self.cursorPos.y() - (300 * dpiScale()),
-                       600 * dpiScale(),
-                       600 * dpiScale())
+        qp.drawEllipse(self.cursorPos.x() - (300 * self.dpi),
+                       self.cursorPos.y() - (300 * self.dpi),
+                       600 * self.dpi,
+                       600 * self.dpi)
 
         # central dot
         qp.setBrush(QBrush(lineColor))
@@ -285,7 +288,7 @@ class ViewportDialog(QDialog):
         # print (self.currentCursorPos.x(), self.currentCursorPos.y())
 
         if self.activeButton:
-            qp.setPen(QPen(QBrush(linePenColor), 4 * dpiScale()))
+            qp.setPen(QPen(QBrush(linePenColor), 4 * self.dpi))
             offset = 0
             buttonPos = self.activeButton.absPos
             '''
@@ -316,8 +319,11 @@ class ViewportDialog(QDialog):
     def mouseMoveEvent(self, event):
         # print ('mouseMoveEvent', event.pos())
         self.currentCursorPos = self.mapFromGlobal(event.globalPos())
+        previousButton = self.activeButton
         self.getClosesWidget()
-        self.update()
+        # the overlay only depends on the active button, so skip the full screen repaint if it hasn't changed
+        if self.activeButton is not previousButton:
+            self.update()
 
     def mousePressEvent(self, event):
         # print ('mousePressEvent', event)
@@ -331,9 +337,9 @@ class ViewportDialog(QDialog):
     def getClosesWidget(self):
         # print ('getClosesWidget')
         distance = self.distance(self.cursorPos, self.currentCursorPos)
-        for w in self.allButtons:
-            w.setNonHoverSS()
         if distance < self.scalar:
+            if self.activeButton:
+                self.activeButton.setNonHoverSS()
             self.activeButton = None
             return
         if self.allButtons:
@@ -353,17 +359,22 @@ class ViewportDialog(QDialog):
 
                 # print (widgetPos, distance)
             # print ('closest', closestWidget)
+            if closestWidget is self.activeButton:
+                return
+            if self.activeButton:
+                self.activeButton.setNonHoverSS()
             self.activeButton = closestWidget
             if self.activeButton:
                 self.activeButton.setHoverSS()
-            self.update()
 
     def distance(self, point_a, point_b):
         distance = math.sqrt(math.pow(point_a.x() - (point_b.x()), 2) + math.pow(point_a.y() - (point_b.y()), 2))
         return distance
 
     def tabletEvent(self, e):
-        print(e.pressure())
+        pass
+        # print(e.pressure())
+
 
     def keyPressEvent(self, event):
         # check version
@@ -394,7 +405,7 @@ class ViewportDialog(QDialog):
 
                 self.close()
                 if self.parentMenu:
-                    print('sending keyreleaseEvent')
+                    # print('sending keyreleaseEvent')
                     self.parentMenu.keyReleaseEvent(event)
                 self.invokedKey = None
         try:

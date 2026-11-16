@@ -46,9 +46,16 @@ def qCleanupResources():
 
 qInitResources()
 
-def getStyleSheet():
+_styleSheetCache = None
+
+
+def getStyleSheet(reload=False):
+    global _styleSheetCache
+    if _styleSheetCache is not None and not reload:
+        return _styleSheetCache
     if not os.path.isfile(qssFile):
         return cmds.warning('stylesheet file not found')
     with open(qssFile, 'r') as f:
-        return f.read()
+        _styleSheetCache = f.read()
+    return _styleSheetCache
 

@@ -139,6 +139,7 @@ class HotkeyPopup(ButtonPopup):
         except:
             self.helpLabel = QLabel(self.helpLabelStr)
         self.helpLabel.setWordWrap(True)
+        self.helpLabel.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
         self.imageGif = os.path.join(helpPath, self.command + '.gif')
         self.imageJpeg = os.path.join(helpPath, self.command + '.jpeg')
         self.imageLabel = QLabel(self)

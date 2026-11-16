@@ -3,6 +3,7 @@
 import functools
 
 
+
 def create_callback(func, *args, **kwargs):
     """
     Create a callback function that can be used in Maya cmds commands.
@@ -15,7 +16,5 @@ def create_callback(func, *args, **kwargs):
     Returns:
         function: A callable function that can be used as a callback.
     """
-    # print ('func', func)
-    # print ('args', args)
-    # print ('kwargs', kwargs)
+
     return functools.partial(func, *args, **kwargs)

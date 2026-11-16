@@ -241,7 +241,7 @@ class MirrorTools(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='MirrorDialog')
 
         sel = cmds.ls(sl=True)
         if not sel:
@@ -365,12 +365,6 @@ class MirrorTools(toolAbstractFactory):
         left = character.getSide('left')
         right = character.getSide('right')
         mirroredControl = self.getMirrorControl(control, left, right)
-
-        # print ('getMirrorForControlFromCharacter', character, control)
-        # print ('left', left)
-        # print ('right', right)
-        # print ('mirroredControl', mirroredControl)
-
         return mirroredControl
 
     def getMirrorControlsForSelection(self, sel=None):
@@ -494,6 +488,9 @@ class MirrorTools(toolAbstractFactory):
         :type mirrorPlane: list[int]
         :rtype: int
         """
+        if not cmds.objExists(srcObj): return False
+        if not cmds.objExists(dstObj): return False
+
         axisDict = {'x': om.MVector.xAxis,
                     'y': om.MVector.yAxis,
                     'z': om.MVector.zAxis,
@@ -508,6 +505,7 @@ class MirrorTools(toolAbstractFactory):
         dstAxisVec = MirrorTools.getWorldSpaceVectorAxis(dstObj, axisDict[axis])
         # round the vector to a sensible decimal
         dstAxisVec = MirrorTools.roundVector(dstAxisVec)
+
         '''
         srcNode = cmds.createNode('transform', name='src_%s' % plane)
         cmds.xform(srcNode, translation=srcAxisVec)
@@ -522,14 +520,21 @@ class MirrorTools(toolAbstractFactory):
         # dstAxisVec = MirrorTools.scaleVector(dstAxisVec, mp)
         # print ('srcAxisVec', srcAxisVec.x, srcAxisVec.y, srcAxisVec.z)
         # print ('dstAxisVec', dstAxisVec.x, dstAxisVec.y, dstAxisVec.z)
-
         v = (srcAxisVec - dstAxisVec)
+
+        cmds.refresh()
         v = om.MVector(srcAxisVec[0] * dstAxisVec[0], srcAxisVec[1] * dstAxisVec[1], srcAxisVec[2] * dstAxisVec[2])
+
+
         # print ('l', math.sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z)))
         # print ('v', v.x, v.y, v.z)
         # print ('length', v.length())
 
-        d = sum(p * q for p, q in zip(srcAxisVec, dstAxisVec))
+        d = (
+                srcAxisVec.x * dstAxisVec.x +
+                srcAxisVec.y * dstAxisVec.y +
+                srcAxisVec.z * dstAxisVec.z
+        )
         # print ('d', d)
         if d >= 0.0001:
             return False
@@ -577,7 +582,6 @@ class MirrorTools(toolAbstractFactory):
         :rtype: list[int]
         """
         result = [1, 1, 1]
-
         # source is destination, or destination doesn't exist (mirror on self for better or worse)
         if destinationObj == srcObj or not cmds.objExists(destinationObj):
             result = MirrorTools._calculateMirrorAxis(srcObj, plane)
@@ -589,8 +593,8 @@ class MirrorTools(toolAbstractFactory):
         return result
 
     def calculateAllCharacter(self, refname=str(), character=str(), controls=list()):
-        # print ('calculateAllCharacter')
         mirrorData = MirrorData()
+        print (mirrorData)
         characters = self.funcs.splitSelectionToCharacters(controls)
         self.loadDataForCharacters(characters)
 
@@ -603,7 +607,6 @@ class MirrorTools(toolAbstractFactory):
                 continue
 
             opposite = self.getMirrorForControlFromCharacter(character, control)
-            # print ('opposite', opposite)
             if not maya.cmds.objExists(opposite):
                 continue
 
@@ -615,12 +618,13 @@ class MirrorTools(toolAbstractFactory):
 
             for attr in allAttrs:
                 axisDict[attr] = self.getMirrorValue(attr, 1, mirrorAxis)
-
         mirrorData.mirrorPlane = mirrorAxisRaw
         self.saveRigData(dataFile, mirrorData.toJson())
 
     def saveCurrentMirrorData(self, character):
         dataFile = os.path.join(self.mirrorDataDir, character)
+        if character not in self.loadedMirrorTables.keys():
+            return cmds.warning('character not in mirror table dictionary')
         self.saveRigData(dataFile, self.loadedMirrorTables[character].toJson())
         print('Saving current mirror', character)
         print('dataFile', dataFile)

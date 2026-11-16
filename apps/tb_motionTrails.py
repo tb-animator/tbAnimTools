@@ -623,7 +623,7 @@ class MotionTrails(toolAbstractFactory):
             return list()
         return list(set(conns))
 
-    def rebuildMotionPath(self, *args, sel=list(), existingCurves=list()):
+    def rebuildMotionPath(self, sel=list(), existingCurves=list(), *args):
         self.motionPathSelected(sel=sel)
         cmds.delete([str(x) for x in existingCurves])
 
@@ -666,7 +666,7 @@ class MotionTrails(toolAbstractFactory):
                                              scale=get_option_var(self.motionControlSizeOption, 0.5)))
             cmds.container(s + '_' + 'MotionPath', edit=True, addNode=tmp)
 
-            cnst = cmds.pointConstraint(s, tmp)
+            cnst = cmds.pointConstraint(s, tmp)[0]
             tempNodes[s] = tmp
             tempConstraints[s] = cnst
 
@@ -976,7 +976,7 @@ class MotionTrails(toolAbstractFactory):
 
         return stroke
 
-    def rebuildOfflinePath(self, control, *args, path=None):
+    def rebuildOfflinePath(self, control, path=None, *args):
         # get the path camera space value
         cmds.delete(path)
         self.offlineMotionTrailSelected(sel=list(control), cameraSpace=False)

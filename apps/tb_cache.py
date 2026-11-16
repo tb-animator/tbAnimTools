@@ -242,8 +242,9 @@ class CacheTool(toolAbstractFactory):
             self.loadReferenceFromCache(s)
 
     def getSkinCLustersForNamespace(self, ns):
-        skinClusters = cmds.ls(ns + ':*', type='skinCluster')
-        meshes = [str(a) for b in [n.outputGeometry.connections() for n in skinClusters] for a in b if a]
+        skinClusters = cmds.ls(ns + ':*', type='skinCluster', long=True)
+        meshes = [str(a) for b in [cmds.listConnections(n + '.outputGeometry', fullNodeName=True) for n in skinClusters] for a in b if a]
+        print ('meshes', meshes)
         visibleMeshes = [m for m in meshes if self.isNodeVisible(m)]
         return visibleMeshes
 
@@ -267,7 +268,7 @@ class CacheTool(toolAbstractFactory):
                 startTime=int(startTime),
                 endTime=int(endTime),
             )
-            print (cmdString)
+
             mel.eval(cmdString)
         else:
             cmds.gpuCache(exportObjects,
@@ -294,7 +295,7 @@ class CacheTool(toolAbstractFactory):
             cacheNode = cmds.createNode('gpuCache')
             cacheNodeParent = cmds.listRelatives(cacheNode, parent=True)[0]
             cacheNodeParent = cmds.rename(cacheNodeParent, str(os.path.basename(filename)).split('.')[0])
-            cmds.setAttr(cacheNode + ".cacheFileName", str(filename))
+            cmds.setAttr(cacheNode + ".cacheFileName", str(filename), type="string")
         else:
             cacheNodeParent = self.funcs.tempControl(name=str(os.path.basename(filename)).split('.')[0],
                                                      suffix='Root',
@@ -330,7 +331,7 @@ class CacheTool(toolAbstractFactory):
         visible = cmds.getAttr(node + '.visibility')
         if not visible:
             return False
-        parents = cmds.listRelatives(node, parent=True)
+        parents = cmds.listRelatives(node, parent=True, fullPath=True)
         if parents:
             visible = self.isNodeVisible(parents[0])
         return visible

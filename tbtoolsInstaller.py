@@ -71,7 +71,7 @@ def getStyleSheet():
     return st
 
 
-from tb_UI import *
+from apps.tb_UI import *
 
 # temp stylesheet here just in case
 styleSheet = '''
@@ -114,9 +114,9 @@ QLabel
 }
 '''
 def onMayaDroppedPythonFile(*args):
-    print ('onMayaDroppedPythonFile')
     module_maker().install()
     installer().install()
+    print ('done')
 
 class module_maker():
     def __init__(self):
@@ -315,7 +315,7 @@ class installer():
 
 class ResultWindow(BaseDialog):
     def __init__(self):
-        super(ResultWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
+        super(ResultWindow, self).__init__(parent=getMainWindow())
 
         self.titleText.setText('tbAnimTools')
         self.titleText.setStyleSheet("font-weight: bold; font-size: 18px;")
@@ -357,7 +357,7 @@ class ResultWindow(BaseDialog):
         openHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
         openOptionsWindowLabel.setStyleSheet(labelStyleSheet)
         openCustomHotkeyWindowLabel.setStyleSheet(labelStyleSheet)
-        self.setFixedSize(self.sizeHint().width()+36, self.sizeHint().height()+36)
+        self.setFixedSize(self.sizeHint().width()+(36* dpiScale()), self.sizeHint().height()+(36*dpiScale()))
 
 
     def openHotkeyWindow(self, *args):

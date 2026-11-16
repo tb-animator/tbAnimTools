@@ -48,8 +48,6 @@ import datetime
 import maya.OpenMayaUI as omUI
 
 def onMayaDroppedPythonFile(*args):
-    print(args)
-    print(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
     cls = tbAnimToolsInstaller()
     cls.show()
 
@@ -104,11 +102,14 @@ QPushButton:hover
     border: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #ffa02f, stop: 1 #d7801a);
 }
 '''
-
+def getMainWindow():
+    if not cmds.about(batch=True):
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    return None
 class tbAnimToolsInstaller(QDialog):
     oldPos = None
 
-    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
+    def __init__(self, parent=getMainWindow()):
         super(tbAnimToolsInstaller, self).__init__(parent=parent)
         self.datUrl = 'https://api.github.com/repos/tb-animator/tbAnimTools'
         self.master_url = 'https://raw.githubusercontent.com/tb-animator/tbtools/master/'

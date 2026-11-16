@@ -33,6 +33,7 @@ from tb_mainUtility import *
 import tbtoolsUpdater as upd
 import os
 
+
 class initialise(object):
     def check_for_updates(self):
         if not get_option_var('tbUpdateType', -1) == 2:
@@ -75,16 +76,16 @@ class initialise(object):
         if set_default_values():
             set_option_var('tb_firstRun', 0)
 
-        mutils.executeDeferred('import tb_mainMenu as tb_menu;tb_menu.make_ui()')
+        mutils.executeDeferred('import tb_mainMenu as tb_menu;tb_menu.make_ui()', lp=True)
 
-        mutils.executeDeferred('from pluginLookup import ClassFinder')
+        mutils.executeDeferred('from pluginLookup import ClassFinder', lp=True)
 
         # camera pivot update
-        mutils.executeDeferred('import maya.mel as mel')
+        mutils.executeDeferred('import maya.mel as mel', lp=True)
 
-        mutils.executeDeferred('import maya.mel as mel; mel.eval("createToolbar")')
+        # mutils.executeDeferred('import maya.mel as mel; mel.eval("createToolbar")', lp=True)
 
-        mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")')
+        mutils.executeDeferred('import maya.mel as mel; mel.eval("createCameraPivotScriptJob")', lp=True)
 
 
 

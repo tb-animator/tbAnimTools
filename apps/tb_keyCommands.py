@@ -22,7 +22,7 @@
 
 *******************************************************************************
 '''
-from tb_UI import *
+from apps.tb_UI import *
 # TODO - make add to shelf button
 # TODO - add images and overlay labels to commands
 # TODO - add copy to clipboard for command/figure out drag drop to marking menu editor
@@ -62,14 +62,11 @@ class tbToolLoader(object):
         return tbToolLoader.__instance
 
     def loadAllCommands(self):
-        # print ('loadedClasses hotkeys', self.classLookup.loadedClasses['hotkeys'])
         self.allCommands = list()
         self.instantiateHotkeyClasses()
         self.getHotkeyCommandsFromLoadedClasses()
         self.allCommandNames = [command.name for command in self.allCommands]
         self.allCategories = list(set([command.category for command in self.allCommands]))
-        # print ('allCommands', self.allCommands)
-        # print ('allCategories', self.allCategories)
         self.getExistingCommands()
         self.updateCommands()
         self.removeBadCommands()
@@ -190,7 +187,9 @@ class tbToolLoader(object):
 
 
 def getMainWindow():
-    return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    if not cmds.about(batch=True):
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
+    return None
 
 
 class SearchProxyModelPyside2(QSortFilterProxyModel):
@@ -325,8 +324,8 @@ class mainHotkeyWindow(QMainWindow):
         self.toolTypeScrollArea.setWidgetResizable(True)
         self.toolTypeScrollArea.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.MinimumExpanding)
 
-        self.toolTypeScrollArea.setFixedWidth(320)
-        self.filterLineEdit.setFixedWidth(320)
+        self.toolTypeScrollArea.setFixedWidth(320 * dpiScale())
+        self.filterLineEdit.setFixedWidth(320 * dpiScale())
         self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.optionUIScrollArea = QScrollArea()
@@ -375,11 +374,13 @@ class mainHotkeyWindow(QMainWindow):
     def itemClicked(self, index):
         index = self.treeView.selectedIndexes()[0]
         item = self.model.itemFromIndex(self.proxyModel.mapToSource(index))
-        print (item.text())
-        print (item.comnmandName)
+
+        if item.comnmandName is None:
+            return
         if item.comnmandName + 'NameCommand' in self.commandData.keys():
             commandWidget = CommandHelpWidget(item.text(), cls=self)
             self.optionUIScrollArea.setWidget(commandWidget)
+            print(item.comnmandName)
         # self.toolOptionStack.setCurrentIndex(index)
 
     def applyToSelected(self):

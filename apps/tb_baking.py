@@ -26,7 +26,6 @@ from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
 
-
 assetCommandName = 'tempControlCommand'
 
 
@@ -193,7 +192,7 @@ class hotkeys(hotKeyAbstractFactory):
         self.addCommand(self.tb_hkey(name='bakeToLocatorRotation',
                                      annotation='constrain to object to locator - rotate only',
                                      category=self.category,
-                                     command=['BakeTools.bake_to_locator(constrain=True, orientOnly=True)'],
+                                     command=['BakeTools.bake_to_locator_rotation(constrain=True)'],
                                      help=maya.stringTable['tbCommand.bakeToLocatorRotation']))
         self.addCommand(self.tb_hkey(name='worldOffsetSelection',
                                      annotation='worldOffsetSelection',
@@ -205,6 +204,12 @@ class hotkeys(hotKeyAbstractFactory):
                                      category=self.category,
                                      command=['BakeTools.worldOffsetSelectionRotation()'],
                                      help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+        self.addCommand(self.tb_hkey(name='worldOffsetSelectionAtObject',
+                                     annotation='worldOffsetSelection',
+                                     category=self.category,
+                                     command=['BakeTools.worldOffsetSelectionAtObject()'],
+                                     help=maya.stringTable['tbCommand.worldOffsetSelectionRotation']))
+
         self.addCommand(self.tb_hkey(name='resampleSelectedLayer',
                                      annotation='worldOffsetSelection',
                                      category=self.category,
@@ -571,16 +576,23 @@ class BakeTools(toolAbstractFactory):
                         for cnt, loc in zip(sel, locs):
                             skipT = self.funcs.getAvailableTranslates(cnt)
                             skipR = self.funcs.getAvailableRotates(cnt)
-                            constraint = cmds.parentConstraint(loc, cnt, skipTranslate={True: ('x', 'y', 'z'),
-                                                                                        False: [x.split('translate')[-1]
-                                                                                                for x in
-                                                                                                skipT]}[
-                                orientOnly],
-                                                               skipRotate=[x.split('rotate')[-1] for x in skipR])
-                            cmds.container(asset, edit=True,
-                                           includeHierarchyBelow=True,
-                                           force=True,
-                                           addNode=constraint)
+                            skipTranslate = {True: ('x', 'y', 'z'),
+                                             False: [x.split('translate')[-1]
+                                                     for x in
+                                                     skipT]}[orientOnly]
+                            skipRotate = [x.split('rotate')[-1] for x in skipR]
+                            constraint = cmds.parentConstraint(loc,
+                                                               cnt,
+                                                               skipTranslate=skipTranslate,
+                                                               skipRotate=skipRotate)
+                            # common cleanup functions for temp controls
+                            self.clearUnneededAttributes(loc)
+                            self.postCreateTempControl(loc, minTime=keyRange[0])
+                            self.funcs.simplifyEnumKeys(loc)
+                            # cmds.container(asset, edit=True,
+                            #                includeHierarchyBelow=True,
+                            #                force=True,
+                            #                addNode=constraint)
                 if get_option_var(self.tbTempControlMotionTrailOption, False):
                     if not skipMotionTrails:
                         for l in locs:
@@ -592,6 +604,132 @@ class BakeTools(toolAbstractFactory):
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
+
+    def bake_to_locator_rotation(self, sel=list(), constrain=False, select=True, skipMotionTrails=False):
+        if not sel:
+            sel = cmds.ls(sl=True)
+
+        # swap non transform nodes for their parent
+        for index, s in enumerate([str(s) for s in sel]):
+            if cmds.nodeType(str(s)) == 'transform':
+                continue
+            if cmds.nodeType(str(s)) == 'joint':
+                continue
+            if cmds.listRelatives(str(s), parent=True):
+                p = cmds.listRelatives(str(s), parent=True)
+                sel[index] = p
+            else:
+                sel[index] = None
+        sel = self.funcs.flattenList([s for s in sel if s])
+
+        locs = []
+        constraints = []
+
+        pickMatrixes = dict()
+        composeMatrixes = dict()
+        multMatrixes = dict()
+
+        with self.funcs.suspendUpdate():
+            try:
+                if sel:
+                    for s in sel:
+                        # loc = self.funcs.tempLocator(name=s, suffix='baked')
+                        ns = self.funcs.namespace(s)
+                        if not cmds.objExists(ns + self.assetName):
+                            self.createAsset(ns + self.assetName, imageName=None)
+                        asset = ns + self.assetName
+                        loc = self.funcs.tempControl(name=s, suffix='baked', drawType='orb',
+                                                     scale=get_option_var(self.tbBakeLocatorSizeOption, 1))
+
+                        # TODO - set this to an actual value
+                        # cmds.setAttr(loc + '.rotateOrder')
+                        cmds.addAttr(loc, ln=self.constraintTargetAttr, at='message')
+                        cmds.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
+
+                        const = cmds.parentConstraint(str(s), str(loc))
+
+                        pickMatrix = cmds.createNode('pickMatrix')
+                        composeMatrix = cmds.createNode('composeMatrix', name='rotationBakedComposeMatrix')
+                        multMatrix = cmds.createNode('multMatrix', name='rotationBakedMultMatrix')
+                        cmds.setAttr(pickMatrix + '.useScale', False)
+                        cmds.setAttr(pickMatrix + '.useRotate', False)
+                        cmds.setAttr(pickMatrix + '.useShear', False)
+
+                        cmds.connectAttr(s + '.parentMatrix', pickMatrix + '.inputMatrix')
+                        cmds.connectAttr(composeMatrix + '.outputMatrix', loc + '.offsetParentMatrix')
+
+                        cmds.connectAttr(pickMatrix + '.outputMatrix', multMatrix + '.matrixIn[0]')
+                        cmds.connectAttr(composeMatrix + '.outputMatrix', multMatrix + '.matrixIn[1]')
+
+                        cmds.connectAttr(multMatrix + '.matrixSum', loc + '.offsetParentMatrix', force=True)
+
+                        pickMatrixes[s] = pickMatrix
+                        composeMatrixes[s] = composeMatrix
+                        multMatrixes[s] = multMatrix
+
+                        locs.append(loc)
+                        constraints.append(const[0])
+                        cmds.container(asset, edit=True,
+                                       includeHierarchyBelow=True,
+                                       force=True,
+                                       addNode=loc)
+
+                if locs:
+                    preContainers = set(cmds.ls(type='container'))
+                    keyRange = self.funcs.getBestTimelineRangeForBake()
+                    self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
+                                   simulation=True,
+                                   slow=False)
+
+                    self.removeContainersPostBake(preContainers)
+                    if constrain:
+                        for c in constraints:
+                            if cmds.objExists(c):
+                                cmds.delete(c)
+                        for cnt, loc in zip(sel, locs):
+                            skipR = self.funcs.getAvailableRotates(cnt)
+                            constraint = cmds.parentConstraint(loc, cnt, skipTranslate=('x', 'y', 'z'),
+                                                               skipRotate=[x.split('rotate')[-1] for x in skipR])
+
+                            for a in ['X', 'Y', 'Z']:
+                                conns = cmds.listConnections(loc + '.translate' + a, source=True, destination=False,
+                                                             plugs=True)[0]
+                                cmds.disconnectAttr(conns, loc + '.translate' + a)
+                                cmds.connectAttr(conns, composeMatrixes[cnt] + '.inputTranslate.inputTranslate' + a)
+                            cmds.setAttr(loc + '.translate', 0, 0, 0)
+
+                            self.clearUnneededAttributes(loc)
+                            self.postCreateTempControl(loc, cutTranslate=True, minTime=keyRange[0])
+
+                            cmds.container(asset, edit=True,
+                                           includeHierarchyBelow=True,
+                                           force=True,
+                                           addNode=constraint)
+
+                if get_option_var(self.tbTempControlMotionTrailOption, False):
+                    if not skipMotionTrails:
+                        for l in locs:
+                            cmds.select(str(l), replace=True)
+                            mel.eval('createMotionTrail')
+                if select:
+                    cmds.select(locs, replace=True)
+                return locs
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
+
+    def postCreateTempControl(self, loc, cutTranslate=False, minTime=None):
+        if cutTranslate:
+            cmds.cutKey(loc + '.translate', clear=True)
+            cmds.setAttr(loc + '.translate', 0, 0, 0)
+        if not cmds.attributeQuery('drawScale', node=loc, exists=True):
+            return
+        drawScale = cmds.getAttr(loc + '.drawScale')
+        cmds.cutKey(loc + '.drawScale')
+        cmds.setAttr(loc + '.drawScale', drawScale)
+        if minTime is not None:
+            cmds.setKeyframe(loc + '.rotateOrder', time=minTime)
+        self.restoreSelectedControls(None, loc)
 
     def bake_to_locator_pinned(self, sel=list(), constrain=False, orientOnly=False, select=True,
                                skipMotionTrails=False):
@@ -612,6 +750,8 @@ class BakeTools(toolAbstractFactory):
             return
         controls = sel[:-1]
         target = sel[-1]
+        composeMatrices = dict()
+        tempControls = dict()
 
         with self.funcs.suspendUpdate():
             try:
@@ -633,10 +773,17 @@ class BakeTools(toolAbstractFactory):
 
                     loc = self.funcs.tempControl(name=s, suffix='baked', drawType='cross',
                                                  scale=get_option_var(self.tbBakeLocatorSizeOption, 1))
+                    tempControls[s] = loc
                     cmds.parent(loc, parentNode)
                     cmds.addAttr(loc, ln=self.constraintTargetAttr, at='message')
                     cmds.connectAttr(s + '.message', loc + '.' + self.constraintTargetAttr)
                     const = cmds.parentConstraint(s, loc)[0]
+
+                    if int(cmds.about(majorVersion=True)) >= 2020:
+                        composeMatrix = cmds.createNode('composeMatrix', name='pinnedComposeMatrix')
+                        cmds.connectAttr(composeMatrix + '.outputMatrix', loc + '.offsetParentMatrix')
+                        composeMatrices[s] = composeMatrix
+
                     locs.append(loc)
                     constraints.append(const)
                     cmds.container(asset, edit=True,
@@ -650,6 +797,28 @@ class BakeTools(toolAbstractFactory):
                     self.quickBake(locs, startTime=keyRange[0], endTime=keyRange[1], deleteConstraints=True,
                                    simulation=True,
                                    slow=False)
+                    # take the input translates and rotates on the temp control and offset them to the offset
+                    # parent matrix
+                    if int(cmds.about(majorVersion=True)) >= 2020:
+                        for key, loc in tempControls.items():
+                            # TODO - decide how to enable this as it might be a little annoying as the default
+                            # for attr in ['Translate', 'Rotate']:
+                            #     for a in ['X', 'Y', 'Z']:
+                            #
+                            #         print (o + '.' + attr.lower() + a)
+                            #
+                            #         conns = cmds.listConnections(o + '.' + attr.lower() + a,
+                            #                                      source=True,
+                            #                                      destination=False,
+                            #                                      plugs=True)[0]
+                            #         cmds.disconnectAttr(conns, o + '.' + attr.lower() + a)
+                            #         cmds.connectAttr(conns,
+                            #                          composeMatrices[key] + '.input%s.input%s' % (attr, attr) + a)
+                            #         cmds.setAttr(o + '.' + attr.lower() + a, 0)
+                            self.clearUnneededAttributes(loc)
+                            self.funcs.simplifyEnumKeys(loc)
+
+                            # cmds.setAttr(composeMatrices[key] + '.inputRotateOrder', cmds.getAttr(o + '.rotateOrder'))
                     '''
                     cmds.bakeResults(locs,
                                    simulation=get_option_var(self.quickBakeSimOption, False),
@@ -692,11 +861,20 @@ class BakeTools(toolAbstractFactory):
                 '''
                 if select:
                     cmds.select(locs, replace=True)
+                for loc in locs:
+                    self.postCreateTempControl(loc, minTime=keyRange[0])
                 return locs
 
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
+
+    def clearUnneededAttributes(self, o):
+        self.funcs.cbDeleteConnection("%s.sx" % o)
+        self.funcs.cbDeleteConnection("%s.sy" % o)
+        self.funcs.cbDeleteConnection("%s.sz" % o)
+        self.funcs.cbDeleteConnection("%s.v" % o)
+        self.funcs.cbDeleteConnection("%s.drawScale" % o)
 
     def bakeSelectedHotkey(self):
         sel = cmds.ls(sl=True)
@@ -738,26 +916,6 @@ class BakeTools(toolAbstractFactory):
         asset = cmds.container(query=True, findContainer=sel[0])
 
         # check asset message attribute
-
-        cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label='Bake selected temp controls to layer',
-                      command=create_callback(self.bakeSelectedCommand, asset, sel))
-        cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label='Delete selected temp controls',
-                      command=create_callback(self.deleteSelectedControlsCommand, asset, sel))
-        cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
-        cmds.menuItem(divider=True)
-
-    def assetRmbCommand(self):
-        panel = cmds.getPanel(underPointer=True)
-        parentMMenu = panel + 'ObjectPop'
-        cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
-        sel = cmds.ls(sl=True)
-        asset = cmds.container(query=True, findContainer=sel[0])
-
-        # check asset message attribute
         # print ("asset", asset, sel)
 
         cmds.menuItem(label='Bake Tools', enable=False, boldFont=True, image='container.svg')
@@ -765,6 +923,16 @@ class BakeTools(toolAbstractFactory):
         cmds.menuItem(label='Bake selected temp controls to layer',
                       command=create_callback(self.bakeSelectedCommand, asset, sel))
         cmds.menuItem(label='Bake all temp controls to layer', command=create_callback(self.bakeAllCommand, asset, sel))
+        cmds.menuItem(divider=True)
+        # TODO - hook this up to store/restore
+        cmds.menuItem(label='Store DrawScale',
+                      command=create_callback(self.storeSelectedControls, asset, sel))
+        cmds.menuItem(label='Restore DrawScale',
+                      command=create_callback(self.restoreSelectedControls, asset, sel))
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label='Delete selected temp controls',
+                      command=create_callback(self.deleteSelectedControlsCommand, asset, sel))
+
         # cmds.menuItem(label='Bake out to layer', command=create_callback(self.bakeOutCommand, asset))
         cmds.menuItem(label='Delete all temp controls', command=create_callback(self.deleteControlsCommand, asset, sel))
         cmds.menuItem(divider=True)
@@ -784,6 +952,20 @@ class BakeTools(toolAbstractFactory):
                 lockedRotates.append(attr.lower())
 
         return lockedTranslates, lockedRotates
+
+    def restoreSelectedControls(self, asset, sel, *args):
+        print('restoreSelecteddControls', sel)
+        if not isinstance(sel, list):
+            sel = [sel]
+        for s in sel:
+            self.funcs.restoreTempControlSettings(s)
+
+    def storeSelectedControls(self, asset, sel, *args):
+        print('storeSelecteddControls', sel)
+        if not isinstance(sel, list):
+            sel = [sel]
+        for s in sel:
+            self.funcs.storeTempControlSettings(s)
 
     def bakeSelectedCommand(self, asset, sel, *args):
         if not isinstance(asset, list):
@@ -805,7 +987,10 @@ class BakeTools(toolAbstractFactory):
         # print ('filteredTargets', filteredTargets)
 
         self.bake_to_override(sel=filteredTargets)
-        cmds.delete(tempControls)
+        cmds.refresh()
+        for t in tempControls:
+            if not cmds.objExists(t): continue
+            cmds.delete(t)
 
     def bakeAllCommand(self, asset, sel, *args):
         nodes = cmds.ls(cmds.container(asset, query=True, nodeList=True), transforms=True)
@@ -906,10 +1091,18 @@ class BakeTools(toolAbstractFactory):
         colour = {True: self.overrideLayerColour, False: self.additiveLayerColour}
 
         newAnimLayer = cmds.animLayer(suffixStr,
-                                    override=override,
-                                    addSelectedObjects=True,
-                                    passthrough=True,
-                                    lock=False)
+                                      override=override,
+                                      addSelectedObjects=False,
+                                      passthrough=True,
+                                      lock=False)
+
+        sel = cmds.ls(sl=True)
+        if sel:
+            for s in sel:
+                channels = self.funcs.get_keyable_channels(s)
+                if channels:
+                    for c in channels:
+                        cmds.animLayer(newAnimLayer, edit=True, attribute=c)
 
         cmds.setAttr(newAnimLayer + '.ghostColor', colour[override])
         cmds.setAttr(newAnimLayer + '.scaleAccumulationMode', not override)
@@ -1120,7 +1313,6 @@ class BakeTools(toolAbstractFactory):
         cmds.animLayer(resultLayer, edit=True, override=False)
 
     def additiveExtractSelection(self):
-        print('additiveExtractSelection')
 
         sel = cmds.ls(sl=True)
         if sel:
@@ -1290,12 +1482,11 @@ class BakeTools(toolAbstractFactory):
         :param nodes:
         :return:
         """
-        print('additiveExtract', nodes)
         overrideLayer = cmds.animLayer('AdditiveBase', override=True)
-        keyRange = self.funcs.getBestTimelineRangeForBake()
-        print('key range', keyRange)
+        timelineKeyRange = self.funcs.getBestTimelineRangeForBake()
+
         cmds.bakeResults(nodes,
-                         time=(keyRange[0], keyRange[-1]),
+                         time=(timelineKeyRange[0], timelineKeyRange[-1]),
                          destinationLayer=overrideLayer,
                          simulation=False,
                          sampleBy=1,
@@ -1388,13 +1579,13 @@ class BakeTools(toolAbstractFactory):
 
             adjustedCurve.addKeys(overrideMTimeArray,
                                   overrideValues[key],
-                                  oma2.MFnAnimCurve.kTangentGlobal,
-                                  oma2.MFnAnimCurve.kTangentGlobal)
+                                  oma2.MFnAnimCurve.kTangentLinear,
+                                  oma2.MFnAnimCurve.kTangentLinear)
             dg.doIt()
             # layeredPlugs.append(layerPlug)
             # basePlugs.append(basePlug)
         # self.overrideLayerEnumFixup(additiveLayer, keyTimes[0].value)
-        self.funcs.bookEndLayerWeight(str(additiveLayer), keyRange[0], keyRange[-1])
+        self.funcs.bookEndLayerWeight(str(overrideLayer), timelineKeyRange[0], timelineKeyRange[-1])
 
     def getLayerNodesAndConstraints(self):
         allLayers = cmds.ls(type='animLayer')
@@ -1514,7 +1705,7 @@ class BakeTools(toolAbstractFactory):
                                      time=(keyRange[0], keyRange[-1]),
                                      # destinationLayer=rootLayer,
                                      simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
-                                                                                    10),
+                                                                                10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1532,7 +1723,7 @@ class BakeTools(toolAbstractFactory):
                                      time=(keyRange[0], keyRange[-1]),
                                      destinationLayer=resultLayer,
                                      simulation=len(selection) > get_option_var(self.tbBakeSimObjectCountOption,
-                                                                                    10),
+                                                                                10),
                                      sampleBy=1,
                                      oversamplingRate=1,
                                      disableImplicitControl=True,
@@ -1566,17 +1757,18 @@ class BakeTools(toolAbstractFactory):
             return
         with self.funcs.suspendUpdate():
             try:
-                self.worldOffset(sel, rotationOnly=True)
+                self.worldOffsetRotation(sel)
             except Exception:
                 cmds.warning(traceback.format_exc())
                 self.funcs.resumeSkinning()
 
-    def worldOffset(self, sel, rotationOnly=False):
+    def worldOffset(self, sel):
         """
         :return:
         """
         if not sel:
             return list()
+        print('hey hey look at me')
 
         rotationRoots = dict()
         rotateAnimNodes = dict()
@@ -1593,7 +1785,7 @@ class BakeTools(toolAbstractFactory):
                                                           suffix='localOffset',
                                                           drawType='diamond',
                                                           scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
-                                                                                   0.5))
+                                                                               0.5))
 
             self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
             self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
@@ -1642,24 +1834,349 @@ class BakeTools(toolAbstractFactory):
         for c in bakeTargets:
             cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
                              filter='euler')
-        cmds.delete(tempConstraints)
+        # disconnect anim curves and connect them to the offset parent matrix
         if int(cmds.about(majorVersion=True)) >= 2020:
-            for o in rotationRoots.values():
+            for s in sel:
+                rotationRoot = rotationRoots[s]
+                rotateRoot = rotateAnimNodes[s]
+                rotateOffset = rotateAnimOffsetNodes[s]
+
                 composeMatrix = cmds.createNode('composeMatrix')
-                for a in ['X', 'Y', 'Z']:
-                    conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
-                                                 plugs=True)[0]
-                    cmds.disconnectAttr(conns, o + '.translate' + a)
-                    cmds.connectAttr(conns, composeMatrix + '.inputTranslate.inputTranslate' + a)
-                cmds.connectAttr(composeMatrix + '.outputMatrix', o + '.offsetParentMatrix')
-                cmds.setAttr(o + '.translate', 0, 0, 0)
+                cmds.connectAttr(composeMatrix + '.outputMatrix', rotateOffset + '.offsetParentMatrix')
+
+                for attr in ['Translate', 'Rotate']:
+                    for a in ['X', 'Y', 'Z']:
+                        print(rotateOffset + '.' + attr.lower() + a)
+
+                        conns = cmds.listConnections(rotateRoot + '.' + attr.lower() + a,
+                                                     source=True,
+                                                     destination=False,
+                                                     plugs=True)[0]
+                        cmds.disconnectAttr(conns, rotateRoot + '.' + attr.lower() + a)
+                        cmds.connectAttr(conns,
+                                         composeMatrix + '.input%s.input%s' % (attr, attr) + a)
+
+                cmds.setAttr(composeMatrix + '.inputRotateOrder', cmds.getAttr(rotateRoot + '.rotateOrder'))
+                cmds.parent(rotateOffset, rotationRoot)
+                cmds.delete(rotateRoot)
+                cmds.setAttr(rotateOffset + '.rotate', 0, 0, 0)
+                cmds.setAttr(rotateOffset + '.translate', 0, 0, 0)
+        for x in tempConstraints:
+            if not cmds.objExists(x):
+                continue
+            cmds.delete(x)
 
         channels = self.funcs.getChannels()
         for s in sel:
             self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s,
-                                            orientOnly=rotationOnly,
+                                            orientOnly=False,
                                             maintainOffset=False,
                                             channels=channels)
+
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
+            self.clearUnneededAttributes(root)
+            self.clearUnneededAttributes(anim)
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
+
+        cmds.select(list(rotationRoots.values()), replace=True)
+
+    def worldOffsetSelectionAtObject(self):
+        sel = cmds.ls(sl=True, type='transform')
+        if not sel:
+            return cmds.warning('Select at least 2 controls')
+        if not len(sel) > 1:
+            return cmds.warning('Select at least 2 controls')
+        with self.funcs.suspendUpdate():
+            try:
+                self.worldOffsetAtObject(sel)
+            except Exception:
+                cmds.warning(traceback.format_exc())
+                self.funcs.resumeSkinning()
+
+    def worldOffsetAtObject(self, sel):
+        """
+        :return:
+        """
+        if not sel:
+            return list()
+        if not len(sel) > 1:
+            return cmds.warning('Select at least 2 controls')
+
+        pivotControl = sel[-1]
+        constrainedConstrols = sel[:-1]
+
+        rotationRoots = dict()
+        rotateAnimNodes = dict()
+        rotateAnimOffsetNodes = dict()
+
+        tempConstraints = list()
+
+        rotationRoot = self.funcs.tempControl(name=pivotControl,
+                                              suffix='worldOffset',
+                                              drawType='orb',
+                                              scale=get_option_var(self.tbBakeWorldOffsetSizeOption, 0.5))
+        rotateAnimNode = self.funcs.tempNull(name=pivotControl, suffix='RotateBaked')
+        rotateAnimOffsetNode = self.funcs.tempControl(name=pivotControl,
+                                                      suffix='localOffset',
+                                                      drawType='diamond',
+                                                      scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
+                                                                           0.5))
+
+        self.funcs.getSetColour(pivotControl, rotationRoot, brightnessOffset=-0.5)
+        self.funcs.getSetColour(pivotControl, rotateAnimOffsetNode, brightnessOffset=0.5)
+
+        cmds.parent(rotateAnimNode, rotationRoot)
+        cmds.parent(rotateAnimOffsetNode, rotateAnimNode)
+
+        tempConstraints.append(cmds.pointConstraint(pivotControl, rotationRoot)[0])
+        tempConstraints.append(cmds.parentConstraint(pivotControl, rotateAnimNode)[0])
+
+        rotationRoots[pivotControl] = rotationRoot
+        rotateAnimNodes[pivotControl] = rotateAnimNode
+        rotateAnimOffsetNodes[pivotControl] = rotateAnimOffsetNode
+        ns = pivotControl.rsplit(':', 1)[0]
+
+        if not cmds.objExists(ns + self.worldOffsetAssetName):
+            self.createAsset(ns + self.worldOffsetAssetName, imageName=None)
+
+        asset = ns + self.worldOffsetAssetName
+
+        cmds.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
+        cmds.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
+
+        constrainedNulls = dict()
+
+        for s in constrainedConstrols:
+            constrainedNull = self.funcs.tempNull(name=s, suffix='constrained')
+            constrainedNulls[s] = constrainedNull
+            cmds.parentConstraint(s, constrainedNull)
+            cmds.parent(constrainedNull, rotateAnimOffsetNode)
+            if not cmds.attributeQuery(self.constraintTargetAttr, node=s, exists=True):
+                cmds.addAttr(s, ln=self.constraintTargetAttr, at='message')
+            cmds.connectAttr(rotationRoot + '.' + self.constraintTargetAttr, s + '.' + self.constraintTargetAttr)
+
+        cmds.container(asset, edit=True,
+                       includeHierarchyBelow=True,
+                       force=True,
+                       addNode=rotationRoot)
+        bakeTargets = list(rotationRoots.values()) + \
+                      list(rotateAnimNodes.values()) + \
+                      list(constrainedNulls.values())
+
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+        cmds.bakeResults(bakeTargets,
+                         time=(keyRange[0], keyRange[1]),
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=False,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+        for c in bakeTargets:
+            cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
+                             filter='euler')
+        # disconnect anim curves and connect them to the offset parent matrix
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            rotationRoot = rotationRoots[pivotControl]
+            rotateRoot = rotateAnimNodes[pivotControl]
+            rotateOffset = rotateAnimOffsetNodes[pivotControl]
+
+            composeMatrix = cmds.createNode('composeMatrix')
+            cmds.connectAttr(composeMatrix + '.outputMatrix', rotateOffset + '.offsetParentMatrix')
+
+            for attr in ['Translate', 'Rotate']:
+                for a in ['X', 'Y', 'Z']:
+                    print(rotateOffset + '.' + attr.lower() + a)
+
+                    conns = cmds.listConnections(rotateRoot + '.' + attr.lower() + a,
+                                                 source=True,
+                                                 destination=False,
+                                                 plugs=True)[0]
+                    cmds.disconnectAttr(conns, rotateRoot + '.' + attr.lower() + a)
+                    cmds.connectAttr(conns,
+                                     composeMatrix + '.input%s.input%s' % (attr, attr) + a)
+
+            cmds.setAttr(composeMatrix + '.inputRotateOrder', cmds.getAttr(rotateRoot + '.rotateOrder'))
+            cmds.parent(rotateOffset, rotationRoot)
+            cmds.delete(rotateRoot)
+            cmds.setAttr(rotateOffset + '.rotate', 0, 0, 0)
+            cmds.setAttr(rotateOffset + '.translate', 0, 0, 0)
+        for x in tempConstraints:
+            if not cmds.objExists(x):
+                continue
+            cmds.delete(x)
+
+        channels = self.funcs.getChannels()
+        for s in constrainedConstrols:
+            self.funcs.safeParentConstraint(constrainedNulls[s], s,
+                                            orientOnly=False,
+                                            maintainOffset=False,
+                                            channels=channels)
+
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
+            self.clearUnneededAttributes(root)
+            self.clearUnneededAttributes(anim)
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
+
+        cmds.select(list(rotationRoots.values()), replace=True)
+
+    def worldOffsetRotation(self, sel):
+        """
+        :return:
+        """
+        if not sel:
+            return list()
+        print('hey hey look at me')
+
+        rotationRoots = dict()
+        rotateAnimNodes = dict()
+        rotateAnimOffsetNodes = dict()
+
+        tempConstraints = list()
+        for s in sel:
+            rotationRoot = self.funcs.tempControl(name=s,
+                                                  suffix='worldOffset',
+                                                  drawType='orb',
+                                                  scale=get_option_var(self.tbBakeWorldOffsetSizeOption, 0.5))
+            rotateAnimNode = self.funcs.tempNull(name=s, suffix='RotateBaked')
+            rotateAnimOffsetNode = self.funcs.tempControl(name=s,
+                                                          suffix='localOffset',
+                                                          drawType='diamond',
+                                                          scale=get_option_var(self.tbBakeWorldOffsetSizeOption,
+                                                                               0.5))
+
+            self.funcs.getSetColour(s, rotationRoot, brightnessOffset=-0.5)
+            self.funcs.getSetColour(s, rotateAnimOffsetNode, brightnessOffset=0.5)
+
+            cmds.parent(rotateAnimNode, rotationRoot)
+            cmds.parent(rotateAnimOffsetNode, rotateAnimNode)
+
+            tempConstraints.append(cmds.pointConstraint(s, rotationRoot)[0])
+            tempConstraints.append(cmds.parentConstraint(s, rotateAnimNode)[0])
+
+            rotationRoots[s] = rotationRoot
+            rotateAnimNodes[s] = rotateAnimNode
+            rotateAnimOffsetNodes[s] = rotateAnimOffsetNode
+            ns = s.rsplit(':', 1)[0]
+            if not cmds.objExists(ns + self.worldOffsetAssetName):
+                self.createAsset(ns + self.worldOffsetAssetName, imageName=None)
+            asset = ns + self.worldOffsetAssetName
+
+            cmds.addAttr(rotationRoot, ln=self.constraintTargetAttr, at='message')
+            cmds.addAttr(rotateAnimNode, ln=self.constraintTargetAttr, at='message')
+            cmds.addAttr(rotateAnimOffsetNode, ln=self.constraintTargetAttr, at='message')
+            cmds.connectAttr(s + '.message', rotationRoot + '.' + self.constraintTargetAttr)
+            cmds.connectAttr(s + '.message', rotateAnimNode + '.' + self.constraintTargetAttr)
+            cmds.connectAttr(s + '.message', rotateAnimOffsetNode + '.' + self.constraintTargetAttr)
+            cmds.container(asset, edit=True,
+                           includeHierarchyBelow=True,
+                           force=True,
+                           addNode=rotationRoot)
+        pickMatrixes = dict()
+        composeMatrixes = dict()
+        multMatrixes = dict()
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            for key, o in rotationRoots.items():
+                pickMatrix = cmds.createNode('pickMatrix')
+                composeMatrix = cmds.createNode('composeMatrix', name='worldOffsetComposeMatrix')
+                multMatrix = cmds.createNode('multMatrix', name='worldOffsetMultMatrix')
+                cmds.setAttr(pickMatrix + '.useScale', False)
+                cmds.setAttr(pickMatrix + '.useRotate', False)
+                cmds.setAttr(pickMatrix + '.useShear', False)
+
+                cmds.connectAttr(key + '.parentMatrix', pickMatrix + '.inputMatrix')
+                cmds.connectAttr(composeMatrix + '.outputMatrix', o + '.offsetParentMatrix')
+
+                cmds.connectAttr(pickMatrix + '.outputMatrix', multMatrix + '.matrixIn[0]')
+                cmds.connectAttr(composeMatrix + '.outputMatrix', multMatrix + '.matrixIn[1]')
+
+                cmds.connectAttr(multMatrix + '.matrixSum', o + '.offsetParentMatrix', force=True)
+
+                pickMatrixes[key] = pickMatrix
+                composeMatrixes[key] = composeMatrix
+                multMatrixes[key] = multMatrix
+
+        bakeTargets = list(rotationRoots.values()) + list(rotateAnimNodes.values())
+        keyRange = self.funcs.getBestTimelineRangeForBake()
+
+        cmds.bakeResults(bakeTargets,
+                         time=(keyRange[0], keyRange[1]),
+                         simulation=False,
+                         sampleBy=1,
+                         oversamplingRate=1,
+                         disableImplicitControl=True,
+                         preserveOutsideKeys=False,
+                         sparseAnimCurveBake=True,
+                         removeBakedAttributeFromLayer=False,
+                         removeBakedAnimFromLayer=False,
+                         bakeOnOverrideLayer=False,
+                         minimizeRotation=True,
+                         controlPoints=False,
+                         shape=False)
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            for key, o in rotationRoots.items():
+                for a in ['X', 'Y', 'Z']:
+                    conns = cmds.listConnections(o + '.translate' + a, source=True, destination=False,
+                                                 plugs=True)[0]
+                    cmds.disconnectAttr(conns, o + '.translate' + a)
+                    cmds.connectAttr(conns, composeMatrixes[key] + '.inputTranslate.inputTranslate' + a)
+                cmds.setAttr(o + '.translate', 0, 0, 0)
+
+        for c in bakeTargets:
+            cmds.filterCurve(str(c) + '.rotateX', str(c) + '.rotateY', str(c) + '.rotateZ',
+                             filter='euler')
+        # disconnect anim curves and connect them to the offset parent matrix
+        if int(cmds.about(majorVersion=True)) >= 2020:
+            for s in sel:
+                rotationRoot = rotationRoots[s]
+                rotateRoot = rotateAnimNodes[s]
+                rotateOffset = rotateAnimOffsetNodes[s]
+
+                composeMatrix = cmds.createNode('composeMatrix')
+                cmds.connectAttr(composeMatrix + '.outputMatrix', rotateOffset + '.offsetParentMatrix')
+
+                for attr in ['Translate', 'Rotate']:
+                    for a in ['X', 'Y', 'Z']:
+                        print(rotateOffset + '.' + attr.lower() + a)
+
+                        conns = cmds.listConnections(rotateRoot + '.' + attr.lower() + a,
+                                                     source=True,
+                                                     destination=False,
+                                                     plugs=True)[0]
+                        cmds.disconnectAttr(conns, rotateRoot + '.' + attr.lower() + a)
+                        cmds.connectAttr(conns,
+                                         composeMatrix + '.input%s.input%s' % (attr, attr) + a)
+
+                cmds.setAttr(composeMatrix + '.inputRotateOrder', cmds.getAttr(rotateRoot + '.rotateOrder'))
+                cmds.parent(rotateOffset, rotationRoot)
+                cmds.delete(rotateRoot)
+                cmds.setAttr(rotateOffset + '.rotate', 0, 0, 0)
+                cmds.setAttr(rotateOffset + '.translate', 0, 0, 0)
+        for x in tempConstraints:
+            if not cmds.objExists(x):
+                continue
+            cmds.delete(x)
+
+        channels = self.funcs.getChannels()
+        for s in sel:
+            self.funcs.safeParentConstraint(rotateAnimOffsetNodes[s], s,
+                                            orientOnly=True,
+                                            maintainOffset=False,
+                                            channels=channels)
+
+        for root, anim in zip(list(rotationRoots.values()), list(rotateAnimOffsetNodes.values())):
+            self.postCreateTempControl(root, minTime=keyRange[0])
+            self.postCreateTempControl(anim, minTime=keyRange[0])
+
         cmds.select(list(rotationRoots.values()), replace=True)
 
     def resampleSelectedLayer(self, sample=1):

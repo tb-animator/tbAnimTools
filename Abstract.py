@@ -4,6 +4,12 @@ import re
 import os
 import maya.cmds as cmds
 import maya.mel as mel
+
+import maya.OpenMayaUI as OpenMayaUI
+import maya.api.OpenMaya as om2
+import maya.api.OpenMayaAnim as oma2
+import maya.OpenMayaAnim as oma
+import maya.OpenMayaUI as omUI
 import json
 import textwrap
 import shutil
@@ -72,7 +78,10 @@ class hotKeyAbstractFactory(ABC):
         def collapse_command_list(self, command, help):
             lineCmds = list()
             for line in command:
-                tool, functionCalled = line.split('.')
+                if '.' not in line:
+                    cmds.warning('Bad command definition', line)
+                    continue
+                tool, functionCalled = line.split('.', 1)
                 lineCmds.append(('tbtoolCLS.tools["%s"].%s') % (tool, functionCalled))
 
             tryCmd = ['global tbtoolCLS',
@@ -165,10 +174,27 @@ class toolAbstractFactory(ABC):
 
     def initData(self):
         baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
+        if not os.path.exists(baseDataPath):
+            delete_option_var(self.mainDataOption)
+            baseDataPath = get_option_var(self.mainDataOption, os.path.normpath(os.path.dirname(__file__)))
         self.dataPath = os.path.join(baseDataPath, 'appData')
+        backupDataPath = os.path.join(os.path.normpath(os.path.dirname(__file__)), 'appData')
         if not os.path.isdir(self.dataPath):
             os.makedirs(self.dataPath)
         self.dataFile = os.path.join(self.dataPath, self.toolName + '.json')
+        self.baseDataFile = os.path.join(self.dataPath, self.toolName + 'BaseData.json')
+
+        defaultFile = os.path.join(backupDataPath, self.toolName + '.json')
+        defaultBaseFile = os.path.join(backupDataPath, self.toolName + 'BaseData.json')
+        if not os.path.isfile(self.dataFile):
+            if not os.path.isfile(self.dataFile):
+                if os.path.isfile(defaultFile):
+                    shutil.copyfile(defaultFile, self.dataFile)
+        if not os.path.isfile(self.baseDataFile):
+            if not os.path.isfile(self.baseDataFile):
+                if os.path.isfile(defaultBaseFile):
+                    shutil.copyfile(defaultBaseFile, self.baseDataFile)
+
 
     def toJson(self):
         jsonData = '''{}'''
@@ -314,6 +340,9 @@ class toolAbstractFactory(ABC):
         return list()
 
     def animLayerTabUI(self):
+        return list()
+
+    def toolBarUI(self):
         return list()
 
     def deferredLoad(self):

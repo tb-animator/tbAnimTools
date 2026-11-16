@@ -39,7 +39,7 @@ class ViewportSliderWidget(BaseDialog):
     '''
 
     def __init__(self,
-                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parent=getMainWindow(),
                  showLockButton=True, showCloseButton=False,
                  title='inbetween',
                  text='test',
@@ -149,7 +149,7 @@ class ViewportSliderWidget(BaseDialog):
 
     def show(self):
         super(ViewportSliderWidget, self).show()
-        print('showing')
+        # print('showing')
         self.resetValues()
         self.setEnabled(True)
         self.setFocus()
@@ -179,7 +179,7 @@ class ViewportSliderWidget(BaseDialog):
         qp.end()
 
     def keyPressEvent(self, event):
-        print('keyPressEvent', event.type())
+        # print('keyPressEvent', event.type())
         if event.type() == QEvent.KeyPress:
             if self.recentlyOpened:
                 if event.key() is not None:
@@ -206,7 +206,7 @@ class ViewportSliderWidget(BaseDialog):
         super(ViewportSliderWidget, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        print('keyReleaseEvent', event.type())
+        # print('keyReleaseEvent', event.type())
         if event.key() != Qt.Key_Control and event.key() != Qt.Key_Shift and event.key() != Qt.Key_Alt:
             if not self.lockState:
                 if not self.invokedKey or self.invokedKey == event.key():
@@ -318,7 +318,7 @@ class ViewportSliderWidget(BaseDialog):
         self.slider.toggleOvershoot(overshootState, self.baseSliderWidth)
         currentPos = self.pos()
         if overshootState:
-            self.setFixedWidth(self.baseWidth * 2)
+            self.setFixedWidth(self.baseWidth * (2 * dpiScale()))
             currentPos.setX(currentPos.x() - (self.baseSliderWidth * 0.5))
         else:
 

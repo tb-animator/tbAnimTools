@@ -30,6 +30,8 @@ from pluginLookup import ClassFinder
 from tb_mainUtility import *
 from callback import *
 from apps.tb_UI import *
+
+
 class main_menu(object):
     def __init__(self):
         self.main_menu = "tbAnimTools"
@@ -58,12 +60,12 @@ class main_menu(object):
         self.drawUpdateMenu()
 
         cmds.menuItem(label="Activate New Plugins", image='reloadPlugins.png', command=licenseNewPlugins,
-                    parent=self.main_menu)
+                      parent=self.main_menu)
 
         cmds.menuItem(label="Download Help Images", command=downloadHelp, parent=self.main_menu)
         cmds.menuItem(label="About", command=show_aboutWin, parent=self.main_menu)
         cmds.menuItem(label="Discord server", command=open_discord_link, parent=self.main_menu)
-        #cmds.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
+        # cmds.menuItem(label="online help - (old)", command=open_anim_page, parent=self.main_menu)
 
     def drawStoreMenu(self):
         storeMenu = cmds.menuItem(label='Store', subMenu=True, parent=self.main_menu, tearOff=True)
@@ -82,37 +84,43 @@ class main_menu(object):
 
         for c in tbtoolCLS.tools.values():
             if hasattr(c, 'productID'):
-                #print ('pro app', c.productID)
+                # print ('pro app', c.productID)
                 if c.productID not in ignoredKeys:
                     continue
                 ignoredKeys.pop(ignoredKeys.index(c.productID))
 
         for key in ignoredKeys:
-            cmds.menuItem(label=proAppList[key], command=create_callback(webbrowser.open, 'https://tb3d.gumroad.com/l/' + key), parent=storeMenu)
+            cmds.menuItem(label=proAppList[key],
+                          command=create_callback(webbrowser.open, 'https://tb3d.gumroad.com/l/' + key),
+                          parent=storeMenu)
 
     def drawUpdateMenu(self):
         updateMode = get_option_var('tbUpdateType', 0)
 
-        updateMenu = cmds.menuItem(label='Startup Update modes', subMenu=True, parent=self.main_menu)
+        updateMenu = cmds.menuItem(label='Tool updates', subMenu=True, parent=self.main_menu)
         cmds.radioMenuItemCollection()
         menu = cmds.menuItem(label="Update To Stable Releases", radioButton=updateMode == 0,
-                           command=create_callback(self.setUpdateMode, 0),
-                           parent=updateMenu)
+                             command=create_callback(self.setUpdateMode, 0),
+                             parent=updateMenu)
         self.updateMenuItems.append(menu)
         menu = cmds.menuItem(label="Update To Latest", radioButton=updateMode == 1,
-                           command=create_callback(self.setUpdateMode, 1),
-                           parent=updateMenu)
+                             command=create_callback(self.setUpdateMode, 1),
+                             parent=updateMenu)
         self.updateMenuItems.append(menu)
         menu = cmds.menuItem(label="Update Manually", radioButton=updateMode == 2,
-                           command=create_callback(self.setUpdateMode, 2), parent=updateMenu)
+                             command=create_callback(self.setUpdateMode, 2), parent=updateMenu)
         self.updateMenuItems.append(menu)
         menu = cmds.menuItem(label="Check For Updates",
-                           image='getUpdates.png',
-                           command=create_callback(self.downloadUpdate), parent=updateMenu)
+                             image='warningIcon.svg',
+                             command=create_callback(self.downloadUpdate), parent=updateMenu)
+        menu = cmds.menuItem(label="Force Reinstallation",
+                             image='getUpdates.png',
+                             sourceType='mel',
+                             command='tbAnimToolsReinstall', parent=updateMenu)
         self.updateMenuItems.append(menu)
 
     def setUpdateMode(self, mode, *args):
-        #print ('setUpdateMode', mode)
+        # print ('setUpdateMode', mode)
         set_option_var('tbUpdateType', mode)
         updateMode = get_option_var('tbUpdateType', 0)
         '''
@@ -127,20 +135,23 @@ class main_menu(object):
         updater.forceUpdate()
 
 
-
 def make_ui():
     main_menu().build_menu()
+
 
 def open_options(*args):
     optionWindow = MainOptionWindow(classFinder=ClassFinder())
     optionWindow.showUI()
 
+
 def open_hotkeys(*args):
     pLookupCLS = ClassFinder()
     import apps.tb_keyCommands as keyCommands
 
-    win = keyCommands.mainHotkeyWindow(commandData=pLookupCLS.hotkeyClass.hotkeys, commandCategories=pLookupCLS.hotkeyClass.categories)
+    win = keyCommands.mainHotkeyWindow(commandData=pLookupCLS.hotkeyClass.hotkeys,
+                                       commandCategories=pLookupCLS.hotkeyClass.categories)
     win.showUI()
+
 
 def open_discord_link(*args):
     webbrowser.open('https://discord.gg/SyUyyJb8xw')
@@ -155,7 +166,7 @@ def open_anim_page(*args):
 
 
 def licenseNewPlugins(*args):
-    #print ("Activate New Plugins")
+    # print ("Activate New Plugins")
     pLookupCLS = ClassFinder()
     pLookupCLS.installFromZipUI()
 
@@ -177,6 +188,7 @@ class about_win(object):
 
         cmds.button(label='Close', command=('cmds.deleteUI(\"' + window + '\", window=True)'), parent=layout)
         cmds.showWindow(window)
+
 
 def downloadHelp(*args):
     import tbtoolsUpdater as upd

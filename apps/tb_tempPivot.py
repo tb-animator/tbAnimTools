@@ -343,7 +343,7 @@ class TempPivot(toolAbstractFactory):
             targetList = cmds.parentConstraint(constraints[0], query=True, targetList=True)
             cmds.parentConstraint(targetList, constraints[0], edit=True, maintainOffset=True)
 
-    def savePivotsForControl(self, asset, sel):
+    def savePivotsForControl(self, asset, sel, *args):
         if not sel:
             return
         sel = [str(s) for s in sel]
@@ -383,7 +383,7 @@ class TempPivot(toolAbstractFactory):
             self.saveRigData(refname, self.loadedPivotData[refname].toJson())
 
 
-    def loadPivotsForControl(self, sel=None):
+    def loadPivotsForControl(self, sel=None, *args):
         if not sel:
             sel = cmds.ls(sl=True, type='transform')
         if not sel:
@@ -421,14 +421,14 @@ class TempPivot(toolAbstractFactory):
                 newNodes.append(tempNode)
         return newNodes
 
-    def bakeTempPivotFromSel(self, worldspace=False):
+    def bakeTempPivotFromSel(self, worldspace=False, *args):
         sel = cmds.ls(sl=True, type='transform')
         if not sel:
             return cmds.warning('no valid selection')
 
         self.createTempPivotControlFromPoint(None, sel, worldspace=worldspace)
 
-    def createTempPivotControlFromPoint(self, asset, sel, *args, worldspace=False):
+    def createTempPivotControlFromPoint(self, asset, sel, worldspace=False, *args):
         if not sel:
             return
         newNodes = list()
@@ -448,7 +448,7 @@ class TempPivot(toolAbstractFactory):
             self.bake(control, currentControl, frame, deletePoint=False, worldspace=worldspace)
 
 
-    def bakeSelectedCommand(self, asset, sel):
+    def bakeSelectedCommand(self, asset, sel, *args):
         print('sel', sel)
         targets = [x for x in sel if cmds.attributeQuery(self.constraintTargetAttr, node=x, exists=True)]
         filteredTargets = self.funcs.flattenList(
@@ -461,8 +461,14 @@ class TempPivot(toolAbstractFactory):
         keyRange = self.funcs.getBestTimelineRangeForBake(sel)
         print('bakeAllCommand', 'keyRange', keyRange)
         self.allTools.tools['BakeTools'].bake_to_override(sel=filteredTargets)
-        cmds.delete(targets)
-        cmds.select(filteredTargets, replace=True)
+        for t in targets:
+            if not cmds.objExists(t): continue
+            cmds.delete(t)
+        finalTargets = list()
+        for t in filteredTargets:
+            if not cmds.objExists(t): continue
+            finalTargets.append(t)
+        cmds.select(finalTargets, replace=True)
 
     def bakeAllCommand(self, asset, sel, *args):
         """
@@ -717,7 +723,7 @@ class TempPivot(toolAbstractFactory):
         print('transformControl', transformControl)
 
         tempNull = self.funcs.tempNull(name=tempPivotNodeName, suffix='')
-        tempNull.displayHandle.set(True)
+        cmds.setAttr(tempNull + "." + "displayHandle", True)
 
         self.funcs.getSetColour(control, tempNull, brightnessOffset=0.05)
         # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)
@@ -751,7 +757,7 @@ class TempPivot(toolAbstractFactory):
             mainTarget = targets[-1]
             constraints = list()
             tempNull = self.funcs.tempNull(name=mainTarget, suffix='piv')
-            tempNull.displayHandle.set(True)
+            cmds.setAttr(tempNull + "." + "displayHandle")
 
             self.funcs.getSetColour(mainTarget, tempNull, brightnessOffset=0.05)
             # self.funcs.boldControl(tempNull, mainTarget, offset=1.0)

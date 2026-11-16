@@ -30,7 +30,7 @@ class LicenseWin(BaseDialog):
         # self.activateButton = QPushButton('Activate')
         # self.quitButton = QPushButton('Exit')
 
-        self.setFixedSize(600, 300)
+        self.setFixedSize(600 * dpiScale(), 300 * dpiScale())
         self.gridLayout = QGridLayout()
         self.titleText.setText(title)
         self.titleText.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -165,7 +165,7 @@ class OfflineActivateInputWidget(QWidget):
 
         self.productLineEdit = QLineEdit(productStr)
         self.productLineEdit.setReadOnly(True)
-        self.productLineEdit.setFixedWidth(400)
+        self.productLineEdit.setFixedWidth(400 * dpiScale())
         self.copyToCLipButton = QPushButton('Copy to clipboard')
         productLineEditLayout.addWidget(self.productLineEdit)
         productLineEditLayout.addWidget(self.copyToCLipButton)

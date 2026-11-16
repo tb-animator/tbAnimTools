@@ -25,7 +25,7 @@ class TextInputDialog(BaseDialog):
         # self.activateButton = QPushButton('Activate')
         # self.quitButton = QPushButton('Exit')
 
-        self.setFixedSize(400, 180)
+        self.setFixedSize(400 * dpiScale(), 180 * dpiScale())
 
         self.titleText.setAlignment(Qt.AlignCenter)
         self.lineEditLabel = QLabel('%s::' % label)
@@ -106,7 +106,7 @@ class TextOptionInputDialog(BaseDialog):
         # self.activateButton = QPushButton('Activate')
         # self.quitButton = QPushButton('Exit')
 
-        self.setFixedSize(400, 180)
+        self.setFixedSize(400 * dpiScale(), 180 * dpiScale())
 
         self.titleText.setAlignment(Qt.AlignCenter)
         self.lineEditLabel = QLabel('%s::' % label)
