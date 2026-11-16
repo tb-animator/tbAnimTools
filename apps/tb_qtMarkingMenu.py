@@ -20,14 +20,14 @@ class hotkeys(hotKeyAbstractFactory):
 
 
 class ViewportRadialMenu(ViewportDialog):
-    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(), name='ViewportRadialMenu',
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
-        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict, name=name)
+        super(ViewportRadialMenu, self).__init__(parent=parent, parentMenu=parentMenu, menuDict=menuDict)
         self.centralPoint = QPoint(0, 0)  # the central point of the radial menu
         self.parentPos = QPoint(0, 0)  # the button position that raised this menu
         self.returnButtonPos = QPoint(0, 0)  # the place to draw the return button (2 parents up)
-        self.radius = 64  * dpiScale()
-        self.ringWidth = 40  * dpiScale()
+        self.radius = 64
+        self.ringWidth = 40
         self.innerRing = self.radius - 0.5*self.ringWidth
         self.outerRing = self.radius + 0.5*self.ringWidth
         self.ringColour = QColor(255, 160, 47, 32)
@@ -75,6 +75,7 @@ class ViewportRadialMenu(ViewportDialog):
         super(ViewportRadialMenu, self).show()
 
     def arrangeButtons(self):
+        print ('arrangeButtons')
         self.maxButtons = len(self.widgets['radial'])
         initialAngle = 0
         if self.parentMenu:
@@ -292,8 +293,9 @@ class ViewportRadialMenu(ViewportDialog):
 
 
 class SubToolboxWidget(ViewportRadialMenu):
-    def __init__(self, parent=getMainWindow(), parentMenu=None, name='SubToolboxWidget'):
-        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parentMenu=None):
+        super(SubToolboxWidget, self).__init__(parent=parent, parentMenu=parentMenu)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -463,7 +465,7 @@ class RadialToolboxButton(ToolboxButton):
         self.pixmap = QPixmap(self.icon).scaled(iconWidth, iconHeight, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         self.popupPixmap = QPixmap(IconPath + '\popupSubmenu.png')
-        self.popupPixmap = self.popupPixmap.scaled(36 * dpiScale(), 36 * dpiScale(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.popupPixmap = self.popupPixmap.scaled(36, 36, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.setNonHoverSS()
         # self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
@@ -473,6 +475,7 @@ class RadialToolboxButton(ToolboxButton):
         except:
             pass
         if self.closeOnPress:
+            # print ('closeOnPress', self.cls)
             self.cls.closeMenu()
             self.cls.deleteLater()
 
@@ -588,13 +591,14 @@ class EventFilterManager(object):
                 matches[0].removeEventFilter(filter)
             else:
                 matches[0].installEventFilter(filter)
-
+            # print "installing event filter,", filter, "on", matches[0], matches[0].__class__
         except Exception as e:
             print (e)
             for child in widget.children():
                 self.recursive_widget_lookup(child, filter)
 
     def addFilterToModelPanels(self, filter):
+        print('addFilterToModelPanels')
         for p in cmds.lsUI(editors=True):
             if cmds.objectTypeUI(p) == 'modelEditor':
                 self.recursive_widget_lookup(self.getQObjectFromName(p), filter)

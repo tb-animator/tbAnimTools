@@ -117,7 +117,7 @@ ToolbarButton
     border-width: 0px;
     border-color: #1e1e1e;
     border-style: solid;
-    border-radius: 8px;
+    border-radius: 0px;
     padding: 0px;
     font-size: 12px;
     padding-left: 0px;
@@ -547,5 +547,3 @@ QBoldLabel
 {
 "font-weight: bold";
 }
-
-

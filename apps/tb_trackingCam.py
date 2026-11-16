@@ -25,7 +25,6 @@
 from . import *
 
 
-
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('cameras'))
@@ -166,8 +165,8 @@ class TrackingCamera(toolAbstractFactory):
             self.setCameraTransform(cam)
 
     def getCurrentCamera(self):
-        view = omUI.M3dView.active3dView()
-        cam = om.MDagPath()
+        view = OpenMayaUI.M3dView.active3dView()
+        cam = OpenMaya.MDagPath()
         view.getCamera(cam)
         cameraShape = cam.fullPathName()
         camera = cmds.listRelatives(cameraShape, parent=True)[0]

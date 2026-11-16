@@ -116,7 +116,7 @@ class TimeEditorTool(toolAbstractFactory):
     def timeEditorToolBoxUI(self):
         if self.timeEditorToolbox:
             self.timeEditorToolbox.show()
-        self.timeEditorToolbox = BaseDialog(parent=getMainWindow(),
+        self.timeEditorToolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                                             title='tb Time Editor', text=str(),
                                             lockState=False, showLockButton=False, showCloseButton=True, showInfo=True)
         toolboxWidget = QWidget()
@@ -192,7 +192,7 @@ class TimeEditorTool(toolAbstractFactory):
 
     def getCurrentComposition(self):
         currentComposition = cmds.timeEditorComposition(query=True, active=True)
-
+        print('currentComposition', currentComposition)
         return currentComposition
 
     def addClipFromFile(self, fbx=None):
@@ -320,7 +320,7 @@ class TimeEditorTool(toolAbstractFactory):
         assetShapeControl = self.funcs.tempControl(name='delete', suffix='Root', drawType='redirectRoot', scale=1.5)
 
         cmds.delete(assetShapeControl, ch=True)
-        cmds.parent(self.funcs.getShapes(assetShapeControl), relocator, r=True, s=True)
+        cmds.parent(assetShapeControl.getShapes(), relocator, r=True, s=True)
         cmds.delete(assetShapeControl)
         return relocator
 

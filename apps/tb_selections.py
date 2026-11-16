@@ -132,11 +132,8 @@ class SelectionTools(toolAbstractFactory):
         if not sel:
             if self.lastSelected is None:
                 return
-            tempSel = list()
-            for s in self.lastSelected:
-                if cmds.objExists(s):
-                    tempSel.append(s)
-            sel = tempSel
+            if cmds.objExists(self.lastSelected):
+                sel = [self.lastSelected]
         CharacterTool = self.allTools.tools['CharacterTool']
         characters = self.funcs.splitSelectionToCharacters(sel)
 
@@ -166,8 +163,7 @@ class SelectionTools(toolAbstractFactory):
                     finalControls.extend(matchingPrefix)
         finalControls = [c for c in finalControls if cmds.objExists(c)]
         cmds.select(finalControls, add=True)
-
-        self.lastSelected = sel
+        self.lastSelected = sel[0]
 
     def getOppositeControl(self, name, constraint=False, shape=True):
         if ':' in name:

@@ -81,7 +81,7 @@ class NoiseTool(toolAbstractFactory):
 
     def toolBoxUI(self):
         if not self.toolbox:
-            self.toolbox = BaseDialog(parent=getMainWindow(),
+            self.toolbox = BaseDialog(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
                              title='tbNoise Toolbox', text=str(),
                              lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, )
             widget = ToolBoxWidget()
@@ -114,7 +114,7 @@ class ToolBoxWidget(QWidget):
         restoreLayout = QHBoxLayout()
         self.frequencySlider = SliderFloatField(label='Frequency')
         self.frequencySlider.slider.setOrientation(Qt.Horizontal)
-        self.frequencySlider.slider.setFixedWidth(200 * dpiScale())
+        self.frequencySlider.slider.setFixedWidth(200)
         self.frequencySlider.slider.setMinimum(-100)
         self.frequencySlider.slider.setMaximum(100)
         self.frequencySlider.slider.setValue(0)
@@ -122,7 +122,7 @@ class ToolBoxWidget(QWidget):
 
         self.amplitudeSlider = SliderFloatField(label='Amplitude')
         self.amplitudeSlider.slider.setOrientation(Qt.Horizontal)
-        self.amplitudeSlider.slider.setFixedWidth(200 * dpiScale())
+        self.amplitudeSlider.slider.setFixedWidth(200)
         self.amplitudeSlider.slider.setMinimum(-100)
         self.amplitudeSlider.slider.setMaximum(100)
         self.amplitudeSlider.slider.setValue(0)
@@ -186,9 +186,11 @@ class ToolBoxWidget(QWidget):
 
     def amplitudeChanged(self, value):
         self.amplitude = value
+        print ('amp', self.amplitude)
         self.doTween()
 
     def doTween(self):
+        print (self.getMode(), self.frequency, self.amplitude)
         if self.isCached:
             cmds.tbKeyTween(alpha=self.frequency, alphaB=self.amplitude, blendMode=self.getMode(), clearCache=False)
 

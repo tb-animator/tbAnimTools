@@ -33,9 +33,7 @@ script_dir = os.path.dirname(__file__)  # <-- absolute dir the script is in
 
 
 def getMainWindow():
-    if not cmds.about(batch=True):
-        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
-    return None
+    return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
 
 
 class MainOptionWindow(QMainWindow):
@@ -80,7 +78,7 @@ class MainOptionWindow(QMainWindow):
         self.toolWidget = QListWidget()
         self.toolTypeScrollArea.setWidget(self.toolWidget)
         self.toolTypeScrollArea.setWidgetResizable(True)
-        self.toolTypeScrollArea.setFixedWidth(148 * dpiScale())
+        self.toolTypeScrollArea.setFixedWidth(148)
         self.toolTypeScrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.optionUIScrollArea = QScrollArea()

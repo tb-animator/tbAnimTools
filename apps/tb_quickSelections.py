@@ -22,13 +22,10 @@
 
 *******************************************************************************
 '''
-DEFAULT_QSS_COLOUR = [0.878, 0.306, 0.358]
 
 QSS_Suffix = '_qss'
 
 from . import *
-import stat
-
 _repeat_function = None
 _args = None
 _kwargs = None
@@ -173,78 +170,6 @@ class QuickSelectionTools(toolAbstractFactory):
         if not os.path.isdir(self.quickSelectFolderDefault):
             os.mkdir(self.quickSelectFolderDefault)
 
-    def toolBarUI(self):
-        print('toolBarUI')
-        print ('buttons')
-        # altButton = ToolboxColourButton(label='test', parent=None, cls=None,
-        #                                 # command=create_callback(self.selectQuickSelectionSet, mset, add=False),
-        #                                 closeOnPress=False,
-        #                                 isSmall=False,
-        #                                 # colour=setColour,
-        #                                 # fixedWidth=fontWidth,
-        #                                 colouredBackground=True,
-        #                                 )
-        # Create the main vertical layout
-        main_layout = QVBoxLayout()
-
-        # Create two horizontal layouts for the rows
-        row_1_layout = QHBoxLayout()
-        row_2_layout = QHBoxLayout()
-
-        # Initialize widths
-        row_1_width = 0
-        row_2_width = 0
-        returnWidget = QWidget()
-        returnWidget.setLayout(main_layout)
-
-        allSets = self.get_sets(forceAll=True)
-        n_columns = -(-len(allSets) // 2)
-
-        def add_to_row(label, row_layout, current_width):
-            row_layout.addWidget(label)
-            label_width = label.sizeHint().width() + 10  # Add padding
-            return current_width + label_width
-
-            # Distribute labels
-
-        labels = list()
-        totalWidth = 0
-        for set in allSets:
-            widget = ToolbarButton(text=set.split(':')[-1],
-                                   width=60,
-                                   height=20,
-                                   iconHeight=30,
-                                   iconWidth=30)
-            print ('ooo booo')
-            widget.setStyleSheet(
-                "border-radius: 8;"
-            )
-            widget.setStyleSheet(getqss.getStyleSheet())
-            labels.append(widget)
-            totalWidth += widget.sizeHint().width()
-
-        for label in labels:
-            label.setAlignment(Qt.AlignCenter)
-            label_width = label.sizeHint().width() + 10  # Estimate label width with padding
-            print (row_1_width, row_2_width)
-            # Add to the first row if it has space, otherwise the second row
-            if row_1_width < row_2_width:
-                row_1_width = add_to_row(label, row_1_layout, row_1_width)
-            else:
-                row_2_width = add_to_row(label, row_2_layout, row_2_width)
-
-            # Add the rows to the main layout
-        main_layout.addLayout(row_1_layout)
-        main_layout.addLayout(row_2_layout)
-
-
-        # clicked = Signal()
-        # middleClicked = Signal()
-        # rightClicked = Signal()
-
-        # returnWidget.setStyleSheet(getqss.getStyleSheet())
-        return [returnWidget]
-
     def create_main_set(self, sel=None):
         if not sel:
             sel = cmds.ls(sl=True)
@@ -318,7 +243,7 @@ class QuickSelectionTools(toolAbstractFactory):
                 unmatchedSets.append(s)
         return matchedSets, unmatchedSets
 
-    def selectQuickSelectionSet(self, name, add=True, *args):
+    def selectQuickSelectionSet(self, name, *args, add=True):
         cmds.select(self.get_set_contents(name), add=add, replace=not add)
 
     def addColourAttribute(self, name):
@@ -410,6 +335,8 @@ class QuickSelectionTools(toolAbstractFactory):
             cmds.select(self.get_set_contents(set), add=True)
         # cmds.select(self.get_set_contents(a_set), add=True)
 
+
+
     @staticmethod
     def existing_obj_in_list(sel):
         existing = []
@@ -434,8 +361,6 @@ class QuickSelectionTools(toolAbstractFactory):
                 resultObjects.append(self.get_set_contents(s))
                 continue
             resultObjects.append(s)
-        if not resultObjects:
-            return None, None
         return self.funcs.getCurrentRig(resultObjects[-1])
 
     def check_set_membership(self, selection, sel_set):
@@ -467,7 +392,8 @@ class QuickSelectionTools(toolAbstractFactory):
         if result == 'OK':
             qs_name = cmds.promptDialog(query=True, text=True)
             save = True
-
+            print ('qs_name', qs_name)
+            print (self.all_sets)
             if qs_name in self.all_sets:
                 if not cmds.confirmDialog(
                         title='Overwrite existing set?',
@@ -512,26 +438,22 @@ class QuickSelectionTools(toolAbstractFactory):
         if any([self.is_set(s) for s in sel]):
             self.saveUberSet(name, sel)
             return
-
+        print ('sel', sel)
         if name:
-            scaledColour = [x / 255.0 for x in self.funcs.getControlColour(sel[-1])]
-            self.save_qs(name, sel, quick=quick, colour=scaledColour)
+            self.save_qs(name, sel, quick=quick, colour=self.funcs.getControlColour(sel[-1]))
 
         CharacterTool = self.allTools.tools['CharacterTool']
         refname, namespace = CharacterTool.getSelectedChar(sel=sel[0])
 
-        if mirror:
-            MirrorTools = self.allTools.tools['MirrorTools']
-            mirrorControls = MirrorTools.splitControls(sel)
-            opposites = [x[1] for x in mirrorControls]
+        MirrorTools = self.allTools.tools['MirrorTools']
+        mirrorControls = MirrorTools.splitControls(sel)
+        opposites = [x[1] for x in mirrorControls]
+        mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
 
-            opposites = [x for x in opposites if cmds.objExists(x)]
-            if not opposites:
-                return
-            mirrorName = MirrorTools.getMirrorForControlFromCharacter(CharacterTool.allCharacters[refname], name)
-
-            if self.lists_have_unique_items(sel, opposites):
-                self.save_qs(mirrorName, opposites, quick=quick, colour=self.funcs.getControlColour(opposites[-1]))
+        if not opposites:
+            return
+        if self.lists_have_unique_items(sel, opposites):
+            self.save_qs(mirrorName, opposites, quick=quick, colour=self.funcs.getControlColour(opposites[-1]))
 
     @staticmethod
     def lists_have_unique_items(list1, list2):
@@ -547,8 +469,7 @@ class QuickSelectionTools(toolAbstractFactory):
         else:
             return True
 
-    def save_qs(self, qs_name, selection, quick=True, colour=DEFAULT_QSS_COLOUR):
-
+    def save_qs(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
         qs_name = qs_name.split(':')[-1]
         if not selection:
             return cmds.warning('Nothing selected')
@@ -557,9 +478,8 @@ class QuickSelectionTools(toolAbstractFactory):
         self.create_main_set()
         # only select existing objects
         existing_obj = self.existing_obj_in_list(selection)
-
         if existing_obj:
-            cmds.select(existing_obj, replace=True, noExpand=True)
+            cmds.select(existing_obj, replace=True)
             newSetNamespace = self.funcs.namespace(existing_obj[0])
             if newSetNamespace:
                 qs_name = newSetNamespace + ':' + qs_name
@@ -578,13 +498,13 @@ class QuickSelectionTools(toolAbstractFactory):
             qs = cmds.sets(name=qs_name, text="gCharacterSet")
             self.getSetColour(qs)
 
-            self.setSetColourFromUI(qs, colour[0], colour[1], colour[2])
+            self.setSetColourFromUI(qs, colour[0] / 255.0, colour[1] / 255.0, colour[2] / 255.0)
             cmds.select(qs, replace=True)
             cmds.sets(qs, addElement=self.create_main_set())
             cmds.select(pre_sel, replace=True)
         self.create_main_set()
 
-    def saveUberSet(self, qs_name, selection, quick=True, colour=DEFAULT_QSS_COLOUR):
+    def saveUberSet(self, qs_name, selection, quick=True, colour=[0.5, 0.5, 0.5]):
         qs_name = qs_name.split(':')[-1]
         if not selection:
             return cmds.warning('Nothing selected')
@@ -614,18 +534,17 @@ class QuickSelectionTools(toolAbstractFactory):
             cmds.sets(qs, addElement=self.create_main_set())
             # cmds.select(pre_sel, replace=True)
 
-    def save_qs_from_file(self, qs_name, selection, colour=DEFAULT_QSS_COLOUR):
-        namespace_override = selection[0].split(":")[0]
+    def save_qs_from_file(self, qs_name, selection):
+        namespace_override = None
+
         processed_list = []
         sel = cmds.ls(selection=True)
-        if sel:
-            namespace_override = self.funcs.namespace(sel[0])
-
+        namespace_override = self.funcs.namespace(sel[0])
         for sel in selection:
-            processed_list.append(namespace_override + ":" + sel.split(":")[-1])
+            processed_list.append(namespace_override + sel.split(":")[-1])
 
         if processed_list:
-            self.save_qs(qs_name, processed_list, colour=colour)
+            self.save_qs(qs_name, processed_list)
             self.funcs.infoMessage(position="botRight", prefix="info",
                                    message='quick selects created for %s' % qs_name,
                                    fadeStayTime=10,
@@ -636,7 +555,6 @@ class QuickSelectionTools(toolAbstractFactory):
                                    message='quick selects created for %s' % qs_name,
                                    fadeStayTime=10,
                                    fadeOutTime=10.0)
-        return True
 
     def save_qs_to_file(self):
         allSets = self.get_sets()
@@ -654,11 +572,10 @@ class QuickSelectionTools(toolAbstractFactory):
         for s in final_sets:
             # uber sets don't look up the rig nicely, so won't save from the anim file correctly
             refname, namespace = self.get_rig_from_set(s)
-            if not refname:
-                continue
             if refname not in charDict.keys():
                 charDict[refname] = list()
             charDict[refname].append(s)
+
 
         dialog = SaveQssToFileWidget(title='Save Quick Selection Sets To File',
                                      label='Enter FileName',
@@ -710,24 +627,13 @@ class QuickSelectionTools(toolAbstractFactory):
         if not os.path.isfile(file_name):
             return
         rawJsonData = json.load(open(file_name))
-
         if 'setNames' not in rawJsonData.keys():
             cmds.warning('Loading legacy set')
-            for qs_name, qs_data in rawJsonData.items():
-                self.save_qs_from_file(qs_name, qs_data)
+            for qs_name, qs_objects in rawJsonData.items():
+                self.save_qs_from_file(qs_name, qs_objects)
             return
-
-        for qs_name, qs_data in rawJsonData['setNames'].items():
-            if 'uber_' in qs_name:
-                continue
-            self.save_qs_from_file(qs_name, qs_data.get('qs_objects', list()),
-                                   colour=qs_data.get('qs_colour', DEFAULT_QSS_COLOUR))
-
-        # second loop so the uber sets get created last
-        for qs_name, qs_data in rawJsonData['setNames'].items():
-            if 'uber_' in qs_name:
-                self.save_qs_from_file(qs_name, qs_data.get('qs_objects', list()),
-                                       colour=qs_data.get('qs_colour', DEFAULT_QSS_COLOUR))
+        for qs_name, qs_objects in rawJsonData['setNames'].items():
+            self.save_qs_from_file(qs_name, qs_objects.get('qs_objects', list()))
 
     def restore_qs_from_dir(self):
         qss_files = list()
@@ -783,7 +689,6 @@ class QuickSelectionTools(toolAbstractFactory):
 
         # Check if the child set is a member of the parent set
         return cmds.sets(child_set_name, isMember=parent_set_name)
-
     def autoLoadSetData(self):
         sel = cmds.ls(sl=True)
         if not sel:
@@ -812,11 +717,10 @@ class QuickSelectionTools(toolAbstractFactory):
             control = str(conn.split('.')[0])
             if not cmds.attributeQuery('constraintTarget', node=control, exists=True):
                 continue
-            if control not in found_controls:
-                found_controls.append(control)
-                found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
-        return found_controls
 
+            found_controls.append(control)
+            found_controls = self.checkDownstreamTempControls(control, found_controls=found_controls)
+        return found_controls
     def checkUpstreamTempControls(self, control, found_controls=None):
         """
         copied from the pickwalk tool
@@ -829,8 +733,7 @@ class QuickSelectionTools(toolAbstractFactory):
         if not cmds.attributeQuery('constraintTarget', node=str(control), exists=True):
             return found_controls
 
-        messageConnections = cmds.listConnections(control + '.constraintTarget', source=True, destination=False,
-                                                  plugs=True)
+        messageConnections = cmds.listConnections(control + '.constraintTarget', source=True, destination=False, plugs=True)
 
         if not messageConnections:
             return found_controls
@@ -849,6 +752,7 @@ class QuickSelectionTools(toolAbstractFactory):
             if targetConnections:
                 return self.recursiveLookup(targetConnections[0], attribute, source=source, destination=destination)
         return control
+
 
     def doubleTap(self):
         self.uber_qs_select()
@@ -893,7 +797,7 @@ class QuickSelectionTools(toolAbstractFactory):
                     'SW': list()
                     }
 
-        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu, name='QuickSelectDialog')
+        self.markingMenuWidget = ViewportDialog(menuDict=menuDict, parentMenu=parentMenu)
 
         sel = cmds.ls(sl=True)
         allSets = self.get_sets(forceAll=True)
@@ -1058,9 +962,9 @@ class AdjustmentButtonPopup(ButtonPopup):
 
 
 class SaveCurrentStateWidget(ViewportDialog):
-    def __init__(self, parent=getMainWindow(),
-                 parentMenu=None, name='SaveCurrentStateWidget'):
-        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu, name=name)
+    def __init__(self, parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget),
+                 parentMenu=None):
+        super(SaveCurrentStateWidget, self).__init__(parent=parent, parentMenu=parentMenu)
 
         if self.parentMenu:
             self.parentMenu.setEnabled(False)
@@ -1113,7 +1017,7 @@ class QssSaveWidget(QWidget):
                  helpString=None,
                  parentWidget=None,
                  qss=False,
-                 parent=getMainWindow()):
+                 parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)):
         super(QssSaveWidget, self).__init__(parent=parent)
         self.showCloseButton = showCloseButton
         self.parentWidget = parentWidget
@@ -1171,7 +1075,7 @@ class QssSaveWidget(QWidget):
         layout.addWidget(self.text)
         layout.addWidget(self.lineEdit)
         layout.addWidget(self.qssCheckbox)
-        layout.addWidget(self.mirrorCheckbox)
+        # layout.addWidget(self.mirrorCheckbox)
         layout.addWidget(self.saveButton)
 
         if self.helpString:
@@ -1184,9 +1088,8 @@ class QssSaveWidget(QWidget):
         # self.move(getScreenCenter() - self.rect().center())
 
         # self.lineEdit.setFocus()
-        self.lineEdit.setFixedWidth(dpiScale() *
-                                    max(120,
-                                        self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
+        self.lineEdit.setFixedWidth(
+            max(120, self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 28))
         self.setStyleSheet(
             "QssSaveWidget { "
             "border-radius: 8;"
@@ -1331,7 +1234,7 @@ class NamespaceWidget(QWidget):
 
 class LoadQuickSelectWindow(QMainWindow):
     def __init__(self):
-        super(LoadQuickSelectWindow, self).__init__(parent=getMainWindow())
+        super(LoadQuickSelectWindow, self).__init__(parent=wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget))
         # DATA
         self.setMinimumWidth(300)
         # self.setMinimumHeight(400)
@@ -1675,3 +1578,4 @@ class CheckableButton(QPushButton):
                      border-color: #ffaa00;
                 }  
                 """)
+

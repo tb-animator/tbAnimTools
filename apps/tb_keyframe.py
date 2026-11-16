@@ -26,7 +26,6 @@ from . import *
 
 maya.utils.loadStringResourcesForModule(__name__)
 
-
 class hotkeys(hotKeyAbstractFactory):
     def createHotkeyCommands(self):
         self.setCategory(self.helpStrings.category.get('keying'))
@@ -111,23 +110,6 @@ class hotkeys(hotKeyAbstractFactory):
                                      ctx='graphEditor',
                                      category=self.category, command=['KeyModifiers.shiftKeys(-360)']))
 
-        self.addCommand(self.tb_hkey(name='nudgeKeysLeft',
-                                     annotation='shift keys left 1 frame',
-                                     ctx='graphEditor',
-                                     category=self.category, command=['KeyModifiers.nudgeKeys(offset=-1)']))
-        self.addCommand(self.tb_hkey(name='nudgeKeysRight',
-                                     annotation='shift keys up 360 units',
-                                     ctx='graphEditor',
-                                     category=self.category, command=['KeyModifiers.nudgeKeys(offset=1)']))
-        self.addCommand(self.tb_hkey(name='offsetKeysLeft',
-                                     annotation='offset keys left 1 frame',
-                                     ctx='graphEditor',
-                                     category=self.category, command=['KeyModifiers.offsetKeys(offset=-0.25)']))
-        self.addCommand(self.tb_hkey(name='offsetKeysRight',
-                                     annotation='offset keys right 1 frame',
-                                     ctx='graphEditor',
-                                     category=self.category, command=['KeyModifiers.offsetKeys(offset=1)']))
-
         self.addCommand(self.tb_hkey(name='autoTangent',
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.autoTangentKey()']))
@@ -144,14 +126,9 @@ class hotkeys(hotKeyAbstractFactory):
                                      annotation='Blank',
                                      category=self.category, command=['KeyModifiers.cleanupTimeEditorNodes()']))
 
-
         self.addCommand(self.tb_hkey(name='setZeroKey',
                                      annotation='Sets the identity pose (zero key) for selected layer',
                                      category=self.category, command=['KeyModifiers.setZeroKey()']))
-
-        self.addCommand(self.tb_hkey(name='reduceKeysToSelected',
-                                     annotation='Reduces the keys on the selected controls to match the key times of the last selected control.',
-                                     category=self.category, command=['KeyModifiers.reduceKeysToSelected()']))
 
         return self.commandList
 
@@ -180,14 +157,6 @@ class KeyModifiers(toolAbstractFactory):
         self.hotkeyClass = hotkeys()
         self.funcs = Functions()
 
-    def initData(self):
-        super(KeyModifiers, self).initData()
-        self.baseDataFile = os.path.join(self.dataPath, self.toolName + 'BaseData.json')
-
-    def loadData(self):
-        super(KeyModifiers, self).loadData()
-        self.rawJsonBaseData = json.load(open(self.baseDataFile))
-
     """
     Declare an interface for operations that create abstract product
     objects.
@@ -198,51 +167,36 @@ class KeyModifiers(toolAbstractFactory):
         return self.optionWidget
 
     def graphEditorWidget(self, parentWidget):
-        self.loadData()
         widget = QWidget()
         layout = QHBoxLayout()
         widget.setLayout(layout)
         layout.setSpacing(0)
-        layout.setAlignment(Qt.AlignLeft)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        autoTangentCollapsingWidget = CollapsibleBox(optionVar='tbGeAutotangentCollapse', toolTip='AutoTangent')
-        autoTangentWidget = AutoTangentWidgetLayout()
-        autoTangentCollapsingWidget.setContentLayout(autoTangentWidget)
+        autoTangentWidget = AutoTangentWidget()
+        matchTangentStartButton = GraphToolbarButton(icon='matchTangentStart.png', toolTip='Match Tangents Start',
+                                                     width=18)
+        matchTangentEndButton = GraphToolbarButton(icon='matchTangentEnd.png', toolTip='Match Tangents End',
+                                                   width=18)
+        plotButton = GraphToolbarButton(icon='plotKey.png', toolTip='Look at me a tooltip')
+        plotButton.clicked.connect(create_callback(self.plot_guess))
 
-        nudgeKeyCollapsingWidget = CollapsibleBox(optionVar='tbGeNudgeCollapse', toolTip='Nudge Keys')
-        nudgeKeyWidget = NudgeKeyWidgetLayout()
-        nudgeKeyCollapsingWidget.setContentLayout(nudgeKeyWidget)
+        flipFirstButton = GraphToolbarButton(icon='flipKeysStart.png', toolTip='Flip First')
+        flipZeroButton = GraphToolbarButton(icon='flipKeys.png', toolTip='Flip')
+        flipLastButton = GraphToolbarButton(icon='flipKeysEnd.png', toolTip='Flip Last')
 
-        offsetKeyCollapsingWidget = CollapsibleBox(optionVar='tbGeOffsetCollapse', toolTip='Offset Keys')
-        offsetKeyWidget = OffsetKeyWidgetLayout()
-        offsetKeyCollapsingWidget.setContentLayout(offsetKeyWidget)
-
-        flipKeyCollapsingWidget = CollapsibleBox(optionVar='tbGeFlipkeyCollapse', toolTip='Flip Keys')
-        flipKeyWidget = FlipKeyWidgetLayout()
-        flipKeyCollapsingWidget.setContentLayout(flipKeyWidget)
-
-        matchTangentCollapsingWidget = CollapsibleBox(optionVar='tbGeMatchTangentCollapse', toolTip='Match Tangents')
-        matchTangentWidget = MatchTangentWidgetLayout()
-        matchTangentCollapsingWidget.setContentLayout(matchTangentWidget)
-
-        layout.addWidget(autoTangentCollapsingWidget)
-        layout.addWidget(matchTangentCollapsingWidget)
-        layout.addWidget(flipKeyCollapsingWidget)
-        layout.addWidget(nudgeKeyCollapsingWidget)
-        layout.addWidget(offsetKeyCollapsingWidget)
-
-        collapsedWidgets = [
-            matchTangentCollapsingWidget,
-            flipKeyCollapsingWidget,
-            autoTangentCollapsingWidget,
-            nudgeKeyCollapsingWidget,
-            offsetKeyCollapsingWidget,
-        ]
-        for cBox in collapsedWidgets:
-            cBox.show()
-            cBox.playAnimationByState(force=True, state=cBox.getState())
-
+        flipFirstButton.clicked.connect(create_callback(self.flipKeyValues, first=True))
+        flipZeroButton.clicked.connect(create_callback(self.flipKeyValues))
+        flipLastButton.clicked.connect(create_callback(self.flipKeyValues, last=True))
+        matchTangentStartButton.clicked.connect(self.matchStartTangentsToEndTangents)
+        matchTangentEndButton.clicked.connect(self.matchEndTangentsToStartTangents)
+        layout.addWidget(autoTangentWidget)
+        layout.addWidget(matchTangentStartButton)
+        layout.addWidget(matchTangentEndButton)
+        layout.addWidget(plotButton)
+        layout.addWidget(flipFirstButton)
+        layout.addWidget(flipZeroButton)
+        layout.addWidget(flipLastButton)
         return widget
 
     def showUI(self):
@@ -266,7 +220,6 @@ class KeyModifiers(toolAbstractFactory):
         :return:
         """
         cmds.setKeyframe(id=True)
-        cmds.refresh()
 
     def select_all_curves(self):
         cmds.select(self.funcs.get_non_referenced_animation_curves())
@@ -277,7 +230,6 @@ class KeyModifiers(toolAbstractFactory):
     def cleanupTimeEditorNodes(self):
         cmds.delete(cmds.ls(type='timeEditorAnimSource'))
         self.delete_unconnected_curves()
-
     def matchTangents(self, data):
         keyTimeIndex = {True: -1, False: 0}[data]
         range = self.funcs.getTimelineRange()
@@ -366,16 +318,6 @@ class KeyModifiers(toolAbstractFactory):
     def shiftKeys(self, offset):
         cmds.keyframe(animation='keys', relative=True, valueChange=offset)
 
-    def nudgeKeys(self, offset=0):
-        cmds.keyframe(animation='keys', relative=True, timeChange=offset)
-
-    def offsetKeys(self, offset=0):
-        sel = cmds.ls(sl=True)
-        if not sel:
-            return
-        for x in range(len(sel) - 1):
-            cmds.keyframe(sel[x + 1:], relative=True, timeChange=offset)
-
     def quickCopyKeys(self, connect=False):
         cmds.copyKey()
         if connect:
@@ -462,7 +404,7 @@ class KeyModifiers(toolAbstractFactory):
         keyTimes = [keyTimes[0], keyTimes[-1]]
         cmds.keyframe(animation='keys', option='over', relative=True, timeChange=currentTime - keyTimes[not start])
 
-    def flipKeyValues(self, first=False, last=False, *args):
+    def flipKeyValues(self, *args, first=False, last=False):
         """
         Flip the key values around either the first value, last value or 0
         :return:
@@ -528,19 +470,19 @@ class KeyModifiers(toolAbstractFactory):
         _flatZ = multiply(z_vector, _flat)
 
         if upAxis == 'x':
-            _crossX = _flatY ^ _flatZ
-            _crossZ = _crossX ^ _flatY
-            _crossY = _crossZ ^ _crossX
+            _crossX = _flatY.cross(_flatZ)
+            _crossZ = _crossX.cross(_flatY)
+            _crossY = _crossZ.cross(_crossX)
 
         elif upAxis == 'y':
-            _crossY = _flatZ ^ _flatX
-            _crossX = _crossY ^ _flatZ
-            _crossZ = _crossX ^ _crossY
+            _crossY = _flatZ.cross(_flatX)
+            _crossX = _crossY.cross(_flatZ)
+            _crossZ = _crossX.cross(_crossY)
 
         elif upAxis == 'z':
-            _crossZ = _flatY ^ _flatX
-            _crossX = _crossZ ^ _flatY
-            _crossY = _crossX ^ _crossZ
+            _crossZ = _flatY.cross(_flatX)
+            _crossX = _crossZ.cross(_flatY)
+            _crossY = _crossX.cross(_crossZ)
 
         _matrix = constructMatrix(_matrix, _crossX, _crossY, _crossZ)
         mTransformMtx = om2.MTransformationMatrix(_matrix)
@@ -629,31 +571,16 @@ class KeyModifiers(toolAbstractFactory):
                                 outTangentType='flat',
                                 time=(t,))
 
-    def autoTangentKey(self, softness=None, *args):
-        print('autoTangentKey', softness, args)
-        self.autoTangent(softness or self.defaultSoftness(), False)
+    def autoTangentKey(self, *args):
+        self.autoTangent(self.defaultSoftness(), False)
 
     def defaultSoftness(self):
         return get_option_var('tbAutoTangent', 0.7)
 
     def setDefaultSoftness(self, value):
-        print('setDefaultSoftness', value)
         set_option_var('tbAutoTangent', value)
 
-    def defaultOffset(self):
-        return get_option_var('tbKeyOffset', 1.0)
-
-    def setDefaultOffset(self, value):
-        set_option_var('tbKeyOffset', value)
-
-    def defaultNudgeOffset(self):
-        return get_option_var('tbKeyNudgeOffset', 1.0)
-
-    def setDefaultNudgeOffset(self, value):
-        set_option_var('tbKeyNudgeOffset', value)
-
     def autoTangent(self, softness, bFlatten):
-
         curves = cmds.keyframe(q=True, name=True, sl=True)  # get all selected animCurve Nodes
         if not curves:
             return
@@ -712,7 +639,7 @@ class KeyModifiers(toolAbstractFactory):
 
                 newSlope = (powIn * slopeIn) + (powOut * slopeOut)
                 ang = math.atan(newSlope) * 180.0 / 3.14159
-                print('ang', ang)
+
                 cmds.keyTangent(crv, itt='spline', ott='spline', time=(currentTime,))
                 cmds.keyTangent(crv, ia=ang, oa=ang, time=(currentTime,))
 
@@ -827,285 +754,29 @@ class KeyModifiers(toolAbstractFactory):
                 cmds.keyframe(crv, index=((keyIndex),), edit=True, valueChange=value)
         self.autoTangentKey()
 
-    def reduceKeysToSelected(self, sel=list()):
-        """
-        Reduces the keys on the first selected controls, so the key times match the
-        last selected control
-        :param sel:
-        :return:
-        """
-        if not sel:
-            sel = cmds.ls(sl=True)
-        if not sel:
-            return cmds.warning("no objects selected, select at least 2")
-        if not len(sel) > 1:
-            return cmds.warning("Select at least 2 controls")
-        last = sel[-1]
-        controls = sel[:-1]
 
-        print('last', last)
-        print('controls', controls)
+class AutoTangentWidget(QFrame):
+    def __init__(self):
+        super(AutoTangentWidget, self).__init__()
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        layout = QHBoxLayout()
+        self.setLayout(layout)
+        layout.setSpacing(0)
+        layout.setContentsMargins(1, 0, 1, 0)
 
-        keyTimes = sorted(list(set(cmds.keyframe(last, query=True, timeChange=True))))
-        print('keyTimes', keyTimes)
-
-        for index in range(len(keyTimes) - 1):
-            print(keyTimes[index] + 0.01, keyTimes[index + 1] - 0.01)
-            cmds.cutKey(controls, clear=True, time=(keyTimes[index] + 0.01, keyTimes[index + 1] - 0.01))
-
-
-class KeyButtonWidgetLayout(QHBoxLayout):
-    def __init__(self, toolTip=''):
-        super(KeyButtonWidgetLayout, self).__init__()
-
-        self.setSpacing(0)
-        self.setContentsMargins(1, 0, 1, 0)
-
-
-class AutoTangentWidgetLayout(KeyButtonWidgetLayout):
-    def __init__(self, toolTip=''):
-        super(AutoTangentWidgetLayout, self).__init__(toolTip=toolTip)
-
-        self.autoTangentButton = GraphToolbarButton(icon='autoTangent.png',
-                                                    toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                        'autoTangent', dict())
-                                                    )
+        self.autoTangentButton = GraphToolbarButton(icon='autoTangent.png', toolTip='AutoTangent')
         self.softnessLabel = QLabel('Softness')
-        self.spinBox = NudgeSpinBox(defaultValue=KeyModifiers().defaultSoftness(),
-                                    controlStep=0.05,
-                                    shiftStep=0.2,
-                                    defaultStep=0.1)
-        self.spinBox.setFixedWidth(self.spinBox.sizeHint().width() + 4 * dpiScale())
+        self.spinBox = QDoubleSpinBox()
+        self.spinBox.setFixedWidth(80)
+        self.spinBox.setValue(KeyModifiers().defaultSoftness())
         self.spinBox.setMinimum(0.01)
-        self.spinBox.setMaximum(10)
 
-        self.addWidget(self.autoTangentButton)
-        self.addWidget(self.softnessLabel)
-        self.addWidget(self.spinBox)
+        layout.addWidget(self.autoTangentButton)
+        layout.addWidget(self.softnessLabel)
+        layout.addWidget(self.spinBox)
 
-        self.autoTangentButton.clicked.connect(self.theCommand)
-
+        self.autoTangentButton.clicked.connect(create_callback(KeyModifiers().autoTangentKey))
         self.spinBox.valueChanged.connect(self.softnessChanged)
-        self.setPopupMenu()
-
-    def setPopupMenu(self):
-        self.autoTangentButton.pop_up_window = AutoTangentPopup('name', self)
-        self.autoTangentButton.pop_up_window.setSpinBox(self.spinBox)
-        self.autoTangentButton.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.autoTangentButton.customContextMenuRequested.connect(self.autoTangentButton._showMenu)
-
-    def theCommand(self):
-        KeyModifiers().autoTangentKey(softness=self.spinBox.value())
 
     def softnessChanged(self):
         KeyModifiers().setDefaultSoftness(self.spinBox.value())
-        KeyModifiers().autoTangentKey(softness=self.spinBox.value())
-
-
-class AutoTangentPopup(ButtonPopup):
-    def __init__(self, name, parent=None):
-        super(AutoTangentPopup, self).__init__(parent)
-
-        self.setWindowTitle("{0} Options".format(name))
-
-        self.setWindowFlags(Qt.Popup)
-
-        self.layout = QFormLayout(self)
-
-        self.create_widgets()
-        self.create_layout()
-        self.spinBox = None
-
-    def create_widgets(self):
-        pass
-
-    def setSpinBox(self, spinBox):
-        self.spinBox = spinBox
-
-    def create_layout(self):
-        tbAdjustmentBlendLabel = QLabel('AutoTangent')
-
-        self.layout.addRow(tbAdjustmentBlendLabel)
-
-        button = QPushButton('Set Default')
-        button.clicked.connect(self.setDefault)
-        self.layout.addRow(button)
-
-    def setDefault(self):
-        KeyModifiers().setDefaultSoftness(self.spinBox.value())
-        self.hide()
-
-
-class OffsetKeyWidgetLayout(KeyButtonWidgetLayout):
-    def __init__(self, toolTip=''):
-        super(OffsetKeyWidgetLayout, self).__init__(toolTip=toolTip)
-
-        self.offsetLeftButton = GraphToolbarButton(icon='offsetKeyLeft.png',
-                                                   toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                       'offsetKeyLeft', dict()))
-        self.offsetRightButton = GraphToolbarButton(icon='offsetKeyRight.png',
-                                                    toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                        'offsetKeyRight', dict()))
-
-        self.offsetSpinBox = NudgeSpinBox(defaultValue=KeyModifiers().defaultNudgeOffset(),
-                                          controlStep=0.25,
-                                          shiftStep=2.0,
-                                          defaultStep=1.0)
-        self.offsetSpinBox.setFixedWidth(self.offsetSpinBox.sizeHint().width() * dpiScale())
-        self.offsetSpinBox.setMinimum(0.0)
-
-        self.addWidget(self.offsetLeftButton)
-        self.addWidget(self.offsetSpinBox)
-        self.addWidget(self.offsetRightButton)
-
-        self.offsetLeftButton.clicked.connect(self.offsetKeysLeft)
-        self.offsetRightButton.clicked.connect(self.offsetKeysRight)
-
-    def offsetKeysLeft(self):
-        KeyModifiers().offsetKeys(offset=-1 * self.offsetSpinBox.value())
-
-    def offsetKeysRight(self):
-        KeyModifiers().offsetKeys(offset=1 * self.offsetSpinBox.value())
-
-    def offsetValueChanged(self):
-        KeyModifiers().setDefaultOffset(self.spinBox.value())
-
-
-class NudgeKeyWidgetLayout(KeyButtonWidgetLayout):
-    def __init__(self, toolTip=''):
-        super(NudgeKeyWidgetLayout, self).__init__(toolTip=toolTip)
-
-        self.nudgeLeftButton = GraphToolbarButton(icon='nudgeKeyLeft.png',
-                                                  toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                      'nudgeKeyLeft', dict()))
-
-        self.nudgeRightButton = GraphToolbarButton(icon='nudgeKeyRight.png',
-                                                   toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                       'nudgeKeyRight', dict()))
-
-        self.nudgeSpinBox = NudgeSpinBox(defaultValue=KeyModifiers().defaultOffset(),
-                                         controlStep=0.25,
-                                         shiftStep=2.0,
-                                         defaultStep=1.0)
-        self.nudgeSpinBox.setFixedWidth(self.nudgeSpinBox.sizeHint().width() * dpiScale())
-        self.nudgeSpinBox.setMinimum(0.0)
-
-        self.addWidget(self.nudgeLeftButton)
-        self.addWidget(self.nudgeSpinBox)
-        self.addWidget(self.nudgeRightButton)
-
-        self.nudgeLeftButton.clicked.connect(self.nudgeLeft)
-        self.nudgeRightButton.clicked.connect(self.nudgeRight)
-
-        # self.spinBox.valueChanged.connect(self.softnessChanged)
-
-    def nudgeLeft(self):
-        KeyModifiers().nudgeKeys(offset=-1 * self.nudgeSpinBox.value())
-
-    def nudgeRight(self):
-        KeyModifiers().nudgeKeys(offset=1 * self.nudgeSpinBox.value())
-
-    def nudgeValueChanged(self):
-        KeyModifiers().defaultNudgeOffset(self.nudgeSpinBox.value())
-
-
-class MatchTangentWidgetLayout(KeyButtonWidgetLayout):
-    def __init__(self, toolTip=''):
-        super(MatchTangentWidgetLayout, self).__init__(toolTip=toolTip)
-
-        matchTangentStartButton = GraphToolbarButton(icon='matchTangentStart.png',
-                                                     toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                         'matchTangentStart', dict()),
-
-                                                     width=18)
-        matchTangentEndButton = GraphToolbarButton(icon='matchTangentEnd.png',
-                                                   toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                       'matchTangentEnd', dict()),
-                                                   width=18)
-
-        plotButton = GraphToolbarButton(icon='plotKey.png',
-                                        toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                            'matchTangentEnd', dict())
-                                        )
-
-        self.addWidget(matchTangentStartButton)
-        self.addWidget(matchTangentEndButton)
-        self.addWidget(plotButton)
-
-        plotButton.clicked.connect(create_callback(KeyModifiers().plot_guess))
-        matchTangentStartButton.clicked.connect(KeyModifiers().matchStartTangentsToEndTangents)
-        matchTangentEndButton.clicked.connect(KeyModifiers().matchEndTangentsToStartTangents)
-
-
-class FlipKeyWidgetLayout(KeyButtonWidgetLayout):
-    def __init__(self, toolTip=''):
-        super(FlipKeyWidgetLayout, self).__init__(toolTip=toolTip)
-
-        self.flipFirstButton = GraphToolbarButton(icon='flipKeysStart.png',
-                                                  toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                      'flipKeysStart', dict()))
-
-        self.flipZeroButton = GraphToolbarButton(icon='flipKeys.png',
-                                                 toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                     'flipKeys', dict()))
-
-        self.flipLastButton = GraphToolbarButton(icon='flipKeysEnd.png',
-                                                 toolTip=KeyModifiers().rawJsonBaseData['toolTips'].get(
-                                                     'flipKeysEnd', dict()))
-
-        self.flipFirstButton.clicked.connect(create_callback(KeyModifiers().flipKeyValues, first=True))
-        self.flipZeroButton.clicked.connect(create_callback(KeyModifiers().flipKeyValues))
-        self.flipLastButton.clicked.connect(create_callback(KeyModifiers().flipKeyValues, last=True))
-
-        self.addWidget(self.flipFirstButton)
-        self.addWidget(self.flipZeroButton)
-        self.addWidget(self.flipLastButton)
-
-        # self.offsetLeftButton.clicked.connect(create_callback(KeyModifiers().autoTangentKey))
-        # self.spinBox.valueChanged.connect(self.softnessChanged)
-
-    def softnessChanged(self):
-        KeyModifiers().setDefaultSoftness(self.spinBox.value())
-
-
-class NudgeSpinBox(QDoubleSpinBox):
-    def __init__(self, defaultValue=1, controlStep=0.25, shiftStep=2, defaultStep=1.0, *args, **kwargs):
-        super(NudgeSpinBox, self).__init__(*args, **kwargs)
-        self.default_value = defaultValue
-        self.setValue(self.default_value)
-        self.controlStep = controlStep
-        self.shiftStep = shiftStep
-        self.defaultStep = defaultStep
-        self.setSingleStep(defaultStep)
-
-    def wheelEvent(self, event):
-        step = self.singleStep()  # Default step
-        modifiers = event.modifiers()
-
-        if modifiers & Qt.AltModifier:
-            self.setValue(self.default_value)
-            return
-
-        # Check modifiers and adjust step
-        if modifiers & Qt.ShiftModifier:
-            step = self.shiftStep
-        elif modifiers & Qt.ControlModifier:
-            step = self.controlStep
-
-        # Adjust the spinbox value based on the event delta
-        if event.angleDelta().y() > 0:
-            self.setValue(self.value() + step)
-        else:
-            self.setValue(self.value() - step)
-
-        # Accept the event so the base class wheel event is not processed
-        event.accept()
-
-    def mousePressEvent(self, event):
-        print('mousePressEvent')
-        if event.modifiers() & Qt.ControlModifier and event.button() == Qt.LeftButton:
-            self.setValue(self.default_value)  # Reset value to 1
-            event.accept()  # Accept the event
-        else:
-            # Call the base class implementation for regular behavior
-            super(NudgeSpinBox, self).mousePressEvent(event)

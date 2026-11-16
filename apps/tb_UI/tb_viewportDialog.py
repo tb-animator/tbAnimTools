@@ -5,7 +5,7 @@ class ViewportDialog(QDialog):
     closeSignal = Signal()
     keyReleasedSignal = Signal()
 
-    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(), name='ViewportDialog',
+    def __init__(self, parent=getMainWindow(), parentMenu=None, menuDict=dict(),
                  *args, **kwargs):
         super(ViewportDialog, self).__init__(parent=parent)
         self.app = QApplication.instance()
@@ -61,14 +61,12 @@ class ViewportDialog(QDialog):
                                    self.parentMenu.cursorPos.y() - (self.returnButton.height() * 0.5))
 
         else:
-            if not self.keyPressHandler:
-                self.keyPressHandler = getMarkingMenuFilter(UI=self, name=name)
+            self.keyPressHandler = getMarkingMenuFilter(UI=self)
             self.app.installEventFilter(self.keyPressHandler)
         self.tooltipEnabled = True
 
     def returnButtonHovered(self):
-        pass
-        # print('returnButtonHovered')
+        print('returnButtonHovered')
 
     def addAllButtons(self):
         for key, items in self.menuDict.items():
@@ -365,9 +363,7 @@ class ViewportDialog(QDialog):
         return distance
 
     def tabletEvent(self, e):
-        pass
-        # print(e.pressure())
-
+        print(e.pressure())
 
     def keyPressEvent(self, event):
         # check version
@@ -398,7 +394,7 @@ class ViewportDialog(QDialog):
 
                 self.close()
                 if self.parentMenu:
-                    # print('sending keyreleaseEvent')
+                    print('sending keyreleaseEvent')
                     self.parentMenu.keyReleaseEvent(event)
                 self.invokedKey = None
         try:

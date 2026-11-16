@@ -5,13 +5,12 @@ class BaseDialog(QDialog):
     oldPos = None
 
     def __init__(self, parent=None, title='', text='',
-                 lockState=False, showLockButton=False, showCloseButton=True, showInfo=True, showHelpButton=False,
+                 lockState=False, showLockButton=False, showCloseButton=True, showInfo=True,
                  *args, **kwargs):
         super(BaseDialog, self).__init__(parent=parent)
         self.stylesheet = getqss.getStyleSheet()
         self.setStyleSheet(self.stylesheet)
         self.lockState = lockState
-        self.showHelpButton = showHelpButton
         self.showLockButton = showLockButton
         self.showCloseButton = showCloseButton
         self.setWindowTitle("HELLO!")
@@ -30,7 +29,6 @@ class BaseDialog(QDialog):
         self.titleLayout = QHBoxLayout()
         self.titleLayout.setSpacing(0)
         self.titleLayout.setContentsMargins(0, 0, 0, 0)
-        self.helpButton = HelpButton(toolTip='Help', width=14 * dpiScale(), height=14 * dpiScale())
         self.pinButton = LockButton('', None, lockState=self.lockState)
         self.pinButton.lockSignal.connect(self.togglePinState)
         self.closeButton = MiniButton()
@@ -55,7 +53,6 @@ class BaseDialog(QDialog):
         self.titleLayout.addStretch()
         self.titleLayout.addWidget(self.titleText, alignment=Qt.AlignCenter)
         self.titleLayout.addStretch()
-        self.titleLayout.addWidget(self.helpButton, alignment=Qt.AlignRight)
         self.titleLayout.addWidget(self.pinButton, alignment=Qt.AlignRight)
         self.titleLayout.addWidget(self.closeButton, alignment=Qt.AlignRight)
 
@@ -67,7 +64,6 @@ class BaseDialog(QDialog):
         self.setLayout(self.mainLayout)
 
         self.pinButton.setVisible(self.showLockButton)
-        self.helpButton.setVisible(self.showHelpButton)
         self.closeButton.setVisible(self.showCloseButton)
 
     def showEvent(self, event):
@@ -96,13 +92,13 @@ class BaseDialog(QDialog):
         qp.end()
 
     def keyReleaseEvent(self, event):
-        # print ('base dialog keyReleaseEvent')
+        print ('base dialog keyReleaseEvent')
         if event.key() == Qt.Key_Control:
             self.controlKeyPressed = False
         return False
 
     def keyPressEvent(self, event):
-        # print ('base dialog keyPressEvent', event)
+        print ('base dialog keyPressEvent', event)
         if event.key() == Qt.Key_Escape:
             self.close()
         if event.key() == Qt.Key_Control:
@@ -145,7 +141,7 @@ class BaseDialog(QDialog):
         self.closeButton.setVisible(True)
 
     def close(self):
-        # print ('widget closed')
+        print ('widget closed')
         self.widgetClosed.emit()
         super(BaseDialog, self).close()
 

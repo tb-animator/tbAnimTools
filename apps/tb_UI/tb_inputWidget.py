@@ -58,7 +58,7 @@ class TextInputWidget(QWidget):
         self.comboBox = QComboBox()
         for c in self.combo:
             self.comboBox.addItem(c)
-        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width() + (32 * dpiScale()))
+        self.comboBox.setFixedWidth(self.comboBox.sizeHint().width() + 32)
 
         self.saveButton = QPushButton(buttonText)
         self.saveButton.setStyleSheet(getqss.getStyleSheet())
@@ -98,7 +98,7 @@ class TextInputWidget(QWidget):
         # self.move(getScreenCenter() - self.rect().center())
 
         self.lineEdit.setFocus()
-        self.lineEdit.setFixedWidth(self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + (16 * dpiScale()))
+        self.lineEdit.setFixedWidth(self.lineEdit.fontMetrics().boundingRect(self.lineEdit.text()).width() + 16)
         self.setStyleSheet(
             "TextInputWidget { "
             "border-radius: 8;"
@@ -411,7 +411,7 @@ class ObjectInputWidget(QWidget):
         self.setWindowTitle('Custom')
 
         self.setFocusPolicy(Qt.StrongFocus)
-        self.setFixedSize(300 * dpiScale(), 64 * dpiScale())
+        self.setFixedSize(300, 64)
         mainLayout = QVBoxLayout()
         layout = QHBoxLayout()
 

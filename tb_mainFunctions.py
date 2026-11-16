@@ -157,7 +157,7 @@ class Functions(object):
                       }
 
     lastPanel = None
-    pointLists = json.load(open(dataPath))
+
     """
     API Classes - layers
     """
@@ -171,6 +171,7 @@ class Functions(object):
             """
             # get MObject from root layer name
             sel = om2.MSelectionList()
+            # print ('layer', layer)
             sel.add(layer)
             self.layer = sel.getDependNode(0)
             self.mfnDepNode = om2.MFnDependencyNode(self.layer)
@@ -341,12 +342,19 @@ class Functions(object):
                             continue
 
                     # for testing purposes
+                    # print('Attribute: %s' % plug)
 
                     # benchmark_start = time.clock()
                     bestLayer = self.getBestLayerFromPlugAPI(plug)
                     if not bestLayer:
                         continue
-
+                    '''
+                    # test
+                    try:
+                        print('>> Best layer is {l}'.format(l=om.MFnDependencyNode(bestLayer).name()))
+                    except Exception as e:
+                        pass
+                    '''
                     curve = self.getCurvesFromLayerAPI(plug, bestLayer, animLayerCache, baseAnimLayer)
                     # animlayers.cache.benchmark += time.clock() - benchmark_start
                     if curve:
@@ -439,46 +447,10 @@ class Functions(object):
         cmds.setAttr(shape + '.overrideColorRGB', *color)
         return loc
 
-    def restoreTempControlSettings(self, control):
-        CharacterTool = getGlobalTools().tools['CharacterTool']
-        rigControl = self.getConstraintTargetControl(control)
-        refname, namespace = CharacterTool.getSelectedChar(rigControl)
-        CharacterTool.getTempControlData(refname, rigControl, control, 'drawScale')
-
-    def storeTempControlSettings(self, control):
-        print('storeTempControlSettings')
-        CharacterTool = getGlobalTools().tools['CharacterTool']
-
-        rigControl = self.getConstraintTargetControl(control)
-
-        refname, namespace = CharacterTool.getSelectedChar(rigControl, referenceOnly=True)
-
-        CharacterTool.setTempControlData(refname, control, 'drawScale')
-
-    def getConstraintTargetControl(self, control):
-        if cmds.attributeQuery('constraintTarget', node=control, exists=True):
-            targets = cmds.listConnections(control + '.' + 'constraintTarget', source=True, destination=False)
-            if targets:
-                control = targets[0]
-        return control
-
     def tempControl(self, name='loc', suffix='baked', scale=1.0, color=(1.0, 0.537, 0.016), drawType='orb',
                     unlockScale=False, rotateOrder=3):
-
-        """
-
-        :param name:
-        :param suffix:
-        :param scale:
-        :param color:
-        :param drawType:
-        :param unlockScale:
-        :param rotateOrder:
-        :return:
-        """
         mainControl = self.drawTempControl(name=name, suffix=suffix, scale=scale, color=color, drawType=drawType,
                                            unlockScale=False, rotateOrder=rotateOrder, blendshape=True)
-
         mainControlShape = self.getShape(mainControl)
 
         cmds.addAttr(mainControl, longName='LineWidth', attributeType='float', defaultValue=scale, minValue=-1,
@@ -490,30 +462,20 @@ class Functions(object):
         if int(cmds.about(majorVersion=True)) < 2024:
             return mainControl
 
-        dupeControl = cmds.duplicate(mainControl, inputConnections=True, fullPath=True)
-        dupeShapes = cmds.listRelatives(dupeControl[0], shapes=True, fullPath=True)
-
-        cmds.addAttr(mainControl, longName='xRay', attributeType='float', defaultValue=scale, minValue=0.0,
-                     maxValue=1)
-        cmds.setAttr(mainControl + ".xRay", edit=True, keyable=False, channelBox=True)
-
-        for s in dupeShapes:
-            cmds.setAttr(s + ".alwaysDrawOnTop", 1)
-            cmds.connectAttr(mainControlShape + ".overrideColorR", s + '.overrideColorR')
-            cmds.connectAttr(mainControlShape + ".overrideColorG", s + '.overrideColorG')
-            cmds.connectAttr(mainControlShape + ".overrideColorB", s + '.overrideColorB')
-            cmds.connectAttr(mainControl + ".xRay", s + '.overrideColorA', force=True)
-            cmds.connectAttr(mainControl + '.LineWidth', s + '.lineWidth', force=True)
-
-        for index, s in enumerate(dupeShapes):
-            cmds.parent(s, mainControl, r=True, s=True)
-
+        dupeControl = cmds.duplicate(mainControl, inputConnections=True)
+        shape = self.getShape(dupeControl[0])
+        cmds.parent(shape, mainControl, r=True, s=True)
         cmds.delete(dupeControl)
 
-        for index, s in enumerate(self.getShapes(mainControl)):
-            cmds.rename(s, mainControl + 'Shape_' + str(index))
-
+        cmds.addAttr(mainControl, longName='xRay', attributeType='float', defaultValue=scale, minValue=0.0, maxValue=1)
+        cmds.setAttr(mainControl + ".xRay", edit=True, keyable=False, channelBox=True)
+        cmds.setAttr(shape + ".alwaysDrawOnTop", 1)
+        cmds.connectAttr(mainControlShape + ".overrideColorR", shape + '.overrideColorR')
+        cmds.connectAttr(mainControlShape + ".overrideColorG", shape + '.overrideColorG')
+        cmds.connectAttr(mainControlShape + ".overrideColorB", shape + '.overrideColorB')
+        cmds.connectAttr(mainControl + ".xRay", shape + '.overrideColorA')
         cmds.setAttr(mainControl + ".xRay", get_option_var('xRayDefault', 0.3))
+        cmds.connectAttr(mainControl + '.LineWidth', shape + '.lineWidth')
 
         return mainControl
 
@@ -541,10 +503,7 @@ class Functions(object):
         control, shape = self.drawControl(points, scale=1)
         blendControl, blendControlShape = self.drawControl(points, scale=0.01)
         control = cmds.rename(control, name + '_' + suffix)
-
         shape = self.getShape(control)
-        shape = cmds.rename(shape, control + 'Shape')
-
         blendControl = cmds.rename(blendControl, name + '_' + suffix + '_bs')
         rotOrder = {0: 1,
                     1: 2,
@@ -590,7 +549,6 @@ class Functions(object):
         :param control:
         :return:
         """
-
         if cmds.nodeType(node) == 'mesh':
             return [125, 125, 125]
         shape = self.getShape(node)
@@ -601,16 +559,12 @@ class Functions(object):
                 refObj = shape
 
         if not cmds.getAttr(refObj + '.overrideRGBColors'):
-
             if cmds.getAttr(refObj + '.overrideColor') == 0:
-
                 rgbColour = [125, 125, 125]
             else:
                 rgbColour = [x * 255 for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
-
         else:
-            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')[0]]
-        print ('rgbColour', rgbColour)
+            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')]
         return rgbColour
 
     def boldControl(self, ref, control, offset=0):
@@ -644,12 +598,11 @@ class Functions(object):
 
         if not cmds.getAttr(refObj + '.overrideRGBColors'):
             if cmds.getAttr(refObj + '.overrideColor') == 0:
-                rgbColour = [165, 125, 125]
+                rgbColour = [125, 125, 125]
             else:
-                rgbColour = [(x * 255) for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
+                rgbColour = [x * 255 for x in cmds.colorIndex(cmds.getAttr(refObj + '.overrideColor'), q=True)]
         else:
-            rgbColour = [(x * 255) for x in cmds.getAttr(refObj + '.overrideColorRGB')[0]]
-
+            rgbColour = [x * 255 for x in cmds.getAttr(refObj + '.overrideColorRGB')]
         rgbColourOut = self.adjust_color_lightness(rgbColour[0], rgbColour[1], rgbColour[2], 1 + brightnessOffset)
         rgbColourOut = [x / 255.0 for x in rgbColourOut]
         cmds.setAttr(control + '.overrideColorRGB', *rgbColourOut)
@@ -681,6 +634,7 @@ class Functions(object):
         return "#%02x%02x%02x" % (colour[0], colour[1], colour[2])
 
     def addPickwalk(self, control=str(), destination=str(), direction=str(), reverse=bool):
+        # print ('addPickwalk', control, direction)
         walkDirectionNames = {'up': ['pickUp', 'pickDown'],
                               'down': ['pickDown', 'pickUp'],
                               'left': ['pickLeft', 'pickRight'],
@@ -759,9 +713,7 @@ class Functions(object):
                 if j == topObject:
                     break
                 else:
-                    j = cmds.listRelatives(j, parent=True)[0]
-                    if j == topObject:
-                        break
+                    j = cmds.listRelatives(j, parent=True)
         return oobjectList
 
     def sortByParents(self, selection):
@@ -788,13 +740,6 @@ class Functions(object):
                     returnedList.insert(0, returnedList.pop(returnedList.index(key)))
 
         return returnedList
-
-    def getParent(self, object_name):
-        parent = cmds.listRelatives(object_name, parent=True)
-        if parent:
-            return parent[0]
-        else:
-            return None
 
     @staticmethod
     def get_all_parents(object_name):
@@ -908,7 +853,19 @@ class Functions(object):
         if isHighlighted:
             minTime, maxTime = self.getTimelineHighlightedRange()
             keyRange = [minTime, maxTime]
-
+        '''
+        if not keyRange:
+            print ('keyRange', keyRange)
+            isHighlighted = self.funcs.isTimelineHighlighted()
+            if isHighlighted:
+                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
+                keyRange = [minTime, maxTime]
+            else:
+                keyRange = self.funcs.get_all_layer_key_times(sel)
+                if not keyRange or keyRange[0] == None:
+                    keyRange = timelineRange
+                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
+        '''
         return keyRange
 
     def get_keys_indexes_at_frame(self, node=None, time=None):
@@ -1199,7 +1156,7 @@ class Functions(object):
             return timeRange[0], timeRange[1] - 1
 
     def isTimelineHighlighted(self):
-        return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 0
+        return self.getTimelineHighlightedRange()[1] - self.getTimelineHighlightedRange()[0] > 1
 
     def setPlaybackLoop(self):
         oma2.MAnimControl.setPlaybackMode(oma2.MAnimControl.kPlaybackLoop)
@@ -1463,9 +1420,7 @@ class Functions(object):
 
     @staticmethod
     def getMainWindow():
-        if not cmds.about(batch=True):
-            return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
-        return None
+        return wrapInstance(int(omUI.MQtUtil.mainWindow()), QWidget)
 
     @staticmethod
     def getWidgetAtCursor():
@@ -1662,6 +1617,7 @@ class Functions(object):
             # might just be working in the rig file itself
             refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if namespace.startswith(':'):
+            # print ('removing :')
             namespace = namespace[1:]
         return refName, refState, namespace
 
@@ -1795,6 +1751,7 @@ class Functions(object):
         """
         if not self.is_in_anim_layer(nodeAttr, animLayer):
             return None
+        # print 'getPlugsFromLayer', nodeAttr, animLayer
         plug = None
         basePlug = None
         layerPlug = None
@@ -1813,8 +1770,10 @@ class Functions(object):
             # For every layer other than the base animation layer, we can just use
             # the "animLayer" command.  Unfortunately the "layeredPlug" flag is
             # broken in Python, so we have to use MEL.
+            # print ('getPlugsFromLayer', nodeAttr)
             cmd = 'animLayer -q -layeredPlug "{0}" "{1}"'.format(nodeAttr, animLayer)
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)
+            # print (blendNode, 'blendNode')
             blendNode = cmds.listConnections(nodeAttr, type='animBlendNodeBase', s=True, d=False)[0]
             history = cmds.listHistory(blendNode)
             firstAnimBlendNode = cmds.ls(history, type='animBlendNodeBase')[0]
@@ -1962,7 +1921,7 @@ class Functions(object):
         curve = cmds.curve(degree=1,
                            knot=list(range(0, len(pointlist))),
                            point=[om2.MVector(x) * (scale / self.unit_conversion()) for x in pointlist])
-        shapes = cmds.listRelatives(curve, shapes=True, fullPath=True)
+        shapes = cmds.listRelatives(curve, shapes=True)
 
         return curve, shapes[0]
 
@@ -2107,7 +2066,7 @@ class Functions(object):
         :return: a list of values per frame.
         '''
 
-        objMfn = om2.MFnDependencyNode(dep_node)
+        objMfn = OpenMaya.MFnDependencyNode(dep_node)
         ## Get the plug of the node. (networkedplug = False, as it no longer profides a speed improvement)
         plug = objMfn.findPlug(matrix, False).elementByLogicalIndex(0)
 
@@ -2174,7 +2133,7 @@ class Functions(object):
         refName = CharacterTool.getCharFromTopNode(sel)
         return refName
 
-    def getCurrentRig(self, sel=None, referenceOnly=False):
+    def getCurrentRig(self, sel=None):
         """
         Used to determine the rig name/file, used when saving out rig data for tools
         :param sel:
@@ -2203,8 +2162,7 @@ class Functions(object):
                 if ':' in sel:
                     namespace = sel.split(':', 1)[0]
         else:
-            if not referenceOnly:
-                refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
+            refName = cmds.file(query=True, sceneName=True, shortName=True).split('.')[0]
         if namespace.startswith(':'):
             namespace = namespace[1:]
         return refName, namespace  # TODO - fix up data path etc
@@ -2218,13 +2176,16 @@ class Functions(object):
         if isinstance(sel, list):
             sel = sel[0]
         refName, refState, namespace = self.getRefNameAndState(sel)
+        # print (refName, refState, namespace)
         if not refState:
             # scene is not referenced, check the top node to see if it's a character
             refName = self.getRefNameFromTopParent(sel)
+            # print ('getRefNameFromTopParent', refName)
         if not refName:
             # not dealing with a character
             return None, None, None
         if namespace.startswith(':'):
+            # print ('removing :')
             namespace = namespace[1:]
         return refName, refState, namespace
 
@@ -2312,6 +2273,8 @@ class Functions(object):
         strippedMatches = [c.rsplit(':', 1)[-1] for c in matchingPrefix if st not in c]
         if st in strippedMatches:
             strippedMatches.remove(st)
+        # print ('matchingPrefix', matchingPrefix)
+        # print ('strippedMatches', strippedMatches)
         matches = get_close_matches(st, [x[:len(x) - tailLen] for x in strippedMatches], cutoff=0.5)
         opposites = [m for m in matches if m != st]
 
@@ -2531,6 +2494,8 @@ class Functions(object):
 
         node, attr = node_attr.split('.', 1)
 
+        print ('NODE', node, 'attr', attr)
+
         # Check if the attribute exists and is an enum
         if not cmds.objExists(node):
             raise ValueError("Node '{node}' does not exist".format(node=node))
@@ -2549,129 +2514,3 @@ class Functions(object):
         enums = {name: index for index, name in enumerate(enum_list)}
 
         return enums
-
-    def simplifyEnumKeys(self, control, attribute='rotateOrder'):
-        """
-        :param node:
-        :param attribute:
-        :return:
-        """
-        with self.keepSelection():
-            # make a list so we can send multiple objects in one go
-            if not isinstance(control, list):
-                control = [control]
-            attributes = [x + '.' + attribute for x in control]
-            for attr in attributes:
-                cmds.select(clear=True)
-
-                allSpaceAttrKeyTimes = sorted(list(set(cmds.keyframe(attr, query=True))))
-                duplicateSpaceKeyTimes = []
-                spaceAttrValues = cmds.keyframe(attr, query=True, valueChange=True)
-                for index in range(0, len(spaceAttrValues) - 1):
-                    if spaceAttrValues[index] != spaceAttrValues[index + 1]:
-                        continue
-                    duplicateSpaceKeyTimes.append(allSpaceAttrKeyTimes[index + 1])
-
-                # remove the duplicate values
-                for keyTime in duplicateSpaceKeyTimes:
-                    cmds.cutKey(attr, time=(keyTime,))
-
-                # put this as an option
-                cmds.keyframe(attr, tickDrawSpecial=True)
-
-                # set the tangents to stepped and flat
-                cmds.keyTangent(attr, outTangentType='step', inTangentType='linear')
-
-    def isTrackingEdits(self, node):
-        obj = om2.MSelectionList().add(node).getDependNode(0)
-        dependFn = om2.MFnDependencyNode(obj)
-        trackingEdits = dependFn.isTrackingEdits()
-        del obj
-        del dependFn
-
-        return trackingEdits
-
-    def isProxyAttrFromRefFile(self, plug):
-        isProxyAttribute = False
-        plug = om2.MSelectionList().add(plug).getPlug(0)
-        if not plug.isNull:
-            nodeFn = om2.MFnDependencyNode(plug.node())
-            attrFn = om2.MFnAttribute(plug.attribute())
-            isProxyAttribute = nodeFn.isFromReferencedFile and attrFn.isProxyAttribute
-
-        return isProxyAttribute
-
-    def cbDeleteConnection(self, attrName, source=True, destination=False):
-        node, attr = attrName.split('.')
-        if not cmds.attributeQuery(attr, node=node, exists=True):
-            return
-        connections = cmds.listConnections(attrName, source=source, destination=destination)
-        if not connections:
-            return
-        destination = cmds.connectionInfo(attrName, getExactDestination=True)
-        trackingEdits = self.isTrackingEdits(destination)
-        isProxyAttr = self.isProxyAttrFromRefFile(attrName)
-
-        if trackingEdits and not isProxyAttr:
-            src = cmds.connectionInfo(destination, sourceFromDestination=True)
-            cmds.disconnectAttr(src, destination)
-        else:
-            cmds.delete(destination, inputConnectionsAndNodes=True)
-
-    def getBestTimelineRangeForBake(self, sel=list(), keyRange=None):
-
-        timelineRange = self.getTimelineRange()
-        isHighlighted = self.isTimelineHighlighted()
-        keyRange = [timelineRange[0], timelineRange[1]]
-        if isHighlighted:
-            minTime, maxTime = self.getTimelineHighlightedRange()
-            keyRange = [minTime, maxTime]
-        '''
-        if not keyRange:
-            print ('keyRange', keyRange)
-            isHighlighted = self.funcs.isTimelineHighlighted()
-            if isHighlighted:
-                minTime, maxTime = self.funcs.getTimelineHighlightedRange()
-                keyRange = [minTime, maxTime]
-            else:
-                keyRange = self.funcs.get_all_layer_key_times(sel)
-                if not keyRange or keyRange[0] == None:
-                    keyRange = timelineRange
-                self.expandKeyRangeToTimelineRange(keyRange, timelineRange)
-        '''
-        return keyRange
-"""
-global proc CBdeleteConnection( string $destName )
-//
-// If the specified name is the destination of a connection,
-// then delete that connection.
-//
-{
-	if ( `connectionInfo -isDestination $destName` ){
-		string $destination = `connectionInfo -getExactDestination $destName`;
-
-		// When deleting a src connection from a character, you must remove
-		// the item from the character set or the character will no longer
-		// work consistently: bug 127212
-		//
-		string $srcConn[] = `listConnections -s 1 -d 0 -type character $destination`;
-		if (size($srcConn)) {
-			string $warnMsg = (uiRes("m_channelBoxCommand.kRemovedWarn"));
-			string $warnDisplay = `format -s $destination -s $srcConn[0] $warnMsg`;
-			warning($warnDisplay);
-			character -e -rm $srcConn[0] $destination;
-		}
-		
-		// delete -icn doesn't work if destination attr is referenced or
-		// in an assembly except it's a proxy attr. So use disconnectAttr in this case.
-		//
-		int $trackingEdits = isTrackingEdits($destination);
-		int $isProxyAttr = isProxyAttrFromRefFile($destName);
-		if ( $trackingEdits && !$isProxyAttr ) {
-			string $src = `connectionInfo -sourceFromDestination $destination`;
-			disconnectAttr $src $destination;
-		} else {
-			delete -icn $destination;
-		}
-	}
-"""

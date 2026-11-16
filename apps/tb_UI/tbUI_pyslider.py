@@ -5,17 +5,7 @@ import re
 
 
 from . import *
-"""
-# Traceback (most recent call last):
-#   File "C:\AnimationWork\tbAnimTools\apps\tb_UI\tbUI_pyslider.py", line 1687, in keyReleaseEvent
-#     self.button.keyReleaseEvent(event)
-#   File "C:\AnimationWork\tbAnimTools\apps\tb_UI\tbUI_pyslider.py", line 2447, in keyReleaseEvent
-#     self.setIcon(self.currentIcon)
-# TypeError: # 'PySide2.QtWidgets.QAbstractButton.setIcon' called with wrong argument types:
-#   PySide2.QtWidgets.QAbstractButton.setIcon(str)
-# Supported signatures:
-  PySide2.QtWidgets.QAbstractButton.setIcon(PySide2.QtGui.QIcon)
-"""
+
 sliderButtonStyleSheet = """QPushButton
 {{
     color: {_textColour};
@@ -625,7 +615,7 @@ class Slider(QSlider):
                 x.show()
 
     def contextMenuEvent(self, event):
-        # print('contextMenuEvent', event.globalPos())
+        print('contextMenuEvent', event.globalPos())
         self._showMenu(event.globalPos())
 
     def toggleOvershoot(self, overshootState, baseWidth):
@@ -795,7 +785,7 @@ class Slider(QSlider):
         # print("Slider Moved {}".format(self.value()))
 
     def sliderReleasedEvent(self):
-        # print("Slider Released")
+        print("Slider Released")
         if not self.resetOnRelease:
             return
         self.sliderEndedSignal.emit(self.getOutputValue())
@@ -1564,8 +1554,8 @@ class SliderToolbarWidget(QWidget):
         textColour = str(sliderData.get('textColour', "#000000"))
         self.button = PopupSliderButton(icon=self.icon, altIcon=self.altIcon, width=self.defaultWidth,
                                         height=self.defaultWidth,
-                                        iconWidth=27,
-                                        iconHeight=27,
+                                        iconWidth=22,
+                                        iconHeight=22,
                                         parentWidget=self,
                                         text=buttonLabel,
                                         tint=textColour,
@@ -1688,17 +1678,17 @@ class SliderToolbarWidget(QWidget):
         self.sliderEndedSignal.emit(self.sliderData['mode'], value, 0)
 
     def keyPressEvent(self, event):
-        # print ('toolbarWidget.keyPressEvent', event, self)
+        print ('toolbarWidget.keyPressEvent', event, self)
         self.button.keyPressEvent(event)
         self.popup.keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        # print('toolbarWidget.keyReleaseEvent', event, self)
+        print('toolbarWidget.keyReleaseEvent', event, self)
         self.button.keyReleaseEvent(event)
         self.popup.keyReleaseEvent(event)
 
     def raisePopup(self):
-        # print ('raisePop', QApplication.keyboardModifiers() == Qt.ShiftModifier)
+        print ('raisePop', QApplication.keyboardModifiers() == Qt.ShiftModifier)
         if QApplication.keyboardModifiers() == Qt.ShiftModifier:
             popup = self.altPopup
         else:
@@ -1780,7 +1770,7 @@ class PopupSlider(QWidget):
         self.setLayout(layout)
         self.margin = 2 * dpiScale()
         self.padding = 4 * dpiScale()
-        self.baseWidth = width  * dpiScale()
+        self.baseWidth = width
         layout.setContentsMargins(self.margin, self.margin, self.margin, self.margin)
         layout.addWidget(self.button)
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
@@ -2328,7 +2318,7 @@ class PopupSliderWidget(QWidget):
         self.slider.keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        # print ('is this happening?')
+        print ('is this happening?')
         self.button.keyReleaseEvent(event)
         self.slider.keyReleaseEvent(event)
 
@@ -2402,9 +2392,8 @@ class PopupSliderButton(QPushButton):
         self.currentIcon = icon
         self.baseWidth = width
         self.baseHeight = height
-        self.iconWidth = iconWidth * dpiScale(optionName='tbCustomGeDpiScale')
-        self.iconHeight = iconHeight * dpiScale(optionName='tbCustomGeDpiScale')
-
+        self.iconWidth = iconWidth * dpiScale()
+        self.iconHeight = iconHeight * dpiScale()
         self.pixmap = QPixmap(os.path.join(IconPath, icon))
         self.altPixmap = QPixmap(os.path.join(IconPath, altIcon))
 
@@ -2507,7 +2496,7 @@ class PopupSliderButton(QPushButton):
 
         self.graphicsEffect().setStrength(0.0)
         self.parentWidget.helpWidget.hide()
-        return super(PopupSliderButton, self).leaveEvent(event)
+        return super(PopupSliderButton, self).enterEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

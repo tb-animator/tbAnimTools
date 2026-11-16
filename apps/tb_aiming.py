@@ -325,7 +325,6 @@ class AimTools(toolAbstractFactory):
         self.constraints = list()
         self.locators = list()
         self.controlInfo = dict()
-
         for target in self.targets:
             name = target.split(':')[-1]
             refName, refState = self.funcs.getRefName(target)
@@ -342,15 +341,9 @@ class AimTools(toolAbstractFactory):
                 else:
                     data = directionDict[refName][name]
             self.aimToLocator(refName, name, target, data)
-
         self.bake()
-        print (self.controlInfo.keys())
-
-
-        for key, values in self.controlInfo.items():
-            self.constraintControls(key, values)
-
-
+        for key in self.controlInfo.keys():
+            self.constraintControls(key)
         # select new controls
         cmds.select(self.locators, replace=True)
 
@@ -439,16 +432,15 @@ class AimTools(toolAbstractFactory):
         '''
         keyRange = self.funcs.getBestTimelineRangeForBake()
         bakeTools = self.allTools.tools['BakeTools']
-
         bakeTools.quickBake(self.locators, startTime=keyRange[0], endTime=keyRange[1],
                             deleteConstraints=True)
 
-    def constraintControls(self, key, values):
-        cmds.aimConstraint(values[0], key,
-                           worldUpObject=values[2],
-                           aimVector=[values[1][0],values[1][1],values[1][2]],
-                           upVector=[values[3][0],values[3][1],values[3][2]],
-                           worldUpVector=[values[3][0],values[3][1],values[3][2]],
+    def constraintControls(self, key):
+        cmds.aimConstraint(self.controlInfo[key][0], key,
+                           worldUpObject=self.controlInfo[key][2],
+                           aimVector=[z for z in self.controlInfo[key][1]],
+                           upVector=[y for y in self.controlInfo[key][3]],
+                           worldUpVector=[y for y in self.controlInfo[key][3]],
                            worldUpType='object')
 
     def setDefaultUI(self, *args):
@@ -553,6 +545,9 @@ class AimTools(toolAbstractFactory):
         cmds.popupMenu(parentMMenu, edit=True, deleteAllItems=True)
         sel = cmds.ls(sl=True)
         asset = cmds.container(query=True, findContainer=sel[0])
+
+        # check asset message attribute
+        print("asset", asset)
 
         cmds.menuItem(label='Aim Tool', enable=False, boldFont=True, image='container.svg')
         cmds.menuItem(divider=True)
@@ -681,7 +676,7 @@ class AimTools(toolAbstractFactory):
                                                                                      tempControl,
                                                                                      parentControl=parentControl))))
 
-    def bakeTempAim(self, control, tempControl, parentControl=None, *args):
+    def bakeTempAim(self, control, tempControl, *args, parentControl=None):
 
         aimLocator = self.funcs.tempControl(name=control, suffix='aim', scale=1.0, color=(1.0, 0.537, 0.016),
                                             drawType='orb')
@@ -1021,22 +1016,22 @@ class AimAxisWidget(QWidget):
         self.upComboBox = QComboBox()
         for item in itemList:
             self.upComboBox.addItem(item)
-        self.aimComboBox.setFixedWidth(42 * dpiScale())
-        self.upComboBox.setFixedWidth(42 * dpiScale())
+        self.aimComboBox.setFixedWidth(32)
+        self.upComboBox.setFixedWidth(32)
 
         self.aimComboBox.setCurrentIndex(itemList.index(self.aimAxis))
         self.upComboBox.setCurrentIndex(itemList.index(self.upAxis))
 
         self.scaleSpinBox = QDoubleSpinBox()
         scaleLabel = QLabel('Scale')
-        self.scaleSpinBox.setFixedWidth(80 * dpiScale())
+        self.scaleSpinBox.setFixedWidth(80)
         self.scaleSpinBox.setValue(scale)
         self.scaleSpinBox.setMinimum(0.01)
         self.scaleSpinBox.setSingleStep(0.1)
 
         self.distanceSpinBox = QDoubleSpinBox()
         distanceLabel = QLabel('Distance')
-        self.distanceSpinBox.setFixedWidth(80 * dpiScale())
+        self.distanceSpinBox.setFixedWidth(80)
         self.distanceSpinBox.setValue(distance)
         self.distanceSpinBox.setMaximum(1000.0)
         self.distanceSpinBox.setSingleStep(1)
