@@ -129,38 +129,7 @@ class AdjustmentBlendTool(toolAbstractFactory):
 
         AdjustmentBlendTool.__instance.val = cls.toolName
         AdjustmentBlendTool.__instance.loadData()
-        """
-        validate = False
-        opVar = AdjustmentBlendTool.__instance.getHash(AdjustmentBlendTool.__instance.productID, '')
-        # currentLicense = get_option_var(opVar, None)
-        machineName = AdjustmentBlendTool.__instance.getHash(socket.gethostname(), '')
-        licenseData = AdjustmentBlendTool.__instance.loadLic()
-        if not licenseData:
-            validate = True
-            cmds.warning('no current license file/data')
-        elif len(licenseData) != 4:
-            validate = True
-            cmds.warning('incorrect license format')
-        elif licenseData[3] != machineName:
-            validate = True
-            cmds.warning('incorrect machine name')
-        elif AdjustmentBlendTool.__instance.getHash(licenseData[0], licenseData[1]) != licenseData[2]:
-            validate = True
-            cmds.warning('bad license value')
 
-        if validate:
-            cmds.warning(AdjustmentBlendTool.__instance.toolName, 'license not found')
-            AdjustmentBlendTool.__instance.licenseWindow = LicenseWin(
-                parent=AdjustmentBlendTool.__instance.funcs.getMainWindow(),
-                title=AdjustmentBlendTool.__instance.toolName)
-            AdjustmentBlendTool.__instance.licenseWindow.show()
-            AdjustmentBlendTool.__instance.licenseWindow.ActivateSignal.connect(
-                AdjustmentBlendTool.__instance.activate)
-            if AdjustmentBlendTool.__instance.licenseWindow.exec_():
-                pass
-            else:
-                return None
-        """
         return AdjustmentBlendTool.__instance
 
 

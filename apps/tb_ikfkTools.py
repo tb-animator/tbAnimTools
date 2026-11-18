@@ -180,36 +180,7 @@ class IkFkTools(toolAbstractFactory):
 
         IkFkTools.__instance.val = cls.toolName
         IkFkTools.__instance.loadData()
-        """
-        validate = False
-        opVar = IkFkTools.__instance.getHash(IkFkTools.__instance.productID, '')
-        # currentLicense = get_option_var(opVar, None)
-        machineName = IkFkTools.__instance.getHash(socket.gethostname(), '')
-        licenseData = IkFkTools.__instance.loadLic()
-        if not licenseData:
-            validate = True
-            cmds.warning('no current license file/data')
-        elif len(licenseData) != 4:
-            validate = True
-            cmds.warning('incorrect license format')
-        elif licenseData[3] != machineName:
-            validate = True
-            cmds.warning('incorrect machine name')
-        elif IkFkTools.__instance.getHash(licenseData[0], licenseData[1]) != licenseData[2]:
-            validate = True
-            cmds.warning('bad license value')
 
-        if validate:
-            cmds.warning(IkFkTools.__instance.toolName, 'license not found')
-            IkFkTools.__instance.licenseWindow = LicenseWin(parent=IkFkTools.__instance.funcs.getMainWindow(),
-                                                            title=IkFkTools.__instance.toolName)
-            IkFkTools.__instance.licenseWindow.show()
-            IkFkTools.__instance.licenseWindow.ActivateSignal.connect(IkFkTools.__instance.activate)
-            if IkFkTools.__instance.licenseWindow.exec_():
-                pass
-            else:
-                return None
-        """
         return IkFkTools.__instance
 
 
